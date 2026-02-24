@@ -84,3 +84,23 @@ Key files:
 Test commands:
 - `cd backend && alembic -c alembic.ini heads`
 - `cd backend && pytest -q`
+
+
+## Phase 6.3 — fire-module
+Status: READY_FOR_REVIEW
+
+Summary:
+- Added fire incidents, inspection properties, fire inspections, and violations module with tenant-scoped models and APIs.
+- Added fire incident state transition enforcement and NERIS export scaffold service.
+- Added migration `20260224_0008_create_fire_module`.
+
+Key files:
+- `backend/core_app/models/fire.py`
+- `backend/core_app/services/fire_service.py`
+- `backend/core_app/api/fire_router.py`
+- `backend/alembic/versions/20260224_0008_create_fire_module.py`
+- `backend/tests/test_fire_service.py`
+
+Test commands:
+- `cd backend && alembic -c alembic.ini heads`
+- `cd backend && pytest -q`

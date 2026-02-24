@@ -16,3 +16,8 @@
 ## Assets + Fleet module
 - Parity: vehicle readiness tracking, telemetry updates, maintenance scheduling/completion.
 - Differentiator: strict optimistic concurrency for telemetry/maintenance lifecycle updates in tenant-scoped APIs.
+
+
+## Fire module
+- Parity: fire incident + inspection workflows with violation tracking and lifecycle state transitions.
+- Differentiator: NERIS-first mapping scaffold with required-field validation and export stub generation for iterative conformance.

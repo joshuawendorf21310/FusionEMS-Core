@@ -22,3 +22,8 @@
 - Narcotic log is append-only by design; quantity changes only occur through log entry workflow.
 - Schedule II waste/adjustment requires witness user id.
 - Service rejects inventory updates that would produce negative on-hand balance.
+
+
+## Fire inspection integrity controls
+- Fire incident transitions are state-machine validated before mutation.
+- Inspection/violation changes are audited with field names only and tenant-scoped access controls.
