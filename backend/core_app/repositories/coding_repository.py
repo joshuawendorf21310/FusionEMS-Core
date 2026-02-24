@@ -49,7 +49,7 @@ class CodingRepository:
         return rows, total
 
     async def get_icd10_by_code(self, *, code: str) -> ICD10Code | None:
-        stmt = select(ICD10Code).where(ICD10Code.code == code)
+        stmt = select(ICD10Code).where(ICD10Code.code == code, ICD10Code.deleted_at.is_(None))
         return await self.db.scalar(stmt)
 
     async def get_rxnorm_by_rxcui(self, *, rxcui: str) -> RxNormCode | None:
