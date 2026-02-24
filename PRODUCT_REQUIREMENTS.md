@@ -21,3 +21,8 @@
 ## Fire module
 - Parity: fire incident + inspection workflows with violation tracking and lifecycle state transitions.
 - Differentiator: NERIS-first mapping scaffold with required-field validation and export stub generation for iterative conformance.
+
+
+## HEMS module
+- Parity: flight request lifecycle, crew availability windows, and paging event tracking.
+- Differentiator: transition-map guarded status progression with tenant-scoped audit-safe operations.

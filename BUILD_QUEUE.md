@@ -104,3 +104,23 @@ Key files:
 Test commands:
 - `cd backend && alembic -c alembic.ini heads`
 - `cd backend && pytest -q`
+
+
+## Phase 6.4 — hems-crewlink
+Status: READY_FOR_REVIEW
+
+Summary:
+- Added HEMS flight requests, crew availability, and paging events with tenant-scoped models and API routes.
+- Added flight request transition map enforcement and paging event recording workflow.
+- Added migration `20260224_0009_create_hems_crewlink`.
+
+Key files:
+- `backend/core_app/models/hems.py`
+- `backend/core_app/services/hems_service.py`
+- `backend/core_app/api/hems_router.py`
+- `backend/alembic/versions/20260224_0009_create_hems_crewlink.py`
+- `backend/tests/test_hems_service.py`
+
+Test commands:
+- `cd backend && alembic -c alembic.ini heads`
+- `cd backend && pytest -q`
