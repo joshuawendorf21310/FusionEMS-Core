@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core_app.api.dependencies import get_current_user, require_role
@@ -14,6 +14,7 @@ from core_app.schemas.incident import (
     IncidentUpdateRequest,
 )
 from core_app.services.event_publisher import NoOpEventPublisher
+from core_app.services.idempotency_service import IdempotencyService
 from core_app.services.incident_service import IncidentService
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
@@ -27,15 +28,42 @@ def incident_service_dependency(db: AsyncSession = Depends(get_async_db_session)
 async def create_incident(
     payload: IncidentCreateRequest,
     request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     current_user: CurrentUser = Depends(require_role("ems", "admin")),
     service: IncidentService = Depends(incident_service_dependency),
+    db: AsyncSession = Depends(get_async_db_session),
 ) -> IncidentResponse:
-    return await service.create_incident(
+    if idempotency_key:
+        idem_service = IdempotencyService(db)
+        request_hash = idem_service.compute_request_hash(payload.model_dump(mode="json"))
+        existing = await idem_service.check_existing(
+            tenant_id=current_user.tenant_id,
+            idempotency_key=idempotency_key,
+            route_key="POST:/api/v1/incidents",
+            request_hash=request_hash,
+        )
+        if existing:
+            return IncidentResponse.model_validate(existing)
+
+    created = await service.create_incident(
         tenant_id=current_user.tenant_id,
         actor_user_id=current_user.user_id,
         payload=payload,
         correlation_id=request.state.correlation_id,
     )
+
+    if idempotency_key:
+        idem_service = IdempotencyService(db)
+        await idem_service.save_receipt(
+            tenant_id=current_user.tenant_id,
+            idempotency_key=idempotency_key,
+            route_key="POST:/api/v1/incidents",
+            request_hash=idem_service.compute_request_hash(payload.model_dump(mode="json")),
+            response_json=created.model_dump(mode="json"),
+        )
+        await db.commit()
+
+    return created
 
 
 @router.get("", response_model=IncidentListResponse)

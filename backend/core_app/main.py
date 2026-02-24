@@ -2,10 +2,17 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from core_app.api.audit_router import router as audit_router
+from core_app.api.ai_router import router as ai_router
 from core_app.api.auth_router import router as auth_router
+from core_app.api.fire_router import router as fire_router
+from core_app.api.hems_router import router as hems_router
+from core_app.api.assets_router import router as assets_router
 from core_app.api.incident_router import router as incident_router
+from core_app.api.integration_registry_router import router as integration_registry_router
+from core_app.api.inventory_router import router as inventory_router
 from core_app.api.patient_router import router as patient_router
 from core_app.api.vital_router import router as vital_router
+from core_app.api.ws_router import router as ws_router
 from core_app.core.config import get_settings
 from core_app.core.errors import AppError
 from core_app.core.logging import configure_logging
@@ -28,9 +35,16 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(audit_router, prefix="/api/v1")
+app.include_router(ai_router, prefix="/api/v1")
+app.include_router(assets_router, prefix="/api/v1")
+app.include_router(fire_router, prefix="/api/v1")
+app.include_router(hems_router, prefix="/api/v1")
 app.include_router(incident_router, prefix="/api/v1")
+app.include_router(integration_registry_router, prefix="/api/v1")
+app.include_router(inventory_router, prefix="/api/v1")
 app.include_router(patient_router, prefix="/api/v1")
 app.include_router(vital_router, prefix="/api/v1")
+app.include_router(ws_router, prefix="/api/v1")
 
 
 @app.get("/health")
