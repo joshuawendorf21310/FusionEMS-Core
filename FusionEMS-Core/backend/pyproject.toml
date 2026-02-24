@@ -1,0 +1,22 @@
+[project]
+name = "fusionems-core"
+version = "0.1.0"
+description = "FusionEMS Enterprise Core backend"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110.0",
+  "uvicorn>=0.30.0",
+  "sqlalchemy>=2.0.30",
+  "psycopg[binary]>=3.1.19",
+  "alembic>=1.13.1",
+  "pydantic-settings>=2.2.1",
+  "python-jose[cryptography]>=3.3.0",
+  "passlib[bcrypt]>=1.7.4",
+  "email-validator>=2.1.1",
+  "redis>=5.0.0",
+  "requests>=2.32.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
