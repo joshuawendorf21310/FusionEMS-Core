@@ -9,20 +9,34 @@ from core_app.repositories.coding_repository import CodingRepository
 
 async def import_rxnorm_codes(csv_path: Path) -> None:
     imported = 0
+    skipped = 0
     async with AsyncSessionLocal() as session:
         repository = CodingRepository(session)
-        with csv_path.open("r", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
-            for row in reader:
-                rxcui = (row.get("rxcui") or "").strip()
-                name = (row.get("name") or "").strip()
-                tty = (row.get("tty") or "").strip() or None
-                if not rxcui or not name:
-                    continue
-                await repository.upsert_rxnorm(rxcui=rxcui, name=name, tty=tty)
-                imported += 1
-        await session.commit()
-    print(f"Imported {imported} RxNorm rows from {csv_path}")
+        try:
+            with csv_path.open("r", encoding="utf-8") as handle:
+                reader = csv.DictReader(handle)
+                for row_num, row in enumerate(reader, start=2):
+                    try:
+                        rxcui = (row.get("rxcui") or "").strip()
+                        name = (row.get("name") or "").strip()
+                        tty = (row.get("tty") or "").strip() or None
+                        if not rxcui or not name:
+                            skipped += 1
+                            continue
+                        await repository.upsert_rxnorm(rxcui=rxcui, name=name, tty=tty)
+                        imported += 1
+                    except Exception as e:
+                        print(f"Error processing row {row_num}: {e}")
+                        skipped += 1
+                        continue
+            await session.commit()
+        except FileNotFoundError:
+            print(f"Error: CSV file not found at {csv_path}")
+            return
+        except Exception as e:
+            print(f"Error reading CSV file: {e}")
+            return
+    print(f"Imported {imported} RxNorm rows from {csv_path} (skipped {skipped})")
 
 
 def parse_args() -> argparse.Namespace:
