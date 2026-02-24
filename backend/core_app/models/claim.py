@@ -75,6 +75,7 @@ class Claim(Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDe
     denial_reason_text_redacted_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 def allowed_claim_transition_targets(from_status: ClaimStatus) -> set[ClaimStatus]:

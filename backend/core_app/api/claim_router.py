@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core_app.api.dependencies import require_role
@@ -26,8 +26,20 @@ def claim_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -
 
 
 @router.post("", response_model=ClaimResponse, status_code=status.HTTP_201_CREATED)
-async def create_claim(payload: ClaimCreateRequest, request: Request, current_user: CurrentUser = Depends(require_role("billing", "admin")), service: ClaimService = Depends(claim_service_dependency)) -> ClaimResponse:
-    return await service.create_claim(tenant_id=current_user.tenant_id, actor_user_id=current_user.user_id, payload=payload, correlation_id=request.state.correlation_id)
+async def create_claim(
+    payload: ClaimCreateRequest,
+    request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    current_user: CurrentUser = Depends(require_role("billing", "admin")),
+    service: ClaimService = Depends(claim_service_dependency),
+) -> ClaimResponse:
+    return await service.create_claim(
+        tenant_id=current_user.tenant_id,
+        actor_user_id=current_user.user_id,
+        payload=payload,
+        correlation_id=request.state.correlation_id,
+        idempotency_key=idempotency_key,
+    )
 
 
 @router.get("", response_model=ClaimListResponse)

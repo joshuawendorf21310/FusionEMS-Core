@@ -30,6 +30,16 @@ class ClaimRepository:
         stmt = select(Claim).where(Claim.id == claim_id, Claim.tenant_id == scoped, Claim.deleted_at.is_(None))
         return await self.db.scalar(stmt)
 
+
+    async def get_by_idempotency_key(self, *, tenant_id: uuid.UUID, idempotency_key: str) -> Claim | None:
+        scoped = self._require_tenant_scope(tenant_id)
+        stmt = select(Claim).where(
+            Claim.tenant_id == scoped,
+            Claim.idempotency_key == idempotency_key,
+            Claim.deleted_at.is_(None),
+        )
+        return await self.db.scalar(stmt)
+
     async def list_filtered(
         self,
         *,

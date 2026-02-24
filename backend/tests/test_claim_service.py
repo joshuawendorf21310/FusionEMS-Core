@@ -7,7 +7,7 @@ import pytest
 from core_app.core.errors import AppError, ErrorCodes
 from core_app.models.audit_log import AuditLog
 from core_app.models.claim import Claim, ClaimServiceLevel, ClaimStatus, PayerType
-from core_app.schemas.claim import ClaimTransitionRequest, ClaimUpdateRequest
+from core_app.schemas.claim import ClaimCreateRequest, ClaimTransitionRequest, ClaimUpdateRequest
 from core_app.services.claim_service import ClaimService
 
 
@@ -40,6 +40,12 @@ class FakePublisher:
 class FakeRepository:
     def __init__(self, claims: list[Claim]) -> None:
         self.claims = {claim.id: claim for claim in claims}
+
+    async def get_by_idempotency_key(self, *, tenant_id: uuid.UUID, idempotency_key: str) -> Claim | None:
+        for claim in self.claims.values():
+            if claim.tenant_id == tenant_id and getattr(claim, "idempotency_key", None) == idempotency_key and claim.deleted_at is None:
+                return claim
+        return None
 
     async def get_by_id(self, *, tenant_id: uuid.UUID, claim_id: uuid.UUID) -> Claim | None:
         claim = self.claims.get(claim_id)
@@ -177,3 +183,43 @@ async def test_event_published_only_after_commit() -> None:
 
     assert db.committed is True
     assert publisher.events and publisher.events[0][0] == "claim.status_changed"
+
+
+@pytest.mark.asyncio
+async def test_create_claim_idempotency_returns_existing_claim() -> None:
+    tenant_id = uuid.uuid4()
+    actor_id = uuid.uuid4()
+    existing = _build_claim(tenant_id=tenant_id, version=2)
+    existing.idempotency_key = "idem-1"
+
+    class CreateFakeRepository(FakeRepository):
+        async def create(self, *, tenant_id: uuid.UUID, claim: Claim) -> Claim:
+            raise AssertionError("create should not be called for idempotent replay")
+
+    service = ClaimService(db=FakeDB(), publisher=FakePublisher())
+    service.repository = CreateFakeRepository([existing])
+
+    response = await service.create_claim(
+        tenant_id=tenant_id,
+        actor_user_id=actor_id,
+        payload=ClaimCreateRequest(
+            incident_id=existing.incident_id,
+            patient_id=existing.patient_id,
+            payer_name=existing.payer_name,
+            payer_type=existing.payer_type,
+            icd10_primary=existing.icd10_primary,
+            icd10_secondary_json=existing.icd10_secondary_json,
+            modifiers_json=existing.modifiers_json,
+            service_level=existing.service_level,
+            transport_flag=existing.transport_flag,
+            origin_zip=existing.origin_zip,
+            destination_zip=existing.destination_zip,
+            mileage_loaded=existing.mileage_loaded,
+            charge_amount=existing.charge_amount,
+            patient_responsibility_amount=existing.patient_responsibility_amount,
+        ),
+        correlation_id="corr",
+        idempotency_key="idem-1",
+    )
+
+    assert response.id == existing.id

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core_app.core.errors import AppError, ErrorCodes
 from core_app.models.audit_log import AuditLog
-from core_app.models.claim import Claim, ClaimStatus, allowed_claim_transition_targets
+from core_app.models.claim import Claim, ClaimStatus, PayerType, allowed_claim_transition_targets
 from core_app.repositories.claim_repository import ClaimRepository
 from core_app.schemas.claim import (
     ClaimCreateRequest,
@@ -23,14 +23,41 @@ class ClaimService:
         self.publisher = publisher
         self.repository = ClaimRepository(db)
 
-    async def create_claim(self, *, tenant_id: uuid.UUID, actor_user_id: uuid.UUID, payload: ClaimCreateRequest, correlation_id: str | None) -> ClaimResponse:
-        claim = Claim(tenant_id=tenant_id, status=ClaimStatus.DRAFT, version=1, **payload.model_dump())
+    async def create_claim(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        actor_user_id: uuid.UUID,
+        payload: ClaimCreateRequest,
+        correlation_id: str | None,
+        idempotency_key: str | None,
+    ) -> ClaimResponse:
+        if idempotency_key is not None:
+            existing = await self.repository.get_by_idempotency_key(tenant_id=tenant_id, idempotency_key=idempotency_key)
+            if existing is not None:
+                return ClaimResponse.model_validate(existing)
+
+        claim = Claim(
+            tenant_id=tenant_id,
+            status=ClaimStatus.DRAFT,
+            version=1,
+            idempotency_key=idempotency_key,
+            **payload.model_dump(),
+        )
         created = await self.repository.create(tenant_id=tenant_id, claim=claim)
         await self._write_audit_log(tenant_id, actor_user_id, created.id, "claim.created", list(payload.model_dump().keys()) + ["status"], correlation_id)
         await self.db.commit()
         return ClaimResponse.model_validate(created)
 
-    async def list_claims(self, *, tenant_id: uuid.UUID, status: ClaimStatus | None, payer_type, submitted_from, submitted_to) -> ClaimListResponse:
+    async def list_claims(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        status: ClaimStatus | None,
+        payer_type: PayerType | None,
+        submitted_from: datetime | None,
+        submitted_to: datetime | None,
+    ) -> ClaimListResponse:
         items = await self.repository.list_filtered(
             tenant_id=tenant_id, status=status, payer_type=payer_type, submitted_from=submitted_from, submitted_to=submitted_to
         )
