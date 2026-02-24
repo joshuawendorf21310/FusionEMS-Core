@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from core_app.api.audit_router import router as audit_router
 from core_app.api.auth_router import router as auth_router
+from core_app.api.coding_router import router as coding_router
 from core_app.api.incident_router import router as incident_router
 from core_app.core.config import get_settings
 from core_app.core.errors import AppError
@@ -27,6 +28,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(audit_router, prefix="/api/v1")
 app.include_router(incident_router, prefix="/api/v1")
+app.include_router(coding_router, prefix="/api/v1")
 
 
 @app.get("/health")
