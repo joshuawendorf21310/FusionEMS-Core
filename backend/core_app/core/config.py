@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_token_expire_minutes: int = Field(default=60)
 
+    aws_region: str = Field(default="us-east-1")
+    aws_kms_integration_key_id: str = Field(default="alias/fusionems-integrations")
+    redis_url: str | None = Field(default=None)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
