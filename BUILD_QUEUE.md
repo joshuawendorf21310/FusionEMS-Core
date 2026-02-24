@@ -145,3 +145,23 @@ Key files:
 Test commands:
 - `cd backend && alembic -c alembic.ini heads`
 - `cd backend && pytest -q`
+
+
+## Phase 8 — ocr-intake
+Status: READY_FOR_REVIEW
+
+Summary:
+- Added OCR upload model and API workflow (presign/register/approve/apply) with explicit approval gating.
+- Added encrypted extracted-json storage field and no auto-apply safeguards.
+- Added migration `20260224_0011_create_ocr_uploads`.
+
+Key files:
+- `backend/core_app/models/ocr.py`
+- `backend/core_app/services/ocr_service.py`
+- `backend/core_app/api/ocr_router.py`
+- `backend/alembic/versions/20260224_0011_create_ocr_uploads.py`
+- `backend/tests/test_ocr_service.py`
+
+Test commands:
+- `cd backend && alembic -c alembic.ini heads`
+- `cd backend && pytest -q`

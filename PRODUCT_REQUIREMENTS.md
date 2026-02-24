@@ -26,3 +26,7 @@
 ## HEMS module
 - Parity: flight request lifecycle, crew availability windows, and paging event tracking.
 - Differentiator: transition-map guarded status progression with tenant-scoped audit-safe operations.
+
+
+## OCR intake module
+- Differentiator: confidence-backed extraction review with explicit user-selected field apply; no silent auto-write.

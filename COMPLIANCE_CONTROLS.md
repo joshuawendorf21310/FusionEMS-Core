@@ -33,3 +33,8 @@
 - AI analysis routes return structured suggestions and do not auto-write chart or claim records.
 - PHI guard redaction utility strips common names/DOB/phone patterns before provider input.
 - AI runs persist provenance and confidence for post-hoc traceability.
+
+
+## OCR human confirmation rule
+- OCR uploads require explicit approve step before apply; apply endpoint rejects unapproved payloads.
+- Extracted payload is stored encrypted-at-rest in application layer field and never echoed as raw audit values.

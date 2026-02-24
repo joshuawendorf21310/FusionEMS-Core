@@ -12,3 +12,5 @@ from core_app.models.fire import FireIncident, InspectionProperty, FireInspectio
 from core_app.models.hems import FlightRequest, CrewAvailability, PagingEvent
 
 from core_app.models.ai import AiRun, AiPolicy
+
+from core_app.models.ocr import OCRUpload, OcrSourceType
