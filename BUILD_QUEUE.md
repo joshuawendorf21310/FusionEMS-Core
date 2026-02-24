@@ -64,3 +64,23 @@ Key files:
 Test commands:
 - `cd backend && alembic -c alembic.ini heads`
 - `cd backend && pytest -q`
+
+
+## Phase 6.2 — assets-fleet
+Status: READY_FOR_REVIEW
+
+Summary:
+- Added assets, vehicles, and maintenance event tables with tenant uniqueness and versioning.
+- Added assets-fleet repository/service/router with telemetry concurrency checks and maintenance completion workflow.
+- Added migration `20260224_0007_create_assets_fleet`.
+
+Key files:
+- `backend/core_app/models/assets.py`
+- `backend/core_app/services/assets_service.py`
+- `backend/core_app/api/assets_router.py`
+- `backend/alembic/versions/20260224_0007_create_assets_fleet.py`
+- `backend/tests/test_assets_service.py`
+
+Test commands:
+- `cd backend && alembic -c alembic.ini heads`
+- `cd backend && pytest -q`
