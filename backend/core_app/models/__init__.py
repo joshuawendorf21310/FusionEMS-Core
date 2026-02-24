@@ -10,3 +10,5 @@ from core_app.models.assets import Asset, Vehicle, MaintenanceEvent
 from core_app.models.fire import FireIncident, InspectionProperty, FireInspection, FireInspectionViolation
 
 from core_app.models.hems import FlightRequest, CrewAvailability, PagingEvent
+
+from core_app.models.ai import AiRun, AiPolicy

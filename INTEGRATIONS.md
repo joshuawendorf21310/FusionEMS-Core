@@ -13,3 +13,8 @@
 - Redis publisher emits JSON events to channel `events`.
 - WebSocket subscriptions are tenant-scoped; channel tenant must match JWT tenant.
 - Redis connection can be configured via `redis_url`.
+
+
+## OpenAI/provider switching
+- AI provider is abstracted behind `AIProvider`; runtime can swap deterministic/mock/openai-backed implementations.
+- Integration registry `OPENAI` provider entry remains the control plane for API-key storage policy.

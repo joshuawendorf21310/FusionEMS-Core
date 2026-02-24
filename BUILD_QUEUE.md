@@ -124,3 +124,24 @@ Key files:
 Test commands:
 - `cd backend && alembic -c alembic.ini heads`
 - `cd backend && pytest -q`
+
+
+## Phase 7 — ai-hardening
+Status: READY_FOR_REVIEW
+
+Summary:
+- Added AI run/policy tables and AI provider abstraction with structured output checks.
+- Added PHI redaction utility and billing analyze endpoint with explicit human-confirmation requirement.
+- Added migration `20260224_0010_create_ai_hardening`.
+
+Key files:
+- `backend/core_app/models/ai.py`
+- `backend/core_app/services/ai_service.py`
+- `backend/core_app/services/ai_provider.py`
+- `backend/core_app/api/ai_router.py`
+- `backend/alembic/versions/20260224_0010_create_ai_hardening.py`
+- `backend/tests/test_ai_service.py`
+
+Test commands:
+- `cd backend && alembic -c alembic.ini heads`
+- `cd backend && pytest -q`

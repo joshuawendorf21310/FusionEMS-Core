@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from core_app.api.audit_router import router as audit_router
+from core_app.api.ai_router import router as ai_router
 from core_app.api.auth_router import router as auth_router
 from core_app.api.fire_router import router as fire_router
 from core_app.api.hems_router import router as hems_router
@@ -33,6 +34,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(ai_router, prefix="/api/v1")
 app.include_router(audit_router, prefix="/api/v1")
 app.include_router(assets_router, prefix="/api/v1")
 app.include_router(fire_router, prefix="/api/v1")

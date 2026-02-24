@@ -27,3 +27,9 @@
 ## Fire inspection integrity controls
 - Fire incident transitions are state-machine validated before mutation.
 - Inspection/violation changes are audited with field names only and tenant-scoped access controls.
+
+
+## AI governance controls
+- AI analysis routes return structured suggestions and do not auto-write chart or claim records.
+- PHI guard redaction utility strips common names/DOB/phone patterns before provider input.
+- AI runs persist provenance and confidence for post-hoc traceability.
