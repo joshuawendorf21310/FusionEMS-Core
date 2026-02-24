@@ -38,25 +38,33 @@ class IncidentRepository:
         )
         return await self.db.scalar(stmt)
 
-    async def list_paginated(self, *, tenant_id: uuid.UUID, limit: int, offset: int) -> tuple[list[Incident], int]:
+    async def list_paginated(self, *, tenant_id: uuid.UUID, limit: int, offset: int) -> list[Incident]:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
-        list_stmt = (
+        stmt = (
             select(Incident)
             .where(Incident.tenant_id == scoped_tenant_id, Incident.deleted_at.is_(None))
             .order_by(Incident.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
-        count_stmt = select(func.count()).select_from(Incident).where(
+        return list((await self.db.scalars(stmt)).all())
+
+    async def count(self, *, tenant_id: uuid.UUID) -> int:
+        scoped_tenant_id = self._require_tenant_scope(tenant_id)
+        stmt = select(func.count()).select_from(Incident).where(
             Incident.tenant_id == scoped_tenant_id,
             Incident.deleted_at.is_(None),
         )
-        incidents = list((await self.db.scalars(list_stmt)).all())
-        total = int((await self.db.scalar(count_stmt)) or 0)
-        return incidents, total
+        return int((await self.db.scalar(stmt)) or 0)
 
-    async def save(self, *, tenant_id: uuid.UUID, incident: Incident) -> Incident:
-        self._require_tenant_scope(tenant_id)
+    async def update_fields(self, *, tenant_id: uuid.UUID, incident: Incident) -> Incident:
+        scoped_tenant_id = self._require_tenant_scope(tenant_id)
+        if incident.tenant_id != scoped_tenant_id:
+            raise AppError(
+                code=ErrorCodes.INCIDENT_NOT_FOUND,
+                message="Incident not found.",
+                status_code=404,
+            )
         await self.db.flush()
         await self.db.refresh(incident)
         return incident
