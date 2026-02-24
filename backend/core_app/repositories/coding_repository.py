@@ -53,7 +53,7 @@ class CodingRepository:
         return await self.db.scalar(stmt)
 
     async def get_rxnorm_by_rxcui(self, *, rxcui: str) -> RxNormCode | None:
-        stmt = select(RxNormCode).where(RxNormCode.rxcui == rxcui)
+        stmt = select(RxNormCode).where(RxNormCode.rxcui == rxcui, RxNormCode.deleted_at.is_(None))
         return await self.db.scalar(stmt)
 
     async def upsert_icd10(self, *, code: str, short_description: str, long_description: str | None) -> ICD10Code:
