@@ -3,7 +3,7 @@
 ## Phase 1 — billing-core
 - Status: READY_FOR_REVIEW
 - Summary: Added billing claim aggregate with status machine, optimistic concurrency, tenant-scoped repository, API routes, create idempotency-key replay support, audit field-name-only logging, and after-commit event publishing.
-- Migration: `20260224_0004_create_claims`
+- Migration: `20260224_0005_add_claim_idempotency_key` (after base `20260224_0004_create_claims`)
 - Key files:
   - `backend/core_app/models/claim.py`
   - `backend/core_app/repositories/claim_repository.py`

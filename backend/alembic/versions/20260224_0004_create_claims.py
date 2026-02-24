@@ -48,7 +48,6 @@ def upgrade() -> None:
         sa.Column("denial_reason_text_redacted_flag", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("paid_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("idempotency_key", sa.String(length=128), nullable=True),
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -63,11 +62,9 @@ def upgrade() -> None:
     op.create_index("ix_claims_tenant_status", "claims", ["tenant_id", "status"], unique=False)
     op.create_index("ix_claims_tenant_submitted_at", "claims", ["tenant_id", "submitted_at"], unique=False)
     op.create_index("ix_claims_tenant_incident", "claims", ["tenant_id", "incident_id"], unique=False)
-    op.create_index("uq_claims_tenant_idempotency", "claims", ["tenant_id", "idempotency_key"], unique=True, postgresql_where=sa.text("idempotency_key IS NOT NULL"))
 
 
 def downgrade() -> None:
-    op.drop_index("uq_claims_tenant_idempotency", table_name="claims")
     op.drop_index("ix_claims_tenant_incident", table_name="claims")
     op.drop_index("ix_claims_tenant_submitted_at", table_name="claims")
     op.drop_index("ix_claims_tenant_status", table_name="claims")
