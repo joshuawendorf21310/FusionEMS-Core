@@ -7,7 +7,6 @@ from core_app.db.base import Base, SoftDeleteMixin, TimestampMixin, UUIDPrimaryK
 class ICD10Code(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
     __tablename__ = "icd10_codes"
     __table_args__ = (
-        Index("ix_icd10_codes_code", "code"),
         Index("ix_icd10_codes_short_description", "short_description"),
     )
 
@@ -19,7 +18,6 @@ class ICD10Code(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Vers
 class RxNormCode(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
     __tablename__ = "rxnorm_codes"
     __table_args__ = (
-        Index("ix_rxnorm_codes_rxcui", "rxcui"),
         Index("ix_rxnorm_codes_name", "name"),
     )
 

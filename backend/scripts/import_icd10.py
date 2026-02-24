@@ -31,6 +31,7 @@ async def import_icd10_codes(csv_path: Path) -> None:
                         imported += 1
                     except Exception as e:
                         print(f"Error processing row {row_num}: {e}")
+                        await session.rollback()
                         skipped += 1
                         continue
             await session.commit()

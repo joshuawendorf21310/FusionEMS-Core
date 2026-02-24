@@ -26,13 +26,12 @@ def upgrade() -> None:
         sa.Column("long_description", sa.Text(), nullable=True),
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), server_onupdate=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("version", sa.Integer(), server_default=sa.text("1"), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("code"),
     )
-    op.create_index("ix_icd10_codes_code", "icd10_codes", ["code"], unique=False)
     op.create_index("ix_icd10_codes_short_description", "icd10_codes", ["short_description"], unique=False)
 
     op.create_table(
@@ -42,21 +41,18 @@ def upgrade() -> None:
         sa.Column("tty", sa.String(length=32), nullable=True),
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), server_onupdate=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("version", sa.Integer(), server_default=sa.text("1"), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("rxcui"),
     )
-    op.create_index("ix_rxnorm_codes_rxcui", "rxnorm_codes", ["rxcui"], unique=False)
     op.create_index("ix_rxnorm_codes_name", "rxnorm_codes", ["name"], unique=False)
 
 
 def downgrade() -> None:
     op.drop_index("ix_rxnorm_codes_name", table_name="rxnorm_codes")
-    op.drop_index("ix_rxnorm_codes_rxcui", table_name="rxnorm_codes")
     op.drop_table("rxnorm_codes")
 
     op.drop_index("ix_icd10_codes_short_description", table_name="icd10_codes")
-    op.drop_index("ix_icd10_codes_code", table_name="icd10_codes")
     op.drop_table("icd10_codes")

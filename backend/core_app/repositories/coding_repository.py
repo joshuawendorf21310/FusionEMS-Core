@@ -4,15 +4,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core_app.models.coding import ICD10Code, RxNormCode
 
 
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class CodingRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def search_icd10(self, *, query: str, limit: int, offset: int) -> tuple[list[ICD10Code], int]:
-        normalized_prefix = f"{query.strip().lower()}%"
+        prefix = f"{_escape_like(query.strip())}%"
         where_clause = or_(
-            func.lower(ICD10Code.code).like(normalized_prefix),
-            func.lower(ICD10Code.short_description).like(normalized_prefix),
+            ICD10Code.code.ilike(prefix, escape="\\"),
+            ICD10Code.short_description.ilike(prefix, escape="\\"),
         )
 
         rows_stmt = (
@@ -29,10 +33,10 @@ class CodingRepository:
         return rows, total
 
     async def search_rxnorm(self, *, query: str, limit: int, offset: int) -> tuple[list[RxNormCode], int]:
-        normalized_prefix = f"{query.strip().lower()}%"
+        prefix = f"{_escape_like(query.strip())}%"
         where_clause = or_(
-            func.lower(RxNormCode.rxcui).like(normalized_prefix),
-            func.lower(RxNormCode.name).like(normalized_prefix),
+            RxNormCode.rxcui.ilike(prefix, escape="\\"),
+            RxNormCode.name.ilike(prefix, escape="\\"),
         )
 
         rows_stmt = (

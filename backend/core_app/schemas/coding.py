@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class ICD10SearchItem(BaseModel):
@@ -30,9 +30,3 @@ class RxNormSearchItem(BaseModel):
 class RxNormSearchResponse(BaseModel):
     items: list[RxNormSearchItem]
     total: int
-
-
-class CodingSearchQuery(BaseModel):
-    query: str = Field(min_length=2, max_length=128)
-    limit: int = Field(default=25, ge=1, le=100)
-    offset: int = Field(default=0, ge=0)
