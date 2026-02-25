@@ -15,6 +15,7 @@ from core_app.core.errors import AppError
 from core_app.core.logging import configure_logging
 from core_app.middleware.audit_logging import AuditLoggingMiddleware
 from core_app.middleware.tenant_context import TenantContextMiddleware
+from core_app.observability.otel import configure_otel
 
 settings = get_settings()
 configure_logging("DEBUG" if settings.debug else "INFO")
@@ -39,8 +40,15 @@ from core_app.api.fire_ops_router import router as fire_ops_router
 from core_app.api.fire_epcr_router import router as fire_epcr_router
 from core_app.api.fire_statements_router import router as fire_statements_router
 from core_app.api.founder_router import router as founder_router
+from core_app.api.metrics_router import router as metrics_router
+from core_app.api.ai_router import router as ai_router
+from core_app.api.fhir_router import router as fhir_router
+from core_app.api.accreditation_router import router as accreditation_router
+from core_app.api.onboarding_router import router as onboarding_router
+from core_app.api.roi_router import router as roi_router
 
 app = FastAPI(title=settings.app_name)
+configure_otel(app)
 app.add_middleware(AuditLoggingMiddleware)
 app.add_middleware(TenantContextMiddleware)
 
@@ -80,6 +88,12 @@ app.include_router(fire_ops_router)
 app.include_router(fire_epcr_router)
 app.include_router(fire_statements_router)
 app.include_router(founder_router)
+app.include_router(roi_router, prefix="/api/v1")
+app.include_router(onboarding_router, prefix="/api/v1")
+app.include_router(accreditation_router, prefix="/api/v1")
+app.include_router(fhir_router, prefix="/api/v1")
+app.include_router(metrics_router)
+app.include_router(ai_router)
 
 
 @app.get("/health")
