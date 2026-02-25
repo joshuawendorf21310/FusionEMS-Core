@@ -60,3 +60,11 @@ def get_tenant_id(request: Request, current_user: CurrentUser = Depends(get_curr
     request.state.tenant_id = current_user.tenant_id
     request.state.user_id = current_user.user_id
     return current_user.tenant_id
+
+
+def get_current_user_optional(request: Request, db: Session = Depends(get_db_session)):
+    """Optional auth for bootstrap screens. Returns None if no/invalid token."""
+    try:
+        return get_current_user(request=request, db=db)
+    except Exception:
+        return None
