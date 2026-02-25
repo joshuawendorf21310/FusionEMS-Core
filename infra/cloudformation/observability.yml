@@ -1,11 +1,20 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Observability (placeholder alarms/dashboards)
+Description: FusionEMS Quantum Observability (CloudWatch Logs baseline)
 
 Parameters:
   Env:
     Type: String
+    AllowedValues: [dev, prod]
   AppName:
     Type: String
 
-Resources: {}
-Outputs: {}
+Resources:
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/${AppName}/${Env}'
+      RetentionInDays: 30
+
+Outputs:
+  LogGroupName:
+    Value: !Ref AppLogGroup
