@@ -21,3 +21,18 @@ class UserRepository:
             User.deleted_at.is_(None),
         )
         return self.db.scalar(stmt)
+
+def get_by_email_and_tenant(self, email: str, tenant_id: UUID) -> User | None:
+    stmt = select(User).where(
+        User.email == email,
+        User.tenant_id == tenant_id,
+        User.deleted_at.is_(None),
+    )
+    return self.db.scalar(stmt)
+
+def create(self, *, tenant_id: UUID, email: str, hashed_password: str, role: str) -> User:
+    user = User(tenant_id=tenant_id, email=email, hashed_password=hashed_password, role=role)
+    self.db.add(user)
+    self.db.commit()
+    self.db.refresh(user)
+    return user
