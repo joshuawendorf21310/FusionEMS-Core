@@ -18,6 +18,9 @@ Parameters:
   EcsServiceSecurityGroupId:
     Type: String
 
+Conditions:
+  IsProd: !Equals [!Ref Env, 'prod']
+
 Resources:
   DbSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -53,11 +56,17 @@ Resources:
       AllocatedStorage: 50
       StorageEncrypted: true
       PubliclyAccessible: false
-      BackupRetentionPeriod: 7
-      DeletionProtection: !Equals [!Ref Env, 'prod']
+
+      # Keep dev lightweight, prod resilient
+      BackupRetentionPeriod: !If [IsProd, 7, 1]
+
+      # ✅ Correct way (Fn::Equals must live in Conditions)
+      DeletionProtection: !If [IsProd, true, false]
+
       MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:username}}' ]]
       MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:password}}' ]]
       DBName: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:dbname}}' ]]
+
       VPCSecurityGroups: [!Ref DbSecurityGroup]
       DBSubnetGroupName: !Ref DbSubnetGroup
 
@@ -96,6 +105,9 @@ Outputs:
   DbPort:
     Value: !GetAtt DbInstance.Endpoint.Port
   RedisEndpoint:
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+  RedisPort:
+    Value: !GetAtt RedisCluster.RedisEndpoint.Port
     Value: !GetAtt RedisCluster.RedisEndpoint.Address
   RedisPort:
     Value: !GetAtt RedisCluster.RedisEndpoint.Port
