@@ -1,0 +1,406 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: FusionEMS Quantum - Compute Stack (ECS Fargate + ALB + ECR)
+
+Parameters:
+  Env:
+    Type: String
+  AppName:
+    Type: String
+  VpcId:
+    Type: String
+  PublicSubnets:
+    Type: String
+  PrivateSubnets:
+    Type: String
+  AlbSecurityGroupId:
+    Type: String
+  EcsServiceSecurityGroupId:
+    Type: String
+  ImageTag:
+    Type: String
+  DesiredCount:
+    Type: Number
+  BackendContainerPort:
+    Type: Number
+  FrontendContainerPort:
+    Type: Number
+  DbSecretArn:
+    Type: String
+  RedisEndpoint:
+    Type: String
+  CognitoUserPoolId:
+    Type: String
+  CognitoClientId:
+    Type: String
+
+Resources:
+
+  ########################################
+  # ECR REPOSITORIES
+  ########################################
+
+  BackendEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AppName}-${Env}-backend"
+
+  FrontendEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AppName}-${Env}-frontend"
+
+  ########################################
+  # ECS CLUSTER
+  ########################################
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${AppName}-${Env}-cluster"
+
+  ########################################
+  # IAM ROLES
+  ########################################
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AppName}-${Env}-ecs-exec-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref DbSecretArn
+
+  ########################################
+  # LOAD BALANCER
+  ########################################
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${AppName}-${Env}-alb"
+      Subnets: !Split [",", !Ref PublicSubnets]
+      SecurityGroups:
+        - !Ref AlbSecurityGroupId
+      Scheme: internet-facing
+      Type: application
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${AppName}-${Env}-tg"
+      Port: !Ref BackendContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckPath: /health
+      Matcher:
+        HttpCode: 200
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  ########################################
+  # TASK DEFINITION
+  ########################################
+
+  BackendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${AppName}-${Env}-backend"
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: backend
+          Image: !Sub "${BackendEcrRepository.RepositoryUri}:${ImageTag}"
+          PortMappings:
+            - ContainerPort: !Ref BackendContainerPort
+          Environment:
+            - Name: REDIS_ENDPOINT
+              Value: !Ref RedisEndpoint
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref CognitoUserPoolId
+            - Name: COGNITO_CLIENT_ID
+              Value: !Ref CognitoClientId
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Ref DbSecretArn
+
+  ########################################
+  # ECS SERVICE
+  ########################################
+
+  BackendService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpListener
+    Properties:
+      Cluster: !Ref EcsCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref BackendTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: !Split [",", !Ref PrivateSubnets]
+          SecurityGroups:
+            - !Ref EcsServiceSecurityGroupId
+      LoadBalancers:
+        - ContainerName: backend
+          ContainerPort: !Ref BackendContainerPort
+          TargetGroupArn: !Ref BackendTargetGroup
+
+Outputs:
+
+  AlbDnsName:
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+
+  BackendEcrRepoUri:
+    Value: !GetAtt BackendEcrRepository.RepositoryUri
+
+  FrontendEcrRepoUri:
+    Value: !GetAtt FrontendEcrRepository.RepositoryUri
+
+  ClusterName:
+    Value: !Ref EcsClusterResources:
+  # ECR repositories
+  BackendEcrRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${AppName}-${Env}-backend'
+
+  FrontendEcrRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${AppName}-${Env}-frontend'
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${AppName}-${Env}-cluster'
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AppRuntimeSecrets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref DbSecretArn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/${AppName}/${Env}'
+      RetentionInDays: 30
+
+  # ALB (public) -> routes /api/* to backend, /* to frontend
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${AppName}-${Env}-alb'
+      Scheme: internet-facing
+      Subnets: !Ref PublicSubnets
+      SecurityGroups: [!Ref AlbSecurityGroupId]
+      Type: application
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VpcId
+      Port: !Ref BackendContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckPath: /api/v1/health
+      Matcher:
+        HttpCode: '200-399'
+
+  FrontendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VpcId
+      Port: !Ref FrontendContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckPath: /healthz
+      Matcher:
+        HttpCode: '200-399'
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref FrontendTargetGroup
+
+  ApiRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpListener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          Values: ['/api/*']
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  # ECS Task Definitions
+  BackendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${AppName}-${Env}-backend'
+      RequiresCompatibilities: [FARGATE]
+      Cpu: '512'
+      Memory: '1024'
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: backend
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTag}'
+          PortMappings:
+            - ContainerPort: !Ref BackendContainerPort
+          Environment:
+            - Name: REDIS_HOST
+              Value: !Ref RedisEndpoint
+            - Name: ENV
+              Value: !Ref Env
+          Secrets:
+            - Name: DB_SECRET_ARN
+              ValueFrom: !Ref DbSecretArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: backend
+
+  FrontendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${AppName}-${Env}-frontend'
+      RequiresCompatibilities: [FARGATE]
+      Cpu: '512'
+      Memory: '1024'
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: frontend
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-frontend:${ImageTag}'
+          PortMappings:
+            - ContainerPort: !Ref FrontendContainerPort
+          Environment:
+            - Name: NEXT_PUBLIC_API_BASE
+              Value: ''  # use relative /api which CloudFront/ALB routes
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: frontend
+
+  BackendService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpListener
+    Properties:
+      ServiceName: !Sub '${AppName}-${Env}-backend'
+      Cluster: !Ref ECSCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref BackendTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: [!Ref EcsServiceSecurityGroupId]
+          Subnets: !Ref PrivateSubnets
+      LoadBalancers:
+        - TargetGroupArn: !Ref BackendTargetGroup
+          ContainerName: backend
+          ContainerPort: !Ref BackendContainerPort
+      HealthCheckGracePeriodSeconds: 60
+
+  FrontendService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpListener
+    Properties:
+      ServiceName: !Sub '${AppName}-${Env}-frontend'
+      Cluster: !Ref ECSCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref FrontendTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: [!Ref EcsServiceSecurityGroupId]
+          Subnets: !Ref PrivateSubnets
+      LoadBalancers:
+        - TargetGroupArn: !Ref FrontendTargetGroup
+          ContainerName: frontend
+          ContainerPort: !Ref FrontendContainerPort
+      HealthCheckGracePeriodSeconds: 60
+
+Outputs:
+  AlbDnsName:
+    Value: !GetAtt Alb.DNSName
+  BackendEcrRepoUri:
+    Value: !GetAtt BackendEcrRepo.RepositoryUri
+  FrontendEcrRepoUri:
+    Value: !GetAtt FrontendEcrRepo.RepositoryUri
