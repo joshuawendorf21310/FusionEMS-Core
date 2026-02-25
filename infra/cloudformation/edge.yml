@@ -7,19 +7,35 @@ Parameters:
     AllowedValues: [dev, prod]
   AppName:
     Type: String
+
   RootDomainName:
     Type: String
+    Description: Apex domain for landing/UI (e.g., fusionemsquantum.com)
+
   ApiDomainName:
     Type: String
+    Description: API domain (e.g., api.fusionemsquantum.com)
+
   HostedZoneId:
     Type: String
-  AcmCertificateArnUsEast1:
-    Type: String
+    Description: Route53 Hosted Zone ID for the domain
+
   AlbDnsName:
     Type: String
+    Description: Public DNS name of the ALB (no https://)
+
+  AcmCertificateArnUsEast1:
+    Type: String
+    Description: ACM certificate ARN in us-east-1 covering RootDomainName and ApiDomainName
+
+Conditions:
+  IsProd: !Equals [!Ref Env, 'prod']
 
 Resources:
-  WafAcl:
+  # ----------------------------
+  # WAF (CloudFront scope)
+  # ----------------------------
+  WebAcl:
     Type: AWS::WAFv2::WebACL
     Properties:
       Name: !Sub '${AppName}-${Env}-waf'
@@ -27,11 +43,11 @@ Resources:
       DefaultAction:
         Allow: {}
       VisibilityConfig:
-        SampledRequestsEnabled: true
         CloudWatchMetricsEnabled: true
         MetricName: !Sub '${AppName}-${Env}-waf'
+        SampledRequestsEnabled: true
       Rules:
-        - Name: AWSManagedRulesCommonRuleSet
+        - Name: AWSManagedCommonRuleSet
           Priority: 10
           OverrideAction:
             None: {}
@@ -40,11 +56,23 @@ Resources:
               VendorName: AWS
               Name: AWSManagedRulesCommonRuleSet
           VisibilityConfig:
-            SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
-            MetricName: AWSManagedRulesCommonRuleSet
-        - Name: RateLimit
+            MetricName: !Sub '${AppName}-${Env}-waf-common'
+            SampledRequestsEnabled: true
+        - Name: AWSManagedKnownBadInputs
           Priority: 20
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${AppName}-${Env}-waf-badinputs'
+            SampledRequestsEnabled: true
+        - Name: RateLimit
+          Priority: 30
           Action:
             Block: {}
           Statement:
@@ -52,10 +80,113 @@ Resources:
               Limit: 2000
               AggregateKeyType: IP
           VisibilityConfig:
-            SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
-            MetricName: RateLimit
+            MetricName: !Sub '${AppName}-${Env}-waf-ratelimit'
+            SampledRequestsEnabled: true
 
+  # ----------------------------
+  # Cache + Origin Request Policies
+  # ----------------------------
+  ApiNoCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${AppName}-${Env}-api-nocache'
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          CookiesConfig:
+            CookieBehavior: all
+          HeadersConfig:
+            HeaderBehavior: whitelist
+            Headers:
+              - Authorization
+              - Content-Type
+              - Origin
+              - Referer
+              - User-Agent
+              - X-Requested-With
+          QueryStringsConfig:
+            QueryStringBehavior: all
+
+  UiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${AppName}-${Env}-ui-cache'
+        DefaultTTL: 300
+        MaxTTL: 86400
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          CookiesConfig:
+            CookieBehavior: all
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: all
+
+  UiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AppName}-${Env}-ui-originreq'
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Host
+            - CloudFront-Viewer-Country
+            - CloudFront-Forwarded-Proto
+            - User-Agent
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AppName}-${Env}-api-originreq'
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: allViewer
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  SecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${AppName}-${Env}-security-headers'
+        SecurityHeadersConfig:
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: same-origin
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Preload: true
+            Override: true
+          XSSProtection:
+            Protection: true
+            ModeBlock: true
+            Override: true
+
+  # ----------------------------
+  # CloudFront Distribution (single distribution handles both domains)
+  # Origins: same ALB, different behaviors.
+  # ----------------------------
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -66,29 +197,50 @@ Resources:
         Aliases:
           - !Ref RootDomainName
           - !Ref ApiDomainName
+
         ViewerCertificate:
           AcmCertificateArn: !Ref AcmCertificateArnUsEast1
           SslSupportMethod: sni-only
           MinimumProtocolVersion: TLSv1.2_2021
+
+        DefaultRootObject: ''
+
         Origins:
           - Id: alb-origin
             DomainName: !Ref AlbDnsName
             CustomOriginConfig:
               OriginProtocolPolicy: http-only
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginSSLProtocols: [TLSv1.2]
+
         DefaultCacheBehavior:
           TargetOriginId: alb-origin
           ViewerProtocolPolicy: redirect-to-https
           AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
           CachedMethods: [GET, HEAD, OPTIONS]
-          ForwardedValues:
-            QueryString: true
-            Headers:
-              - '*'
-            Cookies:
-              Forward: all
-        WebACLId: !GetAtt WafAcl.Arn
+          Compress: true
+          CachePolicyId: !Ref UiCachePolicy
+          OriginRequestPolicyId: !Ref UiOriginRequestPolicy
+          ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
 
-  RootRecordA:
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: alb-origin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            Compress: true
+            CachePolicyId: !Ref ApiNoCachePolicy
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+
+        WebACLId: !GetAtt WebAcl.Arn
+
+  # ----------------------------
+  # Route53 Records
+  # ----------------------------
+  RootARecord:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -96,8 +248,9 @@ Resources:
       Type: A
       AliasTarget:
         DNSName: !GetAtt Distribution.DomainName
-        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID (constant)
-  RootRecordAAAA:
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront HostedZoneId (global)
+
+  RootAAAARecord:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -107,7 +260,7 @@ Resources:
         DNSName: !GetAtt Distribution.DomainName
         HostedZoneId: Z2FDTNDATAQYW2
 
-  ApiRecordA:
+  ApiARecord:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -116,7 +269,8 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt Distribution.DomainName
         HostedZoneId: Z2FDTNDATAQYW2
-  ApiRecordAAAA:
+
+  ApiAAAARecord:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -127,5 +281,9 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2
 
 Outputs:
-  CloudFrontDomain:
+  DistributionId:
+    Value: !Ref Distribution
+  DistributionDomainName:
     Value: !GetAtt Distribution.DomainName
+  WebAclArn:
+    Value: !GetAtt WebAcl.Arn
