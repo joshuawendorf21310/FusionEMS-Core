@@ -1,17 +1,11 @@
-import "./globals.css";
-import React from "react";
-import AppShell from "../components/AppShell";
+import '../styles/globals.css';
+import { ReactNode } from 'react';
 
-export const metadata = {
-  title: "FusionEMS Quantum",
-  description: "Billing-first public safety operating system"
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <AppShell>{children}</AppShell>
+      <body className="bg-gray-50 text-gray-900">
+        {children}
       </body>
     </html>
   );
