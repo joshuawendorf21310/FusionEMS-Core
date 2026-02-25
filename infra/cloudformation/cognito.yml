@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: FusionEMS Quantum - Cognito Stack (User Pool + App Client)
+
+Parameters:
+  Env:
+    Type: String
+  AppName:
+    Type: String
+  RootDomainName:
+    Type: String
+
+Resources:
+
+  ########################################
+  # USER POOL
+  ########################################
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${AppName}-${Env}-userpool"
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+      MfaConfiguration: OPTIONAL
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  ########################################
+  # USER POOL CLIENT
+  ########################################
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "${AppName}-${Env}-client"
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - !Sub "https://${RootDomainName}"
+      LogoutURLs:
+        - !Sub "https://${RootDomainName}"
+      SupportedIdentityProviders:
+        - COGNITO
+
+  ########################################
+  # USER POOL DOMAIN
+  ########################################
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "${AppName}-${Env}-auth"
+      UserPoolId: !Ref UserPool
+
+Outputs:
+
+  UserPoolId:
+    Value: !Ref UserPool
+
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
