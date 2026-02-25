@@ -1,80 +1,100 @@
 from __future__ import annotations
 
 import datetime as dt
-import os
-import uuid
 from typing import Any
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from sqlalchemy.orm import Session
 
+from core_app.documents.classifier import classify_text
 from core_app.repositories.domination_repository import DominationRepository
 
 
 class TextractOcrService:
-    """OCR via AWS Textract (primary).
-    Requires documents stored in S3; document record must contain bucket and s3_key.
+    """
+    OCR via AWS Textract (primary).
+    - start_document_text_detection on an S3 object
+    - poll results via get_document_text_detection
+    Stores extraction results into document_extractions.data:
+      { job_id, status, text, blocks_summary }
     """
 
-    def __init__(self, db: Session, tenant_id: uuid.UUID) -> None:
+    def __init__(self, db: Session, tenant_id: str, bucket: str):
         self.db = db
         self.tenant_id = tenant_id
-        self.repo_docs = DominationRepository(db, table="documents")
-        self.repo_ext = DominationRepository(db, table="document_extractions")
+        self.bucket = bucket
         self.client = boto3.client("textract")
 
-    def _now(self) -> str:
-        return dt.datetime.now(tz=dt.timezone.utc).isoformat()
-
-    def start_text_detection(self, document_id: uuid.UUID) -> dict[str, Any]:
-        doc = self.repo_docs.get(self.tenant_id, document_id)
-        if not doc:
-            raise ValueError("document_not_found")
-        d = doc["data"]
-        bucket = d.get("bucket") or os.getenv("DOCS_BUCKET")
-        s3_key = d.get("s3_key")
-        if not bucket or not s3_key:
-            raise ValueError("document_missing_s3_location")
-
+    def start_job(self, *, document_id: str, s3_key: str) -> dict[str, Any]:
         try:
             resp = self.client.start_document_text_detection(
-                DocumentLocation={"S3Object": {"Bucket": bucket, "Name": s3_key}}
+                DocumentLocation={"S3Object": {"Bucket": self.bucket, "Name": s3_key}}
             )
         except (BotoCoreError, ClientError) as e:
-            raise RuntimeError(f"textract_start_failed:{e}") from e
+            raise RuntimeError(f"textract_start_failed:{str(e)[:200]}") from e
 
         job_id = resp["JobId"]
-        extraction = self.repo_ext.create(
-            self.tenant_id,
+        repo = DominationRepository(self.db, table="document_extractions")
+        rec = repo.create(
+            tenant_id=self.tenant_id,
+            actor_user_id=None,
             data={
-                "document_id": str(document_id),
-                "provider": "textract",
+                "document_id": document_id,
                 "job_id": job_id,
                 "status": "running",
-                "started_at": self._now(),
+                "started_at": dt.datetime.utcnow().isoformat(),
             },
         )
-        return {"job_id": job_id, "extraction_id": str(extraction["id"])}
+        return rec
 
-    def get_job(self, job_id: str, max_pages: int = 10) -> dict[str, Any]:
-        # Pull results (limited) - caller can store full blocks elsewhere if desired.
-        blocks: list[dict[str, Any]] = []
-        next_token = None
-        pages = 0
-        status = "running"
+    def poll_job(self, *, extraction_id: str) -> dict[str, Any]:
+        ex_repo = DominationRepository(self.db, table="document_extractions")
+        extraction = ex_repo.get(tenant_id=self.tenant_id, record_id=extraction_id)
+        if not extraction:
+            raise ValueError("extraction_not_found")
+        job_id = extraction["data"].get("job_id")
+        if not job_id:
+            raise ValueError("job_id_missing")
+
         try:
-            while pages < max_pages:
-                kwargs = {"JobId": job_id}
-                if next_token:
-                    kwargs["NextToken"] = next_token
-                res = self.client.get_document_text_detection(**kwargs)
-                status = res.get("JobStatus","running").lower()
-                blocks.extend(res.get("Blocks") or [])
-                next_token = res.get("NextToken")
-                pages += 1
-                if not next_token:
-                    break
+            resp = self.client.get_document_text_detection(JobId=job_id, MaxResults=1000)
         except (BotoCoreError, ClientError) as e:
-            raise RuntimeError(f"textract_get_failed:{e}") from e
-        return {"status": status, "blocks": blocks, "pages": pages}
+            raise RuntimeError(f"textract_poll_failed:{str(e)[:200]}") from e
+
+        status = resp.get("JobStatus", "UNKNOWN")
+        blocks = resp.get("Blocks", []) or []
+
+        lines = [b.get("Text", "") for b in blocks if b.get("BlockType") == "LINE" and b.get("Text")]
+        text = "\n".join(lines).strip()
+        doc_type = classify_text(text) if text else "other"
+
+        patch = {
+            "status": status.lower(),
+            "completed_at": dt.datetime.utcnow().isoformat() if status in ("SUCCEEDED", "FAILED") else None,
+            "text": text[:200000],
+            "blocks_summary": {"lines": len(lines), "blocks": len(blocks)},
+            "doc_type_guess": doc_type,
+        }
+        updated = ex_repo.update(
+            tenant_id=self.tenant_id,
+            record_id=extraction_id,
+            actor_user_id=None,
+            expected_version=extraction["version"],
+            data_patch=patch,
+        )
+
+        if status == "SUCCEEDED":
+            doc_id = extraction["data"].get("document_id")
+            if doc_id:
+                doc_repo = DominationRepository(self.db, table="documents")
+                doc = doc_repo.get(tenant_id=self.tenant_id, record_id=doc_id)
+                if doc:
+                    doc_repo.update(
+                        tenant_id=self.tenant_id,
+                        record_id=doc_id,
+                        actor_user_id=None,
+                        expected_version=doc["version"],
+                        data_patch={"doc_type": doc_type, "ocr_status": "succeeded"},
+                    )
+        return updated
