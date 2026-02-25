@@ -10,6 +10,7 @@ from core_app.api.dependencies import db_session_dependency, get_current_user, r
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.documents.ocr import TextractOcrService
 
 router = APIRouter(prefix="/api/v1/documents", tags=['Documents'])
 
