@@ -1,2 +1,2 @@
-def route_task(task_type: str):
-    return {"task": task_type, "status": "queued"}
+def route_ai_task(task: str):
+    return {"task": task, "status": "queued"}
