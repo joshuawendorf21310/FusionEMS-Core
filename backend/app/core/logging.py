@@ -1,4 +1,6 @@
-import logging, json, sys
+import logging
+import json
+import sys
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
@@ -13,4 +15,4 @@ def setup_logging():
     handler.setFormatter(JsonFormatter())
     root = logging.getLogger()
     root.setLevel(logging.INFO)
-    root.addHandler(handler)
+    root.handlers = [handler]
