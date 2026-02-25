@@ -87,3 +87,20 @@ async def credentials_expiring(within_days: int = 30, current: CurrentUser = Dep
     engine = SchedulingEngine(db, tenant_id=current.tenant_id)
     return {"within_days": within_days, "expiring": engine.list_expiring_credentials(within_days=within_days)}
 
+
+
+@router.post("/scheduling/escalations/run")
+async def run_escalations(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+    require_role(current, ["founder","admin","dispatcher"])
+    from core_app.scheduling.escalation import run_coverage_escalations
+    res = run_coverage_escalations(db=db, tenant_id=current.tenant_id, within_hours=int(payload.get("within_hours", 4)))
+    get_event_publisher().publish(
+        topic=f"tenant.{current.tenant_id}.scheduling.escalations.run",
+        tenant_id=current.tenant_id,
+        entity_type="scheduling",
+        entity_id=str(current.tenant_id),
+        event_type="SCHEDULING_ESCALATIONS_RUN",
+        payload=res,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return res
