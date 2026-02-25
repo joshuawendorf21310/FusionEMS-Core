@@ -1,4 +1,3 @@
-def calculate_roi(revenue: float, cost: float):
-    if cost == 0:
-        return 0
-    return (revenue - cost) / cost
+def project_revenue(volume: int, avg_revenue: float, growth: float):
+    projected_volume = volume * (1 + growth)
+    return projected_volume * avg_revenue
