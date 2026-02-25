@@ -1,0 +1,6 @@
+service_type,level,base_rate,mileage_rate
+EMS,BLS,380.00,12.50
+EMS,ALS,460.00,13.25
+EMS,CCT,820.00,14.50
+HEMS,HEMS,6500.00,65.00
+Fire,BLS,380.00,12.50
