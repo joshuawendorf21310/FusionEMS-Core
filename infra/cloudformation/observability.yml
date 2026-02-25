@@ -1,40 +1,79 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum Observability (Logs, Alarms, Dashboard, SNS Alerts)
+Description: FusionEMS Quantum - Observability Stack (CloudWatch Logs + Alarms + ECS Monitoring)
 
 Parameters:
   Env:
     Type: String
-    AllowedValues: [dev, prod]
   AppName:
     Type: String
+  ClusterName:
+    Type: String
 
-  # CloudWatch Log retention (days)
-  LogRetentionDays:
-    Type: Number
-    Default: 30
+Resources:
 
-  # Alarm routing email (Founder)
-  AlertEmail:
-    Type: String
-    Default: josh@fusionemsquantum.com
+  ########################################
+  # CLOUDWATCH LOG GROUPS
+  ########################################
 
-  # Compute inputs (from ComputeStack outputs)
-  AlbArn:
-    Type: String
-    Description: ARN of the Application Load Balancer
-  AlbFullName:
-    Type: String
-    Description: ALB full name (for CW metrics dimension LoadBalancer)
-  BackendTargetGroupFullName:
-    Type: String
-    Description: Target Group full name for backend
-  FrontendTargetGroupFullName:
-    Type: String
-    Description: Target Group full name for frontend
-  EcsClusterName:
-    Type: String
-  BackendServiceName:
-    Type: String
+  BackendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${AppName}/${Env}/backend"
+      RetentionInDays: 30
+
+  FrontendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${AppName}/${Env}/frontend"
+      RetentionInDays: 30
+
+  ########################################
+  # ECS CPU HIGH ALARM
+  ########################################
+
+  EcsHighCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AppName}-${Env}-ecs-high-cpu"
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  ########################################
+  # ECS MEMORY HIGH ALARM
+  ########################################
+
+  EcsHighMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AppName}-${Env}-ecs-high-memory"
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+
+  BackendLogGroupName:
+    Value: !Ref BackendLogGroup
+
+  FrontendLogGroupName:
+    Value: !Ref FrontendLogGroup    Type: String
   FrontendServiceName:
     Type: String
 
