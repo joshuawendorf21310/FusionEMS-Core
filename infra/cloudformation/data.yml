@@ -1,40 +1,138 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum Data Layer (RDS Postgres, Redis, Secrets)
+Description: FusionEMS Quantum - Data Stack (RDS + Redis + Secrets Manager)
 
 Parameters:
   Env:
     Type: String
-    AllowedValues: [dev, prod]
   AppName:
     Type: String
-
-  VpcId:
-    Type: String
-
-  PrivateSubnets:
-    Type: CommaDelimitedList
-
-  EcsServiceSecurityGroupId:
-    Type: String
-    Description: Security group ID for ECS services that need DB/Redis access
-
   DbInstanceClass:
     Type: String
-    Default: db.t4g.medium
+  RedisNodeType:
+    Type: String
+  VpcId:
+    Type: String
+  PrivateSubnets:
+    Type: String
+  EcsServiceSecurityGroupId:
+    Type: String
 
-  DbAllocatedStorage:
-    Type: Number
-    Default: 50
+Resources:
 
-  DbMaxAllocatedStorage:
-    Type: Number
-    Default: 200
-    Description: Storage autoscaling ceiling for RDS
+  ########################################
+  # DATABASE SUBNET GROUP
+  ########################################
 
-  DbBackupRetentionDays:
-    Type: Number
-    Default: 7
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS
+      SubnetIds: !Split [",", !Ref PrivateSubnets]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AppName}-${Env}-db-subnet-group"
 
+  ########################################
+  # DATABASE SECURITY GROUP
+  ########################################
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Postgres access from ECS only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
+
+  ########################################
+  # REDIS SECURITY GROUP
+  ########################################
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Redis access from ECS only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
+
+  ########################################
+  # DATABASE SECRET
+  ########################################
+
+  DbSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${AppName}/${Env}/db"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"fusionems"}'
+        GenerateStringKey: "password"
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+
+  ########################################
+  # RDS INSTANCE
+  ########################################
+
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub "${AppName}-${Env}-postgres"
+      Engine: postgres
+      EngineVersion: "15"
+      DBInstanceClass: !Ref DbInstanceClass
+      AllocatedStorage: 100
+      StorageType: gp3
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:username}}' ]]
+      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:password}}' ]]
+      VPCSecurityGroups:
+        - !Ref DbSecurityGroup
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      BackupRetentionPeriod: 7
+      DeletionProtection: false
+      EnablePerformanceInsights: true
+
+  ########################################
+  # REDIS SUBNET GROUP
+  ########################################
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for Redis
+      SubnetIds: !Split [",", !Ref PrivateSubnets]
+
+  ########################################
+  # REDIS CLUSTER
+  ########################################
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      ClusterName: !Sub "${AppName}-${Env}-redis"
+      Engine: redis
+      CacheNodeType: !Ref RedisNodeType
+      NumCacheNodes: 1
+      VpcSecurityGroupIds:
+        - !Ref RedisSecurityGroup
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+
+Outputs:
+
+  DbSecretArn:
+    Value: !Ref DbSecret
+
+  RedisEndpoint:
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
   DbEnablePerformanceInsights:
     Type: String
     AllowedValues: ['true', 'false']
