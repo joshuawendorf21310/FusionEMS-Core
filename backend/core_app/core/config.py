@@ -33,7 +33,24 @@ class Settings(BaseSettings):
     officeally_sftp_username: str = Field(default="")
     officeally_sftp_password: str = Field(default="")
     officeally_sftp_remote_dir: str = Field(default="/")
-    
+
+    # Cognito (AWS-native identity)
+    auth_mode: str = Field(default="local", description="local|cognito")
+    cognito_region: str = Field(default="")
+    cognito_user_pool_id: str = Field(default="")
+    cognito_app_client_id: str = Field(default="")
+    cognito_issuer: str = Field(default="")
+
+    # OPA (optional policy engine)
+    opa_url: str = Field(default="", description="OPA HTTP endpoint, e.g. http://opa:8181")
+    opa_policy_path: str = Field(default="v1/data/fusionems/allow")
+
+    # Observability
+    otel_enabled: bool = Field(default=True)
+    otel_service_name: str = Field(default="fusionems-core-backend")
+    otel_exporter_otlp_endpoint: str = Field(default="")
+    metrics_enabled: bool = Field(default=True)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
