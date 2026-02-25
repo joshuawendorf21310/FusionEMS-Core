@@ -10,6 +10,7 @@ from core_app.api.dependencies import db_session_dependency, get_current_user, r
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.scheduling.engine import SchedulingEngine
 
 router = APIRouter(prefix="/api/v1/scheduling", tags=['Scheduling'])
 
@@ -53,10 +54,22 @@ async def bids(payload: dict[str, Any], request: Request, current: CurrentUser =
     return await svc.create(table="shift_bids", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=payload, correlation_id=getattr(request.state,"correlation_id",None))
 
 @router.get("/coverage/dashboard")
-async def coverage_dashboard(request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
-    # returns rulesets + violations placeholder
-    svc = DominationService(db, get_event_publisher())
-    return {"rulesets": svc.repo("coverage_rulesets").list(tenant_id=current.tenant_id, limit=200, offset=0), "violations": []}
+async def coverage_dashboard(request: Request, hours: int = 24, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+    require_role(current, ["founder","admin","dispatcher"])
+    engine = SchedulingEngine(db, tenant_id=current.tenant_id)
+    result = engine.coverage_dashboard(hours=hours)
+    # Publish a snapshot event (lightweight)
+    pub = get_event_publisher()
+    pub.publish(
+        topic=f"tenant.{current.tenant_id}.scheduling.coverage.snapshot",
+        tenant_id=current.tenant_id,
+        entity_type="scheduling",
+        entity_id=str(current.tenant_id),
+        event_type="COVERAGE_SNAPSHOT",
+        payload={"hours": hours, "violations": result.get("violations", [])},
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return result
 
 @router.post("/rotations")
 async def rotations(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
@@ -69,7 +82,8 @@ async def credentials(payload: dict[str, Any], request: Request, current: Curren
     return await svc.create(table="credentials", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=payload, correlation_id=getattr(request.state,"correlation_id",None))
 
 @router.get("/credentials/expiring")
-async def expiring(request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
-    svc = DominationService(db, get_event_publisher())
-    return svc.repo("credentials").list(tenant_id=current.tenant_id, limit=200, offset=0)
+async def credentials_expiring(within_days: int = 30, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+    require_role(current, ["founder","admin","dispatcher"])
+    engine = SchedulingEngine(db, tenant_id=current.tenant_id)
+    return {"within_days": within_days, "expiring": engine.list_expiring_credentials(within_days=within_days)}
 
