@@ -1,40 +1,192 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum Compute (ECR, ECS Fargate, ALB, Services)
+Description: FusionEMS Quantum - Compute Stack (ECS Fargate + ALB + ECR)
 
 Parameters:
   Env:
     Type: String
-    AllowedValues: [dev, prod]
   AppName:
     Type: String
   VpcId:
     Type: String
   PublicSubnets:
-    Type: CommaDelimitedList
+    Type: String
   PrivateSubnets:
-    Type: CommaDelimitedList
+    Type: String
   AlbSecurityGroupId:
     Type: String
   EcsServiceSecurityGroupId:
     Type: String
   ImageTag:
     Type: String
-    Default: latest
   DesiredCount:
     Type: Number
-    Default: 2
   BackendContainerPort:
     Type: Number
-    Default: 8000
   FrontendContainerPort:
     Type: Number
-    Default: 3000
   DbSecretArn:
     Type: String
   RedisEndpoint:
     Type: String
+  CognitoUserPoolId:
+    Type: String
+  CognitoClientId:
+    Type: String
 
 Resources:
+
+  ########################################
+  # ECR REPOSITORIES
+  ########################################
+
+  BackendEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AppName}-${Env}-backend"
+
+  FrontendEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AppName}-${Env}-frontend"
+
+  ########################################
+  # ECS CLUSTER
+  ########################################
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${AppName}-${Env}-cluster"
+
+  ########################################
+  # IAM ROLES
+  ########################################
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AppName}-${Env}-ecs-exec-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref DbSecretArn
+
+  ########################################
+  # LOAD BALANCER
+  ########################################
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${AppName}-${Env}-alb"
+      Subnets: !Split [",", !Ref PublicSubnets]
+      SecurityGroups:
+        - !Ref AlbSecurityGroupId
+      Scheme: internet-facing
+      Type: application
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${AppName}-${Env}-tg"
+      Port: !Ref BackendContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckPath: /health
+      Matcher:
+        HttpCode: 200
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  ########################################
+  # TASK DEFINITION
+  ########################################
+
+  BackendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${AppName}-${Env}-backend"
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: backend
+          Image: !Sub "${BackendEcrRepository.RepositoryUri}:${ImageTag}"
+          PortMappings:
+            - ContainerPort: !Ref BackendContainerPort
+          Environment:
+            - Name: REDIS_ENDPOINT
+              Value: !Ref RedisEndpoint
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref CognitoUserPoolId
+            - Name: COGNITO_CLIENT_ID
+              Value: !Ref CognitoClientId
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Ref DbSecretArn
+
+  ########################################
+  # ECS SERVICE
+  ########################################
+
+  BackendService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpListener
+    Properties:
+      Cluster: !Ref EcsCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref BackendTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: !Split [",", !Ref PrivateSubnets]
+          SecurityGroups:
+            - !Ref EcsServiceSecurityGroupId
+      LoadBalancers:
+        - ContainerName: backend
+          ContainerPort: !Ref BackendContainerPort
+          TargetGroupArn: !Ref BackendTargetGroup
+
+Outputs:
+
+  AlbDnsName:
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+
+  BackendEcrRepoUri:
+    Value: !GetAtt BackendEcrRepository.RepositoryUri
+
+  FrontendEcrRepoUri:
+    Value: !GetAtt FrontendEcrRepository.RepositoryUri
+
+  ClusterName:
+    Value: !Ref EcsClusterResources:
   # ECR repositories
   BackendEcrRepo:
     Type: AWS::ECR::Repository
