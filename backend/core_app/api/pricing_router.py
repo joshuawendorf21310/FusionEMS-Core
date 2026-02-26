@@ -17,20 +17,6 @@ from core_app.services.event_publisher import get_event_publisher
 router = APIRouter(prefix="/api/v1", tags=["Pricing"])
 
 
-@router.post("/public/roi/calc", include_in_schema=True)
-async def roi(payload: dict[str, Any], request: Request):
-    calls = float(payload.get("calls_per_month", 0))
-    avg = float(payload.get("avg_reimbursement", 0))
-    return {"estimated_revenue": calls * avg, "assumptions": payload}
-
-
-@router.post("/public/signup/start", include_in_schema=True)
-async def signup(payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)):
-    # Provisioning workflow lives in founder/tenancy module; this endpoint returns
-    # an integration-ready response.
-    return {"status": "ok", "next": "stripe_checkout"}
-
-
 @router.post("/public/webhooks/stripe", include_in_schema=True)
 async def stripe_webhook(request: Request, db: Session = Depends(db_session_dependency)):
     """
