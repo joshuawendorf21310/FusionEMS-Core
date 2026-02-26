@@ -37,6 +37,14 @@ Parameters:
     Type: String
   CognitoClientId:
     Type: String
+  AlbCertificateArn:
+    Type: String
+  OpaImage:
+    Type: String
+    Default: openpolicyagent/opa:0.66.0
+  OtelCollectorImage:
+    Type: String
+    Default: otel/opentelemetry-collector-contrib:0.105.0
 
 Resources:
   BackendEcrRepo:
@@ -96,19 +104,37 @@ Resources:
       Scheme: internet-facing
       SecurityGroups: [!Ref AlbSecurityGroupId]
       Subnets: !Split [',', !Ref PublicSubnets]
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '300'
 
-  HttpListener:
+  HttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref Alb
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref AlbCertificateArn
       DefaultActions:
         - Type: fixed-response
           FixedResponseConfig:
             StatusCode: '200'
             ContentType: text/plain
             MessageBody: 'listener-ready'
+
+  HttpRedirectListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
 
   BackendTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -135,7 +161,7 @@ Resources:
   FrontendRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !Ref HttpListener
+      ListenerArn: !Ref HttpsListener
       Priority: 20
       Conditions:
         - Field: path-pattern
@@ -147,7 +173,7 @@ Resources:
   ApiRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !Ref HttpListener
+      ListenerArn: !Ref HttpsListener
       Priority: 10
       Conditions:
         - Field: path-pattern
@@ -188,6 +214,29 @@ Resources:
               awslogs-group: !Ref AppLogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: backend
+        - Name: opa
+          Image: !Ref OpaImage
+          Command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+          PortMappings:
+            - ContainerPort: 8181
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AppLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: opa
+        - Name: otel-collector
+          Image: !Ref OtelCollectorImage
+          Essential: false
+          PortMappings:
+            - ContainerPort: 4318
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AppLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: otel
 
   FrontendTaskDefinition:
     Type: AWS::ECS::TaskDefinition

@@ -101,6 +101,7 @@ Resources:
         RedisEndpoint: !GetAtt DataStack.Outputs.RedisEndpoint
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
+        AlbCertificateArn: !Ref AcmCertificateArnUsEast1
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack

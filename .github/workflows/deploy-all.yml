@@ -5,165 +5,37 @@ on:
   push:
     branches: [enterprise-domination-final]
 
-permissions:
-  id-token: write
-  contents: read
-
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
-  CFN_ENV: ${{ vars.CFN_ENV }}
-  CFN_ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME }}
-  CFN_API_DOMAIN_NAME: ${{ vars.CFN_API_DOMAIN_NAME }}
-  CFN_HOSTED_ZONE_ID: ${{ vars.CFN_HOSTED_ZONE_ID }}
-  CFN_ACM_CERT_ARN_US_EAST_1: ${{ vars.CFN_ACM_CERT_ARN_US_EAST_1 }}
-  CFN_ARTIFACTS_BUCKET: ${{ vars.CFN_ARTIFACTS_BUCKET }}
-
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  deploy_infra_bootstrap:
+    uses: ./.github/workflows/deploy-infra.yml
+    with:
+      desired_count: 0
+      image_tag: ${{ github.sha }}
+    secrets: inherit
 
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
+  deploy_backend:
+    needs: deploy_infra_bootstrap
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      image_tag: ${{ github.sha }}
+    secrets: inherit
 
-      - name: Validate root template
-        run: aws cloudformation validate-template --template-body file://infra/cloudformation/root.yml
+  deploy_frontend:
+    needs: deploy_infra_bootstrap
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      image_tag: ${{ github.sha }}
+    secrets: inherit
 
-      - name: Package nested stacks
-        run: |
-          aws cloudformation package \
-            --template-file infra/cloudformation/root.yml \
-            --s3-bucket "$CFN_ARTIFACTS_BUCKET" \
-            --output-template-file packaged.root.yml
+  deploy_infra_release:
+    needs: [deploy_backend, deploy_frontend]
+    uses: ./.github/workflows/deploy-infra.yml
+    with:
+      desired_count: 2
+      image_tag: ${{ github.sha }}
+    secrets: inherit
 
-      - name: Bootstrap deployment (DesiredCount=0)
-        run: |
-          aws cloudformation deploy \
-            --stack-name "$CFN_STACK_NAME" \
-            --template-file packaged.root.yml \
-            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-            --parameter-overrides \
-              Env="$CFN_ENV" \
-              RootDomainName="$CFN_ROOT_DOMAIN_NAME" \
-              ApiDomainName="$CFN_API_DOMAIN_NAME" \
-              HostedZoneId="$CFN_HOSTED_ZONE_ID" \
-              AcmCertificateArnUsEast1="$CFN_ACM_CERT_ARN_US_EAST_1" \
-              DesiredCount=0 \
-              ImageTag="${GITHUB_SHA}" \
-            --no-fail-on-empty-changeset
-
-      - name: Resolve output values
-        run: |
-          set -euo pipefail
-          backend=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" --output text)
-          frontend=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" --output text)
-          cluster=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" --output text)
-          backend_service=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue" --output text)
-          frontend_service=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue" --output text)
-          worker_service=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='WorkerServiceName'].OutputValue" --output text)
-          private_subnets=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnets'].OutputValue" --output text)
-          ecs_sg=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='EcsServiceSecurityGroupId'].OutputValue" --output text)
-          app_secrets_arn=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AppSecretsArn'].OutputValue" --output text)
-          echo "BACKEND_REPO_URI=$backend" >> "$GITHUB_ENV"
-          echo "FRONTEND_REPO_URI=$frontend" >> "$GITHUB_ENV"
-          echo "ECS_CLUSTER=$cluster" >> "$GITHUB_ENV"
-          echo "BACKEND_SERVICE=$backend_service" >> "$GITHUB_ENV"
-          echo "FRONTEND_SERVICE=$frontend_service" >> "$GITHUB_ENV"
-          echo "WORKER_SERVICE=$worker_service" >> "$GITHUB_ENV"
-          echo "PRIVATE_SUBNETS=$private_subnets" >> "$GITHUB_ENV"
-          echo "ECS_SG=$ecs_sg" >> "$GITHUB_ENV"
-          echo "APP_SECRETS_ARN=$app_secrets_arn" >> "$GITHUB_ENV"
-
-      - name: Build and push images
-        run: |
-          set -euo pipefail
-          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${BACKEND_REPO_URI%/*}"
-          docker build -t "$BACKEND_REPO_URI:${GITHUB_SHA}" -f backend/Dockerfile backend
-          docker push "$BACKEND_REPO_URI:${GITHUB_SHA}"
-          docker build -t "$FRONTEND_REPO_URI:${GITHUB_SHA}" -f frontend/Dockerfile frontend
-          docker push "$FRONTEND_REPO_URI:${GITHUB_SHA}"
-
-      - name: Deploy application (DesiredCount=2)
-        run: |
-          aws cloudformation deploy \
-            --stack-name "$CFN_STACK_NAME" \
-            --template-file packaged.root.yml \
-            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-            --parameter-overrides \
-              Env="$CFN_ENV" \
-              RootDomainName="$CFN_ROOT_DOMAIN_NAME" \
-              ApiDomainName="$CFN_API_DOMAIN_NAME" \
-              HostedZoneId="$CFN_HOSTED_ZONE_ID" \
-              AcmCertificateArnUsEast1="$CFN_ACM_CERT_ARN_US_EAST_1" \
-              DesiredCount=2 \
-              ImageTag="${GITHUB_SHA}" \
-            --no-fail-on-empty-changeset
-
-      - name: Wait ECS services stable
-        run: |
-          set -euo pipefail
-          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$BACKEND_SERVICE" "$FRONTEND_SERVICE" "$WORKER_SERVICE"
-
-      - name: Run migrations task
-        run: |
-          set -euo pipefail
-          IFS=',' read -r subnet1 subnet2 <<< "$PRIVATE_SUBNETS"
-          taskdef=$(aws ecs list-task-definitions --family-prefix fusionems-quantum-${CFN_ENV}-backend --sort DESC --query 'taskDefinitionArns[0]' --output text)
-          aws ecs run-task \
-            --cluster "$ECS_CLUSTER" \
-            --task-definition "$taskdef" \
-            --launch-type FARGATE \
-            --count 1 \
-            --network-configuration "awsvpcConfiguration={subnets=[$subnet1,$subnet2],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}' \
-            --query 'tasks[0].taskArn' --output text
-
-      - name: Smoke tests (hard fail)
-        run: |
-          set -euo pipefail
-
-          api_ok=0
-          for _ in $(seq 1 15); do
-            if curl -fsS "https://${CFN_API_DOMAIN_NAME}/api/v1/health" >/dev/null; then
-              api_ok=1
-              break
-            fi
-            sleep 10
-          done
-          [ "$api_ok" -eq 1 ] || (echo "API health never became ready" && exit 1)
-
-          ui_ok=0
-          for _ in $(seq 1 15); do
-            if curl -fsS "https://${CFN_ROOT_DOMAIN_NAME}/healthz" >/dev/null; then
-              ui_ok=1
-              break
-            fi
-            sleep 10
-          done
-          [ "$ui_ok" -eq 1 ] || (echo "Frontend health never became ready" && exit 1)
-
-          curl -fsS "https://${CFN_API_DOMAIN_NAME}/metrics" | grep -q "#"
-          curl -fsS -X POST "https://${CFN_API_DOMAIN_NAME}/public/roi/calc" -H 'content-type: application/json' -d '{"calls":1000,"denial_rate":0.08,"ar_days":45,"collection_efficiency":0.91}'
-
-          app_secrets=$(aws secretsmanager get-secret-value --secret-id "$APP_SECRETS_ARN" --query SecretString --output text)
-          export APP_SECRETS_JSON="$app_secrets"
-          stripe_whsec=$(python -c 'import json,os; print(json.loads(os.environ["APP_SECRETS_JSON"]).get("STRIPE_WEBHOOK_SECRET", ""))')
-
-          test_payload='{"id":"evt_test","type":"checkout.session.completed","data":{"object":{"id":"cs_test"}}}'
-          timestamp=$(date +%s)
-          signed_payload="${timestamp}.${test_payload}"
-
-          if [ -z "$stripe_whsec" ]; then
-            echo 'Missing STRIPE_WEBHOOK_SECRET in AppSecrets; failing smoke test.'
-            exit 1
-          fi
-
-          signature=$(printf "%s" "$signed_payload" | openssl dgst -sha256 -hmac "$stripe_whsec" | awk '{print $2}')
-          curl -fsS -X POST "https://${CFN_API_DOMAIN_NAME}/webhooks/stripe" \
-            -H 'content-type: application/json' \
-            -H "stripe-signature: t=${timestamp},v1=${signature}" \
-            -d "$test_payload" >/dev/null
+  deploy_bootstrap:
+    needs: deploy_infra_release
+    uses: ./.github/workflows/deploy-bootstrap.yml
+    secrets: inherit
