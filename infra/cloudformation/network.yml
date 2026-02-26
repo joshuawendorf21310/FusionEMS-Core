@@ -1,78 +1,203 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Network Stack (Hardened Multi-AZ)
+Description: FusionEMS Quantum - Network Stack
 
 Parameters:
-  Env:
-    Type: String
   AppName:
     Type: String
 
+  Env:
+    Type: String
+
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnetAz1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+
+  PublicSubnetAz2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnetAz1Cidr:
+    Type: String
+    Default: 10.0.11.0/24
+
+  PrivateSubnetAz2Cidr:
+    Type: String
+    Default: 10.0.12.0/24
+
 Resources:
 
-  ########################################
+  # ----------------------------
   # VPC
-  ########################################
-
-  VPC:
+  # ----------------------------
+  Vpc:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: !Ref VpcCidr
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: !Sub "${AppName}-${Env}-vpc"
+          Value: !Sub '${AppName}-${Env}-vpc'
 
+  # ----------------------------
+  # Internet Gateway
+  # ----------------------------
   InternetGateway:
     Type: AWS::EC2::InternetGateway
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref Vpc
       InternetGatewayId: !Ref InternetGateway
 
-  ########################################
-  # SUBNETS (2 AZ for now, scalable to 3)
-  ########################################
-
-  PublicSubnet1:
+  # ----------------------------
+  # Public Subnets
+  # ----------------------------
+  Az1:
     Type: AWS::EC2::Subnet
     Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnetAz1Cidr
       AvailabilityZone: !Select [0, !GetAZs '']
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub "${AppName}-${Env}-public-1"
+          Value: !Sub '${AppName}-${Env}-public-az1'
 
-  PublicSubnet2:
+  Az2:
     Type: AWS::EC2::Subnet
     Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnetAz2Cidr
       AvailabilityZone: !Select [1, !GetAZs '']
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub "${AppName}-${Env}-public-2"
+          Value: !Sub '${AppName}-${Env}-public-az2'
 
-  PrivateSubnet1:
+  # ----------------------------
+  # Private Subnets
+  # ----------------------------
+  PrivateAz1:
     Type: AWS::EC2::Subnet
     Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnetAz1Cidr
       AvailabilityZone: !Select [0, !GetAZs '']
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.11.0/24
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${AppName}-${Env}-private-1"
+          Value: !Sub '${AppName}-${Env}-private-az1'
 
-  PrivateSubnet2:
+  PrivateAz2:
     Type: AWS::EC2::Subnet
     Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnetAz2Cidr
       AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-${Env}-private-az2'
+
+  # ----------------------------
+  # Public Route Table
+  # ----------------------------
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetAz1RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Az1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetAz2RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Az2
+      RouteTableId: !Ref PublicRouteTable
+
+  # ----------------------------
+  # ALB Security Group
+  # ----------------------------
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB public security group
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-${Env}-sg-alb'
+
+  # ----------------------------
+  # ECS Service Security Group
+  # ----------------------------
+  EcsServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS service security group (ingress only from ALB)
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-${Env}-sg-ecs'
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+
+  PublicSubnets:
+    Description: Comma-delimited public subnet IDs
+    Value: !Join [",", [!Ref Az1, !Ref Az2]]
+
+  PrivateSubnets:
+    Description: Comma-delimited private subnet IDs
+    Value: !Join [",", [!Ref PrivateAz1, !Ref PrivateAz2]]
+
+  AlbSecurityGroupId:
+    Value: !Ref AlbSecurityGroup
+
+  EcsServiceSecurityGroupId:
+    Value: !Ref EcsServiceSecurityGroup      AvailabilityZone: !Select [1, !GetAZs '']
       VpcId: !Ref VPC
       CidrBlock: 10.0.12.0/24
       MapPublicIpOnLaunch: false
