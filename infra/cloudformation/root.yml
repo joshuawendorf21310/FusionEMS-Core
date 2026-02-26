@@ -85,7 +85,7 @@ Resources:
         DbInstanceClass: !Ref DbInstanceClass
         RedisNodeType: !Ref RedisNodeType
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
-        PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
+        DataPrivateSubnets: !GetAtt NetworkStack.Outputs.DataPrivateSubnets
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
       Tags:
         - Key: Environment
@@ -128,7 +128,7 @@ Resources:
         AppName: !Ref AppName
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PublicSubnets: !GetAtt NetworkStack.Outputs.PublicSubnets
-        PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
+        AppPrivateSubnets: !GetAtt NetworkStack.Outputs.AppPrivateSubnets
         AlbSecurityGroupId: !GetAtt NetworkStack.Outputs.AlbSecurityGroupId
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
         ImageTag: !Ref ImageTag

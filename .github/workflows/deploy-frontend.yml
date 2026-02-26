@@ -1,0 +1,18 @@
+name: Deploy Frontend
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches: ["main"]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Frontend deploy pipeline placeholder (build/push image + ECS rollout)."

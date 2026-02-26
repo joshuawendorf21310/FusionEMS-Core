@@ -1,0 +1,15 @@
+name: Deploy All
+on:
+  workflow_dispatch:
+jobs:
+  infra:
+    uses: ./.github/workflows/deploy-infra.yml
+  backend:
+    needs: infra
+    uses: ./.github/workflows/deploy-backend.yml
+  frontend:
+    needs: backend
+    uses: ./.github/workflows/deploy-frontend.yml
+  bootstrap:
+    needs: frontend
+    uses: ./.github/workflows/deploy-bootstrap.yml

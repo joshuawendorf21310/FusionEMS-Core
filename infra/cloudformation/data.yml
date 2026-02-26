@@ -12,34 +12,25 @@ Parameters:
     Type: String
   VpcId:
     Type: String
-  PrivateSubnets:
+  DataPrivateSubnets:
     Type: String
   EcsServiceSecurityGroupId:
     Type: String
 
+Conditions:
+  IsProd: !Equals [!Ref Env, prod]
+
 Resources:
-
-  ########################################
-  # DATABASE SUBNET GROUP
-  ########################################
-
   DbSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: Subnet group for RDS
-      SubnetIds: !Split [",", !Ref PrivateSubnets]
-      Tags:
-        - Key: Name
-          Value: !Sub "${AppName}-${Env}-db-subnet-group"
-
-  ########################################
-  # DATABASE SECURITY GROUP
-  ########################################
+      DBSubnetGroupDescription: !Sub '${AppName}-${Env} RDS subnet group'
+      SubnetIds: !Split [',', !Ref DataPrivateSubnets]
 
   DbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow Postgres access from ECS only
+      GroupDescription: Postgres access from ECS only
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -47,14 +38,10 @@ Resources:
           ToPort: 5432
           SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
 
-  ########################################
-  # REDIS SECURITY GROUP
-  ########################################
-
   RedisSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow Redis access from ECS only
+      GroupDescription: Redis access from ECS only
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -62,279 +49,59 @@ Resources:
           ToPort: 6379
           SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
 
-  ########################################
-  # DATABASE SECRET
-  ########################################
-
   DbSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub "${AppName}/${Env}/db"
-      GenerateSecretString:
-        SecretStringTemplate: '{"username":"fusionems"}'
-        GenerateStringKey: "password"
-        PasswordLength: 32
-        ExcludeCharacters: '"@/\'
-
-  ########################################
-  # RDS INSTANCE
-  ########################################
-
-  PostgresDB:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBInstanceIdentifier: !Sub "${AppName}-${Env}-postgres"
-      Engine: postgres
-      EngineVersion: "15"
-      DBInstanceClass: !Ref DbInstanceClass
-      AllocatedStorage: 100
-      StorageType: gp3
-      MultiAZ: false
-      PubliclyAccessible: false
-      StorageEncrypted: true
-      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:username}}' ]]
-      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:password}}' ]]
-      VPCSecurityGroups:
-        - !Ref DbSecurityGroup
-      DBSubnetGroupName: !Ref DbSubnetGroup
-      BackupRetentionPeriod: 7
-      DeletionProtection: false
-      EnablePerformanceInsights: true
-
-  ########################################
-  # REDIS SUBNET GROUP
-  ########################################
-
-  RedisSubnetGroup:
-    Type: AWS::ElastiCache::SubnetGroup
-    Properties:
-      Description: Subnet group for Redis
-      SubnetIds: !Split [",", !Ref PrivateSubnets]
-
-  ########################################
-  # REDIS CLUSTER
-  ########################################
-
-  RedisCluster:
-    Type: AWS::ElastiCache::CacheCluster
-    Properties:
-      ClusterName: !Sub "${AppName}-${Env}-redis"
-      Engine: redis
-      CacheNodeType: !Ref RedisNodeType
-      NumCacheNodes: 1
-      VpcSecurityGroupIds:
-        - !Ref RedisSecurityGroup
-      CacheSubnetGroupName: !Ref RedisSubnetGroup
-
-Outputs:
-
-  DbSecretArn:
-    Value: !Ref DbSecret
-
-  RedisEndpoint:
-    Value: !GetAtt RedisCluster.RedisEndpoint.Address
-  DbEnablePerformanceInsights:
-    Type: String
-    AllowedValues: ['true', 'false']
-    Default: 'true'
-
-  DbMultiAZ:
-    Type: String
-    AllowedValues: ['true', 'false']
-    Default: 'false'
-
-  RedisNodeType:
-    Type: String
-    Default: cache.t4g.small
-
-  RedisNumNodes:
-    Type: Number
-    Default: 1
-
-  RedisAuthToken:
-    Type: String
-    Default: ''
-    NoEcho: true
-    Description: Optional Redis AUTH token (leave blank to disable)
-
-Conditions:
-  IsProd: !Equals [!Ref Env, 'prod']
-  EnablePI: !Equals [!Ref DbEnablePerformanceInsights, 'true']
-  EnableMultiAZ: !Equals [!Ref DbMultiAZ, 'true']
-  HasRedisAuthToken: !Not [!Equals [!Ref RedisAuthToken, '']]
-
-Resources:
-  # ----------------------------
-  # RDS Subnet Group
-  # ----------------------------
-  DbSubnetGroup:
-    Type: AWS::RDS::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: !Sub '${AppName}-${Env} RDS subnet group'
-      SubnetIds: !Ref PrivateSubnets
-
-  # ----------------------------
-  # RDS Security Group (only ECS can connect)
-  # ----------------------------
-  DbSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Sub '${AppName}-${Env} RDS SG'
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-
-  # ----------------------------
-  # Secrets Manager: DB secret
-  # ----------------------------
-  DbSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub '${AppName}/${Env}/DB'
-      Description: !Sub '${AppName} ${Env} database credentials'
+      Name: !Sub '${AppName}/${Env}/db'
       GenerateSecretString:
         SecretStringTemplate: '{"username":"fusion","dbname":"fusionems_quantum"}'
         GenerateStringKey: password
         ExcludePunctuation: true
 
-  # ----------------------------
-  # Optional: Enhanced Monitoring Role for RDS
-  # ----------------------------
-  RdsMonitoringRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${AppName}-${Env}-rds-monitoring'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: monitoring.rds.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
-
-  # ----------------------------
-  # RDS Parameter Group (baseline)
-  # ----------------------------
-  DbParameterGroup:
-    Type: AWS::RDS::DBParameterGroup
-    Properties:
-      Description: !Sub '${AppName}-${Env} postgres params'
-      Family: postgres16
-      Parameters:
-        log_min_duration_statement: '500'   # ms
-        log_statement: 'none'
-        log_connections: '1'
-        log_disconnections: '1'
-
-  # ----------------------------
-  # RDS Instance (Postgres)
-  # ----------------------------
   DbInstance:
     Type: AWS::RDS::DBInstance
     Properties:
+      DBInstanceIdentifier: !Sub '${AppName}-${Env}-postgres'
       Engine: postgres
       EngineVersion: '16.3'
       DBInstanceClass: !Ref DbInstanceClass
-      AllocatedStorage: !Ref DbAllocatedStorage
-      MaxAllocatedStorage: !Ref DbMaxAllocatedStorage
+      AllocatedStorage: 100
+      StorageType: gp3
       StorageEncrypted: true
       PubliclyAccessible: false
-      MultiAZ: !If [EnableMultiAZ, true, false]
-
-      BackupRetentionPeriod: !If [IsProd, !Ref DbBackupRetentionDays, 1]
+      MultiAZ: !If [IsProd, true, false]
+      BackupRetentionPeriod: !If [IsProd, 14, 3]
       DeletionProtection: !If [IsProd, true, false]
-
       DBSubnetGroupName: !Ref DbSubnetGroup
       VPCSecurityGroups: [!Ref DbSecurityGroup]
-      DBParameterGroupName: !Ref DbParameterGroup
-
-      MonitoringInterval: !If [IsProd, 60, 0]
-      MonitoringRoleArn: !If [IsProd, !GetAtt RdsMonitoringRole.Arn, !Ref "AWS::NoValue"]
-
-      EnablePerformanceInsights: !If [EnablePI, true, false]
-
-      # CloudWatch Logs exports
-      EnableCloudwatchLogsExports:
-        - postgresql
-        - upgrade
-
       MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:username}}' ]]
       MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:password}}' ]]
       DBName: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:dbname}}' ]]
 
-  # ----------------------------
-  # Redis Subnet Group
-  # ----------------------------
   RedisSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
     Properties:
-      Description: !Sub '${AppName}-${Env} Redis subnet group'
-      SubnetIds: !Ref PrivateSubnets
+      Description: !Sub '${AppName}-${Env} redis subnet group'
+      SubnetIds: !Split [',', !Ref DataPrivateSubnets]
 
-  # ----------------------------
-  # Redis Security Group (only ECS can connect)
-  # ----------------------------
-  RedisSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Sub '${AppName}-${Env} Redis SG'
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 6379
-          ToPort: 6379
-          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-
-  # ----------------------------
-  # Redis Replication Group (enterprise baseline)
-  # - encryption at rest + in transit
-  # - optional AUTH token
-  # ----------------------------
   RedisReplicationGroup:
     Type: AWS::ElastiCache::ReplicationGroup
     Properties:
       ReplicationGroupId: !Sub '${AppName}-${Env}-redis'
-      ReplicationGroupDescription: !Sub '${AppName}-${Env} Redis replication group'
+      ReplicationGroupDescription: !Sub '${AppName}-${Env} redis replication group'
       Engine: redis
       CacheNodeType: !Ref RedisNodeType
-      NumCacheClusters: !Ref RedisNumNodes
-      AutomaticFailoverEnabled: !If [IsProd, true, false]
-      MultiAZEnabled: !If [IsProd, true, false]
+      NumCacheClusters: 2
+      AutomaticFailoverEnabled: true
+      MultiAZEnabled: true
       TransitEncryptionEnabled: true
       AtRestEncryptionEnabled: true
-      AuthToken: !If [HasRedisAuthToken, !Ref RedisAuthToken, !Ref "AWS::NoValue"]
+      SnapshotRetentionLimit: !If [IsProd, 7, 1]
       CacheSubnetGroupName: !Ref RedisSubnetGroup
       SecurityGroupIds: [!Ref RedisSecurityGroup]
 
 Outputs:
   DbSecretArn:
     Value: !Ref DbSecret
-
-  DbInstanceId:
-    Value: !Ref DbInstance
-
-  DbEndpoint:
-    Value: !GetAtt DbInstance.Endpoint.Address
-
-  DbPort:
-    Value: !GetAtt DbInstance.Endpoint.Port
-
-  RedisReplicationGroupId:
-    Value: !Ref RedisReplicationGroup
-
-  RedisPrimaryEndpoint:
+  RedisEndpoint:
     Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Address
-
-  RedisPort:
-    Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Port

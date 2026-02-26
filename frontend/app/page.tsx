@@ -49,7 +49,7 @@ export default async function Page() {
           FusionEMS Quantum — Unified Public Safety Operating System
         </div>
         <div className="mt-3 max-w-3xl text-sm text-muted">
-          Revenue. Operations. Compliance. Intelligence. Built as Infrastructure. Activated by Certification.
+          Revenue. Operations. Compliance. Intelligence. Designed for certification readiness. Built as Infrastructure. Activated by Certification.
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/billing/dashboard" className="rounded-xl bg-billing px-5 py-3 text-sm font-semibold text-black">

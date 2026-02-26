@@ -1,0 +1,13 @@
+name: Deploy Bootstrap
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  deploy-bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Bootstrap pipeline placeholder for Stripe/LOB/Telnyx bootstrap + seed catalogs."
