@@ -1,62 +1,38 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Founder Command Platform (Root Nested Stack - Hardened Phase 1)
+Description: FusionEMS Quantum - Root stack
 
 Parameters:
   Env:
     Type: String
     AllowedValues: [dev, prod]
     Default: dev
-
   AppName:
     Type: String
     Default: fusionems-quantum
-
   RootDomainName:
     Type: String
     Default: fusionemsquantum.com
-
   ApiDomainName:
     Type: String
     Default: api.fusionemsquantum.com
-
   HostedZoneId:
     Type: String
-    Description: Route53 Hosted Zone ID for fusionemsquantum.com
-
   AcmCertificateArnUsEast1:
     Type: String
-    Description: ACM certificate ARN in us-east-1 covering RootDomainName and ApiDomainName
-
   ImageTag:
     Type: String
     Default: latest
-
   DesiredCount:
     Type: Number
     Default: 2
-
-  BackendContainerPort:
-    Type: Number
-    Default: 8000
-
-  FrontendContainerPort:
-    Type: Number
-    Default: 3000
-
   DbInstanceClass:
     Type: String
     Default: db.t4g.medium
-
   RedisNodeType:
     Type: String
     Default: cache.t4g.small
 
 Resources:
-
-  ########################################
-  # NETWORK
-  ########################################
-
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -64,15 +40,6 @@ Resources:
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  ########################################
-  # DATA LAYER (RDS + REDIS + SECRETS)
-  ########################################
 
   DataStack:
     Type: AWS::CloudFormation::Stack
@@ -85,17 +52,8 @@ Resources:
         DbInstanceClass: !Ref DbInstanceClass
         RedisNodeType: !Ref RedisNodeType
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
-        PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
+        PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateDataSubnets
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  ########################################
-  # AUTH (COGNITO)
-  ########################################
 
   CognitoStack:
     Type: AWS::CloudFormation::Stack
@@ -106,21 +64,26 @@ Resources:
         Env: !Ref Env
         AppName: !Ref AppName
         RootDomainName: !Ref RootDomainName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
 
-  ########################################
-  # COMPUTE (ECS + ALB + ECR)
-  ########################################
+  SesStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
+    Properties:
+      TemplateURL: ses.yml
+      Parameters:
+        RootDomainName: !Ref RootDomainName
+
+  BootstrapStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: DataStack
+    Properties:
+      TemplateURL: bootstrap.yml
+      Parameters:
+        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
 
   ComputeStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - DataStack
-      - CognitoStack
+    DependsOn: [DataStack, CognitoStack]
     Properties:
       TemplateURL: compute.yml
       Parameters:
@@ -133,21 +96,12 @@ Resources:
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
         ImageTag: !Ref ImageTag
         DesiredCount: !Ref DesiredCount
-        BackendContainerPort: !Ref BackendContainerPort
-        FrontendContainerPort: !Ref FrontendContainerPort
         DbSecretArn: !GetAtt DataStack.Outputs.DbSecretArn
+        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
         RedisEndpoint: !GetAtt DataStack.Outputs.RedisEndpoint
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  ########################################
-  # EDGE (CLOUDFRONT + ROUTE53)
-  ########################################
+        AlbCertificateArn: !Ref AcmCertificateArnUsEast1
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack
@@ -162,15 +116,6 @@ Resources:
         HostedZoneId: !Ref HostedZoneId
         AcmCertificateArnUsEast1: !Ref AcmCertificateArnUsEast1
         AlbDnsName: !GetAtt ComputeStack.Outputs.AlbDnsName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  ########################################
-  # OBSERVABILITY (PROMETHEUS / GRAFANA / CW ALARMS)
-  ########################################
 
   ObservabilityStack:
     Type: AWS::CloudFormation::Stack
@@ -181,31 +126,39 @@ Resources:
         Env: !Ref Env
         AppName: !Ref AppName
         ClusterName: !GetAtt ComputeStack.Outputs.ClusterName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        BackendServiceName: !GetAtt ComputeStack.Outputs.BackendServiceName
+        FrontendServiceName: !GetAtt ComputeStack.Outputs.FrontendServiceName
+        DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId
+        RedisReplicationGroupId: !GetAtt DataStack.Outputs.RedisReplicationGroupId
+        AlbFullName: !GetAtt ComputeStack.Outputs.AlbFullName
+        BackendTargetGroupFullName: !GetAtt ComputeStack.Outputs.BackendTargetGroupFullName
 
 Outputs:
-
-  RootDomainName:
-    Value: !Ref RootDomainName
-
-  ApiDomainName:
-    Value: !Ref ApiDomainName
-
+  ClusterName:
+    Value: !GetAtt ComputeStack.Outputs.ClusterName
+  BackendServiceName:
+    Value: !GetAtt ComputeStack.Outputs.BackendServiceName
+  FrontendServiceName:
+    Value: !GetAtt ComputeStack.Outputs.FrontendServiceName
+  WorkerServiceName:
+    Value: !GetAtt ComputeStack.Outputs.WorkerServiceName
+  PrivateSubnets:
+    Value: !GetAtt NetworkStack.Outputs.PrivateSubnets
+  EcsServiceSecurityGroupId:
+    Value: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
+  AlbDnsName:
+    Value: !GetAtt ComputeStack.Outputs.AlbDnsName
   CloudFrontDomain:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDomain
-
+  DbSecretArn:
+    Value: !GetAtt DataStack.Outputs.DbSecretArn
+  AppSecretsArn:
+    Value: !GetAtt DataStack.Outputs.AppSecretsArn
+  RedisEndpoint:
+    Value: !GetAtt DataStack.Outputs.RedisEndpoint
   BackendEcrRepoUri:
     Value: !GetAtt ComputeStack.Outputs.BackendEcrRepoUri
-
   FrontendEcrRepoUri:
     Value: !GetAtt ComputeStack.Outputs.FrontendEcrRepoUri
-
-  CognitoUserPoolId:
-    Value: !GetAtt CognitoStack.Outputs.UserPoolId
-
-  CognitoUserPoolClientId:
-    Value: !GetAtt CognitoStack.Outputs.UserPoolClientId
+  SesIdentityArn:
+    Value: !GetAtt SesStack.Outputs.SesIdentityArn

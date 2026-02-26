@@ -1,0 +1,67 @@
+name: deploy-bootstrap
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+  CFN_ENV: ${{ vars.CFN_ENV }}
+  CFN_ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME }}
+  CFN_API_DOMAIN_NAME: ${{ vars.CFN_API_DOMAIN_NAME }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Resolve output values
+        run: |
+          cluster=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" --output text)
+          backend_service=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue" --output text)
+          frontend_service=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue" --output text)
+          worker_service=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='WorkerServiceName'].OutputValue" --output text)
+          private_subnets=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnets'].OutputValue" --output text)
+          ecs_sg=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='EcsServiceSecurityGroupId'].OutputValue" --output text)
+          app_secrets_arn=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AppSecretsArn'].OutputValue" --output text)
+          echo "ECS_CLUSTER=$cluster" >> "$GITHUB_ENV"
+          echo "BACKEND_SERVICE=$backend_service" >> "$GITHUB_ENV"
+          echo "FRONTEND_SERVICE=$frontend_service" >> "$GITHUB_ENV"
+          echo "WORKER_SERVICE=$worker_service" >> "$GITHUB_ENV"
+          echo "PRIVATE_SUBNETS=$private_subnets" >> "$GITHUB_ENV"
+          echo "ECS_SG=$ecs_sg" >> "$GITHUB_ENV"
+          echo "APP_SECRETS_ARN=$app_secrets_arn" >> "$GITHUB_ENV"
+      - name: Wait ECS services stable
+        run: aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$BACKEND_SERVICE" "$FRONTEND_SERVICE" "$WORKER_SERVICE"
+      - name: Run migrations task
+        run: |
+          IFS=',' read -r subnet1 subnet2 <<< "$PRIVATE_SUBNETS"
+          taskdef=$(aws ecs list-task-definitions --family-prefix fusionems-quantum-${CFN_ENV}-backend --sort DESC --query 'taskDefinitionArns[0]' --output text)
+          aws ecs run-task --cluster "$ECS_CLUSTER" --task-definition "$taskdef" --launch-type FARGATE --count 1 --network-configuration "awsvpcConfiguration={subnets=[$subnet1,$subnet2],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}' --query 'tasks[0].taskArn' --output text
+      - name: Smoke tests
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 15); do curl -fsS "https://${CFN_API_DOMAIN_NAME}/api/v1/health" >/dev/null && break || sleep 10; done
+          for _ in $(seq 1 15); do curl -fsS "https://${CFN_ROOT_DOMAIN_NAME}/healthz" >/dev/null && break || sleep 10; done
+          curl -fsS "https://${CFN_API_DOMAIN_NAME}/metrics" | grep -q "#"
+          curl -fsS -X POST "https://${CFN_API_DOMAIN_NAME}/api/v1/public/roi/calc" -H 'content-type: application/json' -d '{"zip_code":"53558","annual_call_volume":1000,"service_type":"EMS","current_billing_percent":6.0,"payer_mix":{},"level_mix":{},"selected_modules":[]}' >/dev/null
+          app_secrets=$(aws secretsmanager get-secret-value --secret-id "$APP_SECRETS_ARN" --query SecretString --output text)
+          export APP_SECRETS_JSON="$app_secrets"
+          stripe_whsec=$(python -c 'import json,os; print(json.loads(os.environ["APP_SECRETS_JSON"]).get("STRIPE_WEBHOOK_SECRET", ""))')
+          [ -n "$stripe_whsec" ] || (echo 'Missing STRIPE_WEBHOOK_SECRET in AppSecrets' && exit 1)
+          test_payload='{"id":"evt_smoke_checkout","type":"checkout.session.completed","data":{"object":{"id":"cs_smoke","metadata":{"tenant_id":"smoke-tenant"}}}}'
+          timestamp=$(date +%s)
+          signature=$(printf "%s" "${timestamp}.${test_payload}" | openssl dgst -sha256 -hmac "$stripe_whsec" | awk '{print $2}')
+          first_resp=$(curl -fsS -X POST "https://${CFN_API_DOMAIN_NAME}/api/v1/public/webhooks/stripe" -H 'content-type: application/json' -H "stripe-signature: t=${timestamp},v1=${signature}" -d "$test_payload")
+          second_resp=$(curl -fsS -X POST "https://${CFN_API_DOMAIN_NAME}/api/v1/public/webhooks/stripe" -H 'content-type: application/json' -H "stripe-signature: t=${timestamp},v1=${signature}" -d "$test_payload")
+          echo "$first_resp" | grep -Eq '"status":"ok"|"status":"duplicate"'
+          echo "$second_resp" | grep -Eq '"status":"duplicate"'

@@ -1,0 +1,41 @@
+name: deploy-backend
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        required: true
+        default: latest
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Resolve backend ECR
+        run: |
+          repo=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" --output text)
+          echo "BACKEND_REPO_URI=$repo" >> "$GITHUB_ENV"
+      - name: Build and push backend image
+        run: |
+          IMAGE_TAG_INPUT="${{ inputs.image_tag || github.event.inputs.image_tag }}"
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${BACKEND_REPO_URI%/*}"
+          docker build -t "$BACKEND_REPO_URI:$IMAGE_TAG_INPUT" -f backend/Dockerfile backend
+          docker push "$BACKEND_REPO_URI:$IMAGE_TAG_INPUT"

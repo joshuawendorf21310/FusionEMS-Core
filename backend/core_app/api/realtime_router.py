@@ -13,6 +13,7 @@ from jose import JWTError, jwt
 from core_app.api.dependencies import get_current_user
 from core_app.core.config import get_settings
 from core_app.schemas.auth import CurrentUser
+from core_app.services.cognito_jwt import CognitoAuthError, verify_cognito_jwt
 
 import redis.asyncio as redis_async
 
@@ -103,12 +104,17 @@ async def realtime_ws(websocket: WebSocket) -> None:
         return
 
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-        tenant_id = payload.get("tenant_id")
-        user_id = payload.get("sub")
-        if not tenant_id or not user_id:
-            raise JWTError("missing claims")
-    except JWTError:
+        if settings.auth_mode.lower() == "cognito":
+            claims = verify_cognito_jwt(token)
+            tenant_id = claims.tenant_id
+            user_id = claims.sub
+        else:
+            payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+            tenant_id = payload.get("tenant_id")
+            user_id = payload.get("sub")
+            if not tenant_id or not user_id:
+                raise JWTError("missing claims")
+    except (JWTError, CognitoAuthError):
         await websocket.close(code=4401)
         return
 

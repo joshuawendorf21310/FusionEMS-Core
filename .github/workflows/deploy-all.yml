@@ -1,0 +1,41 @@
+name: deploy-all
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [enterprise-domination-final]
+
+jobs:
+  deploy_infra_bootstrap:
+    uses: ./.github/workflows/deploy-infra.yml
+    with:
+      desired_count: 0
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
+  deploy_backend:
+    needs: deploy_infra_bootstrap
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
+  deploy_frontend:
+    needs: deploy_infra_bootstrap
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
+  deploy_infra_release:
+    needs: [deploy_backend, deploy_frontend]
+    uses: ./.github/workflows/deploy-infra.yml
+    with:
+      desired_count: 2
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
+  deploy_bootstrap:
+    needs: deploy_infra_release
+    uses: ./.github/workflows/deploy-bootstrap.yml
+    secrets: inherit
