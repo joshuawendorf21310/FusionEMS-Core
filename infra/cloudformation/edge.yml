@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Edge Stack (CloudFront + Route53 + ALB HTTPS)
+Description: FusionEMS Quantum - Edge (CloudFront, WAF, Route53)
 
 Parameters:
   Env:
@@ -18,53 +18,104 @@ Parameters:
     Type: String
 
 Resources:
-
-  ########################################
-  # CLOUDFRONT DISTRIBUTION
-  ########################################
+  EdgeWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub '${AppName}-${Env}-edge-webacl'
+      Scope: CLOUDFRONT
+      DefaultAction: { Allow: {} }
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        SampledRequestsEnabled: true
+        MetricName: !Sub '${AppName}-${Env}-edge-webacl'
+      Rules:
+        - Name: managed-common
+          Priority: 1
+          OverrideAction: { None: {} }
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig: { CloudWatchMetricsEnabled: true, SampledRequestsEnabled: true, MetricName: managed-common }
+        - Name: managed-known-bad-inputs
+          Priority: 2
+          OverrideAction: { None: {} }
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig: { CloudWatchMetricsEnabled: true, SampledRequestsEnabled: true, MetricName: managed-known-bad-inputs }
+        - Name: managed-sqli
+          Priority: 3
+          OverrideAction: { None: {} }
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+          VisibilityConfig: { CloudWatchMetricsEnabled: true, SampledRequestsEnabled: true, MetricName: managed-sqli }
+        - Name: rate-all
+          Priority: 10
+          Action: { Block: {} }
+          Statement:
+            RateBasedStatement:
+              Limit: 2000
+              AggregateKeyType: IP
+          VisibilityConfig: { CloudWatchMetricsEnabled: true, SampledRequestsEnabled: true, MetricName: rate-all }
+        - Name: rate-public-path
+          Priority: 11
+          Action: { Block: {} }
+          Statement:
+            RateBasedStatement:
+              Limit: 300
+              AggregateKeyType: IP
+              ScopeDownStatement:
+                ByteMatchStatement:
+                  SearchString: '/public/'
+                  FieldToMatch: { UriPath: {} }
+                  TextTransformations: [{ Type: NONE, Priority: 0 }]
+                  PositionalConstraint: STARTS_WITH
+          VisibilityConfig: { CloudWatchMetricsEnabled: true, SampledRequestsEnabled: true, MetricName: rate-public }
+        - Name: rate-webhook-path
+          Priority: 12
+          Action: { Block: {} }
+          Statement:
+            RateBasedStatement:
+              Limit: 120
+              AggregateKeyType: IP
+              ScopeDownStatement:
+                ByteMatchStatement:
+                  SearchString: '/webhooks/'
+                  FieldToMatch: { UriPath: {} }
+                  TextTransformations: [{ Type: NONE, Priority: 0 }]
+                  PositionalConstraint: STARTS_WITH
+          VisibilityConfig: { CloudWatchMetricsEnabled: true, SampledRequestsEnabled: true, MetricName: rate-webhooks }
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Enabled: true
-        Aliases:
-          - !Ref RootDomainName
-          - !Ref ApiDomainName
-        DefaultRootObject: index.html
+        Aliases: [!Ref RootDomainName, !Ref ApiDomainName]
+        WebACLId: !GetAtt EdgeWebAcl.Arn
         Origins:
-          - Id: AlbOrigin
+          - Id: alb-origin
             DomainName: !Ref AlbDnsName
             CustomOriginConfig:
               HTTPPort: 80
               HTTPSPort: 443
               OriginProtocolPolicy: http-only
         DefaultCacheBehavior:
-          TargetOriginId: AlbOrigin
+          TargetOriginId: alb-origin
           ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - POST
-            - PATCH
-            - DELETE
-          CachedMethods:
-            - GET
-            - HEAD
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD]
           ForwardedValues:
             QueryString: true
-            Cookies:
-              Forward: all
+            Cookies: { Forward: all }
         ViewerCertificate:
           AcmCertificateArn: !Ref AcmCertificateArnUsEast1
           SslSupportMethod: sni-only
           MinimumProtocolVersion: TLSv1.2_2021
-
-  ########################################
-  # ROUTE53 RECORDS
-  ########################################
 
   RootDomainRecord:
     Type: AWS::Route53::RecordSet
@@ -87,6 +138,7 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2
 
 Outputs:
-
   CloudFrontDomain:
     Value: !GetAtt CloudFrontDistribution.DomainName
+  WebAclArn:
+    Value: !GetAtt EdgeWebAcl.Arn
