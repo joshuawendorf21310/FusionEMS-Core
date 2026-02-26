@@ -1,0 +1,45 @@
+name: build-images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [enterprise-domination-final]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve ECR repositories from stack outputs
+        run: |
+          set -euo pipefail
+          backend=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" --output text)
+          frontend=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" --output text)
+          echo "BACKEND_REPO_URI=$backend" >> "$GITHUB_ENV"
+          echo "FRONTEND_REPO_URI=$frontend" >> "$GITHUB_ENV"
+
+      - name: Build and push backend
+        run: |
+          docker build -t "$BACKEND_REPO_URI:${GITHUB_SHA}" -f backend/Dockerfile backend
+          docker push "$BACKEND_REPO_URI:${GITHUB_SHA}"
+
+      - name: Build and push frontend
+        run: |
+          docker build -t "$FRONTEND_REPO_URI:${GITHUB_SHA}" -f frontend/Dockerfile frontend
+          docker push "$FRONTEND_REPO_URI:${GITHUB_SHA}"

@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: FusionEMS Quantum - bootstrap placeholders for provider setup
+
+Parameters:
+  AppSecretsArn:
+    Type: String
+
+Resources:
+  BootstrapLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fusionems/bootstrap
+      RetentionInDays: 30
+
+Outputs:
+  BootstrapLogGroupName:
+    Value: !Ref BootstrapLogGroup

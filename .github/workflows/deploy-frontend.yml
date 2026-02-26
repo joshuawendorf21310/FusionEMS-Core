@@ -1,0 +1,27 @@
+name: deploy-frontend
+on:
+  workflow_call:
+    inputs:
+      image_tag: { required: true, type: string }
+  workflow_dispatch:
+    inputs:
+      image_tag: { required: true, default: latest }
+permissions: { id-token: write, contents: read }
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}, aws-region: ${{ env.AWS_REGION }} }
+      - run: |
+          repo=$(aws cloudformation describe-stacks --stack-name "$CFN_STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" --output text)
+          echo "FRONTEND_REPO_URI=$repo" >> "$GITHUB_ENV"
+      - run: |
+          tag="${{ inputs.image_tag }}"; [ -n "$tag" ] || tag="${{ github.event.inputs.image_tag }}"
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${FRONTEND_REPO_URI%/*}"
+          docker build -t "$FRONTEND_REPO_URI:$tag" -f frontend/Dockerfile frontend
+          docker push "$FRONTEND_REPO_URI:$tag"

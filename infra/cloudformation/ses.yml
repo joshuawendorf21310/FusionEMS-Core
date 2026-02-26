@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: FusionEMS Quantum - SES identities
+
+Parameters:
+  RootDomainName:
+    Type: String
+
+Resources:
+  SesDomainIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref RootDomainName
+
+Outputs:
+  SesIdentityArn:
+    Value: !GetAtt SesDomainIdentity.Arn
