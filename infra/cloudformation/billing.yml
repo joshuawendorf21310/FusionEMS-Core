@@ -691,6 +691,105 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmDescription: Support AI jobs landing in DLQ
 
+  # ── SQS: neris-pack-import worker ────────────────────────────────────────────
+  NERISPackImportDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-neris-pack-import-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  NERISPackImportQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-neris-pack-import.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt NERISPackImportDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: neris-pack-compile worker ───────────────────────────────────────────
+  NERISPackCompileDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-neris-pack-compile-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  NERISPackCompileQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-neris-pack-compile.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt NERISPackCompileDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: neris-export worker ──────────────────────────────────────────────────────
+  NERISExportDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-neris-export-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  NERISExportQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-neris-export.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt NERISExportDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS DLQ alarms: NERIS ─────────────────────────────────────────────────────────
+  NERISPackImportDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-neris-pack-import-dlq-depth'
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt NERISPackImportDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmDescription: NERIS pack import jobs landing in DLQ
+
+  NERISExportDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-neris-export-dlq-depth'
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt NERISExportDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmDescription: NERIS export jobs landing in DLQ
+
 # ─────────────────────────────────────────────────────────────────────────────
 Outputs:
 
@@ -763,3 +862,18 @@ Outputs:
     Value: !Ref LegalPdfQueue
     Export:
       Name: !Sub '${AppName}-${Env}-LegalPdfQueueUrl'
+
+  NERISPackImportQueueUrl:
+    Value: !Ref NERISPackImportQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-NERISPackImportQueueUrl'
+
+  NERISPackCompileQueueUrl:
+    Value: !Ref NERISPackCompileQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-NERISPackCompileQueueUrl'
+
+  NERISExportQueueUrl:
+    Value: !Ref NERISExportQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-NERISExportQueueUrl'

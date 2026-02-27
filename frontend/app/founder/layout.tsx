@@ -63,6 +63,7 @@ const NAV_DOMAINS = [
       { href: '/founder/compliance/export-status', label: 'Export Status' },
       { href: '/founder/compliance/certification', label: 'Certification Monitor' },
       { href: '/founder/compliance/niers', label: 'NIERS Manager' },
+      { href: '/founder/compliance/neris', label: 'NERIS Compliance Studio' },
     ],
   },
   {

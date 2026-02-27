@@ -79,6 +79,10 @@ from core_app.api.support_router import router as support_router
 from core_app.api.doc_kit_router import router as doc_kit_router
 from core_app.billing.edi_router import router as edi_router
 from core_app.api.claim_packet_router import router as claim_packet_router
+from core_app.api.neris_pack_router import router as neris_wi_pack_router
+from core_app.api.neris_tenant_router import router as neris_tenant_router
+from core_app.api.neris_incident_router import router as neris_incident_router
+from core_app.api.neris_copilot_router import router as neris_copilot_router
 
 app = FastAPI(title=settings.app_name)
 configure_otel(app)
@@ -179,6 +183,11 @@ app.include_router(support_router)
 app.include_router(doc_kit_router)
 app.include_router(edi_router)
 app.include_router(claim_packet_router)
+
+app.include_router(neris_wi_pack_router)
+app.include_router(neris_tenant_router)
+app.include_router(neris_incident_router)
+app.include_router(neris_copilot_router)
 
 
 @app.get("/health")

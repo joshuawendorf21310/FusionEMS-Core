@@ -16,14 +16,17 @@ class AiService:
             raise RuntimeError("OpenAI API key not configured")
         self.client = OpenAI(api_key=settings.openai_api_key)
 
-    def chat(self, *, system: str, user: str) -> tuple[str, dict[str, Any]]:
+    def chat(self, *, system: str, user: str, max_tokens: int | None = None) -> tuple[str, dict[str, Any]]:
         settings = get_settings()
         start = time.time()
-        resp = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role":"system","content":system},{"role":"user","content":user}],
-            temperature=0.2,
-        )
+        create_kwargs: dict[str, Any] = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "temperature": 0.2,
+        }
+        if max_tokens is not None:
+            create_kwargs["max_tokens"] = max_tokens
+        resp = self.client.chat.completions.create(**create_kwargs)
         content = resp.choices[0].message.content or ""
         usage = resp.usage.model_dump() if resp.usage else {}
         meta = {

@@ -83,6 +83,18 @@ Parameters:
     Default: ''
     NoEcho: true
     Description: Shared secret for POST /internal/emit worker endpoint
+  NERISPackImportQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for NERIS pack import worker
+  NERISPackCompileQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for NERIS pack compile worker
+  NERISExportQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for NERIS export worker
 
 Conditions:
   IsProd: !Equals [!Ref Env, 'prod']
@@ -272,6 +284,9 @@ Resources:
                   - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-pdf-doc-kit.fifo'
                   - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-pdf-claim-packet.fifo'
                   - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-legal-pdf.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-neris-pack-import.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-neris-pack-compile.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-neris-export.fifo'
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -462,6 +477,12 @@ Resources:
               Value: !Ref LegalPdfQueueUrl
             - Name: INTERNAL_WORKER_SECRET
               Value: !Ref InternalWorkerSecret
+            - Name: NERIS_PACK_IMPORT_QUEUE_URL
+              Value: !Ref NERISPackImportQueueUrl
+            - Name: NERIS_PACK_COMPILE_QUEUE_URL
+              Value: !Ref NERISPackCompileQueueUrl
+            - Name: NERIS_EXPORT_QUEUE_URL
+              Value: !Ref NERISExportQueueUrl
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub '${DbSecretArn}'

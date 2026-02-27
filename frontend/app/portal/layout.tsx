@@ -13,6 +13,8 @@ const NAV_LINKS = [
   { href: '/portal/edi', label: 'EDI' },
   { href: '/portal/support', label: 'Support' },
   { href: '/portal/documents', label: 'Documents' },
+  { href: '/portal/neris-onboarding', label: 'NERIS Onboarding' },
+  { href: '/portal/incidents/fire', label: 'Fire Incidents' },
 ];
 
 function TopBar() {
