@@ -69,6 +69,7 @@ TENANT_TABLES: set[str] = {
     "telnyx_calls","telnyx_events","telnyx_opt_outs","telnyx_sms_messages","tenant_phone_numbers",
     "users","vitals",
     "communications","document_audit_events","tenant_provisioning_idempotency",
+    "nemsis_submission_results","nemsis_submission_status_history",
 }
 
 

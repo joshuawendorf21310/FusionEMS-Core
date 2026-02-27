@@ -22,6 +22,8 @@ class ChartStatus(str, Enum):
     PENDING_QA = "pending_qa"
     SUBMITTED = "submitted"
     LOCKED = "locked"
+    EXPORTED = "exported"
+    VOID = "void"
     CANCELLED = "cancelled"
 
 

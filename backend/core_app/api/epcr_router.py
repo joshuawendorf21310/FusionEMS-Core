@@ -14,6 +14,7 @@ from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
 from core_app.core.config import get_settings
 from core_app.epcr.chart_model import Chart, ChartStatus
+from core_app.epcr.jcs_hash import build_chart_hash_payload, jcs_sha256
 from core_app.epcr.nemsis_exporter import NEMSISExporter
 from core_app.epcr.sync_engine import SyncEngine, SyncConflictPolicy
 from core_app.epcr.evidence_service import EvidenceService
@@ -511,16 +512,23 @@ async def submit_chart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
+    from sqlalchemy import text as _text
+
     rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
+
     chart_data = rec.get("data", {})
+
+    # --- Guard 1: completeness ---
     readiness = CompletenessEngine().score_for_submission(chart_data)
     if not readiness["ready"]:
         raise HTTPException(
             status_code=422,
             detail={"message": "Chart not ready for submission", "blocking_issues": readiness["blocking_issues"]},
         )
+
+    # --- Guard 2: NEMSIS validation ---
     xml_bytes = NEMSISExporter().export_chart(chart_data, agency_info={})
     val_result = NEMSISValidator().validate_xml_bytes(xml_bytes)
     error_issues = [i.plain_message for i in val_result.issues if i.severity == "error"]
@@ -529,31 +537,103 @@ async def submit_chart(
             status_code=422,
             detail={"message": "NEMSIS validation failed", "issues": error_issues},
         )
-    submitted_at = datetime.now(timezone.utc).isoformat()
-    updated_data = {**chart_data, "chart_status": ChartStatus.SUBMITTED.value, "updated_at": submitted_at}
-    updated_rec = await _svc(db).update(
-        table="epcr_charts",
-        tenant_id=current.tenant_id,
-        actor_user_id=current.user_id,
-        record_id=uuid.UUID(str(rec["id"])),
-        expected_version=rec["version"],
-        patch={"data": updated_data},
-        correlation_id=getattr(request.state, "correlation_id", None),
-    )
-    event_entry = SyncEngine().create_event_log_entry(
-        chart_id=chart_id,
-        action="chart_submitted",
-        actor=str(current.user_id),
-        field_changes={"submitted_at": submitted_at},
-    )
-    await _svc(db).create(
-        table="epcr_event_log",
-        tenant_id=current.tenant_id,
-        actor_user_id=current.user_id,
-        data={**event_entry, "chart_id": chart_id},
-        correlation_id=getattr(request.state, "correlation_id", None),
-    )
-    return {"submitted": True, "chart_id": chart_id, "submitted_at": submitted_at}
+
+    # --- Guard 3: idempotency — already submitted ---
+    if chart_data.get("chart_status") == ChartStatus.SUBMITTED.value:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Chart already submitted", "chart_id": chart_id},
+        )
+
+    submitted_at = datetime.now(timezone.utc)
+    submitted_at_iso = submitted_at.isoformat()
+
+    # --- Deterministic SHA-256 (JCS / RFC 8785) ---
+    hash_payload = build_chart_hash_payload(chart_data)
+    hash_payload["submitted_at"] = submitted_at_iso
+    sha256_hex = jcs_sha256(hash_payload)
+
+    updated_data = {
+        **chart_data,
+        "chart_status": ChartStatus.SUBMITTED.value,
+        "updated_at": submitted_at_iso,
+        "submitted_at": submitted_at_iso,
+        "sha256_submitted": sha256_hex,
+    }
+
+    corr_id = getattr(request.state, "correlation_id", None)
+    svc = _svc(db)
+
+    # --- Transactional write ---
+    try:
+        # 1. Update epcr_charts (optimistic lock via version)
+        updated_rec = await svc.update(
+            table="epcr_charts",
+            tenant_id=current.tenant_id,
+            actor_user_id=current.user_id,
+            record_id=uuid.UUID(str(rec["id"])),
+            expected_version=rec["version"],
+            patch={
+                "data": updated_data,
+                "status": ChartStatus.SUBMITTED.value,
+                "submitted_at": submitted_at,
+                "sha256_submitted": sha256_hex,
+            },
+            correlation_id=corr_id,
+        )
+        if updated_rec is None:
+            raise HTTPException(status_code=409, detail="Version conflict — retry")
+
+        # 2. Append epcr_event_log
+        event_entry = SyncEngine().create_event_log_entry(
+            chart_id=chart_id,
+            action="chart_submitted",
+            actor=str(current.user_id),
+            field_changes={"submitted_at": submitted_at_iso, "sha256_submitted": sha256_hex},
+        )
+        await svc.create(
+            table="epcr_event_log",
+            tenant_id=current.tenant_id,
+            actor_user_id=current.user_id,
+            data={**event_entry, "chart_id": chart_id, "sha256_submitted": sha256_hex},
+            correlation_id=corr_id,
+        )
+
+        # 3. audit_log is written by DominationService.update above automatically
+        # (no extra call needed — AuditService.log_mutation is called inside svc.update)
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Submit transaction failed: {exc}") from exc
+
+    # --- Post-commit: publish realtime event ---
+    try:
+        publisher = get_event_publisher()
+        await publisher.publish(
+            event_name="epcr.chart.submitted",
+            tenant_id=current.tenant_id,
+            entity_id=uuid.UUID(str(rec["id"])),
+            payload={
+                "chart_id": chart_id,
+                "status": ChartStatus.SUBMITTED.value,
+                "submitted_at": submitted_at_iso,
+                "sha256_submitted": sha256_hex,
+            },
+            entity_type="epcr_charts",
+            correlation_id=corr_id,
+        )
+    except Exception:
+        pass
+
+    return {
+        "submitted": True,
+        "chart_id": chart_id,
+        "submitted_at": submitted_at_iso,
+        "sha256_submitted": sha256_hex,
+    }
 
 
 @router.get("/charts/{chart_id}/event-log")

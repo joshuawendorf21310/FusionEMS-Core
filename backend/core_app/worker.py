@@ -33,11 +33,14 @@ async def run_worker() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, _signal_handler)
 
+    from core_app.workers.epcr_retention_worker import _epcr_retention_loop
+
     tasks = [
         asyncio.create_task(_heartbeat_loop(stop_event)),
         asyncio.create_task(_credential_alert_loop(stop_event)),
         asyncio.create_task(_executive_briefing_loop(stop_event)),
         asyncio.create_task(_dlq_processing_loop(stop_event)),
+        asyncio.create_task(_epcr_retention_loop(stop_event)),
     ]
 
     await stop_event.wait()

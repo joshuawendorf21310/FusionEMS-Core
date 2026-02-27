@@ -96,6 +96,7 @@ from core_app.api.kitlink_compliance_router import router as kitlink_compliance_
 from core_app.api.compliance_pack_index_router import router as compliance_pack_index_router
 from core_app.api.founder_copilot_router import router as founder_copilot_router
 from core_app.api.systems_router import router as systems_router
+from core_app.api.nemsis_submissions_router import router as nemsis_submissions_router
 
 app = FastAPI(title=settings.app_name)
 configure_otel(app)
@@ -215,6 +216,7 @@ app.include_router(kitlink_compliance_router)
 app.include_router(compliance_pack_index_router)
 app.include_router(founder_copilot_router)
 app.include_router(systems_router)
+app.include_router(nemsis_submissions_router)
 
 
 @app.get("/health")
