@@ -41,8 +41,11 @@ export default function InspectionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [phase, setPhase] = useState<"setup" | "checklist" | "result">("setup");
+  const [actionError, setActionError] = useState('');
 
   async function startInspection() {
+    setActionError('');
+    try {
     const r = await fetch(`${API}/inspections?tenant_id=${tenantId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,11 +59,14 @@ export default function InspectionPage() {
     }
     setResponses(init);
     setPhase("checklist");
+    } catch (e: unknown) { setActionError(e instanceof Error ? e.message : 'Failed to start inspection'); }
   }
 
   async function submitInspection() {
     if (!inspectionId) return;
     setSubmitting(true);
+    setActionError('');
+    try {
     const r = await fetch(`${API}/inspections/${inspectionId}/submit?tenant_id=${tenantId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -69,6 +75,7 @@ export default function InspectionPage() {
     const data = await r.json();
     setResult(data);
     setPhase("result");
+    } catch (e: unknown) { setActionError(e instanceof Error ? e.message : 'Submit failed'); }
     setSubmitting(false);
   }
 

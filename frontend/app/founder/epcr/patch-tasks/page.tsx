@@ -44,6 +44,8 @@ export default function PatchTasksPage() {
         const data = await res.json();
         setTasks(Array.isArray(data) ? data : (data.tasks ?? []));
       }
+    } catch (e: unknown) {
+      console.warn('[patch-tasks fetch error]', e);
     } finally {
       setLoading(false);
     }
@@ -69,6 +71,8 @@ export default function PatchTasksPage() {
           )
         );
       }
+    } catch (e: unknown) {
+      console.warn('[patch-task update error]', e);
     } finally {
       setUpdatingId(null);
     }

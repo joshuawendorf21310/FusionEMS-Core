@@ -16,18 +16,24 @@ function useApi(path: string, tenantId: string) {
     fetch(`${API}${path}?tenant_id=${tenantId}`)
       .then((r) => r.json())
       .then(setData)
+      .catch((e: unknown) => { console.warn('[kitlink fetch error]', e); })
       .finally(() => setLoading(false));
   }, [path, tenantId]);
   return { data, loading };
 }
 
-async function post(path: string, tenantId: string, body: object) {
-  const r = await fetch(`${API}${path}?tenant_id=${tenantId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+async function post(path: string, tenantId: string, body: object): Promise<any> {
+  try {
+    const r = await fetch(`${API}${path}?tenant_id=${tenantId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return r.json();
+  } catch (e: unknown) {
+    console.warn('[kitlink post error]', e);
+    return {};
+  }
 }
 
 export default function KitLinkPage() {

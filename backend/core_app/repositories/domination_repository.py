@@ -62,6 +62,7 @@ TENANT_TABLES: set[str] = {
     "compliance_inspections","compliance_findings","kitlink_wizard_state",
     "compliance_pack_versions","compliance_rules","compliance_reports","tenant_compliance_config",
     "hems_mission_events","rep_signatures","auth_rep_sessions","authorized_reps","rep_documents","billing_cases","patient_statements",
+    "appeal_drafts","baa_signatures","billing_alert_thresholds","bulk_generation_jobs","claim_events","conversion_events","denial_predictions","device_registrations","emergency_locks","geo_alerts","global_variables","incident_postmortems","incidents","lead_scores","mobile_alerts","mobile_errors","mobile_sessions","nemsis_audit_bundles","nemsis_export_batches","nemsis_extensions","nemsis_state_rejections","ocr_captures","offline_sync_jobs","onboarding_checklists","payer_follow_ups","production_change_approvals","proposals","push_notifications","pwa_deployments","pwa_installs","pwa_manifest_updates","recovery_simulations","roi_funnel_scenarios","roi_share_links","scheduled_deliveries","self_healing_actions","self_healing_rules","shift_swaps","system_alerts","template_ab_tests","template_downloads","template_renders","template_secure_links","template_versions","user_credentials","visibility_access_alerts","visibility_anomaly_events","visibility_approval_requests","visibility_audit_log","visibility_compliance_locks","visibility_rules",
 }
 
 

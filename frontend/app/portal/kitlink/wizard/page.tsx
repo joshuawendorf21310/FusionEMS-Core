@@ -65,6 +65,7 @@ export default function WizardPage() {
   const [loading, setLoading] = useState(true);
   const [stepData, setStepData] = useState<Record<string, any>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [wizardError, setWizardError] = useState('');
 
   useEffect(() => {
     if (!tenantId) return;
@@ -77,11 +78,14 @@ export default function WizardPage() {
           if (nextIdx >= 0) setCurrentStep(nextIdx);
         }
       })
+      .catch((e: unknown) => { console.warn('[wizard state error]', e); })
       .finally(() => setLoading(false));
   }, [tenantId]);
 
   async function completeStep(stepId: StepId, data?: object) {
     setSubmitting(true);
+    setWizardError('');
+    try {
     await fetch(`${COMPLIANCE_API}/wizard/step?tenant_id=${tenantId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,6 +93,7 @@ export default function WizardPage() {
     });
     setCompletedSteps((prev) => (prev.includes(stepId) ? prev : [...prev, stepId]));
     if (currentStep < STEPS.length - 1) setCurrentStep(currentStep + 1);
+    } catch (e: unknown) { setWizardError(e instanceof Error ? e.message : 'Step failed'); }
     setSubmitting(false);
   }
 
@@ -232,7 +237,8 @@ function PackStep({ tenantId, stepData, setStepData }: { tenantId: string; stepD
   useEffect(() => {
     fetch(`${COMPLIANCE_API}/packs?tenant_id=${tenantId}`)
       .then((r) => r.json())
-      .then((d) => setPacks(d.packs ?? []));
+      .then((d) => setPacks(d.packs ?? []))
+      .catch((e: unknown) => { console.warn('[packs fetch error]', e); });
   }, [tenantId]);
 
   async function activate(packKey: string) {
