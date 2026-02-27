@@ -65,6 +65,7 @@ const NAV_DOMAINS = [
       { href: '/founder/compliance/niers', label: 'NIERS Manager' },
       { href: '/founder/compliance/neris', label: 'NERIS Compliance Studio' },
       { href: '/founder/compliance/hems', label: 'HEMS Safety Audit' },
+      { href: '/founder/compliance/packs', label: 'Compliance Packs' },
       { href: '/founder/compliance/cms-gate', label: 'CMS Gate Monitor' },
     ],
   },

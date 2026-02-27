@@ -1,0 +1,56 @@
+{
+  "pack_id": "CAAS_GROUND_PACK_V1",
+  "name": "CAAS Ground Readiness Pack v1 (Readiness + Evidence)",
+  "jurisdiction": "US_ACCREDITATION",
+  "effective_date": "2026-02-27",
+  "global_rules": [
+    {
+      "rule_id": "DAILY_INSPECTION_REQUIRED",
+      "severity": "error",
+      "message": "Daily unit inspection logs must be completed and retained.",
+      "enforcement": { "mode": "hard_fail" }
+    },
+    {
+      "rule_id": "EXPIRATION_TRACKING_REQUIRED",
+      "severity": "error",
+      "message": "Medication/supply expiration tracking must be active with alerts and documented corrective actions.",
+      "enforcement": { "mode": "hard_fail" }
+    },
+    {
+      "rule_id": "DEFICIENCY_CORRECTION_TRACKING",
+      "severity": "error",
+      "message": "Deficiencies found in inspections must generate corrective action tasks and closure proof.",
+      "enforcement": { "mode": "hard_fail" }
+    }
+  ],
+  "checklists": [
+    {
+      "checklist_id": "CAAS_DAILY_UNIT_CHECK",
+      "title": "Daily Unit Inspection (CAAS-ready evidence)",
+      "items": [
+        { "item_id": "KIT_CHECKS", "label": "Kits checked via KitLink AR marker scans", "type": "system_check" },
+        { "item_id": "OXYGEN_CHECK", "label": "Oxygen PSI recorded and cylinder secured", "type": "numeric" },
+        { "item_id": "EXPIRATIONS_CLEAR", "label": "No expired items present", "type": "system_check" },
+        { "item_id": "DEFICIENCIES_TASKED", "label": "Any deficiencies create tasks", "type": "system_check" }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "workflow_id": "DEFICIENCY_WORKFLOW",
+      "title": "Deficiency → Corrective Action → Verification",
+      "steps": [
+        { "step": "create_deficiency", "label": "Create deficiency record", "required": true },
+        { "step": "assign_task", "label": "Assign restock/repair task", "required": true },
+        { "step": "verify_fix", "label": "Photo/scan verification + supervisor close", "required": true }
+      ]
+    }
+  ],
+  "reports": [
+    { "report_id": "CAAS_READINESS_DASHBOARD", "format": ["ui"], "title": "Readiness dashboard (unit-by-unit)" },
+    { "report_id": "CAAS_EVIDENCE_PACKET", "format": ["pdf"], "title": "Inspection logs + deficiency closure packet" }
+  ],
+  "source_citations": [
+    { "ref": "CAAS_STANDARDS_PROGRAM", "url": "https://www.caas.org/" }
+  ]
+}

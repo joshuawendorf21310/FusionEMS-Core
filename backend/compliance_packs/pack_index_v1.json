@@ -1,0 +1,79 @@
+{
+  "index_id": "pack_index_v1",
+  "version": "1",
+  "generated_at": "2026-02-27T00:00:00Z",
+  "packs": [
+    {
+      "pack_id": "WI_TRANS_309_V1",
+      "name": "Wisconsin Trans 309 Compliance Pack v1",
+      "jurisdiction": "WI_STATE",
+      "s3_key": "compliance/packs/wi_trans_309_pack_v1.json",
+      "tags": ["ground", "wisconsin", "dot", "state"]
+    },
+    {
+      "pack_id": "WI_TRANS_309_V2",
+      "name": "Wisconsin Trans 309 Compliance Pack v2",
+      "jurisdiction": "WI_STATE",
+      "s3_key": "compliance/packs/wi_trans_309_pack_v2.json",
+      "tags": ["ground", "wisconsin", "dot", "state", "current"]
+    },
+    {
+      "pack_id": "DEA_CS_PACK_V1",
+      "name": "DEA Controlled Substances Compliance Pack v1",
+      "jurisdiction": "US_FEDERAL",
+      "s3_key": "compliance/packs/dea_cs_pack_v1.json",
+      "tags": ["federal", "dea", "narcotics", "cs", "universal"]
+    },
+    {
+      "pack_id": "CAAS_GROUND_PACK_V1",
+      "name": "CAAS Ground Readiness Pack v1",
+      "jurisdiction": "US_ACCREDITATION",
+      "s3_key": "compliance/packs/caas_ground_pack_v1.json",
+      "tags": ["ground", "accreditation", "caas", "readiness"]
+    },
+    {
+      "pack_id": "CAMTS_HEMS_PACK_V1",
+      "name": "CAMTS HEMS Readiness Pack v1",
+      "jurisdiction": "CAMTS_GLOBAL",
+      "s3_key": "compliance/packs/camts_hems_pack_v1.json",
+      "tags": ["hems", "air", "camts", "rotor", "fixed-wing"]
+    },
+    {
+      "pack_id": "HOSPITAL_EMS_PACK_V1",
+      "name": "Hospital-Based EMS Pack v1",
+      "jurisdiction": "HOSPITAL_ACCREDITATION",
+      "s3_key": "compliance/packs/hospital_ems_pack_v1.json",
+      "tags": ["hospital", "pharmacy", "audit", "joint-commission"]
+    }
+  ],
+  "recommended_sets": [
+    {
+      "set_id": "WI_GROUND_DEFAULT",
+      "label": "Wisconsin Ground Default",
+      "description": "Standard Wisconsin ground EMS with DEA narcotics tracking.",
+      "pack_ids": ["WI_TRANS_309_V2", "DEA_CS_PACK_V1"],
+      "tags": ["ground", "wisconsin"]
+    },
+    {
+      "set_id": "WI_GROUND_CAAS",
+      "label": "Wisconsin Ground + CAAS Readiness",
+      "description": "Wisconsin compliance plus CAAS accreditation readiness evidence.",
+      "pack_ids": ["WI_TRANS_309_V2", "DEA_CS_PACK_V1", "CAAS_GROUND_PACK_V1"],
+      "tags": ["ground", "wisconsin", "caas"]
+    },
+    {
+      "set_id": "HEMS_CAMTS_READY",
+      "label": "HEMS CAMTS Ready",
+      "description": "CAMTS-aligned HEMS operations with DEA controlled substances.",
+      "pack_ids": ["CAMTS_HEMS_PACK_V1", "DEA_CS_PACK_V1"],
+      "tags": ["hems", "camts", "air"]
+    },
+    {
+      "set_id": "HOSPITAL_EMS_ALIGNMENT",
+      "label": "Hospital-Owned EMS Alignment",
+      "description": "Hospital-based EMS with pharmacy oversight and full audit trail.",
+      "pack_ids": ["HOSPITAL_EMS_PACK_V1", "DEA_CS_PACK_V1"],
+      "tags": ["hospital", "pharmacy"]
+    }
+  ]
+}

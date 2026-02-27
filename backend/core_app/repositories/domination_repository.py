@@ -60,6 +60,7 @@ TENANT_TABLES: set[str] = {
     "narc_kits","narc_seals","narc_counts","narc_waste_events","narc_discrepancies",
     "kitlink_ocr_jobs","kitlink_anomaly_flags","compliance_packs","compliance_check_templates",
     "compliance_inspections","compliance_findings","kitlink_wizard_state",
+    "compliance_pack_versions","compliance_rules","compliance_reports","tenant_compliance_config",
 }
 
 

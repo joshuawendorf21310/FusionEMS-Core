@@ -1,0 +1,55 @@
+{
+  "pack_id": "HOSPITAL_EMS_PACK_V1",
+  "name": "Hospital-Based EMS Pack v1 (Pharmacy + Audit Alignment)",
+  "jurisdiction": "HOSPITAL_ACCREDITATION",
+  "effective_date": "2026-02-27",
+  "global_rules": [
+    {
+      "rule_id": "HIGH_ALERT_LIST_REQUIRED",
+      "severity": "error",
+      "message": "High-alert/hazardous medications must be identified and managed under a written process.",
+      "enforcement": { "mode": "hard_fail" }
+    },
+    {
+      "rule_id": "BARCODE_READY",
+      "severity": "warn",
+      "message": "Barcoding/NDC/UPC mapping is recommended for pharmacy oversight and reconciliation (enable where possible).",
+      "enforcement": { "mode": "soft" }
+    },
+    {
+      "rule_id": "AUDIT_TRAIL_REQUIRED",
+      "severity": "error",
+      "message": "All medication access, movement, administration, waste, and adjustments must be auditable.",
+      "enforcement": { "mode": "hard_fail" }
+    }
+  ],
+  "checklists": [
+    {
+      "checklist_id": "HOSPITAL_PHARMACY_OVERSIGHT",
+      "title": "Pharmacy Oversight & Medication Reconciliation Readiness",
+      "items": [
+        { "item_id": "FORMULARY_DEFINED", "label": "Agency formulary is configured and versioned", "type": "system_check" },
+        { "item_id": "HIGH_ALERT_DEFINED", "label": "High-alert/hazard meds list configured in system", "type": "system_check" },
+        { "item_id": "CS_CHAIN_OF_CUSTODY", "label": "Controlled substance chain-of-custody enabled", "type": "system_check" },
+        { "item_id": "EXPORT_AUDIT", "label": "Audit export available (CSV/PDF)", "type": "system_check" }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "workflow_id": "PHARMACY_RECONCILIATION_EXPORT",
+      "title": "Pharmacy Reconciliation Export (Monthly/Weekly)",
+      "steps": [
+        { "step": "generate_export", "label": "Generate med movement + CS log exports", "required": true },
+        { "step": "review_signoff", "label": "Pharmacy reviewer signoff (optional)", "required": false }
+      ]
+    }
+  ],
+  "reports": [
+    { "report_id": "HOSPITAL_MED_AUDIT_EXPORT", "format": ["csv", "pdf"], "title": "Medication movement audit export" },
+    { "report_id": "HOSPITAL_CS_LOG", "format": ["pdf"], "title": "Controlled substance log (audit-ready)" }
+  ],
+  "source_citations": [
+    { "ref": "JOINT_COMMISSION_HIGH_ALERT_FAQ", "url": "https://www.jointcommission.org/standards/standard-faqs/hospital-and-hospital-clinics/medication-management-mm/000002226/" }
+  ]
+}

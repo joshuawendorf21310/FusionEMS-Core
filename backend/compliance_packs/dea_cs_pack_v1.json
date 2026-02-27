@@ -1,0 +1,64 @@
+{
+  "pack_id": "DEA_CS_PACK_V1",
+  "name": "DEA Controlled Substances Compliance Pack v1",
+  "jurisdiction": "US_FEDERAL",
+  "effective_date": "2026-02-27",
+  "global_rules": [
+    {
+      "rule_id": "CS_INVENTORY_REQUIRED",
+      "severity": "error",
+      "message": "Controlled substances inventory records must be maintained at the registered location and be complete/accurate for controlled substances on hand.",
+      "enforcement": { "mode": "hard_fail" },
+      "source_ref": "21CFR1304.11"
+    },
+    {
+      "rule_id": "CS_DOSE_LOG_REQUIRED_FIELDS",
+      "severity": "error",
+      "message": "Each administered/disposed dose must record required elements (substance name, finished form, date, patient identification if applicable, amounts administered/disposed, admin initials, authorizing medical professional initials, disposer initials, witness initials for disposal).",
+      "enforcement": { "mode": "hard_fail" },
+      "source_ref": "DEA_EMS_2026_RULE"
+    }
+  ],
+  "workflows": [
+    {
+      "workflow_id": "DEA_FORM_222_TRACKING",
+      "title": "Schedule II Ordering (DEA Form 222 tracking)",
+      "steps": [
+        { "step": "create_order", "label": "Create Schedule II order record (Form 222 ref)", "required": true },
+        { "step": "receive", "label": "Record received quantities + date", "required": true },
+        { "step": "store", "label": "Store executed order record reference in Documents", "required": true }
+      ]
+    },
+    {
+      "workflow_id": "DEA_FORM_106_THEFT_LOSS",
+      "title": "Theft/Loss Reporting (DEA Form 106 workflow bundle)",
+      "steps": [
+        { "step": "open_incident", "label": "Open discrepancy incident", "required": true },
+        { "step": "lock_kit", "label": "Lock kit from further CS transactions until reviewed", "required": true },
+        { "step": "investigation_log", "label": "Create investigation log + attach evidence", "required": true },
+        { "step": "form_106_record", "label": "Create Form 106 reference record + attach doc copy", "required": true },
+        { "step": "resolution", "label": "Supervisor resolution + corrective actions", "required": true }
+      ]
+    }
+  ],
+  "checklists": [
+    {
+      "checklist_id": "DEA_CS_DAILY_ACCOUNTABILITY",
+      "title": "Controlled Substance Accountability (Daily/Shift)",
+      "items": [
+        { "item_id": "SECURE_STORAGE", "label": "CS stored in locked system per policy", "type": "attestation" },
+        { "item_id": "SEAL_VERIFIED", "label": "Seal scanned and verified (if used)", "type": "system_check" },
+        { "item_id": "COUNT_COMPLETED", "label": "Shift count completed per agency policy", "type": "system_check" },
+        { "item_id": "WASTE_WITNESS", "label": "Any waste events include witness verification", "type": "system_check" }
+      ]
+    }
+  ],
+  "reports": [
+    { "report_id": "DEA_CS_LEDGER_EXPORT", "format": ["pdf", "csv"], "title": "Controlled Substance Ledger (Auditable)" },
+    { "report_id": "DEA_DISCREPANCY_SUMMARY", "format": ["pdf"], "title": "Discrepancy Investigation Summary" }
+  ],
+  "source_citations": [
+    { "ref": "21CFR1304.11", "url": "https://www.law.cornell.edu/cfr/text/21/1304.11" },
+    { "ref": "DEA_EMS_2026_RULE", "url": "https://regulations.justia.com/regulations/fedreg/2026/02/05/2026-02288.html" }
+  ]
+}

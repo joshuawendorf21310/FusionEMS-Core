@@ -588,6 +588,7 @@ Resources:
                 Action:
                   - s3:PutObject
                   - s3:GetObject
+                  - s3:ListBucket
                 Resource: !Sub "arn:aws:s3:::${KitLinkArtifactsBucket}/compliance/packs/*"
               - Effect: Allow
                 Action:
@@ -614,30 +615,45 @@ Resources:
           STAGE: !Ref Stage
       Code:
         ZipFile: |
-          import json, os, urllib.request, boto3
+          import json, os, hashlib, urllib.request, boto3
+
+          PACK_INDEX = {
+            "pack_key": "pack_index_v1", "version": "1",
+            "packs": [
+              {"pack_id":"WI_TRANS_309_V1","s3_key":"compliance/packs/wi_trans_309_pack_v1.json"},
+              {"pack_id":"WI_TRANS_309_V2","s3_key":"compliance/packs/wi_trans_309_pack_v2.json"},
+              {"pack_id":"DEA_CS_PACK_V1","s3_key":"compliance/packs/dea_cs_pack_v1.json"},
+              {"pack_id":"CAAS_GROUND_PACK_V1","s3_key":"compliance/packs/caas_ground_pack_v1.json"},
+              {"pack_id":"CAMTS_HEMS_PACK_V1","s3_key":"compliance/packs/camts_hems_pack_v1.json"},
+              {"pack_id":"HOSPITAL_EMS_PACK_V1","s3_key":"compliance/packs/hospital_ems_pack_v1.json"}
+            ],
+            "recommended_sets": [
+              {"set_id":"WI_GROUND_DEFAULT","label":"Wisconsin Ground Default","pack_ids":["WI_TRANS_309_V2","DEA_CS_PACK_V1"]},
+              {"set_id":"WI_GROUND_CAAS","label":"Wisconsin Ground + CAAS Readiness","pack_ids":["WI_TRANS_309_V2","DEA_CS_PACK_V1","CAAS_GROUND_PACK_V1"]},
+              {"set_id":"HEMS_CAMTS_READY","label":"HEMS CAMTS Ready","pack_ids":["CAMTS_HEMS_PACK_V1","DEA_CS_PACK_V1"]},
+              {"set_id":"HOSPITAL_EMS_ALIGNMENT","label":"Hospital-Owned EMS Alignment","pack_ids":["HOSPITAL_EMS_PACK_V1","DEA_CS_PACK_V1"]}
+            ]
+          }
 
           PACKS = {
-            "WI_TRANS_309_V1": {
-              "pack_key": "WI_TRANS_309_V1", "version": "1", "state": "WI",
-              "title": "Wisconsin Trans 309 Compliance Pack v1",
-              "unit_profiles": ["EMT","AEMT","PARAMEDIC"],
-              "rules": [
-                {"rule_id":"NO_EXPIRED_MEDS_FLUIDS","type":"hard_fail","description":"No expired medications or IV fluids"},
-                {"rule_id":"MANDATORY_PRESENCE_10","type":"required","description":"10 mandatory equipment items must be present"}
-              ]
-            },
-            "WI_TRANS_309_V2": {
-              "pack_key": "WI_TRANS_309_V2", "version": "2", "state": "WI",
-              "title": "Wisconsin Trans 309 Compliance Pack v2",
-              "unit_profiles": ["EMT","AEMT","PARAMEDIC"],
-              "rules": [
-                {"rule_id":"NO_EXPIRED_MEDS_FLUIDS","type":"hard_fail","description":"No expired medications or IV fluids"},
-                {"rule_id":"MANDATORY_PRESENCE_10","type":"required","description":"10 mandatory equipment items must be present"},
-                {"rule_id":"NARC_SEAL_INTACT","type":"required","description":"Narcotics seal must be intact and verified"},
-                {"rule_id":"CALIBRATION_CURRENT","type":"warning","description":"All monitoring equipment calibration current"}
-              ]
-            }
+            "wi_trans_309_pack_v1": {"pack_id":"WI_TRANS_309_V1","name":"Wisconsin Trans 309 v1","jurisdiction":"WI_STATE","version":"1","unit_profiles":["EMT","AEMT","PARAMEDIC"],"global_rules":[{"rule_id":"NO_EXPIRED_MEDS_FLUIDS","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"MANDATORY_PRESENCE_10","severity":"error","enforcement":{"mode":"hard_fail"}}]},
+            "wi_trans_309_pack_v2": {"pack_id":"WI_TRANS_309_V2","name":"Wisconsin Trans 309 v2","jurisdiction":"WI_STATE","version":"2","unit_profiles":["EMT","AEMT","PARAMEDIC"],"global_rules":[{"rule_id":"NO_EXPIRED_MEDS_FLUIDS","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"MANDATORY_PRESENCE_10","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"NARC_SEAL_INTACT","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"CALIBRATION_CURRENT","severity":"warn","enforcement":{"mode":"soft"}}]},
+            "dea_cs_pack_v1": {"pack_id":"DEA_CS_PACK_V1","name":"DEA Controlled Substances v1","jurisdiction":"US_FEDERAL","effective_date":"2026-02-27","global_rules":[{"rule_id":"CS_INVENTORY_REQUIRED","severity":"error","enforcement":{"mode":"hard_fail"},"source_ref":"21CFR1304.11"},{"rule_id":"CS_DOSE_LOG_REQUIRED_FIELDS","severity":"error","enforcement":{"mode":"hard_fail"},"source_ref":"DEA_EMS_2026_RULE"}]},
+            "caas_ground_pack_v1": {"pack_id":"CAAS_GROUND_PACK_V1","name":"CAAS Ground Readiness v1","jurisdiction":"US_ACCREDITATION","effective_date":"2026-02-27","global_rules":[{"rule_id":"DAILY_INSPECTION_REQUIRED","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"EXPIRATION_TRACKING_REQUIRED","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"DEFICIENCY_CORRECTION_TRACKING","severity":"error","enforcement":{"mode":"hard_fail"}}]},
+            "camts_hems_pack_v1": {"pack_id":"CAMTS_HEMS_PACK_V1","name":"CAMTS HEMS Readiness v1","jurisdiction":"CAMTS_GLOBAL","effective_date":"2026-02-27","applies_to_modes":["RW","FW"],"global_rules":[{"rule_id":"CS_LOCKED_AND_LOGGED","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"EXPIRATION_CHECK_METHOD","severity":"error","enforcement":{"mode":"hard_fail"}}]},
+            "hospital_ems_pack_v1": {"pack_id":"HOSPITAL_EMS_PACK_V1","name":"Hospital-Based EMS v1","jurisdiction":"HOSPITAL_ACCREDITATION","effective_date":"2026-02-27","global_rules":[{"rule_id":"HIGH_ALERT_LIST_REQUIRED","severity":"error","enforcement":{"mode":"hard_fail"}},{"rule_id":"BARCODE_READY","severity":"warn","enforcement":{"mode":"soft"}},{"rule_id":"AUDIT_TRAIL_REQUIRED","severity":"error","enforcement":{"mode":"hard_fail"}}]}
           }
+
+          def sha256(b):
+            return hashlib.sha256(b).hexdigest()
+
+          def idempotent_put(s3, bucket, key, body_bytes):
+            try:
+              existing = s3.get_object(Bucket=bucket, Key=key)
+              if sha256(existing["Body"].read()) == sha256(body_bytes): return "unchanged"
+            except Exception: pass
+            s3.put_object(Bucket=bucket, Key=key, Body=body_bytes, ContentType="application/json")
+            return "uploaded"
 
           def send(event, context, status, data={}, reason=""):
             body = json.dumps({
@@ -661,13 +677,23 @@ Resources:
               app = os.environ["APP_NAME"]
               stage = os.environ["STAGE"]
               data = {}
-              for key, pack in PACKS.items():
-                s3_key = f"compliance/packs/{key}.json"
-                s3.put_object(Bucket=bucket, Key=s3_key,
-                  Body=json.dumps(pack).encode(), ContentType="application/json")
-                param = f"/{app}/{stage}/kitlink/packs/{key}"
-                ssm.put_parameter(Name=param, Value=s3_key, Type="String", Overwrite=True)
-                data[f"{key}Key"] = s3_key
+
+              idx_key = "compliance/packs/pack_index_v1.json"
+              idempotent_put(s3, bucket, idx_key, json.dumps(PACK_INDEX).encode())
+              ssm.put_parameter(Name=f"/{app}/{stage}/packs/index",
+                Value=f"s3://{bucket}/{idx_key}", Type="String", Overwrite=True)
+              data["IndexKey"] = idx_key
+
+              for fname, pack in PACKS.items():
+                pack_id = pack["pack_id"]
+                s3_key = f"compliance/packs/{fname}.json"
+                body_bytes = json.dumps(pack).encode()
+                st = idempotent_put(s3, bucket, s3_key, body_bytes)
+                ssm.put_parameter(Name=f"/{app}/{stage}/packs/{pack_id}",
+                  Value=f"s3://{bucket}/{s3_key}", Type="String", Overwrite=True)
+                data[f"{pack_id}Key"] = s3_key
+                data[f"{pack_id}Status"] = st
+
               send(event, context, "SUCCESS", data)
             except Exception as e:
               send(event, context, "FAILED", reason=str(e))
@@ -725,6 +751,26 @@ Outputs:
     Value: !GetAtt ComplianceSeedPackCustomResource.WI_TRANS_309_V2Key
     Export:
       Name: !Sub "${AppName}-${Stage}-wi-trans-309-v2-key"
+
+  DeaCsPackV1Key:
+    Value: !GetAtt ComplianceSeedPackCustomResource.DEA_CS_PACK_V1Key
+    Export:
+      Name: !Sub "${AppName}-${Stage}-dea-cs-pack-v1-key"
+
+  CaasGroundPackV1Key:
+    Value: !GetAtt ComplianceSeedPackCustomResource.CAAS_GROUND_PACK_V1Key
+    Export:
+      Name: !Sub "${AppName}-${Stage}-caas-ground-pack-v1-key"
+
+  CamtsHemsPackV1Key:
+    Value: !GetAtt ComplianceSeedPackCustomResource.CAMTS_HEMS_PACK_V1Key
+    Export:
+      Name: !Sub "${AppName}-${Stage}-camts-hems-pack-v1-key"
+
+  HospitalEmsPackV1Key:
+    Value: !GetAtt ComplianceSeedPackCustomResource.HOSPITAL_EMS_PACK_V1Key
+    Export:
+      Name: !Sub "${AppName}-${Stage}-hospital-ems-pack-v1-key"
 
   KitLinkLambdaExecutionRoleArn:
     Value: !GetAtt KitLinkLambdaExecutionRole.Arn

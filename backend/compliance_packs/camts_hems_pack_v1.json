@@ -1,0 +1,53 @@
+{
+  "pack_id": "CAMTS_HEMS_PACK_V1",
+  "name": "CAMTS HEMS Readiness Pack v1 (Rotor + Fixed Wing)",
+  "jurisdiction": "CAMTS_GLOBAL",
+  "effective_date": "2026-02-27",
+  "applies_to_modes": ["RW", "FW"],
+  "global_rules": [
+    {
+      "rule_id": "CS_LOCKED_AND_LOGGED",
+      "severity": "error",
+      "message": "Controlled substances must be in a locked system and logged in/out consistent with regulations and policy.",
+      "enforcement": { "mode": "hard_fail" },
+      "source_ref": "CAMTS_STD_CS_LOCK_LOG"
+    },
+    {
+      "rule_id": "EXPIRATION_CHECK_METHOD",
+      "severity": "error",
+      "message": "There must be a method to check expiration dates of medications and supplies on a regular basis.",
+      "enforcement": { "mode": "hard_fail" },
+      "source_ref": "CAMTS_STD_EXP_CHECK"
+    }
+  ],
+  "checklists": [
+    {
+      "checklist_id": "CAMTS_AIRCRAFT_MED_CHECK",
+      "title": "Aircraft Medication & Controlled Substance Check",
+      "items": [
+        { "item_id": "CS_SECURED", "label": "Controlled substances secured/locked", "type": "attestation" },
+        { "item_id": "CS_LOGGED", "label": "CS logged in/out (seal/count/waste)", "type": "system_check" },
+        { "item_id": "EXP_CLEAR", "label": "No expired meds/supplies", "type": "system_check" },
+        { "item_id": "TEMP_POLICY", "label": "Medication temperature protection policy met (if applicable)", "type": "attestation" }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "workflow_id": "CAMTS_UNUSED_CS_DISPOSAL",
+      "title": "Unused Controlled Substance Accounting & Disposal",
+      "steps": [
+        { "step": "record_unused", "label": "Record unused quantity", "required": true },
+        { "step": "dispose_method", "label": "Record manner of disposal", "required": true },
+        { "step": "witness", "label": "Witness required for disposal per policy", "required": true }
+      ]
+    }
+  ],
+  "reports": [
+    { "report_id": "CAMTS_AIRCRAFT_CHECK_LOG", "format": ["pdf"], "title": "Aircraft check log (audit-ready)" },
+    { "report_id": "CAMTS_CS_ACTIVITY", "format": ["csv", "pdf"], "title": "Controlled substance activity report" }
+  ],
+  "source_citations": [
+    { "ref": "CAMTS_GLOBAL_STANDARDS_PDF", "url": "https://www.camtsglobal.org/_files/ugd/a2daf4_58170983502e4285a760552f9cac3ac4.pdf" }
+  ]
+}
