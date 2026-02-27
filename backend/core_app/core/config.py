@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     stripe_events_table: str = Field(default="")
     tenants_table: str = Field(default="")
 
+    # GitHub integration (Founder Copilot)
+    github_token: str = Field(default="", description="GitHub PAT or Actions token for workflow dispatch")
+    github_owner: str = Field(default="", description="GitHub org or username")
+    github_repo: str = Field(default="FusionEMS-Core", description="GitHub repository name")
+
     # Observability
     otel_enabled: bool = Field(default=True)
     otel_service_name: str = Field(default="fusionems-core-backend")

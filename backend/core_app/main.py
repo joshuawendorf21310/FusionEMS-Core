@@ -94,6 +94,7 @@ from core_app.api.pricebook_router import router as pricebook_router
 from core_app.api.kitlink_router import router as kitlink_router
 from core_app.api.kitlink_compliance_router import router as kitlink_compliance_router
 from core_app.api.compliance_pack_index_router import router as compliance_pack_index_router
+from core_app.api.founder_copilot_router import router as founder_copilot_router
 
 app = FastAPI(title=settings.app_name)
 configure_otel(app)
@@ -211,6 +212,7 @@ app.include_router(pricebook_router)
 app.include_router(kitlink_router)
 app.include_router(kitlink_compliance_router)
 app.include_router(compliance_pack_index_router)
+app.include_router(founder_copilot_router)
 
 
 @app.get("/health")

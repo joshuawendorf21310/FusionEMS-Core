@@ -142,6 +142,7 @@ const NAV_DOMAINS = [
       { href: '/founder/tools/invoice-creator', label: 'Invoice Creator' },
       { href: '/founder/tools/expense-ledger', label: 'Expense Ledger' },
       { href: '/founder/tools/task-center', label: 'Task Center' },
+      { href: '/founder/copilot', label: 'Copilot Chat' },
     ],
   },
   {
