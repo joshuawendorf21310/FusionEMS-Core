@@ -236,8 +236,8 @@ export default function AgencySupportPage() {
       if (!res.ok) return;
       const data: SupportThread[] = await res.json();
       setThreads(data);
-    } catch {
-      // silent
+    } catch (err: unknown) {
+      console.warn("[support]", err);
     }
   }, []);
 
@@ -251,8 +251,8 @@ export default function AgencySupportPage() {
       if (!res.ok) return;
       const data: SupportMessage[] = await res.json();
       setMessages(data);
-    } catch {
-      // silent
+    } catch (err: unknown) {
+      console.warn("[support]", err);
     }
   }, []);
 

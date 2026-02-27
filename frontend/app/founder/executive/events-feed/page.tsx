@@ -275,8 +275,8 @@ export default function EventsFeedPage() {
       if (data.events?.length > 0) {
         latestCursorRef.current = data.events[0].created_at;
       }
-    } catch {
-      // silent
+    } catch (err: unknown) {
+      console.warn("[events-feed]", err);
     } finally {
       setLoading(false);
     }
@@ -304,8 +304,8 @@ export default function EventsFeedPage() {
         });
         latestCursorRef.current = data.events[0].created_at;
       }
-    } catch {
-      // silent
+    } catch (err: unknown) {
+      console.warn("[events-feed]", err);
     }
   }, []);
 
@@ -318,8 +318,8 @@ export default function EventsFeedPage() {
       if (!res.ok) return;
       const data: { count: number } = await res.json();
       setUnreadCount(data.count ?? 0);
-    } catch {
-      // silent
+    } catch (err: unknown) {
+      console.warn("[events-feed]", err);
     }
   }, []);
 
@@ -334,8 +334,8 @@ export default function EventsFeedPage() {
         method: 'POST',
         headers: authHeader(),
       });
-    } catch {
-      // silent
+    } catch (err: unknown) {
+      console.warn("[events-feed]", err);
     }
   }, []);
 

@@ -182,12 +182,16 @@ export default function ComplianceStudioPage() {
 
   const sendAllToAgent = async () => {
     if (!validationResult?.record_id) return;
-    await fetch('/api/v1/nemsis/studio/patch-tasks/generate-from-result', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ validation_result_id: validationResult.record_id }),
-    });
+    try {
+      await fetch('/api/v1/nemsis/studio/patch-tasks/generate-from-result', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ validation_result_id: validationResult.record_id }),
+      });
+    } catch (err: unknown) {
+      console.warn("[compliance-studio]", err);
+    }
   };
 
   const errorCount = validationResult?.issues.filter((i) => i.severity === 'error').length ?? 0;

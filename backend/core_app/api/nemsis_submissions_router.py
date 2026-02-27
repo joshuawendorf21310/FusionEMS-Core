@@ -80,48 +80,6 @@ def _upload_to_s3(content: bytes, key: str, content_type: str) -> tuple[str, str
     return bucket, key
 
 
-def _append_status_history(
-    svc: DominationService,
-    tenant_id: uuid.UUID,
-    submission_id: str,
-    chart_id: str,
-    from_status: str | None,
-    to_status: str,
-    actor: str,
-    note: str | None = None,
-    s3_bucket: str | None = None,
-    s3_key: str | None = None,
-    extra: dict | None = None,
-) -> dict:
-    import asyncio
-    entry_data: dict[str, Any] = {
-        "submission_id": submission_id,
-        "chart_id": chart_id,
-        "from_status": from_status,
-        "to_status": to_status,
-        "actor": actor,
-        "occurred_at": datetime.now(timezone.utc).isoformat(),
-    }
-    if note:
-        entry_data["note"] = note
-    if s3_bucket:
-        entry_data["s3_bucket"] = s3_bucket
-    if s3_key:
-        entry_data["s3_key"] = s3_key
-    if extra:
-        entry_data.update(extra)
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(
-        svc.create(
-            table="nemsis_submission_status_history",
-            tenant_id=tenant_id,
-            actor_user_id=None,
-            data=entry_data,
-            correlation_id=None,
-        )
-    )
-
-
 # --------------------------------------------------------------------------- #
 # POST /charts/{chart_id}/nemsis-submissions — initiate submission             #
 # --------------------------------------------------------------------------- #

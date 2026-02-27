@@ -417,8 +417,12 @@ function MarkersTab({ tenantId }: { tenantId: string }) {
   }
 
   async function resolveMarker() {
-    const r = await fetch(`${API}/ar/resolve/${resolveCode}?tenant_id=${tenantId}`);
-    setResolveResult(await r.json());
+    try {
+      const r = await fetch(`${API}/ar/resolve/${resolveCode}?tenant_id=${tenantId}`);
+      setResolveResult(await r.json());
+    } catch (err: unknown) {
+      console.warn("[kitlink]", err);
+    }
   }
 
   return (

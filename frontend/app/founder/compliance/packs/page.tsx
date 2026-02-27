@@ -106,14 +106,18 @@ export default function FounderCompliancePacksPage() {
     }
 
     addLog(`Activating packs on tenant ${tenantId}…`);
-    const r = await fetch(`${API}/tenants/${tenantId}/apply-pack-set`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ set_id: set.set_id }),
-    });
-    const result = await r.json();
-    addLog(`Done — ${result.packs_applied?.length ?? 0} packs active`);
-    addLog("compliance.tenant.packset.applied");
+    try {
+      const r = await fetch(`${API}/tenants/${tenantId}/apply-pack-set`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ set_id: set.set_id }),
+      });
+      const result = await r.json();
+      addLog(`Done — ${result.packs_applied?.length ?? 0} packs active`);
+      addLog("compliance.tenant.packset.applied");
+    } catch (err: unknown) {
+      console.warn("[compliance-packs]", err);
+    }
     setApplying(null);
     await loadTenantStatus(tenantId);
   }
@@ -121,12 +125,16 @@ export default function FounderCompliancePacksPage() {
   async function enablePack(packId: string) {
     setEnablingPack(packId);
     addLog(`Enabling ${packId}…`);
-    await fetch(`${API}/tenants/${tenantId}/enable-pack`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pack_id: packId }),
-    });
-    addLog(`${packId} enabled`);
+    try {
+      await fetch(`${API}/tenants/${tenantId}/enable-pack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pack_id: packId }),
+      });
+      addLog(`${packId} enabled`);
+    } catch (err: unknown) {
+      console.warn("[compliance-packs]", err);
+    }
     setEnablingPack(null);
     await loadTenantStatus(tenantId);
   }
@@ -134,12 +142,16 @@ export default function FounderCompliancePacksPage() {
   async function disablePack(packId: string) {
     setDisablingPack(packId);
     addLog(`Disabling ${packId}…`);
-    await fetch(`${API}/tenants/${tenantId}/disable-pack`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pack_id: packId }),
-    });
-    addLog(`${packId} disabled`);
+    try {
+      await fetch(`${API}/tenants/${tenantId}/disable-pack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pack_id: packId }),
+      });
+      addLog(`${packId} disabled`);
+    } catch (err: unknown) {
+      console.warn("[compliance-packs]", err);
+    }
     setDisablingPack(null);
     await loadTenantStatus(tenantId);
   }

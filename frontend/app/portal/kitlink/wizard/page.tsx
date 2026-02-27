@@ -243,13 +243,17 @@ function PackStep({ tenantId, stepData, setStepData }: { tenantId: string; stepD
 
   async function activate(packKey: string) {
     setActivating(packKey);
-    await fetch(`${COMPLIANCE_API}/packs/activate?tenant_id=${tenantId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pack_key: packKey, unit_profile: stepData?.unit_profile ?? "PARAMEDIC" }),
-    });
-    setPacks((prev) => prev.map((p) => ({ ...p, active: p.pack_key === packKey ? true : p.active })));
-    setStepData({ ...stepData, pack_key: packKey });
+    try {
+      await fetch(`${COMPLIANCE_API}/packs/activate?tenant_id=${tenantId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pack_key: packKey, unit_profile: stepData?.unit_profile ?? "PARAMEDIC" }),
+      });
+      setPacks((prev) => prev.map((p) => ({ ...p, active: p.pack_key === packKey ? true : p.active })));
+      setStepData({ ...stepData, pack_key: packKey });
+    } catch (err: unknown) {
+      console.warn("[wizard]", err);
+    }
     setActivating(null);
   }
 
@@ -314,13 +318,17 @@ function FormularyStep({ tenantId, stepData, setStepData }: { tenantId: string; 
   const [added, setAdded] = useState<string[]>([]);
 
   async function addItem() {
-    await fetch(`${KITLINK_API}/formulary?tenant_id=${tenantId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    setAdded((prev) => [...prev, form.name]);
-    setForm({ name: "", controlled_schedule: "", unit: "vial", is_fluid: false });
+    try {
+      await fetch(`${KITLINK_API}/formulary?tenant_id=${tenantId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      setAdded((prev) => [...prev, form.name]);
+      setForm({ name: "", controlled_schedule: "", unit: "vial", is_fluid: false });
+    } catch (err: unknown) {
+      console.warn("[wizard]", err);
+    }
   }
 
   return (
@@ -378,8 +386,12 @@ function StarterTemplatesStep({ tenantId, stepData, setStepData }: { tenantId: s
 
   async function clone(key: string) {
     setLoading(key);
-    await fetch(`${KITLINK_API}/kits/starter/${key}/clone?tenant_id=${tenantId}`, { method: "POST" });
-    setCloned((prev) => [...prev, key]);
+    try {
+      await fetch(`${KITLINK_API}/kits/starter/${key}/clone?tenant_id=${tenantId}`, { method: "POST" });
+      setCloned((prev) => [...prev, key]);
+    } catch (err: unknown) {
+      console.warn("[wizard]", err);
+    }
     setLoading(null);
   }
 

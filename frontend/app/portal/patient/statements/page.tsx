@@ -15,44 +15,6 @@ interface Statement {
   status: StatementStatus;
 }
 
-const MOCK_STATEMENTS: Statement[] = [
-  {
-    id: 'STM-2026-0041',
-    date: 'Jan 15, 2026',
-    serviceType: 'Emergency Transport — ALS Level 1',
-    totalBilled: 1240.0,
-    insurancePaid: 1065.0,
-    balance: 175.0,
-    status: 'pending',
-  },
-  {
-    id: 'STM-2025-1187',
-    date: 'Nov 3, 2025',
-    serviceType: 'Emergency Transport — BLS Non-Emergency',
-    totalBilled: 680.0,
-    insurancePaid: 680.0,
-    balance: 0.0,
-    status: 'paid',
-  },
-  {
-    id: 'STM-2025-0904',
-    date: 'Sep 18, 2025',
-    serviceType: 'Critical Care Transport — CCT',
-    totalBilled: 2850.0,
-    insurancePaid: 1890.0,
-    balance: 960.0,
-    status: 'overdue',
-  },
-  {
-    id: 'STM-2025-0712',
-    date: 'Jul 9, 2025',
-    serviceType: 'Emergency Transport — ALS Level 2',
-    totalBilled: 1560.0,
-    insurancePaid: 1345.0,
-    balance: 215.0,
-    status: 'in_review',
-  },
-];
 
 const STATUS_CONFIG: Record<
   StatementStatus,

@@ -166,8 +166,8 @@ export default function RepVerifyPage() {
       setHasError(false);
       setResendCountdown(RESEND_SECONDS);
       inputRefs.current[0]?.focus();
-    } catch {
-      // silent — user can try again
+    } catch (err: unknown) {
+      console.warn("[otp-resend]", err);
     } finally {
       setResending(false);
     }

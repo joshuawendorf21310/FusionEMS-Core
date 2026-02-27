@@ -128,8 +128,8 @@ export default function SupportInboxPage() {
       if (!res.ok) throw new Error('Failed to load threads');
       const data = await res.json();
       setThreads(Array.isArray(data) ? data : data.threads ?? []);
-    } catch {
-      // silently keep stale data on auto-refresh
+    } catch (err: unknown) {
+      console.warn("[inbox] refresh", err);
     }
   }, []);
 

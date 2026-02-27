@@ -95,34 +95,46 @@ export default function TemplatesPage() {
   }, [selectedCategory]);
 
   const handleCreate = async () => {
-    await fetch(`${API}/api/v1/templates`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName, category: newCategory, format: newFormat, content: newContent }),
-    });
-    setCreateOpen(false);
-    setNewName("");
-    setNewContent("");
+    try {
+      await fetch(`${API}/api/v1/templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName, category: newCategory, format: newFormat, content: newContent }),
+      });
+      setCreateOpen(false);
+      setNewName("");
+      setNewContent("");
     fetch(`${API}/api/v1/templates`)
       .then((r) => r.json())
       .then((d) => setTemplates(d.templates ?? []))
       .catch((e: unknown) => { console.warn("[fetch error]", e); });
+    } catch (err: unknown) {
+      console.warn("[templates]", err);
+    }
   };
 
   const handleApprove = async (id: string) => {
-    await fetch(`${API}/api/v1/templates/${id}/approve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ template_id: id, action: "approve" }),
-    });
-    setTemplates((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, data: { ...t.data, status: "approved" } } : t))
-    );
+    try {
+      await fetch(`${API}/api/v1/templates/${id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template_id: id, action: "approve" }),
+      });
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, data: { ...t.data, status: "approved" } } : t))
+      );
+    } catch (err: unknown) {
+      console.warn("[templates]", err);
+    }
   };
 
   const handleArchive = async (id: string) => {
-    await fetch(`${API}/api/v1/templates/${id}`, { method: "DELETE" });
-    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    try {
+      await fetch(`${API}/api/v1/templates/${id}`, { method: "DELETE" });
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } catch (err: unknown) {
+      console.warn("[templates]", err);
+    }
   };
 
   return (

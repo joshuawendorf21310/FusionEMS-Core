@@ -74,13 +74,17 @@ export default function FounderEmailPage() {
   useEffect(() => { load(); }, []);
 
   const openMessage = async (msg: MessageSummary) => {
-    const [detail, atts] = await Promise.all([
-      fetch(`${API}/api/v1/founder/graph/mail/${msg.id}`).then((r) => r.json()),
-      fetch(`${API}/api/v1/founder/graph/mail/${msg.id}/attachments`).then((r) => r.json()),
-    ]);
-    setSelected(detail);
-    setAttachments(atts.value ?? []);
-    setView('inbox');
+    try {
+      const [detail, atts] = await Promise.all([
+        fetch(`${API}/api/v1/founder/graph/mail/${msg.id}`).then((r) => r.json()),
+        fetch(`${API}/api/v1/founder/graph/mail/${msg.id}/attachments`).then((r) => r.json()),
+      ]);
+      setSelected(detail);
+      setAttachments(atts.value ?? []);
+      setView('inbox');
+    } catch (err: unknown) {
+      console.warn("[email]", err);
+    }
   };
 
   const sendMail = async () => {

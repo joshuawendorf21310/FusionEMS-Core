@@ -123,17 +123,41 @@ class DominationRepository:
         rows = self.db.execute(sql, {"field": field, "value": value, "limit": limit}).mappings().all()
         return [dict(r) for r in rows]
 
+    _TYPED_COLUMNS = frozenset({
+        "status", "submitted_at", "deleted_at", "legal_hold",
+        "schema_version", "sha256_submitted", "case_id",
+    })
+
     def update(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID, expected_version: int, patch: dict[str, Any]) -> dict[str, Any] | None:
-        # optimistic concurrency: update only if version matches.
-        sql = text(f"""
-            UPDATE {self.table}
-            SET data = data || CAST(:patch AS jsonb),
-                version = version + 1,
-                updated_at = now()
-            WHERE tenant_id = :tenant_id AND id = :id AND deleted_at IS NULL AND version = :expected_version
-            RETURNING id, tenant_id, data, version, created_at, updated_at
-        """)
-        row = self.db.execute(sql, {"tenant_id": str(tenant_id), "id": str(record_id), "expected_version": expected_version, "patch": json_dumps(patch)}).mappings().first()
+        typed_sets: list[str] = []
+        params: dict[str, Any] = {
+            "tenant_id": str(tenant_id),
+            "id": str(record_id),
+            "expected_version": expected_version,
+        }
+
+        jsonb_patch = {}
+        for key, val in patch.items():
+            if key in self._TYPED_COLUMNS:
+                typed_sets.append(f"{key} = :_tc_{key}")
+                params[f"_tc_{key}"] = val
+            else:
+                jsonb_patch[key] = val
+
+        set_clauses = ["version = version + 1", "updated_at = now()"]
+        if jsonb_patch:
+            set_clauses.append("data = data || CAST(:patch AS jsonb)")
+            params["patch"] = json_dumps(jsonb_patch)
+        set_clauses.extend(typed_sets)
+
+        sql = text(
+            f"UPDATE {self.table} "
+            f"SET {', '.join(set_clauses)} "
+            f"WHERE tenant_id = :tenant_id AND id = :id "
+            f"AND deleted_at IS NULL AND version = :expected_version "
+            f"RETURNING id, tenant_id, data, version, created_at, updated_at"
+        )
+        row = self.db.execute(sql, params).mappings().first()
         return dict(row) if row else None
 
     def soft_delete(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID) -> bool:

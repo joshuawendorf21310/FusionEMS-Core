@@ -116,6 +116,13 @@ REQUIRED_ENDPOINTS = [
     "/api/v1/billing-command/dashboard",
     "/api/v1/roi-funnel/roi-estimate",
     "/api/v1/system-health/services",
+    # NEMSIS state submissions
+    "/api/v1/epcr/charts/{}/nemsis-submissions",       # POST + GET
+    "/api/v1/epcr/nemsis-submissions/{}",               # GET
+    "/api/v1/epcr/nemsis-submissions/{}/acknowledge",   # POST
+    "/api/v1/epcr/nemsis-submissions/{}/accept",        # POST
+    "/api/v1/epcr/nemsis-submissions/{}/reject",        # POST
+    "/api/v1/epcr/nemsis-submissions/{}/retry",         # POST
 ]
 
 

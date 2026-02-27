@@ -87,11 +87,15 @@ export default function SystemHealthPage() {
   const resColor = resScore >= 90 ? "#4caf50" : resScore >= 80 ? "#8bc34a" : resScore >= 70 ? "#ff9800" : "#e53935";
 
   const handleResolveAlert = async (id: string) => {
-    await fetch(`${API}/api/v1/system-health/alerts/${id}/resolve`, { method: "POST" });
-    setAlerts(prev => ({
-      ...prev,
-      alerts: prev.alerts?.map(a => a.id === id ? { ...a, data: { ...(a.data as Record<string,unknown>), status: "resolved" } } : a),
-    }));
+    try {
+      await fetch(`${API}/api/v1/system-health/alerts/${id}/resolve`, { method: "POST" });
+      setAlerts(prev => ({
+        ...prev,
+        alerts: prev.alerts?.map(a => a.id === id ? { ...a, data: { ...(a.data as Record<string,unknown>), status: "resolved" } } : a),
+      }));
+    } catch (err: unknown) {
+      console.warn("[system-health]", err);
+    }
   };
 
   return (

@@ -233,42 +233,46 @@ export default function VisibilityRuleMakerPage() {
   }, []);
 
   const loadDashboard = useCallback(async () => {
-    const [dash, r, vm, mg, phi, rm, ks, as_, hm, er, al, an, ap, cl, tw, ea, pol] = await Promise.all([
-      api("/api/v1/visibility/dashboard"),
-      api("/api/v1/visibility/rules"),
-      api("/api/v1/visibility/view-modes"),
-      api("/api/v1/visibility/module-gates"),
-      api("/api/v1/visibility/phi-fields"),
-      api("/api/v1/visibility/role-matrix"),
-      api("/api/v1/visibility/kill-switch/status"),
-      api("/api/v1/visibility/access-score"),
-      api("/api/v1/visibility/heatmap"),
-      api("/api/v1/visibility/endpoint-restrictions"),
-      api("/api/v1/visibility/access-alerts"),
-      api("/api/v1/visibility/anomaly-events"),
-      api("/api/v1/visibility/approval-requests"),
-      api("/api/v1/visibility/compliance-lock/status"),
-      api("/api/v1/visibility/time-windows"),
-      api("/api/v1/visibility/elevated-access"),
-      api("/api/v1/visibility/policies"),
-    ]);
-    if (dash) setDashboard(dash);
-    if (Array.isArray(r)) setRules(r);
-    if (vm) setViewModes(vm);
-    if (mg) setModuleGates(mg);
-    if (phi) setPhiFields(phi);
-    if (rm) setRoleMatrix(rm);
-    if (ks) setKillSwitchStatus(ks);
-    if (as_) setAccessScore(as_);
-    if (hm) setHeatmap(hm);
-    if (er) setEndpointRestrictions(er);
-    if (Array.isArray(al)) setAlerts(al);
-    if (Array.isArray(an)) setAnomalyEvents(an);
-    if (Array.isArray(ap)) setApprovals(ap);
-    if (cl) setComplianceLocks(cl.locks || []);
-    if (Array.isArray(tw)) setTimeWindows(tw);
-    if (Array.isArray(ea)) setElevatedAccess(ea);
-    if (Array.isArray(pol)) setPolicies(pol);
+    try {
+      const [dash, r, vm, mg, phi, rm, ks, as_, hm, er, al, an, ap, cl, tw, ea, pol] = await Promise.all([
+        api("/api/v1/visibility/dashboard"),
+        api("/api/v1/visibility/rules"),
+        api("/api/v1/visibility/view-modes"),
+        api("/api/v1/visibility/module-gates"),
+        api("/api/v1/visibility/phi-fields"),
+        api("/api/v1/visibility/role-matrix"),
+        api("/api/v1/visibility/kill-switch/status"),
+        api("/api/v1/visibility/access-score"),
+        api("/api/v1/visibility/heatmap"),
+        api("/api/v1/visibility/endpoint-restrictions"),
+        api("/api/v1/visibility/access-alerts"),
+        api("/api/v1/visibility/anomaly-events"),
+        api("/api/v1/visibility/approval-requests"),
+        api("/api/v1/visibility/compliance-lock/status"),
+        api("/api/v1/visibility/time-windows"),
+        api("/api/v1/visibility/elevated-access"),
+        api("/api/v1/visibility/policies"),
+      ]);
+      if (dash) setDashboard(dash);
+      if (Array.isArray(r)) setRules(r);
+      if (vm) setViewModes(vm);
+      if (mg) setModuleGates(mg);
+      if (phi) setPhiFields(phi);
+      if (rm) setRoleMatrix(rm);
+      if (ks) setKillSwitchStatus(ks);
+      if (as_) setAccessScore(as_);
+      if (hm) setHeatmap(hm);
+      if (er) setEndpointRestrictions(er);
+      if (Array.isArray(al)) setAlerts(al);
+      if (Array.isArray(an)) setAnomalyEvents(an);
+      if (Array.isArray(ap)) setApprovals(ap);
+      if (cl) setComplianceLocks(cl.locks || []);
+      if (Array.isArray(tw)) setTimeWindows(tw);
+      if (Array.isArray(ea)) setElevatedAccess(ea);
+      if (Array.isArray(pol)) setPolicies(pol);
+    } catch (err: unknown) {
+      console.warn("[visibility]", err);
+    }
   }, [api]);
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
