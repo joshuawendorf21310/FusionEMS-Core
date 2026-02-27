@@ -18,6 +18,9 @@ const NAV_LINKS = [
   { href: '/portal/cases', label: 'Cases' },
   { href: '/portal/hems', label: 'HEMS Pilot' },
   { href: '/portal/fleet', label: 'Fleet Intelligence' },
+  { href: '/portal/scheduling', label: 'Scheduling' },
+  { href: '/portal/billing-ops', label: 'Billing Ops' },
+  { href: '/portal/trip', label: 'TRIP (WI)' },
 ];
 
 function TopBar() {

@@ -51,6 +51,9 @@ TENANT_TABLES: set[str] = {
     "support_threads","support_messages","support_escalations",
     "platform_events","event_reads","onboarding_idempotency_keys",
     "cases","cms_gate_results","hems_acceptance_records","hems_weather_briefs","hems_risk_audits","aircraft_readiness_events","maintenance_work_orders","inspection_templates","inspection_instances","readiness_scores","ai_scheduling_drafts",
+    "ar_accounts","ar_charges","ar_payments","ar_payment_plans","ar_disputes","ar_statements","collections_vendor_profiles","collections_placements","collections_status_updates","collections_settings",
+    "trip_settings","trip_debts","trip_exports","trip_reject_imports","trip_postings",
+    "pricebooks","pricebook_items","ledger_entries","usage_events","tenant_billing_config","billing_runs","stripe_bootstrap_log","entitlements",
 }
 
 

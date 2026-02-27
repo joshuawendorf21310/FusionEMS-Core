@@ -87,6 +87,9 @@ from core_app.api.cases_router import router as cases_router
 from core_app.api.cms_gate_router import router as cms_gate_router
 from core_app.api.hems_router import router as hems_router
 from core_app.api.fleet_intelligence_router import router as fleet_intelligence_router
+from core_app.api.ar_router import router as ar_router
+from core_app.api.trip_router import router as trip_router
+from core_app.api.pricebook_router import router as pricebook_router
 
 app = FastAPI(title=settings.app_name)
 configure_otel(app)
@@ -197,6 +200,9 @@ app.include_router(cases_router)
 app.include_router(cms_gate_router)
 app.include_router(hems_router)
 app.include_router(fleet_intelligence_router)
+app.include_router(ar_router)
+app.include_router(trip_router)
+app.include_router(pricebook_router)
 
 
 @app.get("/health")

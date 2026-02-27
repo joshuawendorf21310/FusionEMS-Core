@@ -156,6 +156,16 @@ const NAV_DOMAINS = [
       { href: '/founder/ops/scheduling-ai', label: 'AI Scheduling Studio' },
     ],
   },
+  {
+    id: 'pricing',
+    label: '13 · Pricing',
+    icon: '◈',
+    color: '#ff6b1a',
+    links: [
+      { href: '/founder/pricing/studio', label: 'Pricing Studio' },
+      { href: '/founder/revenue/stripe', label: 'Stripe Dashboard' },
+    ],
+  },
 ];
 
 function SidebarSection({
