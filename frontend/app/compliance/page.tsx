@@ -20,8 +20,6 @@ interface ComplianceItem {
 type TabKey = 'nemsis' | 'hipaa' | 'pcr' | 'billing' | 'accreditation';
 
 // ─── Static compliance data ───────────────────────────────────────────────────
-// TODO: replace staticData[tab] with await fetchComplianceItems(tab) when API is ready
-
 const STATIC_DATA: Record<TabKey, ComplianceItem[]> = {
   nemsis: [
     {
