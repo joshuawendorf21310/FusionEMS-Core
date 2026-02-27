@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
-from core_app.neris.pack_manager import NERISPackManager
 from core_app.neris.validator import NERISValidator
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService

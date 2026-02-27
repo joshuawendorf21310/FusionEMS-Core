@@ -3,16 +3,13 @@ from __future__ import annotations
 import hashlib
 import hmac
 import io
-import json
 import time
-import uuid
 from dataclasses import dataclass
 from typing import Any
 
 import requests
 
 from core_app.core.config import get_settings
-from core_app.core.logging import configure_logging
 import logging
 
 logger = logging.getLogger(__name__)

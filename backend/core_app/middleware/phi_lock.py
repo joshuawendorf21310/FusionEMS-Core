@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Any
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware

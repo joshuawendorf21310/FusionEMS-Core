@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
 import uuid
 from typing import Any
 
@@ -27,7 +25,6 @@ def _validator(db: Session, current: CurrentUser) -> NERISValidator:
 
 
 def _enqueue_pack_compile(pack_id: str, tenant_id: str, actor_user_id: str) -> None:
-    import os
     import json
     import boto3
     queue_url = get_settings().neris_pack_compile_queue_url

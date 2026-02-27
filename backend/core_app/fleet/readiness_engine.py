@@ -6,7 +6,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from core_app.repositories.domination_repository import DominationRepository
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import EventPublisher
 

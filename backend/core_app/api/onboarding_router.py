@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -15,7 +13,6 @@ from core_app.api.dependencies import db_session_dependency
 from core_app.core.config import get_settings
 from core_app.onboarding.legal_service import LegalService
 from core_app.roi.engine import compute_roi, hash_outputs
-from core_app.payments.stripe_service import StripeConfig
 from core_app.services.event_publisher import get_event_publisher
 
 try:

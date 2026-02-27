@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.builders.claim_packet_generator import ClaimPacketGenerator
-from core_app.core.config import get_settings
 from core_app.documents.s3_storage import put_bytes, presign_get, default_docs_bucket
 from core_app.repositories.domination_repository import DominationRepository
 from core_app.schemas.auth import CurrentUser

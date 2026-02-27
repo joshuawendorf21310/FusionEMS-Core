@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
-from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

@@ -16,7 +16,7 @@ from core_app.billing.artifacts import store_edi_artifact
 from core_app.core.config import get_settings
 from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
 from core_app.integrations.officeally import OfficeAllySftpConfig, submit_837_via_sftp, OfficeAllyClientError
-from core_app.payments.stripe_service import StripeConfig, create_patient_checkout_session, verify_webhook_signature, StripeNotConfigured
+from core_app.payments.stripe_service import StripeConfig, create_patient_checkout_session, StripeNotConfigured
 from core_app.fax.telnyx_service import TelnyxConfig, send_sms, TelnyxNotConfigured
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService

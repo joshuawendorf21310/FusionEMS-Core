@@ -6,7 +6,6 @@ import secrets
 import string
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel

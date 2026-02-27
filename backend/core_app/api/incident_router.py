@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core_app.api.dependencies import get_current_user, require_role
+from core_app.api.dependencies import require_role
 from core_app.db.session import get_async_db_session
 from core_app.schemas.auth import CurrentUser
 from core_app.schemas.incident import (

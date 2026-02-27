@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 from core_app.services.event_publisher import EventPublisher
 

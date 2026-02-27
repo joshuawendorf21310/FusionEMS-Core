@@ -4,7 +4,6 @@ import json
 import hashlib
 import time
 from datetime import datetime, timezone
-from functools import lru_cache
 from typing import Any
 
 import boto3

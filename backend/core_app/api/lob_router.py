@@ -29,7 +29,6 @@ async def send_html_statement_letter(
     which generates a branded PDF with audit footer.
     """
     import requests as _requests
-    from core_app.core.config import get_settings
 
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)

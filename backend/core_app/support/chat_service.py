@@ -1,7 +1,6 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from core_app.services.domination_service import DominationService
 from core_app.ai.service import AiService
@@ -48,7 +47,6 @@ class ChatService:
         attachments: list = None,
         sender_role: str = "agency",
     ) -> dict:
-        from sqlalchemy import text
 
         msg = await self.svc.create(
             table="support_messages",

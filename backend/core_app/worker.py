@@ -103,7 +103,7 @@ async def _dlq_processing_loop(stop: asyncio.Event) -> None:
         try:
             from core_app.db.session import get_db_session
             from core_app.services.domination_service import DominationService
-            from core_app.services.event_publisher import get_event_publisher, NoOpEventPublisher
+            from core_app.services.event_publisher import NoOpEventPublisher
             from core_app.services.webhook_dlq import process_dlq_batch
 
             with get_db_session() as db:

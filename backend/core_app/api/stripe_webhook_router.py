@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
-import os
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 import stripe
 from fastapi import APIRouter, Header, HTTPException, Request, Depends
@@ -13,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency
 from core_app.core.config import get_settings
-from core_app.payments.stripe_service import StripeConfig, StripeNotConfigured, verify_webhook_signature
+from core_app.payments.stripe_service import StripeConfig, verify_webhook_signature
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
 from core_app.services.sqs_publisher import enqueue

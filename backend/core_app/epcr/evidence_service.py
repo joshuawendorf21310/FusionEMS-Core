@@ -5,7 +5,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-import boto3
 
 from core_app.documents.s3_storage import put_bytes, presign_get
 

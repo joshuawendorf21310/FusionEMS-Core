@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -12,7 +11,7 @@ from core_app.api.dependencies import db_session_dependency, get_current_user, r
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
+from core_app.billing.ar_aging import compute_revenue_forecast
 
 router = APIRouter(prefix="/api/v1/billing-command", tags=["Billing Command Center"])
 

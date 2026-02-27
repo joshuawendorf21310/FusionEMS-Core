@@ -1,7 +1,5 @@
 from __future__ import annotations
-import hashlib, io, json
-from datetime import datetime, timezone
-from typing import Any
+import hashlib, io
 
 try:
     from pyhanko.sign import signers, fields
@@ -76,7 +74,6 @@ class PDFSealer:
 
     def _attempt_pyhanko_seal(self, pdf_bytes: bytes, signer_name: str, signer_email: str) -> bytes:
         import tempfile, os
-        from pyhanko.pdf_utils.reader import PdfFileReader
         from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
         from pyhanko.sign import signers as ph_signers
         from pyhanko.sign.fields import append_signature_field, SigFieldSpec

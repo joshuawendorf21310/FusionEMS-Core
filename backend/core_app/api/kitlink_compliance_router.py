@@ -1,6 +1,5 @@
 from __future__ import annotations
 import uuid
-import json
 from datetime import datetime, timezone
 from typing import Any
 

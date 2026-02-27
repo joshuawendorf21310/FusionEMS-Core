@@ -68,7 +68,6 @@ def process_fax_match(message: dict) -> None:
     if s3_key and bucket:
         qr_payload = _try_decode_qr_from_pdf(bucket=bucket, s3_key=s3_key)
 
-    from core_app.fax.claim_matcher import ClaimMatcher
 
     if qr_payload:
         logger.info("fax_match_qr_decoded fax_id=%s payload_claim_id=%s correlation_id=%s", fax_id, qr_payload.get("claim_id"), correlation_id)
@@ -163,7 +162,6 @@ def _try_decode_qr_from_pdf(*, bucket: str, s3_key: str) -> dict | None:
         logger.debug("fax_match_fitz_unavailable error=%s — using raw pdf bytes", exc)
 
     try:
-        import io as _io
         from core_app.fax.claim_matcher import ClaimMatcher
 
         class _FakeMatcher(ClaimMatcher):
@@ -186,7 +184,6 @@ def _match_by_qr(
     if not database_url:
         return None
     try:
-        import psycopg
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
         engine = create_engine(database_url, pool_pre_ping=True)
@@ -197,7 +194,6 @@ def _match_by_qr(
             matcher = ClaimMatcher(db, tenant_id)
             result = matcher.match_claim_by_qr(qr_payload)
             if result:
-                import uuid
                 claim_id = str(result.get("id", ""))
                 matcher.attach_to_claim(fax_id, claim_id, "qr_match", actor="auto_qr")
                 return {"claim_id": claim_id}

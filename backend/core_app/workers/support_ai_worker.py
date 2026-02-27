@@ -7,10 +7,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import text
 
 from core_app.ai.service import AiService
-from core_app.support.chat_service import ChatService, ESCALATION_TRIGGERS
+from core_app.support.chat_service import ESCALATION_TRIGGERS
 
 logger = logging.getLogger(__name__)
 

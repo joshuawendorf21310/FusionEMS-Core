@@ -7,10 +7,8 @@ import zipfile
 from datetime import datetime, timezone
 from typing import Any
 
-import boto3
 
 from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
-from core_app.neris.validator import NERISValidator
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import EventPublisher
 

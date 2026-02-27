@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import uuid
 import hashlib
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Query
-from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role

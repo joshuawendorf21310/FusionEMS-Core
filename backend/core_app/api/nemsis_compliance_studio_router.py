@@ -4,14 +4,13 @@ import base64
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from core_app.ai.service import AiService
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import db_session_dependency, require_role
 from core_app.compliance.nemsis_xml_generator import build_nemsis_document
 from core_app.nemsis.cs_scenario_parser import CandSParser
 from core_app.nemsis.pack_manager import PackManager

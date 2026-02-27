@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text

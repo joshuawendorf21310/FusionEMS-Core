@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import io
 import math
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
