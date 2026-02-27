@@ -146,6 +146,10 @@ jobs:
         id: env_coverage
         run: python scripts/scan_env_coverage.py 2>&1 | tee reports/env_coverage.txt
 
+      - name: Route matrix + endpoint coverage + HEMS gate
+        id: route_matrix_gate
+        run: python scripts/ci_gate_route_matrix.py 2>&1 | tee reports/route_matrix_gate.txt
+
       # ── Report back to Founder Copilot (if triggered from dashboard) ───────
       - name: Post gate results to Founder Copilot
         if: ${{ inputs.run_id != '' }}
@@ -167,6 +171,7 @@ jobs:
               "cfn_validate": "${{ steps.cfn_validate.outcome }}",
               "placeholder_scan": "${{ steps.placeholder_scan.outcome }}",
               "env_coverage": "${{ steps.env_coverage.outcome }}",
+              "route_matrix_gate": "${{ steps.route_matrix_gate.outcome }}",
           }
           results = {k: (v == "success") for k, v in steps.items()}
           print(json.dumps(results))
