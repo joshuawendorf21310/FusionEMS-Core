@@ -99,6 +99,10 @@ Parameters:
     Type: String
     Default: ''
     Description: S3 bucket name for agency documents (docs bucket)
+  S3BucketExports:
+    Type: String
+    Default: ''
+    Description: S3 bucket name for exports
   SystemTenantId:
     Type: String
     Default: ''
@@ -520,6 +524,8 @@ Resources:
               Value: !Ref GraphClientSecret
             - Name: GRAPH_FOUNDER_EMAIL
               Value: !Ref GraphFounderEmail
+            - Name: S3_BUCKET_EXPORTS
+              Value: !Ref S3BucketExports
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub '${DbSecretArn}'
@@ -589,8 +595,56 @@ Resources:
               Value: cognito
             - Name: COGNITO_USER_POOL_ID
               Value: !Ref CognitoUserPoolId
+            - Name: COGNITO_APP_CLIENT_ID
+              Value: !Ref CognitoClientId
+            - Name: COGNITO_REGION
+              Value: !Ref AWS::Region
             - Name: REDIS_URL
               Value: !Sub 'rediss://${RedisPrimaryEndpoint}:6379/0'
+            - Name: OPA_URL
+              Value: 'http://localhost:8181'
+            - Name: OTEL_ENABLED
+              Value: 'true'
+            - Name: OTEL_SERVICE_NAME
+              Value: !Sub '${AppName}-worker'
+            - Name: OTEL_EXPORTER_OTLP_ENDPOINT
+              Value: 'http://localhost:4317'
+            - Name: FAX_CLASSIFY_QUEUE_URL
+              Value: !Ref FaxClassifyQueueUrl
+            - Name: FAX_MATCH_QUEUE_URL
+              Value: !Ref FaxMatchQueueUrl
+            - Name: SUPPORT_AI_QUEUE_URL
+              Value: !Ref SupportAIQueueUrl
+            - Name: EDI_GENERATE_QUEUE_URL
+              Value: !Ref EdiGenerateQueueUrl
+            - Name: PDF_DOC_KIT_QUEUE_URL
+              Value: !Ref PdfDocKitQueueUrl
+            - Name: PDF_CLAIM_PACKET_QUEUE_URL
+              Value: !Ref PdfClaimPacketQueueUrl
+            - Name: LEGAL_PDF_QUEUE_URL
+              Value: !Ref LegalPdfQueueUrl
+            - Name: INTERNAL_WORKER_SECRET
+              Value: !Ref InternalWorkerSecret
+            - Name: NERIS_PACK_IMPORT_QUEUE_URL
+              Value: !Ref NERISPackImportQueueUrl
+            - Name: NERIS_PACK_COMPILE_QUEUE_URL
+              Value: !Ref NERISPackCompileQueueUrl
+            - Name: NERIS_EXPORT_QUEUE_URL
+              Value: !Ref NERISExportQueueUrl
+            - Name: S3_BUCKET_DOCS
+              Value: !Ref S3BucketDocs
+            - Name: S3_BUCKET_EXPORTS
+              Value: !Ref S3BucketExports
+            - Name: SYSTEM_TENANT_ID
+              Value: !Ref SystemTenantId
+            - Name: GRAPH_TENANT_ID
+              Value: !Ref GraphTenantId
+            - Name: GRAPH_CLIENT_ID
+              Value: !Ref GraphClientId
+            - Name: GRAPH_CLIENT_SECRET
+              Value: !Ref GraphClientSecret
+            - Name: GRAPH_FOUNDER_EMAIL
+              Value: !Ref GraphFounderEmail
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub '${DbSecretArn}'

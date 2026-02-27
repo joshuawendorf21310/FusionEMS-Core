@@ -526,6 +526,40 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmDescription: Stripe events landing in DLQ — investigate worker errors
 
+  # ── SQS: fax-classify worker ──────────────────────────────────────────────
+  FaxClassifyDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-fax-classify-dlq'
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  FaxClassifyQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-fax-classify'
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt FaxClassifyDLQ.Arn
+        maxReceiveCount: 3
+
+  FaxClassifyDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-fax-classify-dlq-depth'
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt FaxClassifyDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmDescription: Fax classify jobs landing in DLQ
+
   # ── SQS: fax-match worker ─────────────────────────────────────────────────
   FaxMatchDLQ:
     Type: AWS::SQS::Queue
@@ -1099,3 +1133,8 @@ Outputs:
     Value: !Ref TripPostingImportQueue
     Export:
       Name: !Sub '${AppName}-${Env}-TripPostingImportQueueUrl'
+
+  FaxClassifyQueueUrl:
+    Value: !Ref FaxClassifyQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-FaxClassifyQueueUrl'

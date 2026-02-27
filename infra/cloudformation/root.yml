@@ -175,6 +175,26 @@ Resources:
       Protocol: email
       Endpoint: !Ref AlertEmail
 
+  BillingStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - DataStack
+      - NetworkStack
+    Properties:
+      TemplateURL: billing.yml
+      Parameters:
+        Env: !Ref Env
+        AppName: !Ref AppName
+        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
+        LambdaSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
+        LambdaSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
+        LambdaCodeS3Bucket: !Ref NestedTemplatesBucket
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+        - Key: Application
+          Value: !Ref AppName
+
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
@@ -182,6 +202,7 @@ Resources:
       - CognitoStack
       - S3Stack
       - WafStack
+      - BillingStack
     Properties:
       TemplateURL: compute.yml
       Parameters:
@@ -203,6 +224,18 @@ Resources:
         DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId
         RedisClusterId: !GetAtt DataStack.Outputs.RedisReplicationGroupId
         AlertTopicArn: !Ref AlertTopic
+        FaxClassifyQueueUrl: !GetAtt BillingStack.Outputs.FaxClassifyQueueUrl
+        FaxMatchQueueUrl: !GetAtt BillingStack.Outputs.FaxMatchQueueUrl
+        SupportAIQueueUrl: !GetAtt BillingStack.Outputs.SupportAIQueueUrl
+        EdiGenerateQueueUrl: !GetAtt BillingStack.Outputs.EdiGenerateQueueUrl
+        PdfDocKitQueueUrl: !GetAtt BillingStack.Outputs.PdfDocKitQueueUrl
+        PdfClaimPacketQueueUrl: !GetAtt BillingStack.Outputs.PdfClaimPacketQueueUrl
+        LegalPdfQueueUrl: !GetAtt BillingStack.Outputs.LegalPdfQueueUrl
+        NERISPackImportQueueUrl: !GetAtt BillingStack.Outputs.NERISPackImportQueueUrl
+        NERISPackCompileQueueUrl: !GetAtt BillingStack.Outputs.NERISPackCompileQueueUrl
+        NERISExportQueueUrl: !GetAtt BillingStack.Outputs.NERISExportQueueUrl
+        S3BucketDocs: !GetAtt S3Stack.Outputs.DocsBucketName
+        S3BucketExports: !GetAtt S3Stack.Outputs.ExportsBucketName
       Tags:
         - Key: Environment
           Value: !Ref Env

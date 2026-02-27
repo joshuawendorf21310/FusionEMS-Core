@@ -108,7 +108,13 @@ async def _dlq_processing_loop(stop: asyncio.Event) -> None:
 
             with get_db_session() as db:
                 svc = DominationService(db, NoOpEventPublisher())
-                processed = await process_dlq_batch(handlers={}, svc=svc, tenant_id=__import__("uuid").UUID(int=0))
+                from core_app.api.lob_webhook_router import handle_lob_event
+                from core_app.api.stripe_webhook_router import handle_stripe_event
+                dlq_handlers = {
+                    "lob": handle_lob_event,
+                    "stripe": handle_stripe_event,
+                }
+                processed = await process_dlq_batch(handlers=dlq_handlers, svc=svc, tenant_id=__import__("uuid").UUID(int=0))
                 if processed:
                     logger.info("DLQ processed %d items", processed)
         except Exception as e:
