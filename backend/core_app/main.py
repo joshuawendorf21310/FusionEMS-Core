@@ -60,6 +60,7 @@ from core_app.api.fax_webhook_router import router as fax_webhook_router
 from core_app.api.payments_router import router as payments_router
 from core_app.api.visibility_router import router as visibility_router
 from core_app.api.nemsis_manager_router import router as nemsis_manager_router
+from core_app.api.voice_advanced_router import router as voice_advanced_router
 from core_app.api.template_router import router as template_router
 from core_app.api.billing_command_router import router as billing_command_router
 from core_app.api.roi_funnel_router import router as roi_funnel_router
@@ -149,8 +150,9 @@ app.include_router(roi_funnel_router)
 app.include_router(mobile_ops_router)
 app.include_router(system_health_router)
 app.include_router(export_status_router)
-app.include_router(visibility_router, prefix="/api/v1")
-app.include_router(nemsis_manager_router, prefix="/api/v1")
+app.include_router(visibility_router)
+app.include_router(voice_advanced_router)
+app.include_router(nemsis_manager_router)
 
 
 @app.get("/health")
