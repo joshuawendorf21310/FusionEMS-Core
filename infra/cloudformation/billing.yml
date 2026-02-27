@@ -526,6 +526,171 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmDescription: Stripe events landing in DLQ — investigate worker errors
 
+  # ── SQS: fax-match worker ─────────────────────────────────────────────────
+  FaxMatchDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-fax-match-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  FaxMatchQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-fax-match.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt FaxMatchDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: support-ai worker ───────────────────────────────────────────────
+  SupportAIDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-support-ai-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  SupportAIQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-support-ai.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SupportAIDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: edi-generate worker ─────────────────────────────────────────────
+  EdiGenerateDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-edi-generate-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  EdiGenerateQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-edi-generate.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt EdiGenerateDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: pdf-doc-kit worker ──────────────────────────────────────────────
+  PdfDocKitDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-pdf-doc-kit-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  PdfDocKitQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-pdf-doc-kit.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PdfDocKitDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: pdf-claim-packet worker ────────────────────────────────────────
+  PdfClaimPacketDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-pdf-claim-packet-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  PdfClaimPacketQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-pdf-claim-packet.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PdfClaimPacketDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: legal-pdf worker ───────────────────────────────────────────────
+  LegalPdfDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-legal-pdf-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  LegalPdfQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-legal-pdf.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt LegalPdfDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS DLQ alarms for new queues ─────────────────────────────────────────
+  FaxMatchDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-fax-match-dlq-depth'
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt FaxMatchDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmDescription: Fax match jobs landing in DLQ
+
+  SupportAIDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-support-ai-dlq-depth'
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt SupportAIDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmDescription: Support AI jobs landing in DLQ
+
 # ─────────────────────────────────────────────────────────────────────────────
 Outputs:
 
@@ -568,3 +733,33 @@ Outputs:
     Value: !GetAtt StripeWebhookEndpoint.EndpointId
     Export:
       Name: !Sub '${AppName}-${Env}-StripeWebhookEndpointId'
+
+  FaxMatchQueueUrl:
+    Value: !Ref FaxMatchQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-FaxMatchQueueUrl'
+
+  SupportAIQueueUrl:
+    Value: !Ref SupportAIQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-SupportAIQueueUrl'
+
+  EdiGenerateQueueUrl:
+    Value: !Ref EdiGenerateQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-EdiGenerateQueueUrl'
+
+  PdfDocKitQueueUrl:
+    Value: !Ref PdfDocKitQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-PdfDocKitQueueUrl'
+
+  PdfClaimPacketQueueUrl:
+    Value: !Ref PdfClaimPacketQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-PdfClaimPacketQueueUrl'
+
+  LegalPdfQueueUrl:
+    Value: !Ref LegalPdfQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-LegalPdfQueueUrl'

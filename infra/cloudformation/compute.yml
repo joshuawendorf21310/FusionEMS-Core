@@ -54,6 +54,30 @@ Parameters:
     Type: String
     Default: ''
     Description: SQS queue URL for fax classification worker
+  FaxMatchQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for fax-match worker
+  SupportAIQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for support AI worker
+  EdiGenerateQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for EDI generate worker
+  PdfDocKitQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for PDF doc kit worker
+  PdfClaimPacketQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for PDF claim packet worker
+  LegalPdfQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for legal PDF sealing worker
 
 Conditions:
   IsProd: !Equals [!Ref Env, 'prod']
@@ -237,6 +261,12 @@ Resources:
                   - sqs:SendMessage
                 Resource:
                   - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-fax-classify'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-fax-match.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-support-ai.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-edi-generate.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-pdf-doc-kit.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-pdf-claim-packet.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-legal-pdf.fifo'
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -413,6 +443,18 @@ Resources:
               Value: !Ref IvrAudioBaseUrl
             - Name: FAX_CLASSIFY_QUEUE_URL
               Value: !Ref FaxClassifyQueueUrl
+            - Name: FAX_MATCH_QUEUE_URL
+              Value: !Ref FaxMatchQueueUrl
+            - Name: SUPPORT_AI_QUEUE_URL
+              Value: !Ref SupportAIQueueUrl
+            - Name: EDI_GENERATE_QUEUE_URL
+              Value: !Ref EdiGenerateQueueUrl
+            - Name: PDF_DOC_KIT_QUEUE_URL
+              Value: !Ref PdfDocKitQueueUrl
+            - Name: PDF_CLAIM_PACKET_QUEUE_URL
+              Value: !Ref PdfClaimPacketQueueUrl
+            - Name: LEGAL_PDF_QUEUE_URL
+              Value: !Ref LegalPdfQueueUrl
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub '${DbSecretArn}'
