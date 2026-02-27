@@ -112,10 +112,10 @@ async def rollback_pwa(
     updated = await svc.update(
         table="pwa_deployments",
         tenant_id=current.tenant_id,
-        entity_id=deployment["id"],
+        record_id=deployment["id"],
         actor_user_id=current.user_id,
         expected_version=deployment.get("version", 1),
-        data_patch={"status": "rolled_back", "rolled_back_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "rolled_back", "rolled_back_at": datetime.now(timezone.utc).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -185,10 +185,10 @@ async def remote_logout(
     updated = await svc.update(
         table="device_registrations",
         tenant_id=current.tenant_id,
-        entity_id=target["id"],
+        record_id=target["id"],
         actor_user_id=current.user_id,
         expected_version=target.get("version", 1),
-        data_patch={"status": "logged_out", "logged_out_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "logged_out", "logged_out_at": datetime.now(timezone.utc).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -210,10 +210,10 @@ async def secure_wipe(
     updated = await svc.update(
         table="device_registrations",
         tenant_id=current.tenant_id,
-        entity_id=target["id"],
+        record_id=target["id"],
         actor_user_id=current.user_id,
         expected_version=target.get("version", 1),
-        data_patch={"status": "wiped", "wiped_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "wiped", "wiped_at": datetime.now(timezone.utc).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -297,10 +297,10 @@ async def approve_shift_swap(
     updated = await svc.update(
         table="shift_swaps",
         tenant_id=current.tenant_id,
-        entity_id=swap["id"],
+        record_id=swap["id"],
         actor_user_id=current.user_id,
         expected_version=swap.get("version", 1),
-        data_patch={"status": "approved", "approved_by": str(current.user_id), "approved_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "approved", "approved_by": str(current.user_id), "approved_at": datetime.now(timezone.utc).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated

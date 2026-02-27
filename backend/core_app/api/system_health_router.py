@@ -171,10 +171,10 @@ async def resolve_alert(
     updated = await svc.update(
         table="system_alerts",
         tenant_id=current.tenant_id,
-        entity_id=alert["id"],
+        record_id=alert["id"],
         actor_user_id=current.user_id,
         expected_version=alert.get("version", 1),
-        data_patch={"status": "resolved", "resolved_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "resolved", "resolved_at": datetime.now(timezone.utc).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated

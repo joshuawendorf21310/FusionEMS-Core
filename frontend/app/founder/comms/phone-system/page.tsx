@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function PageHeader() {
@@ -276,7 +276,24 @@ export default function PhoneSystemPage() {
   const [catFilter, setCatFilter] = useState<FilterCat>('all');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'modules' | 'queue' | 'flow' | 'analytics'>('modules');
+  const [activeTab, setActiveTab] = useState<'modules' | 'queue' | 'flow' | 'analytics' | 'advanced'>('modules');
+  const [advDashboard, setAdvDashboard] = useState<Record<string, unknown> | null>(null);
+  const [reviewQueue, setReviewQueue] = useState<Record<string, unknown>[]>([]);
+  const [improvementTickets, setImprovementTickets] = useState<Record<string, unknown>[]>([]);
+  const [callbackSlots, setCallbackSlots] = useState<Record<string, unknown>[]>([]);
+  const [abTests, setAbTests] = useState<Record<string, unknown>[]>([]);
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const h: Record<string, string> | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
+    const fetcher = (path: string) => fetch(`${API}${path}`, h ? { headers: h } : {}).then(r => r.ok ? r.json() : null).catch(() => null);
+    fetcher('/api/v1/voice-advanced/dashboard').then((d: unknown) => d && setAdvDashboard(d as Record<string, unknown>));
+    fetcher('/api/v1/voice-advanced/review-queue').then((d: unknown) => Array.isArray(d) && setReviewQueue(d as Record<string, unknown>[]));
+    fetcher('/api/v1/voice-advanced/improvement-tickets').then((d: unknown) => Array.isArray(d) && setImprovementTickets(d as Record<string, unknown>[]));
+    fetcher('/api/v1/voice-advanced/callback-optimizer/slots').then((d: unknown) => Array.isArray(d) && setCallbackSlots(d as Record<string, unknown>[]));
+    fetcher('/api/v1/voice-advanced/ab-tests').then((d: unknown) => Array.isArray(d) && setAbTests(d as Record<string, unknown>[]));
+  }, [API]);
 
   const filtered = VOICE_MODULES.filter((m) => {
     if (catFilter !== 'all' && m.cat !== catFilter) return false;
@@ -296,6 +313,7 @@ export default function PhoneSystemPage() {
           { key: 'queue', label: 'Call Queue' },
           { key: 'flow', label: 'Script Flow Preview' },
           { key: 'analytics', label: 'Voice Analytics' },
+          { key: 'advanced', label: 'Advanced 65–100' },
         ] as { key: typeof activeTab; label: string }[]).map((tab) => (
           <button
             key={tab.key}
@@ -487,6 +505,128 @@ export default function PhoneSystemPage() {
                 </div>
               </ModuleCard>
             ))}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'advanced' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            {[
+              { label: 'War Room Active', value: advDashboard ? (advDashboard.war_room_active ? 'YES' : 'OFF') : '—', color: (advDashboard?.war_room_active ? '#e53935' : '#4caf50') as string },
+              { label: 'Pending Reviews', value: String(advDashboard?.pending_human_reviews ?? '—'), color: '#ff9800' },
+              { label: 'Open Tickets', value: String(advDashboard?.open_improvement_tickets ?? '—'), color: '#29b6f6' },
+              { label: 'Callbacks Queued', value: String(advDashboard?.scheduled_callbacks ?? '—'), color: '#a855f7' },
+              { label: 'A/B Tests Running', value: String(advDashboard?.active_ab_tests ?? '—'), color: '#22d3ee' },
+              { label: 'Features 65–100', value: '36 / 36', color: '#4caf50' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-3" style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}>
+                <div className="text-[9px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{kpi.label}</div>
+                <div className="text-lg font-bold" style={{ color: kpi.color }}>{kpi.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 99 · Human Review Queue</div>
+              {reviewQueue.length === 0 ? (
+                <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No pending reviews</div>
+              ) : (
+                <div className="space-y-2">
+                  {reviewQueue.slice(0, 5).map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
+                      <span className="text-[9px] font-bold text-[#ff9800] bg-[rgba(255,152,0,0.1)] px-1.5 py-0.5 rounded-sm flex-shrink-0">
+                        {String(Math.round((item.ai_confidence as number) * 100))}% CONF
+                      </span>
+                      <span className="text-[11px] text-[rgba(255,255,255,0.6)] truncate">{String(item.transcript ?? '').slice(0, 80)}…</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 100 · Improvement Tickets</div>
+              {improvementTickets.length === 0 ? (
+                <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No open improvement tickets</div>
+              ) : (
+                <div className="space-y-2">
+                  {improvementTickets.slice(0, 5).map((item, i) => (
+                    <div key={i} className="py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm" style={{ color: item.severity === 'high' ? '#e53935' : '#ff9800', background: item.severity === 'high' ? 'rgba(229,57,53,0.1)' : 'rgba(255,152,0,0.1)' }}>{String(item.severity)}</span>
+                        <span className="text-[11px] text-[rgba(255,255,255,0.75)] truncate">{String(item.what_went_wrong ?? '').slice(0, 60)}</span>
+                      </div>
+                      <div className="text-[10px] text-[rgba(255,255,255,0.35)]">Fix: {String(item.proposed_fix ?? '').slice(0, 60)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 91 · Scheduled Callbacks</div>
+              {callbackSlots.length === 0 ? (
+                <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No callbacks scheduled</div>
+              ) : (
+                <div className="space-y-2">
+                  {callbackSlots.slice(0, 5).map((slot, i) => (
+                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
+                      <span className="text-[11px] text-[rgba(255,255,255,0.65)]">{String(slot.caller_phone ?? '')}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-[rgba(255,255,255,0.4)]">{String(slot.scheduled_at ?? '').slice(0, 16)}</span>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm" style={{ color: (slot.urgency_score as number) >= 80 ? '#e53935' : '#4caf50', background: (slot.urgency_score as number) >= 80 ? 'rgba(229,57,53,0.1)' : 'rgba(76,175,80,0.1)' }}>{String(slot.urgency_tier ?? 'std')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 93 · A/B Script Tests</div>
+              {abTests.length === 0 ? (
+                <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No active A/B tests</div>
+              ) : (
+                <div className="space-y-2">
+                  {abTests.slice(0, 5).map((test, i) => (
+                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
+                      <span className="text-[11px] text-[rgba(255,255,255,0.75)]">{String(test.test_name ?? '')}</span>
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm text-[#22d3ee] bg-[rgba(34,211,238,0.1)]">{String(test.status ?? '')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Features 65–100 Status Matrix</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {([
+                [65, 'Caller Context Auto-Fetch'], [66, 'Ring + Screen Pop'], [67, 'Smart Alert Policies'],
+                [68, 'Per-Tenant Script Packs'], [69, 'Compliance Guard Mode'], [70, 'Billing Concierge'],
+                [71, 'Onboarding Concierge'], [72, 'Export Support Mode'], [73, 'Scheduling Support'],
+                [74, 'Call-to-Workflow Confirm'], [75, 'Decision Trace Summaries'], [76, 'Escalation Ladder'],
+                [77, 'Adaptive Prompts by Role'], [78, 'Priority Scoring Engine'], [79, 'Denial Explainer'],
+                [80, 'Appeal Draft Trigger'], [81, 'Smart Hold Behavior'], [82, 'Dead-Air Recovery'],
+                [83, 'Fallback Channel Switch'], [84, 'Speech-to-Fields'], [85, 'Error-Resistant Confirm'],
+                [86, 'Secure Disclosure Rules'], [87, 'Prompt Injection Defense'], [88, 'Knowledge Boundaries'],
+                [89, 'Escalation Paging'], [90, 'Founder Busy Mode'], [91, 'Callback Optimizer'],
+                [92, 'Voice Analytics'], [93, 'A/B Script Testing'], [94, 'Latency Monitor'],
+                [95, 'Cost Governor'], [96, 'Voice Memory'], [97, 'Recording Governance'],
+                [98, 'Incident War Room'], [99, 'Human-in-Loop Queue'], [100, 'Continuous Improvement'],
+              ] as [number, string][]).map(([n, label]) => (
+                <div key={n} className="flex items-center gap-1.5 py-1 px-2 bg-[rgba(76,175,80,0.06)] border border-[rgba(76,175,80,0.15)] rounded-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4caf50] flex-shrink-0" />
+                  <span className="text-[9px] font-bold text-[rgba(255,107,26,0.7)] w-7 flex-shrink-0">{n}</span>
+                  <span className="text-[10px] text-[rgba(255,255,255,0.6)] truncate">{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
       )}

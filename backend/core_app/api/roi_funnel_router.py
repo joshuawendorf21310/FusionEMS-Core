@@ -126,10 +126,10 @@ async def recalculate_roi(
     updated = await svc.update(
         table="roi_funnel_scenarios",
         tenant_id=current.tenant_id,
-        entity_id=record["id"],
+        record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        data_patch={"inputs": merged_inputs, "outputs": new_outputs},
+        patch={"inputs": merged_inputs, "outputs": new_outputs},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {"id": str(scenario_id), "outputs": new_outputs}

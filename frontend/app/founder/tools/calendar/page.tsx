@@ -186,7 +186,7 @@ export default function FounderCalendarPage() {
                     <td className="py-2 px-2">
                       <Badge
                         label={ev.priority === 'warn' ? 'medium' : ev.priority === 'info' ? 'low' : ev.priority}
-                        status={ev.priority}
+                        status={priorityStatus(ev.priority)}
                       />
                     </td>
                   </tr>

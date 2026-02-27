@@ -705,7 +705,7 @@ export default function VisibilityRuleMakerPage() {
                   {((minimizeResult as Record<string, unknown[]>).excessive_fields || []).length > 0 && (
                     <div className="mt-1 text-xs">Excessive: {((minimizeResult as Record<string, string[]>).excessive_fields || []).join(", ")}</div>
                   )}
-                  <div className="mt-1 text-xs text-muted">Minimum for '{minimizeResult.purpose}': {((minimizeResult as Record<string, string[]>).minimum_fields || []).join(", ")}</div>
+                  <div className="mt-1 text-xs text-muted">Minimum for '{String(minimizeResult.purpose)}': {((minimizeResult as Record<string, string[]>).minimum_fields || []).join(", ")}</div>
                 </div>
               )}
             </div>

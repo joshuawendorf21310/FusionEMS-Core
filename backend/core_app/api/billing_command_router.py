@@ -314,10 +314,10 @@ async def batch_resubmit(
         updated = await svc.update(
             table="claims",
             tenant_id=current.tenant_id,
-            entity_id=claim["id"],
+            record_id=claim["id"],
             actor_user_id=current.user_id,
             expected_version=claim.get("version", 1),
-            data_patch={"status": "resubmitted", "resubmit_reason": body.resubmit_reason, "resubmitted_at": datetime.now(timezone.utc).isoformat()},
+            patch={"status": "resubmitted", "resubmit_reason": body.resubmit_reason, "resubmitted_at": datetime.now(timezone.utc).isoformat()},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
         results.append({"claim_id": str(claim_id), "status": "resubmitted"})

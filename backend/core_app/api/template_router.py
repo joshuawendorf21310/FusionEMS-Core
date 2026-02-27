@@ -173,10 +173,10 @@ async def update_template(
     updated = await svc.update(
         table="templates",
         tenant_id=current.tenant_id,
-        entity_id=record["id"],
+        record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        data_patch=patch,
+        patch=patch,
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     history_entry = {
@@ -211,10 +211,10 @@ async def delete_template(
     await svc.update(
         table="templates",
         tenant_id=current.tenant_id,
-        entity_id=record["id"],
+        record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        data_patch={"status": "archived", "archived_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "archived", "archived_at": datetime.now(timezone.utc).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {"status": "archived", "template_id": str(template_id)}
@@ -269,10 +269,10 @@ async def approve_template(
     updated = await svc.update(
         table="templates",
         tenant_id=current.tenant_id,
-        entity_id=record["id"],
+        record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        data_patch={"status": new_status, "approval_notes": body.notes, "approved_by": str(current.user_id)},
+        patch={"status": new_status, "approval_notes": body.notes, "approved_by": str(current.user_id)},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -347,10 +347,10 @@ async def rollback_template(
     updated = await svc.update(
         table="templates",
         tenant_id=current.tenant_id,
-        entity_id=record["id"],
+        record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        data_patch={
+        patch={
             "content": target.get("data", {}).get("content_snapshot", ""),
             "rolled_back_to": version,
             "version": record.get("data", {}).get("version", 1) + 1,
@@ -660,10 +660,10 @@ async def policy_mass_refresh(
         await svc.update(
             table="templates",
             tenant_id=current.tenant_id,
-            entity_id=t["id"],
+            record_id=t["id"],
             actor_user_id=current.user_id,
             expected_version=t.get("version", 1),
-            data_patch={"policy_refreshed_at": datetime.now(timezone.utc).isoformat()},
+            patch={"policy_refreshed_at": datetime.now(timezone.utc).isoformat()},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
         updated_count += 1
