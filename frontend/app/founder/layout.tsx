@@ -14,6 +14,7 @@ const NAV_DOMAINS = [
       { href: '/founder', label: 'Overview' },
       { href: '/founder/executive/daily-brief', label: 'Daily AI Brief' },
       { href: '/founder/executive/risk-monitor', label: 'Risk Monitor' },
+      { href: '/founder/executive/events-feed', label: 'Events Feed' },
     ],
   },
   {
@@ -46,7 +47,7 @@ const NAV_DOMAINS = [
     icon: '◈',
     color: '#4caf50',
     links: [
-      { href: '/founder/comms/inbox', label: 'Unified Inbox' },
+      { href: '/founder/comms/inbox', label: 'Support Inbox' },
       { href: '/founder/comms/phone-system', label: 'Phone System' },
       { href: '/founder/comms/script-builder', label: 'Script Builder' },
       { href: '/founder/comms/broadcast', label: 'Broadcast Manager' },
@@ -133,6 +134,7 @@ const NAV_DOMAINS = [
     links: [
       { href: '/founder/tools/calendar', label: 'Calendar' },
       { href: '/founder/tools/documents', label: 'Documents' },
+      { href: '/founder/tools/onboarding-control', label: 'Onboarding Control' },
       { href: '/founder/tools/invoice-creator', label: 'Invoice Creator' },
       { href: '/founder/tools/expense-ledger', label: 'Expense Ledger' },
       { href: '/founder/tools/task-center', label: 'Task Center' },
