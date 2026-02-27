@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: '/portal/scheduling', label: 'Scheduling' },
   { href: '/portal/billing-ops', label: 'Billing Ops' },
   { href: '/portal/trip', label: 'TRIP (WI)' },
+  { href: '/portal/kitlink', label: 'KitLink AR' },
 ];
 
 function TopBar() {

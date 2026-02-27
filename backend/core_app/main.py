@@ -90,6 +90,8 @@ from core_app.api.fleet_intelligence_router import router as fleet_intelligence_
 from core_app.api.ar_router import router as ar_router
 from core_app.api.trip_router import router as trip_router
 from core_app.api.pricebook_router import router as pricebook_router
+from core_app.api.kitlink_router import router as kitlink_router
+from core_app.api.kitlink_compliance_router import router as kitlink_compliance_router
 
 app = FastAPI(title=settings.app_name)
 configure_otel(app)
@@ -203,6 +205,8 @@ app.include_router(fleet_intelligence_router)
 app.include_router(ar_router)
 app.include_router(trip_router)
 app.include_router(pricebook_router)
+app.include_router(kitlink_router)
+app.include_router(kitlink_compliance_router)
 
 
 @app.get("/health")

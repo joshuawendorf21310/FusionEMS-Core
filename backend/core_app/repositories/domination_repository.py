@@ -54,6 +54,12 @@ TENANT_TABLES: set[str] = {
     "ar_accounts","ar_charges","ar_payments","ar_payment_plans","ar_disputes","ar_statements","collections_vendor_profiles","collections_placements","collections_status_updates","collections_settings",
     "trip_settings","trip_debts","trip_exports","trip_reject_imports","trip_postings",
     "pricebooks","pricebook_items","ledger_entries","usage_events","tenant_billing_config","billing_runs","stripe_bootstrap_log","entitlements",
+    "inventory_items","formulary_items","kit_templates","kit_compartments","compartment_items",
+    "unit_layouts","unit_layout_kits","ar_markers","ar_marker_sheets",
+    "inventory_transactions","inventory_transaction_lines","stock_locations","stock_balances",
+    "narc_kits","narc_seals","narc_counts","narc_waste_events","narc_discrepancies",
+    "kitlink_ocr_jobs","kitlink_anomaly_flags","compliance_packs","compliance_check_templates",
+    "compliance_inspections","compliance_findings","kitlink_wizard_state",
 }
 
 

@@ -1,0 +1,732 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FusionEMS KitLink AR — S3 artifacts bucket, SQS FIFO queues + DLQs,
+  IAM roles, Lambda workers (OCR / stock-rebuild / expiration-sweep /
+  anomaly / PDF / compliance-pack-ingest), EventBridge daily sweep rule,
+  CloudWatch alarms, and ComplianceSeedPack custom resource.
+
+Parameters:
+  AppName:
+    Type: String
+    Default: fusionems
+  Stage:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+  LambdaCodeKey:
+    Type: String
+    Default: kitlink/lambda/kitlink_worker.zip
+  AlarmEmail:
+    Type: String
+    Default: ""
+  KmsKeyId:
+    Type: String
+    Default: alias/aws/sqs
+    Description: KMS key alias or ARN for SQS encryption
+
+Conditions:
+  HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, ""]]
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # S3 Artifacts Bucket
+  # ---------------------------------------------------------------------------
+  KitLinkArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AppName}-${Stage}-kitlink-artifacts"
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 90
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: App
+          Value: !Ref AppName
+        - Key: Stage
+          Value: !Ref Stage
+
+  # ---------------------------------------------------------------------------
+  # SQS DLQs
+  # ---------------------------------------------------------------------------
+  KitLinkOcrDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-ocr-dlq.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      MessageRetentionPeriod: 1209600
+
+  KitLinkStockRebuildDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-stock-rebuild-dlq.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      MessageRetentionPeriod: 1209600
+
+  KitLinkExpirationSweepDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-expiration-sweep-dlq.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      MessageRetentionPeriod: 1209600
+
+  KitLinkAnomalyDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-anomaly-dlq.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      MessageRetentionPeriod: 1209600
+
+  KitLinkPdfDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-pdf-dlq.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      MessageRetentionPeriod: 1209600
+
+  KitLinkPackIngestDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-pack-ingest-dlq.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      MessageRetentionPeriod: 1209600
+
+  # ---------------------------------------------------------------------------
+  # SQS FIFO Queues
+  # ---------------------------------------------------------------------------
+  KitLinkOcrQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-ocr.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt KitLinkOcrDLQ.Arn
+        maxReceiveCount: 3
+
+  KitLinkStockRebuildQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-stock-rebuild.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      VisibilityTimeout: 120
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt KitLinkStockRebuildDLQ.Arn
+        maxReceiveCount: 3
+
+  KitLinkExpirationSweepQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-expiration-sweep.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt KitLinkExpirationSweepDLQ.Arn
+        maxReceiveCount: 3
+
+  KitLinkAnomalyQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-anomaly.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      VisibilityTimeout: 120
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt KitLinkAnomalyDLQ.Arn
+        maxReceiveCount: 3
+
+  KitLinkPdfQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-pdf.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt KitLinkPdfDLQ.Arn
+        maxReceiveCount: 3
+
+  KitLinkPackIngestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AppName}-${Stage}-kitlink-pack-ingest.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      KmsMasterKeyId: !Ref KmsKeyId
+      VisibilityTimeout: 120
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt KitLinkPackIngestDLQ.Arn
+        maxReceiveCount: 3
+
+  # ---------------------------------------------------------------------------
+  # IAM — Lambda Execution Role
+  # ---------------------------------------------------------------------------
+  KitLinkLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AppName}-${Stage}-kitlink-lambda-exec"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: KitLinkLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub "arn:aws:s3:::${KitLinkArtifactsBucket}/*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource:
+                  - !GetAtt KitLinkOcrQueue.Arn
+                  - !GetAtt KitLinkStockRebuildQueue.Arn
+                  - !GetAtt KitLinkExpirationSweepQueue.Arn
+                  - !GetAtt KitLinkAnomalyQueue.Arn
+                  - !GetAtt KitLinkPdfQueue.Arn
+                  - !GetAtt KitLinkPackIngestQueue.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AppName}/${Stage}/kitlink/*"
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: "*"
+
+  # ---------------------------------------------------------------------------
+  # IAM — Worker Task Role (ECS/Fargate if needed)
+  # ---------------------------------------------------------------------------
+  KitLinkWorkerTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AppName}-${Stage}-kitlink-worker-task"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: KitLinkWorkerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${KitLinkArtifactsBucket}/*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                Resource:
+                  - !GetAtt KitLinkOcrQueue.Arn
+                  - !GetAtt KitLinkStockRebuildQueue.Arn
+                  - !GetAtt KitLinkExpirationSweepQueue.Arn
+                  - !GetAtt KitLinkAnomalyQueue.Arn
+                  - !GetAtt KitLinkPdfQueue.Arn
+                  - !GetAtt KitLinkPackIngestQueue.Arn
+
+  # ---------------------------------------------------------------------------
+  # Lambda Workers
+  # ---------------------------------------------------------------------------
+  KitLinkOcrLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AppName}-${Stage}-kitlink-ocr"
+      Runtime: python3.12
+      Handler: core_app.workers.kitlink_worker.lambda_handler
+      Role: !GetAtt KitLinkLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          KITLINK_WORKER_TYPE: kitlink_ocr
+          KITLINK_ARTIFACTS_BUCKET: !Ref KitLinkArtifactsBucket
+          KITLINK_OCR_QUEUE_URL: !Ref KitLinkOcrQueue
+          KITLINK_ANOMALY_QUEUE_URL: !Ref KitLinkAnomalyQueue
+          DATABASE_URL: !Ref DatabaseUrl
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          APP_NAME: !Ref AppName
+          STAGE: !Ref Stage
+
+  KitLinkOcrEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt KitLinkOcrQueue.Arn
+      FunctionName: !GetAtt KitLinkOcrLambda.Arn
+      BatchSize: 1
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  KitLinkStockRebuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AppName}-${Stage}-kitlink-stock-rebuild"
+      Runtime: python3.12
+      Handler: core_app.workers.kitlink_worker.lambda_handler
+      Role: !GetAtt KitLinkLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Timeout: 120
+      MemorySize: 256
+      Environment:
+        Variables:
+          KITLINK_WORKER_TYPE: kitlink_stock_rebuild
+          KITLINK_ARTIFACTS_BUCKET: !Ref KitLinkArtifactsBucket
+          KITLINK_STOCK_REBUILD_QUEUE_URL: !Ref KitLinkStockRebuildQueue
+          DATABASE_URL: !Ref DatabaseUrl
+          APP_NAME: !Ref AppName
+          STAGE: !Ref Stage
+
+  KitLinkStockRebuildEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt KitLinkStockRebuildQueue.Arn
+      FunctionName: !GetAtt KitLinkStockRebuildLambda.Arn
+      BatchSize: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  KitLinkExpirationSweepLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AppName}-${Stage}-kitlink-expiration-sweep"
+      Runtime: python3.12
+      Handler: core_app.workers.kitlink_worker.lambda_handler
+      Role: !GetAtt KitLinkLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          KITLINK_WORKER_TYPE: kitlink_expiration_sweep
+          KITLINK_ARTIFACTS_BUCKET: !Ref KitLinkArtifactsBucket
+          KITLINK_EXPIRATION_SWEEP_QUEUE_URL: !Ref KitLinkExpirationSweepQueue
+          KITLINK_ANOMALY_QUEUE_URL: !Ref KitLinkAnomalyQueue
+          DATABASE_URL: !Ref DatabaseUrl
+          APP_NAME: !Ref AppName
+          STAGE: !Ref Stage
+
+  KitLinkAnomalyLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AppName}-${Stage}-kitlink-anomaly"
+      Runtime: python3.12
+      Handler: core_app.workers.kitlink_worker.lambda_handler
+      Role: !GetAtt KitLinkLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Timeout: 120
+      MemorySize: 256
+      Environment:
+        Variables:
+          KITLINK_WORKER_TYPE: kitlink_anomaly
+          KITLINK_ARTIFACTS_BUCKET: !Ref KitLinkArtifactsBucket
+          KITLINK_ANOMALY_QUEUE_URL: !Ref KitLinkAnomalyQueue
+          DATABASE_URL: !Ref DatabaseUrl
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          APP_NAME: !Ref AppName
+          STAGE: !Ref Stage
+
+  KitLinkAnomalyEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt KitLinkAnomalyQueue.Arn
+      FunctionName: !GetAtt KitLinkAnomalyLambda.Arn
+      BatchSize: 10
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  KitLinkPdfLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AppName}-${Stage}-kitlink-pdf"
+      Runtime: python3.12
+      Handler: core_app.workers.kitlink_worker.lambda_handler
+      Role: !GetAtt KitLinkLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          KITLINK_WORKER_TYPE: kitlink_pdf
+          KITLINK_ARTIFACTS_BUCKET: !Ref KitLinkArtifactsBucket
+          KITLINK_PDF_QUEUE_URL: !Ref KitLinkPdfQueue
+          DATABASE_URL: !Ref DatabaseUrl
+          APP_NAME: !Ref AppName
+          STAGE: !Ref Stage
+
+  KitLinkPdfEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt KitLinkPdfQueue.Arn
+      FunctionName: !GetAtt KitLinkPdfLambda.Arn
+      BatchSize: 1
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  KitLinkPackIngestLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AppName}-${Stage}-kitlink-pack-ingest"
+      Runtime: python3.12
+      Handler: core_app.workers.kitlink_worker.lambda_handler
+      Role: !GetAtt KitLinkLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Timeout: 120
+      MemorySize: 256
+      Environment:
+        Variables:
+          KITLINK_WORKER_TYPE: compliance_pack_ingest
+          KITLINK_ARTIFACTS_BUCKET: !Ref KitLinkArtifactsBucket
+          KITLINK_PACK_INGEST_QUEUE_URL: !Ref KitLinkPackIngestQueue
+          DATABASE_URL: !Ref DatabaseUrl
+          APP_NAME: !Ref AppName
+          STAGE: !Ref Stage
+
+  KitLinkPackIngestEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt KitLinkPackIngestQueue.Arn
+      FunctionName: !GetAtt KitLinkPackIngestLambda.Arn
+      BatchSize: 1
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  # ---------------------------------------------------------------------------
+  # EventBridge — Daily Expiration Sweep
+  # ---------------------------------------------------------------------------
+  KitLinkDailySweepRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${AppName}-${Stage}-kitlink-daily-sweep"
+      Description: Daily KitLink expiration sweep at 06:00 UTC
+      ScheduleExpression: "cron(0 6 * * ? *)"
+      State: ENABLED
+      Targets:
+        - Id: KitLinkExpirationSweepTarget
+          Arn: !GetAtt KitLinkExpirationSweepLambda.Arn
+          Input: !Sub '{"Records":[{"body":"{\"days_ahead\":30,\"source\":\"eventbridge\"}"}]}'
+
+  KitLinkSweepLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt KitLinkExpirationSweepLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt KitLinkDailySweepRule.Arn
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Alarms
+  # ---------------------------------------------------------------------------
+  KitLinkAlarmTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlarmEmail
+    Properties:
+      TopicName: !Sub "${AppName}-${Stage}-kitlink-alarms"
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlarmEmail
+
+  KitLinkOcrDLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlarmEmail
+    Properties:
+      AlarmName: !Sub "${AppName}-${Stage}-kitlink-ocr-dlq-depth"
+      AlarmDescription: "KitLink OCR DLQ has messages — investigation required"
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt KitLinkOcrDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref KitLinkAlarmTopic
+      TreatMissingData: notBreaching
+
+  KitLinkAnomalyDLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlarmEmail
+    Properties:
+      AlarmName: !Sub "${AppName}-${Stage}-kitlink-anomaly-dlq-depth"
+      AlarmDescription: "KitLink Anomaly DLQ has messages"
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt KitLinkAnomalyDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref KitLinkAlarmTopic
+      TreatMissingData: notBreaching
+
+  KitLinkOcrLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlarmEmail
+    Properties:
+      AlarmName: !Sub "${AppName}-${Stage}-kitlink-ocr-lambda-errors"
+      AlarmDescription: "KitLink OCR Lambda error rate elevated"
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref KitLinkOcrLambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref KitLinkAlarmTopic
+      TreatMissingData: notBreaching
+
+  # ---------------------------------------------------------------------------
+  # ComplianceSeedPack Lambda + Custom Resource
+  # ---------------------------------------------------------------------------
+  ComplianceSeedPackLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AppName}-${Stage}-compliance-seed-pack-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ComplianceSeedPackPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub "arn:aws:s3:::${KitLinkArtifactsBucket}/compliance/packs/*"
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AppName}/${Stage}/kitlink/packs/*"
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                Resource: "*"
+
+  ComplianceSeedPackLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AppName}-${Stage}-compliance-seed-pack"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt ComplianceSeedPackLambdaRole.Arn
+      Timeout: 60
+      MemorySize: 128
+      Environment:
+        Variables:
+          BUCKET: !Ref KitLinkArtifactsBucket
+          APP_NAME: !Ref AppName
+          STAGE: !Ref Stage
+      Code:
+        ZipFile: |
+          import json, os, urllib.request, boto3
+
+          PACKS = {
+            "WI_TRANS_309_V1": {
+              "pack_key": "WI_TRANS_309_V1", "version": "1", "state": "WI",
+              "title": "Wisconsin Trans 309 Compliance Pack v1",
+              "unit_profiles": ["EMT","AEMT","PARAMEDIC"],
+              "rules": [
+                {"rule_id":"NO_EXPIRED_MEDS_FLUIDS","type":"hard_fail","description":"No expired medications or IV fluids"},
+                {"rule_id":"MANDATORY_PRESENCE_10","type":"required","description":"10 mandatory equipment items must be present"}
+              ]
+            },
+            "WI_TRANS_309_V2": {
+              "pack_key": "WI_TRANS_309_V2", "version": "2", "state": "WI",
+              "title": "Wisconsin Trans 309 Compliance Pack v2",
+              "unit_profiles": ["EMT","AEMT","PARAMEDIC"],
+              "rules": [
+                {"rule_id":"NO_EXPIRED_MEDS_FLUIDS","type":"hard_fail","description":"No expired medications or IV fluids"},
+                {"rule_id":"MANDATORY_PRESENCE_10","type":"required","description":"10 mandatory equipment items must be present"},
+                {"rule_id":"NARC_SEAL_INTACT","type":"required","description":"Narcotics seal must be intact and verified"},
+                {"rule_id":"CALIBRATION_CURRENT","type":"warning","description":"All monitoring equipment calibration current"}
+              ]
+            }
+          }
+
+          def send(event, context, status, data={}, reason=""):
+            body = json.dumps({
+              "Status": status, "Reason": reason,
+              "PhysicalResourceId": "compliance-seed-pack",
+              "StackId": event["StackId"], "RequestId": event["RequestId"],
+              "LogicalResourceId": event["LogicalResourceId"],
+              "Data": data
+            }).encode()
+            req = urllib.request.Request(event["ResponseURL"], data=body,
+              headers={"Content-Type":"","Content-Length":len(body)}, method="PUT")
+            urllib.request.urlopen(req)
+
+          def handler(event, context):
+            if event.get("RequestType") == "Delete":
+              send(event, context, "SUCCESS"); return
+            try:
+              s3 = boto3.client("s3")
+              ssm = boto3.client("ssm")
+              bucket = os.environ["BUCKET"]
+              app = os.environ["APP_NAME"]
+              stage = os.environ["STAGE"]
+              data = {}
+              for key, pack in PACKS.items():
+                s3_key = f"compliance/packs/{key}.json"
+                s3.put_object(Bucket=bucket, Key=s3_key,
+                  Body=json.dumps(pack).encode(), ContentType="application/json")
+                param = f"/{app}/{stage}/kitlink/packs/{key}"
+                ssm.put_parameter(Name=param, Value=s3_key, Type="String", Overwrite=True)
+                data[f"{key}Key"] = s3_key
+              send(event, context, "SUCCESS", data)
+            except Exception as e:
+              send(event, context, "FAILED", reason=str(e))
+
+  ComplianceSeedPackCustomResource:
+    Type: Custom::ComplianceSeedPack
+    DependsOn:
+      - KitLinkArtifactsBucket
+      - ComplianceSeedPackLambda
+    Properties:
+      ServiceToken: !GetAtt ComplianceSeedPackLambda.Arn
+
+Outputs:
+  KitLinkArtifactsBucketName:
+    Value: !Ref KitLinkArtifactsBucket
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-artifacts-bucket"
+
+  KitLinkOcrQueueUrl:
+    Value: !Ref KitLinkOcrQueue
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-ocr-queue-url"
+
+  KitLinkStockRebuildQueueUrl:
+    Value: !Ref KitLinkStockRebuildQueue
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-stock-rebuild-queue-url"
+
+  KitLinkExpirationSweepQueueUrl:
+    Value: !Ref KitLinkExpirationSweepQueue
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-expiration-sweep-queue-url"
+
+  KitLinkAnomalyQueueUrl:
+    Value: !Ref KitLinkAnomalyQueue
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-anomaly-queue-url"
+
+  KitLinkPdfQueueUrl:
+    Value: !Ref KitLinkPdfQueue
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-pdf-queue-url"
+
+  KitLinkPackIngestQueueUrl:
+    Value: !Ref KitLinkPackIngestQueue
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-pack-ingest-queue-url"
+
+  WiTrans309PackV1Key:
+    Value: !GetAtt ComplianceSeedPackCustomResource.WI_TRANS_309_V1Key
+    Export:
+      Name: !Sub "${AppName}-${Stage}-wi-trans-309-v1-key"
+
+  WiTrans309PackV2Key:
+    Value: !GetAtt ComplianceSeedPackCustomResource.WI_TRANS_309_V2Key
+    Export:
+      Name: !Sub "${AppName}-${Stage}-wi-trans-309-v2-key"
+
+  KitLinkLambdaExecutionRoleArn:
+    Value: !GetAtt KitLinkLambdaExecutionRole.Arn
+    Export:
+      Name: !Sub "${AppName}-${Stage}-kitlink-lambda-exec-role-arn"
