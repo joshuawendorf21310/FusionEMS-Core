@@ -78,6 +78,11 @@ Parameters:
     Type: String
     Default: ''
     Description: SQS queue URL for legal PDF sealing worker
+  InternalWorkerSecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Shared secret for POST /internal/emit worker endpoint
 
 Conditions:
   IsProd: !Equals [!Ref Env, 'prod']
@@ -455,6 +460,8 @@ Resources:
               Value: !Ref PdfClaimPacketQueueUrl
             - Name: LEGAL_PDF_QUEUE_URL
               Value: !Ref LegalPdfQueueUrl
+            - Name: INTERNAL_WORKER_SECRET
+              Value: !Ref InternalWorkerSecret
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub '${DbSecretArn}'

@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.builders.claim_packet_generator import ClaimPacketGenerator
 from core_app.core.config import get_settings
 from core_app.documents.s3_storage import put_bytes, presign_get, default_docs_bucket
@@ -74,7 +74,8 @@ async def generate_claim_packet(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing", "agency_admin"])
+    if current.role not in ("founder", "admin", "billing", "agency_admin"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
@@ -146,7 +147,8 @@ async def get_latest_claim_packet(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing", "agency_admin", "ems"])
+    if current.role not in ("founder", "admin", "billing", "agency_admin", "ems"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     repo = DominationRepository(db, table="documents")
     all_docs = repo.list_raw_by_field("doc_type", "claim_packet", limit=200)
     claim_packets = [
@@ -181,7 +183,8 @@ async def download_claim_packet(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing", "agency_admin", "ems"])
+    if current.role not in ("founder", "admin", "billing", "agency_admin", "ems"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     repo = DominationRepository(db, table="documents")
     record = repo.get(tenant_id=current.tenant_id, record_id=pdf_id)
     if not record:

@@ -1,9 +1,10 @@
 from __future__ import annotations
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -179,7 +180,11 @@ async def unread_count(
 async def internal_emit(
     payload: dict[str, Any],
     db: Session = Depends(db_session_dependency),
+    x_internal_secret: str = Header(default=""),
 ):
+    _expected = os.environ.get("INTERNAL_WORKER_SECRET", "")
+    if not _expected or x_internal_secret != _expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     tenant_id = payload.get("tenant_id")
     if not tenant_id:
         raise HTTPException(status_code=400, detail="tenant_id required")

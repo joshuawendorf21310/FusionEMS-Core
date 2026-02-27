@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import Any
+
+from sqlalchemy import text
 
 from core_app.ai.service import AiService
 from core_app.support.chat_service import ChatService, ESCALATION_TRIGGERS
@@ -44,15 +47,36 @@ def process_ai_reply(message: dict[str, Any]) -> None:
     tenant_id: str = message.get("tenant_id", "")
     trigger_message: str = message.get("trigger_message", "")
 
-    logger.info("support_ai_reply_start thread_id=%s tenant_id=%s", thread_id, tenant_id)
+    correlation_id = message.get("correlation_id") or str(uuid.uuid4())
+    logger.info("support_ai_reply_start thread_id=%s correlation_id=%s", thread_id, correlation_id)
+
+    # Idempotency: check if AI already replied to this message
+    last_msg_id = message.get("trigger_message_id", "")
+    if last_msg_id:
+        database_url_idem = os.environ.get("DATABASE_URL", "")
+        if database_url_idem:
+            try:
+                import psycopg as _psycopg_idem
+                with _psycopg_idem.connect(database_url_idem) as _conn_idem:
+                    with _conn_idem.cursor() as _cur_idem:
+                        _cur_idem.execute(
+                            "SELECT id FROM support_messages WHERE data->>'in_reply_to_message_id' = %s AND data->>'sender_role' = 'ai' LIMIT 1",
+                            (last_msg_id,),
+                        )
+                        _existing_idem = _cur_idem.fetchone()
+                if _existing_idem:
+                    logger.info("support_ai_reply_skip_already_replied thread_id=%s correlation_id=%s", thread_id, correlation_id)
+                    return {"skipped": True, "reason": "already_replied"}
+            except Exception as _idem_exc:
+                logger.warning("support_ai_reply_idempotency_check_failed thread_id=%s error=%s correlation_id=%s", thread_id, _idem_exc, correlation_id)
 
     if not thread_id or not tenant_id:
-        logger.warning("support_ai_reply_missing_fields thread_id=%s tenant_id=%s", thread_id, tenant_id)
+        logger.warning("support_ai_reply_missing_fields thread_id=%s tenant_id=%s correlation_id=%s", thread_id, tenant_id, correlation_id)
         return
 
     database_url = os.environ.get("DATABASE_URL", "")
     if not database_url:
-        logger.error("support_ai_reply_no_db thread_id=%s", thread_id)
+        logger.error("support_ai_reply_no_db thread_id=%s correlation_id=%s", thread_id, correlation_id)
         return
 
     try:
@@ -83,7 +107,7 @@ def process_ai_reply(message: dict[str, Any]) -> None:
                 ai = AiService()
                 response_text, meta = ai.chat(system=SYSTEM_PROMPT, user=user_prompt)
             except Exception as exc:
-                logger.error("support_ai_reply_ai_failed thread_id=%s error=%s", thread_id, exc)
+                logger.error("support_ai_reply_ai_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)
                 return
 
             low_confidence = (
@@ -134,24 +158,25 @@ def process_ai_reply(message: dict[str, Any]) -> None:
                 )
             conn.commit()
 
-        logger.info("support_ai_reply_done thread_id=%s low_confidence=%s", thread_id, low_confidence)
+        logger.info("support_ai_reply_done thread_id=%s low_confidence=%s correlation_id=%s", thread_id, low_confidence, correlation_id)
     except Exception as exc:
-        logger.error("support_ai_reply_failed thread_id=%s error=%s", thread_id, exc)
+        logger.error("support_ai_reply_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)
 
 
 def process_ai_summarize(message: dict[str, Any]) -> None:
     thread_id: str = message.get("thread_id", "")
     tenant_id: str = message.get("tenant_id", "")
 
-    logger.info("support_ai_summarize_start thread_id=%s", thread_id)
+    correlation_id = message.get("correlation_id") or str(uuid.uuid4())
+    logger.info("support_ai_summarize_start thread_id=%s correlation_id=%s", thread_id, correlation_id)
 
     if not thread_id or not tenant_id:
-        logger.warning("support_ai_summarize_missing_fields thread_id=%s", thread_id)
+        logger.warning("support_ai_summarize_missing_fields thread_id=%s correlation_id=%s", thread_id, correlation_id)
         return
 
     database_url = os.environ.get("DATABASE_URL", "")
     if not database_url:
-        logger.error("support_ai_summarize_no_db thread_id=%s", thread_id)
+        logger.error("support_ai_summarize_no_db thread_id=%s correlation_id=%s", thread_id, correlation_id)
         return
 
     try:
@@ -183,7 +208,7 @@ def process_ai_summarize(message: dict[str, Any]) -> None:
                 ai = AiService()
                 summary, _ = ai.chat(system=system, user=user_prompt)
             except Exception as exc:
-                logger.error("support_ai_summarize_ai_failed thread_id=%s error=%s", thread_id, exc)
+                logger.error("support_ai_summarize_ai_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)
                 return
 
             with conn.cursor() as cur:
@@ -195,6 +220,6 @@ def process_ai_summarize(message: dict[str, Any]) -> None:
                 )
             conn.commit()
 
-        logger.info("support_ai_summarize_done thread_id=%s", thread_id)
+        logger.info("support_ai_summarize_done thread_id=%s correlation_id=%s", thread_id, correlation_id)
     except Exception as exc:
-        logger.error("support_ai_summarize_failed thread_id=%s error=%s", thread_id, exc)
+        logger.error("support_ai_summarize_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)

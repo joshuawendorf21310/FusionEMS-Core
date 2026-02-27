@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.core.config import get_settings
 from core_app.documents.s3_storage import put_bytes, presign_get, default_docs_bucket
 from core_app.fax.cover_sheet import CoverSheetGenerator
@@ -44,7 +44,8 @@ async def generate_agency_doc_kit(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing", "agency_admin"])
+    if current.role not in ("founder", "admin", "billing", "agency_admin"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
     settings = get_settings()
@@ -103,7 +104,8 @@ async def generate_claim_cover_sheet(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing", "agency_admin"])
+    if current.role not in ("founder", "admin", "billing", "agency_admin"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
     settings = get_settings()
@@ -175,7 +177,8 @@ async def get_latest_claim_cover_sheet(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing", "agency_admin", "ems"])
+    if current.role not in ("founder", "admin", "billing", "agency_admin", "ems"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     svc = DominationService(db, get_event_publisher())
 
     repo = DominationRepository(db, table="documents")

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core_app.ai.service import AiService
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.billing.edi_service import EDIService
 from core_app.core.config import get_settings
 from core_app.repositories.domination_repository import DominationRepository
@@ -51,7 +51,8 @@ async def generate_batch(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = EDIService(db, publisher, current.tenant_id)
     result = await svc.generate_837_batch(body.claim_ids, body.submitter_config)
@@ -74,7 +75,8 @@ async def list_batches(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     repo = DominationRepository(db, table="edi_artifacts")
     all_artifacts = repo.list(tenant_id=current.tenant_id, limit=limit, offset=offset)
     batches = [
@@ -90,7 +92,8 @@ async def get_batch(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     repo = DominationRepository(db, table="edi_artifacts")
     batch = repo.get(tenant_id=current.tenant_id, record_id=batch_id)
     if not batch:
@@ -111,7 +114,8 @@ async def download_batch(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     repo = DominationRepository(db, table="edi_artifacts")
     batch = repo.get(tenant_id=current.tenant_id, record_id=batch_id)
     if not batch:
@@ -142,7 +146,8 @@ async def submit_batch_sftp(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     svc = DominationService(db, get_event_publisher())
     repo = DominationRepository(db, table="edi_artifacts")
     batch = repo.get(tenant_id=current.tenant_id, record_id=batch_id)
@@ -189,7 +194,8 @@ async def ingest_999(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = EDIService(db, publisher, current.tenant_id)
     result = svc.parse_999(body.x12_content, body.batch_id)
@@ -212,7 +218,8 @@ async def ingest_277(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = EDIService(db, publisher, current.tenant_id)
     result = svc.parse_277(body.x12_content)
@@ -235,7 +242,8 @@ async def ingest_835(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = EDIService(db, publisher, current.tenant_id)
     result = await svc.parse_835(body.x12_content)
@@ -257,7 +265,8 @@ async def claim_status_history(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing", "ems"])
+    if current.role not in ("founder", "admin", "billing", "ems"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     from sqlalchemy import text
     try:
         rows = db.execute(
@@ -283,7 +292,8 @@ async def explain_claim_status(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    require_role(current, ["founder", "admin", "billing"])
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = EDIService(db, publisher, current.tenant_id)
 
