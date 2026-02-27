@@ -24,9 +24,7 @@ interface NerisPack {
   status: PackStatus;
   created_at: string;
   compiled?: boolean;
-  rules_json?: RulesJson;
-  entity_rule_count?: number;
-  incident_rule_count?: number;
+  data?: { rules_json?: RulesJson; [key: string]: unknown };
 }
 
 interface RulesJson {
@@ -63,7 +61,7 @@ interface ValidationResult {
 
 interface CopilotResult {
   summary?: string;
-  action_items?: { type: string; instruction: string }[];
+  actions?: { type: string; instruction: string }[];
   confidence?: number;
 }
 
@@ -283,11 +281,11 @@ function PackDetailDrawer({
             <div className="flex gap-2">
               <div className="flex flex-col items-center px-3 py-2 rounded-sm" style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)' }}>
                 <span className="text-[9px] uppercase tracking-wider text-[rgba(255,255,255,0.4)]">Entity Rules</span>
-                <span className="text-base font-bold text-[#22d3ee]">{pack.entity_rule_count ?? pack.rules_json?.entity_rules?.length ?? '—'}</span>
+                <span className="text-base font-bold text-[#22d3ee]">{(pack.data as any)?.rules_json?.entity_rules?.length ?? '—'}</span>
               </div>
               <div className="flex flex-col items-center px-3 py-2 rounded-sm" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
                 <span className="text-[9px] uppercase tracking-wider text-[rgba(255,255,255,0.4)]">Incident Rules</span>
-                <span className="text-base font-bold text-[#a855f7]">{pack.incident_rule_count ?? pack.rules_json?.incident_rules?.length ?? '—'}</span>
+                <span className="text-base font-bold text-[#a855f7]">{(pack.data as any)?.rules_json?.incident_rules?.length ?? '—'}</span>
               </div>
             </div>
           )}
@@ -501,9 +499,9 @@ function CopilotResult({ result }: { result: CopilotResult }) {
       {result.summary && (
         <p className="text-xs text-[rgba(255,255,255,0.75)] leading-relaxed">{result.summary}</p>
       )}
-      {result.action_items && result.action_items.length > 0 && (
+      {result.actions && result.actions.length > 0 && (
         <div className="space-y-2">
-          {result.action_items.map((item, i) => (
+          {result.actions.map((item, i) => (
             <div key={i} className="flex gap-2 items-start">
               <span
                 className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm shrink-0 mt-0.5"
@@ -941,7 +939,7 @@ function FixListTab({ issues }: { issues: ValidationIssue[] }) {
 // ─── Rules Browser Tab ────────────────────────────────────────────────────────
 
 function RulesBrowserTab({ activePackId, packs }: { activePackId: string | null; packs: NerisPack[] }) {
-  const [packDetail, setPackDetail] = useState<NerisPack | null>(null);
+  const [packDetail, setPackDetail] = useState<{ pack: NerisPack; files?: unknown[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [subTab, setSubTab] = useState<'entity' | 'incident'>('entity');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -972,8 +970,8 @@ function RulesBrowserTab({ activePackId, packs }: { activePackId: string | null;
   }
 
   const rules = subTab === 'entity'
-    ? (packDetail?.rules_json?.entity_rules ?? [])
-    : (packDetail?.rules_json?.incident_rules ?? []);
+    ? (packDetail?.pack?.data?.rules_json?.entity_rules ?? [])
+    : (packDetail?.pack?.data?.rules_json?.incident_rules ?? []);
 
   const activePack = packs.find((p) => p.id === activePackId);
 

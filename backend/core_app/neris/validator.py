@@ -40,6 +40,19 @@ class NERISValidator:
                 vs_code = field.get("value_set")
 
                 if "[]" in path:
+                    array_path = path.split("[]")[0].rstrip(".")
+                    array_val = _get_path(payload, array_path)
+                    if required and (array_val is None or array_val == [] or not isinstance(array_val, list) or len(array_val) == 0):
+                        issues.append({
+                            "severity": "error",
+                            "entity_type": entity_type,
+                            "rule_id": f"{array_path}.required",
+                            "path": array_path,
+                            "field_label": label,
+                            "ui_section": sec_label,
+                            "message": f"At least one {label} entry is required.",
+                            "suggested_fix": f"Add at least one {label} record.",
+                        })
                     continue
 
                 value = _get_path(payload, path)

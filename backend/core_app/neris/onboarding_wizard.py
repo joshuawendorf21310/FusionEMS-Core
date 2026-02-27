@@ -186,6 +186,23 @@ class NERISOnboardingWizard:
                     correlation_id=correlation_id,
                 )
 
+        elif step_id == "reporting_mode":
+            if dept_uuid:
+                dept = self._get_department(department_id)
+                if dept:
+                    dept_data = dict(dept.get("data") or {})
+                    dept_data["reporting_mode"] = data.get("reporting_mode", "RMS")
+                    await self.svc.update(
+                        table="fire_departments",
+                        tenant_id=self.tenant_id,
+                        record_id=dept_uuid,
+                        actor_user_id=self.actor_user_id,
+                        patch=dept_data,
+                        expected_version=dept.get("version", 1),
+                        correlation_id=correlation_id,
+                    )
+            rd["reporting_mode"] = data.get("reporting_mode", "RMS")
+
         elif step_id == "stations" and dept_uuid:
             for station in data.get("stations", []):
                 await self.svc.create(

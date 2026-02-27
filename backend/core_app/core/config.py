@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     # SQS queues (Lambda workers)
     lob_events_queue_url: str = Field(default="")
     stripe_events_queue_url: str = Field(default="")
+    neris_pack_import_queue_url: str = Field(default="")
+    neris_pack_compile_queue_url: str = Field(default="")
+    neris_export_queue_url: str = Field(default="")
 
     # DynamoDB tables (Lambda workers) — no default; must be explicitly set per environment
     statements_table: str = Field(default="")
@@ -102,6 +105,9 @@ class Settings(BaseSettings):
                 ("system_tenant_id",                "SYSTEM_TENANT_ID"),
                 ("lob_events_queue_url",            "LOB_EVENTS_QUEUE_URL"),
                 ("stripe_events_queue_url",         "STRIPE_EVENTS_QUEUE_URL"),
+                ("neris_pack_import_queue_url",      "NERIS_PACK_IMPORT_QUEUE_URL"),
+                ("neris_pack_compile_queue_url",     "NERIS_PACK_COMPILE_QUEUE_URL"),
+                ("neris_export_queue_url",           "NERIS_EXPORT_QUEUE_URL"),
                 ("statements_table",                "STATEMENTS_TABLE"),
                 ("lob_events_table",                "LOB_EVENTS_TABLE"),
                 ("stripe_events_table",             "STRIPE_EVENTS_TABLE"),

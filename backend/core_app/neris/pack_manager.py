@@ -125,6 +125,8 @@ def _enqueue_pack_import(*, pack_id: str, repo: str, ref: str, name: str, tenant
     queue_url = os.environ.get("NERIS_PACK_IMPORT_QUEUE_URL", "")
     if not queue_url:
         return
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
     try:
         sqs = boto3.client("sqs")
         sqs.send_message(
@@ -141,5 +143,5 @@ def _enqueue_pack_import(*, pack_id: str, repo: str, ref: str, name: str, tenant
                 "actor_user_id": actor_user_id,
             }),
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _log.error("neris_pack_import_enqueue_failed pack_id=%s error=%s", pack_id, exc)

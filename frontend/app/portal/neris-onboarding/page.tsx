@@ -20,12 +20,16 @@ interface StepState {
 }
 
 interface OnboardingStatus {
-  session_id: string;
-  department_name?: string;
-  current_step?: string;
-  steps?: Record<string, StepStatus>;
-  assigned_pack_name?: string;
-  [key: string]: unknown;
+  onboarding_id: string;
+  department?: { id: string; data?: { name?: string; reporting_mode?: string; [key: string]: unknown } };
+  steps?: { id: string; label: string; status: StepStatus; required?: boolean }[];
+  progress_percent?: number;
+  required_complete?: number;
+  required_total?: number;
+  production_ready?: boolean;
+  completed_at?: string | null;
+  wi_dsps_checklist?: Record<string, boolean>;
+  golive_items?: string[];
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -91,9 +95,20 @@ const WI_CHECKLIST_ITEMS = [
 ];
 
 const INCIDENT_TYPE_VALUES = [
-  'STRUCTURE_FIRE', 'VEHICLE_FIRE', 'OUTSIDE_RUBBISH_FIRE', 'WILDLAND_FIRE',
-  'EMS_CALL', 'VEHICLE_ACCIDENT', 'HAZMAT', 'RESCUE', 'PUBLIC_ASSIST',
-  'FALSE_ALARM', 'GOOD_INTENT', 'SERVICE_CALL', 'SPECIAL_INCIDENT',
+  { code: '100', label: 'Fire' },
+  { code: '111', label: 'Building fire' },
+  { code: '120', label: 'Fire in mobile property' },
+  { code: '200', label: 'Overpressure rupture' },
+  { code: '300', label: 'Rescue & EMS' },
+  { code: '311', label: 'Medical assist, assist EMS crew' },
+  { code: '320', label: 'Emergency medical service' },
+  { code: '400', label: 'Hazardous condition' },
+  { code: '500', label: 'Service call' },
+  { code: '600', label: 'Good intent call' },
+  { code: '700', label: 'False alarm' },
+  { code: '800', label: 'Severe weather' },
+  { code: '900', label: 'Special incident type' },
+  { code: 'UNK', label: 'Unknown' },
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -627,7 +642,7 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
   const [form, setForm] = useState<SampleIncidentForm>({
     incident_number: '',
     start_datetime: '',
-    incident_type_code: 'STRUCTURE_FIRE',
+    incident_type_code: '100',
     street: '',
     city: '',
     state: 'WI',
@@ -702,7 +717,7 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
       <Field label="Incident Type">
         <select value={form.incident_type_code} onChange={(e) => update('incident_type_code', e.target.value)} className={inputClass} style={{ background: '#0b0f14' }}>
           {INCIDENT_TYPE_VALUES.map((v) => (
-            <option key={v} value={v} className="bg-[#0b0f14]">{v.replace(/_/g, ' ')}</option>
+            <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
           ))}
         </select>
       </Field>
@@ -884,7 +899,7 @@ export default function NerisOnboardingPage() {
   const stepStates: StepState[] = STEP_DEFS.map((def) => ({
     id: def.id,
     label: def.label,
-    status: onboardingStatus?.steps?.[def.id] ?? 'pending',
+    status: onboardingStatus?.steps?.find((s) => s.id === def.id)?.status ?? 'pending',
   }));
 
   // Determine active step from status
@@ -892,7 +907,10 @@ export default function NerisOnboardingPage() {
     if (!onboardingStatus?.steps) return;
     const steps = onboardingStatus.steps;
     const firstIncomplete = STEP_DEFS.find(
-      (d) => steps[d.id] !== 'complete' && steps[d.id] !== 'skipped'
+      (d) => {
+        const s = steps.find((st) => st.id === d.id)?.status;
+        return s !== 'complete' && s !== 'skipped';
+      }
     );
     if (!firstIncomplete) {
       setAllComplete(true);
@@ -912,7 +930,7 @@ export default function NerisOnboardingPage() {
         return;
       }
       const data = await res.json();
-      if (!data || !data.session_id) {
+      if (!data || !data.onboarding_id) {
         setNotStarted(true);
         return;
       }
@@ -963,9 +981,11 @@ export default function NerisOnboardingPage() {
     // Optimistically advance
     setOnboardingStatus((prev) => {
       if (!prev) return prev;
-      const steps = { ...(prev.steps ?? {}), [stepId]: 'complete' as StepStatus };
-      const assigned = json.assigned_pack_name ?? prev.assigned_pack_name;
-      return { ...prev, steps, assigned_pack_name: assigned };
+      const prevSteps = prev.steps ?? [];
+      const steps = prevSteps.map((s) =>
+        s.id === stepId ? { ...s, status: 'complete' as StepStatus } : s
+      );
+      return { ...prev, steps };
     });
     await fetchStatus();
   }
@@ -1013,7 +1033,7 @@ export default function NerisOnboardingPage() {
         <div>
           <p className="text-[9px] uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)]">Portal · NERIS Onboarding</p>
           <h1 className="text-sm font-black uppercase tracking-wider text-white">
-            {onboardingStatus?.department_name ?? 'NERIS Onboarding Wizard'}
+            {onboardingStatus?.department?.data?.name ?? 'NERIS Onboarding Wizard'}
           </h1>
         </div>
         <span className="ml-auto text-[10px] text-[rgba(255,255,255,0.3)]">Wisconsin RMS-Only</span>
@@ -1027,7 +1047,7 @@ export default function NerisOnboardingPage() {
         />
         <div className="flex-1 overflow-y-auto p-6">
           {allComplete ? (
-            <CompleteBanner departmentName={onboardingStatus?.department_name} />
+            <CompleteBanner departmentName={onboardingStatus?.department?.data?.name} />
           ) : (
             <div>
               {/* Step header */}
@@ -1058,7 +1078,7 @@ export default function NerisOnboardingPage() {
               {currentStepId === 'pack_assignment' && (
                 <Step6
                   onComplete={(data) => completeStep('pack_assignment', data)}
-                  assignedPackName={onboardingStatus?.assigned_pack_name}
+                  assignedPackName={undefined}
                 />
               )}
               {currentStepId === 'sample_incident' && (

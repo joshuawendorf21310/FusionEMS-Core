@@ -13,6 +13,7 @@ from core_app.neris.pack_manager import NERISPackManager
 from core_app.neris.validator import NERISValidator
 from core_app.schemas.auth import CurrentUser
 from core_app.services.event_publisher import get_event_publisher
+from core_app.core.config import get_settings
 
 router = APIRouter(prefix="/api/v1/founder/neris", tags=["NERIS Packs"])
 
@@ -29,9 +30,11 @@ def _enqueue_pack_compile(pack_id: str, tenant_id: str, actor_user_id: str) -> N
     import os
     import json
     import boto3
-    queue_url = os.environ.get("NERIS_PACK_COMPILE_QUEUE_URL", "")
+    queue_url = get_settings().neris_pack_compile_queue_url
     if not queue_url:
         return
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
     try:
         boto3.client("sqs").send_message(
             QueueUrl=queue_url,
@@ -39,8 +42,8 @@ def _enqueue_pack_compile(pack_id: str, tenant_id: str, actor_user_id: str) -> N
             MessageDeduplicationId=f"compile-{pack_id}",
             MessageBody=json.dumps({"job_type": "neris.pack.compile_rules", "pack_id": pack_id, "tenant_id": tenant_id, "actor_user_id": actor_user_id}),
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _log.error("neris_pack_compile_enqueue_failed pack_id=%s error=%s", pack_id, exc)
 
 
 @router.post("/packs/import")

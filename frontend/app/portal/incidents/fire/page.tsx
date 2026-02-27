@@ -353,12 +353,14 @@ function IncidentForm({
   selectedIncident,
   packRules,
   apparatus,
+  departmentId,
   onSaved,
   pushToast,
 }: {
   selectedIncident: Incident | null;
   packRules: PackRules | null;
   apparatus: ApparatusOption[];
+  departmentId: string | null;
   onSaved: (inc: Incident) => void;
   pushToast: (msg: string, type: 'success' | 'error') => void;
 }) {
@@ -507,8 +509,10 @@ function IncidentForm({
     if (!currentId) return;
     setExportingId(currentId);
     try {
-      const res = await fetch(`${API}/api/v1/incidents/fire/${currentId}/export`, {
-        headers: { Authorization: getToken() },
+      const res = await fetch(`${API}/api/v1/neris/exports`, {
+        method: 'POST',
+        headers: { Authorization: getToken(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ department_id: departmentId, incident_ids: [currentId] }),
       });
       if (!res.ok) throw new Error();
       const blob = await res.blob();
@@ -584,10 +588,23 @@ function IncidentForm({
               >
                 <option value="" className="bg-[#0b0f14]">— Select —</option>
                 {(incidentTypeValues.length > 0
-                  ? incidentTypeValues
-                  : ['STRUCTURE_FIRE', 'VEHICLE_FIRE', 'OUTSIDE_RUBBISH_FIRE', 'WILDLAND_FIRE', 'EMS_CALL', 'VEHICLE_ACCIDENT', 'HAZMAT', 'RESCUE', 'PUBLIC_ASSIST', 'FALSE_ALARM', 'GOOD_INTENT', 'SERVICE_CALL']
+                  ? incidentTypeValues.map((v) => ({ code: v, label: v }))
+                  : [
+                      { code: '100', label: 'Fire' },
+                      { code: '111', label: 'Building fire' },
+                      { code: '120', label: 'Fire in mobile property' },
+                      { code: '300', label: 'Rescue & EMS' },
+                      { code: '311', label: 'Medical assist' },
+                      { code: '320', label: 'Emergency medical service' },
+                      { code: '400', label: 'Hazardous condition' },
+                      { code: '500', label: 'Service call' },
+                      { code: '600', label: 'Good intent call' },
+                      { code: '700', label: 'False alarm' },
+                      { code: '900', label: 'Special incident type' },
+                      { code: 'UNK', label: 'Unknown' },
+                    ]
                 ).map((v) => (
-                  <option key={v} value={v} className="bg-[#0b0f14]">{v.replace(/_/g, ' ')}</option>
+                  <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
                 ))}
               </select>
             </FormField>
@@ -646,10 +663,23 @@ function IncidentForm({
               >
                 <option value="" className="bg-[#0b0f14]">— Select —</option>
                 {(propertyUseValues.length > 0
-                  ? propertyUseValues
-                  : ['RESIDENTIAL_1_2', 'RESIDENTIAL_MULTI', 'COMMERCIAL', 'INDUSTRIAL', 'PUBLIC', 'VACANT', 'OPEN_LAND']
+                  ? propertyUseValues.map((v) => ({ code: v, label: v }))
+                  : [
+                      { code: '100', label: 'Assembly' },
+                      { code: '200', label: 'Education' },
+                      { code: '300', label: 'Health care & detention' },
+                      { code: '400', label: 'Residential' },
+                      { code: '419', label: '1 or 2 family dwelling' },
+                      { code: '429', label: 'Multi-family dwelling' },
+                      { code: '500', label: 'Mercantile & business' },
+                      { code: '600', label: 'Industrial' },
+                      { code: '700', label: 'Storage' },
+                      { code: '800', label: 'Special property' },
+                      { code: '900', label: 'Outside or special' },
+                      { code: 'NNN', label: 'None/Not applicable' },
+                    ]
                 ).map((v) => (
-                  <option key={v} value={v} className="bg-[#0b0f14]">{v.replace(/_/g, ' ')}</option>
+                  <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
                 ))}
               </select>
             </FormField>
@@ -755,10 +785,21 @@ function IncidentForm({
                     >
                       <option value="" className="bg-[#0b0f14]">— Select —</option>
                       {(actionTakenValues.length > 0
-                        ? actionTakenValues
-                        : ['FIRE_CONTROL', 'VENTILATION', 'SALVAGE', 'OVERHAUL', 'WATER_SUPPLY', 'SEARCH', 'RESCUE', 'EMS_CARE', 'HAZMAT_MITIGATION', 'INVESTIGATION']
+                        ? actionTakenValues.map((v) => ({ code: v, label: v }))
+                        : [
+                            { code: '10', label: 'Extinguishment' },
+                            { code: '12', label: 'Salvage & overhaul' },
+                            { code: '21', label: 'Fire investigation' },
+                            { code: '32', label: 'Search & rescue' },
+                            { code: '41', label: 'HazMat mitigation' },
+                            { code: '51', label: 'Provide first aid' },
+                            { code: '52', label: 'Patient assessment' },
+                            { code: '71', label: 'Scene safety & control' },
+                            { code: '86', label: 'Mutual aid given' },
+                            { code: '93', label: 'Cancelled en route' },
+                          ]
                       ).map((v) => (
-                        <option key={v} value={v} className="bg-[#0b0f14]">{v.replace(/_/g, ' ')}</option>
+                        <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
                       ))}
                     </select>
                   </FormField>
@@ -876,27 +917,39 @@ export default function FireIncidentsPage() {
   const [isNew, setIsNew] = useState(false);
   const [packRules, setPackRules] = useState<PackRules | null>(null);
   const [apparatus, setApparatus] = useState<ApparatusOption[]>([]);
+  const [departmentId, setDepartmentId] = useState<string | null>(null);
   const { toasts, push: pushToast } = useToast();
 
-  // Fetch pack rules
+  // Fetch pack rules and department id
   useEffect(() => {
     fetch(`${API}/api/v1/incidents/fire/pack-rules`, {
       headers: { Authorization: getToken() },
     })
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setPackRules(d))
+      .then((d) => {
+        if (!d) return;
+        setPackRules(d);
+        if (d.department_id) setDepartmentId(d.department_id);
+      })
+      .catch(() => {});
+    fetch(`${API}/api/v1/tenant/neris/onboarding/status`, {
+      headers: { Authorization: getToken() },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d?.department?.id && setDepartmentId(d.department.id))
       .catch(() => {});
   }, []);
 
   // Fetch apparatus
   useEffect(() => {
-    fetch(`${API}/api/v1/incidents/fire/apparatus`, {
+    if (!departmentId) return;
+    fetch(`${API}/api/v1/incidents/fire/departments/${departmentId}/apparatus`, {
       headers: { Authorization: getToken() },
     })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d && setApparatus(Array.isArray(d) ? d : d.apparatus ?? []))
       .catch(() => {});
-  }, []);
+  }, [departmentId]);
 
   // Fetch incidents
   const fetchIncidents = useCallback(async () => {
@@ -958,6 +1011,7 @@ export default function FireIncidentsPage() {
               selectedIncident={selectedIncident}
               packRules={packRules}
               apparatus={apparatus}
+              departmentId={departmentId}
               onSaved={handleSaved}
               pushToast={pushToast}
             />

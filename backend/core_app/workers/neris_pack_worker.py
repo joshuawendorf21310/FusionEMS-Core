@@ -140,8 +140,8 @@ def process_pack_import(body: dict, correlation_id: str) -> dict:
                 MessageDeduplicationId=f"compile-{pack_id}",
                 MessageBody=json.dumps({"job_type": "neris.pack.compile_rules", "pack_id": pack_id, "tenant_id": tenant_id, "actor_user_id": actor_user_id}),
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.error("neris_pack_compile_enqueue_failed pack_id=%s error=%s correlation_id=%s", pack_id, exc, correlation_id)
 
     logger.info("neris_pack_import_done pack_id=%s files=%d sha256=%s correlation_id=%s", pack_id, len(file_records), pack_sha256, correlation_id)
     return {"pack_id": pack_id, "files": len(file_records), "sha256": pack_sha256}
