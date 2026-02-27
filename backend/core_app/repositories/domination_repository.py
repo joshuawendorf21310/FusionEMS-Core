@@ -61,6 +61,7 @@ TENANT_TABLES: set[str] = {
     "kitlink_ocr_jobs","kitlink_anomaly_flags","compliance_packs","compliance_check_templates",
     "compliance_inspections","compliance_findings","kitlink_wizard_state",
     "compliance_pack_versions","compliance_rules","compliance_reports","tenant_compliance_config",
+    "hems_mission_events","rep_signatures","auth_rep_sessions","authorized_reps","rep_documents","billing_cases","patient_statements",
 }
 
 

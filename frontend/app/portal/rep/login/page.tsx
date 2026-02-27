@@ -59,11 +59,17 @@ export default function RepLoginPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/otp/request`,
+        `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/register`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: phone.trim() }),
+          body: JSON.stringify({
+            phone: phone.trim(),
+            patient_account_id: sessionStorage.getItem('rep_patient_id') ?? '00000000-0000-0000-0000-000000000000',
+            relationship: sessionStorage.getItem('rep_relationship') ?? 'self',
+            full_name: sessionStorage.getItem('rep_full_name') ?? phone.trim(),
+            delivery_method: 'sms',
+          }),
         }
       );
       if (!res.ok) {

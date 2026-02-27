@@ -354,3 +354,20 @@ async def send_payment_sms(
         "checkout_session_id": checkout["checkout_session_id"],
         "amount_cents": amount_due_cents,
     }
+
+
+@router.get("/patient/statements")
+async def list_patient_statements(
+    request: Request,
+    limit: int = 50,
+    offset: int = 0,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    """List billing statements for the current patient/tenant."""
+    from core_app.services.domination_service import DominationService
+    from core_app.services.event_publisher import get_event_publisher
+
+    svc = DominationService(db, get_event_publisher())
+    rows = svc.repo("ar_statements").list(tenant_id=current.tenant_id, limit=limit, offset=offset)
+    return {"statements": rows, "total": len(rows)}

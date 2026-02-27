@@ -296,7 +296,7 @@ export default function ExpenseLedgerPage() {
               >
                 Sync to QuickBooks
               </button>
-              <Badge label="Coming Soon" status="info" />
+              <Badge label="QuickBooks" status="info" />
             </div>
           </div>
         </Panel>

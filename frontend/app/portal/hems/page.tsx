@@ -207,9 +207,53 @@ export default function HemsPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((data: ChecklistTemplate | null) => {
         if (!data) return;
-        // template may extend defaults; we just keep the fixed keys
       })
-      .catch(() => {/* silently ignore — use defaults */});
+      .catch((e: unknown) => { console.warn('checklist-template fetch failed', e); });
+  }, []);
+
+  // ── SSE: realtime mission events ───────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let es: EventSource | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    function startSSE() {
+      const token = getToken().replace('Bearer ', '');
+      es = new EventSource(`${API}/api/v1/hems/missions/stream?token=${encodeURIComponent(token)}`);
+
+      es.addEventListener('mission_complete', (e) => {
+        const data = JSON.parse(e.data);
+        const mid = (data?.data?.mission_id ?? '');
+        if (mid && !missionId) setMissionId(mid);
+        push('Mission event received', 'success');
+      });
+
+      es.addEventListener('wheels_up', (e) => {
+        const data = JSON.parse(e.data);
+        const mid = (data?.data?.mission_id ?? '');
+        if (mid && !missionId) setMissionId(mid);
+      });
+
+      es.addEventListener('pilot_acknowledge', (e) => {
+        const data = JSON.parse(e.data);
+        const mid = (data?.data?.mission_id ?? '');
+        if (mid && !missionId) setMissionId(mid);
+      });
+
+      es.onerror = () => {
+        es?.close();
+        // Fallback: poll every 15s
+        pollInterval = setInterval(() => {
+          if (missionId) fetchTimeline();
+        }, 15000);
+      };
+    }
+
+    startSSE();
+    return () => {
+      es?.close();
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, []);
 
   // ── Set Readiness ───

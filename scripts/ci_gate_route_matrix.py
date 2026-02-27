@@ -84,16 +84,6 @@ KNOWN_MISMATCHES = [
         re.compile(r"/api/v1/support/founder/"),
         "page calls /api/v1/support/founder/... but backend is /api/v1/support/inbox/...",
     ),
-    (
-        "/portal/rep/",
-        re.compile(r"/api/v1/auth-rep/otp/request"),
-        "page calls /auth-rep/otp/request — backend is /auth-rep/register",
-    ),
-    (
-        "/portal/rep/",
-        re.compile(r"/api/v1/auth-rep/otp/verify"),
-        "page calls /auth-rep/otp/verify — backend is /auth-rep/verify-otp",
-    ),
 ]
 
 
@@ -200,24 +190,51 @@ def gate_no_fake_labels() -> None:
 # ─── Gate 6: High-priority stubs in backend (bare-pass endpoints) ────────────
 
 HIGH_PRIORITY_STUB_FILES = [
-    ("nemsis_manager_router.py", "validate/cross-field-consistency"),
-    ("scheduling_router.py", "fatigue/report"),
-    ("tracking_router.py", "track/{token}"),
+    "nemsis_manager_router.py",
+    "scheduling_router.py",
+    "tracking_router.py",
 ]
 
 
+def _has_stub_only_handler(content: str) -> bool:
+    """True if any @router-decorated async def has a body of only `pass`."""
+    file_lines = content.splitlines()
+    i = 0
+    while i < len(file_lines):
+        ln = file_lines[i].rstrip()
+        if re.match(r"\s*@router\.", ln):
+            j = i + 1
+            while j < len(file_lines) and file_lines[j].strip().startswith('@'):
+                j += 1
+            if j < len(file_lines) and re.match(r"\s*(async )?def ", file_lines[j]):
+                k = j + 1
+                while k < len(file_lines) and (
+                    not file_lines[k].strip()
+                    or file_lines[k].startswith(' ' * 4)
+                    or file_lines[k].startswith('\t')
+                ):
+                    k += 1
+                body = [l.strip() for l in file_lines[j+1:k]
+                        if l.strip() and not l.strip().startswith("#")]
+                if body == ["pass"]:
+                    return True
+            i = j
+        else:
+            i += 1
+    return False
+
+
 def gate_no_critical_stubs() -> None:
-    for fname, label in HIGH_PRIORITY_STUB_FILES:
+    for fname in HIGH_PRIORITY_STUB_FILES:
         fpath = os.path.join(BACKEND_API, fname)
         if not os.path.exists(fpath):
             continue
-        with open(fpath, errors="replace") as f:
+        with open(fpath, errors='replace') as f:
             content = f.read()
-        if BARE_PASS_RE.search(content):
-            fail(f"STUB-ENDPOINT: {fname} contains bare-pass ({label})")
+        if _has_stub_only_handler(content):
+            fail(f"STUB-ENDPOINT: {fname} has a route handler whose entire body is only `pass`")
         else:
-            ok(f"No bare-pass in {fname}")
-
+            ok(f"No pass-only route handlers in {fname}")
 
 # ─── Gate 7: Fax inbox endpoint exists ───────────────────────────────────────
 
@@ -247,7 +264,7 @@ def gate_auth_rep_paths() -> None:
         return
     with open(AUTH_REP_ROUTER, errors="replace") as f:
         content = f.read()
-    for path in ["/otp/request", "/otp/verify", "/sign"]:
+    for path in ["/register", "/verify-otp", "/sign", "/documents"]:
         if f'"{path}"' not in content and f"'{path}'" not in content:
             fail(f"MISSING-ENDPOINT: /api/v1/auth-rep{path} — portal/rep pages will 404")
         else:

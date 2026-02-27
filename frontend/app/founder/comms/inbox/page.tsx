@@ -122,7 +122,7 @@ export default function SupportInboxPage() {
   // ── Fetch threads ──────────────────────────────────────────────────────────
   const fetchThreads = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/v1/support/founder/inbox?status=open&limit=50`, {
+      const res = await fetch(`${API}/api/v1/support/inbox?status=open&limit=50`, {
         headers: { Authorization: getToken() },
       });
       if (!res.ok) throw new Error('Failed to load threads');
@@ -145,7 +145,7 @@ export default function SupportInboxPage() {
     setSummary(null);
     setSummaryOpen(false);
     try {
-      const res = await fetch(`${API}/api/v1/support/founder/threads/${threadId}/messages`, {
+      const res = await fetch(`${API}/api/v1/support/threads/${threadId}/messages`, {
         headers: { Authorization: getToken() },
       });
       if (!res.ok) throw new Error('Failed to load messages');
@@ -171,7 +171,7 @@ export default function SupportInboxPage() {
     if (!activeThread || !replyText.trim()) return;
     setSendingReply(true);
     try {
-      const res = await fetch(`${API}/api/v1/support/founder/threads/${activeThread.id}/reply`, {
+      const res = await fetch(`${API}/api/v1/support/inbox/${activeThread.id}/reply`, {
         method: 'POST',
         headers: { Authorization: getToken(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: replyText.trim() }),
@@ -191,7 +191,7 @@ export default function SupportInboxPage() {
   async function resolveThread(thread: SupportThread) {
     setResolvingId(thread.id);
     try {
-      const res = await fetch(`${API}/api/v1/support/founder/threads/${thread.id}/resolve`, {
+      const res = await fetch(`${API}/api/v1/support/inbox/${thread.id}/resolve`, {
         method: 'POST',
         headers: { Authorization: getToken() },
       });
@@ -213,7 +213,7 @@ export default function SupportInboxPage() {
     if (!activeThread) return;
     setSummarizing(true);
     try {
-      const res = await fetch(`${API}/api/v1/support/founder/threads/${activeThread.id}/summarize`, {
+      const res = await fetch(`${API}/api/v1/support/inbox/${activeThread.id}/summarize`, {
         method: 'POST',
         headers: { Authorization: getToken() },
       });

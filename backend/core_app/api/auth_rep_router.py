@@ -231,3 +231,114 @@ async def list_reps(
     svc = DominationService(db, publisher)
     reps = svc.repo("authorized_reps").list(tenant_id=current.tenant_id, limit=500)
     return {"reps": reps}
+
+
+class RepSignRequest(BaseModel):
+    rep_id: uuid.UUID
+    signature_data_url: str
+    agreed_to_terms: bool
+    full_name: str = ""
+    signed_at: str = ""
+
+
+@router.post("/sign")
+async def sign_authorization(
+    payload: RepSignRequest,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    if not payload.agreed_to_terms:
+        raise HTTPException(status_code=422, detail="must_agree_to_terms")
+    if not payload.signature_data_url:
+        raise HTTPException(status_code=422, detail="signature_required")
+
+    publisher = get_event_publisher()
+    svc = DominationService(db, publisher)
+
+    signed_at = payload.signed_at or datetime.now(timezone.utc).isoformat()
+
+    row = await svc.create(
+        table="rep_signatures",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "rep_id": str(payload.rep_id),
+            "signature_data_url": payload.signature_data_url,
+            "agreed_to_terms": payload.agreed_to_terms,
+            "full_name": payload.full_name,
+            "signed_at": signed_at,
+            "ip_address": request.client.host if request.client else None,
+            "user_agent": request.headers.get("user-agent"),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
+    await svc.update(
+        table="authorized_reps",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        record_id=payload.rep_id,
+        expected_version=None,
+        patch={"status": "signed", "signed_at": signed_at},
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
+    return {"signature_id": row["id"], "status": "signed"}
+
+
+@router.post("/documents")
+async def upload_rep_document_multipart(
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    from fastapi import UploadFile
+    from starlette.datastructures import FormData
+
+    form: FormData = await request.form()
+    file = form.get("file")
+    document_type: str = form.get("document_type", "")
+    session_id_raw: str = form.get("session_id", "")
+
+    if not file or not document_type:
+        raise HTTPException(status_code=422, detail="file and document_type required")
+
+    ALLOWED_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+    MAX_BYTES = 10 * 1024 * 1024
+
+    content_type = getattr(file, "content_type", None) or "application/octet-stream"
+    if content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=422, detail="unsupported_file_type")
+
+    content = await file.read()
+    if len(content) > MAX_BYTES:
+        raise HTTPException(status_code=413, detail="file_too_large")
+
+    from core_app.core.config import get_settings
+    from core_app.documents.s3_storage import put_bytes, default_docs_bucket
+    bucket = default_docs_bucket()
+    doc_key = f"tenants/{current.tenant_id}/rep-docs/{uuid.uuid4()}/{getattr(file, 'filename', 'upload')}"
+    if bucket:
+        put_bytes(bucket=bucket, key=doc_key, content=content, content_type=content_type)
+
+    publisher = get_event_publisher()
+    svc = DominationService(db, publisher)
+
+    doc_row = await svc.create(
+        table="rep_documents",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "session_id": session_id_raw,
+            "document_type": document_type,
+            "s3_key": doc_key,
+            "bucket": bucket,
+            "filename": getattr(file, "filename", "upload"),
+            "content_type": content_type,
+            "size_bytes": len(content),
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return {"document_id": doc_row["id"], "status": "uploaded"}

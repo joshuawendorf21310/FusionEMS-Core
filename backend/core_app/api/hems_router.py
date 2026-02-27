@@ -260,3 +260,243 @@ async def safety_timeline(
         "weather_briefs": fetch("hems_weather_briefs"),
         "risk_audits": fetch("hems_risk_audits"),
     }
+
+
+@router.post("/missions/{mission_id}/acknowledge")
+async def acknowledge_mission(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    decision = payload.get("decision", "accept")
+    if decision not in ("accept", "decline"):
+        raise HTTPException(status_code=422, detail="decision must be 'accept' or 'decline'")
+    svc = _svc(db)
+    row = await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "pilot_acknowledge",
+            "pilot_user_id": str(current.user_id),
+            "decision": decision,
+            "decline_reason": payload.get("decline_reason"),
+            "acknowledged_at": datetime.now(timezone.utc).isoformat(),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return row
+
+
+@router.post("/missions/{mission_id}/wheels-up")
+async def record_wheels_up(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    svc = _svc(db)
+    wheels_up_time = payload.get("wheels_up_time") or datetime.now(timezone.utc).isoformat()
+    row = await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "wheels_up",
+            "pilot_user_id": str(current.user_id),
+            "aircraft_id": payload.get("aircraft_id"),
+            "wheels_up_time": wheels_up_time,
+            "crew": payload.get("crew", []),
+            "fuel_on_board_lbs": payload.get("fuel_on_board_lbs"),
+            "destination": payload.get("destination"),
+            "lz_coords": payload.get("lz_coords"),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return row
+
+
+@router.post("/missions/{mission_id}/wheels-down")
+async def record_wheels_down(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    svc = _svc(db)
+    wheels_down_time = payload.get("wheels_down_time") or datetime.now(timezone.utc).isoformat()
+    row = await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "wheels_down",
+            "pilot_user_id": str(current.user_id),
+            "wheels_down_time": wheels_down_time,
+            "destination_actual": payload.get("destination_actual"),
+            "patient_status": payload.get("patient_status"),
+            "fuel_on_board_lbs": payload.get("fuel_on_board_lbs"),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return row
+
+
+@router.post("/missions/{mission_id}/complete")
+async def complete_mission(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    svc = _svc(db)
+    completed_at = datetime.now(timezone.utc).isoformat()
+    row = await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "mission_complete",
+            "pilot_user_id": str(current.user_id),
+            "completed_at": completed_at,
+            "outcome": payload.get("outcome"),
+            "transport_minutes": payload.get("transport_minutes"),
+            "epcr_opened": False,
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
+    billing_row = await svc.create(
+        table="billing_cases",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "service_type": "HEMS",
+            "status": "pending_epcr",
+            "created_at": completed_at,
+            "transport_minutes": payload.get("transport_minutes"),
+            "outcome": payload.get("outcome"),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
+    return {
+        "mission_event_id": row["id"],
+        "billing_case_id": billing_row["id"],
+        "status": "completed",
+        "epcr_required": True,
+    }
+
+
+@router.get("/missions/stream")
+async def mission_stream(
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    import asyncio
+    import json
+    from fastapi.responses import StreamingResponse
+
+    async def event_generator():
+        svc = _svc(db)
+        last_event_ids: dict[str, str] = {}
+        while True:
+            if await request.is_disconnected():
+                break
+
+            tables = ["hems_mission_events", "aircraft_readiness_events", "hems_weather_briefs"]
+            for table in tables:
+                rows = svc.repo(table).list(tenant_id=current.tenant_id, limit=10, offset=0)
+                for row in sorted(rows, key=lambda r: r.get("created_at", ""), reverse=True)[:5]:
+                    row_id = str(row.get("id", ""))
+                    if last_event_ids.get(table) != row_id:
+                        last_event_ids[table] = row_id
+                        event_type = (row.get("data") or {}).get("event_type", table.replace("_", "-"))
+                        yield f"event: {event_type}\ndata: {json.dumps(row)}\n\n"
+
+            await asyncio.sleep(5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@router.get("/weather/fetch")
+async def fetch_live_weather(
+    icao: str,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    """Fetch live METAR + TAF from aviationweather.gov (free, no auth required)."""
+    import httpx
+
+    _check(current)
+    icao = icao.upper().strip()
+    if not icao or len(icao) < 3 or len(icao) > 5:
+        raise HTTPException(status_code=422, detail="icao must be 3-5 characters")
+
+    base = "https://aviationweather.gov/api/data"
+    results: dict[str, Any] = {"icao": icao, "metar": None, "taf": None, "source": "aviationweather.gov"}
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            metar_r = await client.get(f"{base}/metar", params={"ids": icao, "format": "json"})
+            if metar_r.status_code == 200:
+                data = metar_r.json()
+                if isinstance(data, list) and data:
+                    results["metar"] = data[0]
+        except httpx.HTTPError:
+            results["metar_error"] = "fetch_failed"
+
+        try:
+            taf_r = await client.get(f"{base}/taf", params={"ids": icao, "format": "json"})
+            if taf_r.status_code == 200:
+                data = taf_r.json()
+                if isinstance(data, list) and data:
+                    results["taf"] = data[0]
+        except httpx.HTTPError:
+            results["taf_error"] = "fetch_failed"
+
+    if not results["metar"] and not results["taf"]:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No weather data found for ICAO {icao}. Verify station identifier.",
+        )
+
+    svc = _svc(db)
+    await svc.create(
+        table="aviation_weather_reports",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "icao": icao,
+            "metar": results.get("metar"),
+            "taf": results.get("taf"),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "source": "aviationweather.gov",
+        },
+        correlation_id=None,
+    )
+
+    return results

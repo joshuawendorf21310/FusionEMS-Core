@@ -54,11 +54,14 @@ export default function RepVerifyPage() {
       setHasError(false);
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/otp/verify`,
+          `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/verify-otp`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, otp: code }),
+            body: JSON.stringify({
+            session_id: sessionStorage.getItem('rep_session_id') ?? '',
+            otp_code: code,
+          }),
           }
         );
         const body = await res.json().catch(() => ({}));
@@ -145,11 +148,17 @@ export default function RepVerifyPage() {
     setResending(true);
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/otp/request`,
+        `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/register`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({
+          phone,
+          patient_account_id: sessionStorage.getItem('rep_patient_id') ?? '00000000-0000-0000-0000-000000000000',
+          relationship: sessionStorage.getItem('rep_relationship') ?? 'self',
+          full_name: sessionStorage.getItem('rep_full_name') ?? phone,
+          delivery_method: 'sms',
+        }),
         }
       );
       setDigits(Array(DIGIT_COUNT).fill(''));

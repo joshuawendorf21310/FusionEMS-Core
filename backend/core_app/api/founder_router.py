@@ -174,3 +174,43 @@ async def aws_cost_summary(
         return {"period": f"{start} to {end}", "total_usd": round(total, 2), "by_service": results}
     except Exception as e:
         return {"error": str(e), "message": "AWS Cost Explorer not available"}
+
+
+@router.get("/compliance/status")
+async def compliance_status(
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    require_role(current, ["founder", "admin"])
+    from core_app.services.domination_service import DominationService
+    from core_app.services.event_publisher import get_event_publisher
+    from sqlalchemy.orm import Session as _Session
+
+    svc = DominationService(db, get_event_publisher())
+
+    nemsis_jobs = svc.repo("nemsis_export_jobs").list(tenant_id=current.tenant_id, limit=1)
+    nemsis_latest = nemsis_jobs[0] if nemsis_jobs else None
+
+    neris_jobs = svc.repo("neris_export_jobs").list(tenant_id=current.tenant_id, limit=1)
+    neris_latest = neris_jobs[0] if neris_jobs else None
+
+    packs = svc.repo("compliance_packs").list(tenant_id=current.tenant_id, limit=100)
+    active_packs = [p for p in packs if (p.get("data") or {}).get("active")]
+
+    return {
+        "nemsis": {
+            "certified": nemsis_latest is not None,
+            "last_export_at": (nemsis_latest or {}).get("created_at"),
+            "status": (nemsis_latest or {}).get("data", {}).get("status", "none"),
+        },
+        "neris": {
+            "onboarded": neris_latest is not None,
+            "last_export_at": (neris_latest or {}).get("created_at"),
+            "status": (neris_latest or {}).get("data", {}).get("status", "none"),
+        },
+        "compliance_packs": {
+            "active_count": len(active_packs),
+            "packs": [{"id": p.get("id"), "name": (p.get("data") or {}).get("name")} for p in active_packs],
+        },
+        "overall": "partial" if (nemsis_latest or neris_latest or active_packs) else "none",
+    }
