@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Founder Command Platform (Root Nested Stack - Hardened Phase 1)
+Description: FusionEMS Quantum - Root Nested Stack (Enterprise Production-Ready)
 
 Parameters:
   Env:
@@ -21,11 +21,15 @@ Parameters:
 
   HostedZoneId:
     Type: String
-    Description: Route53 Hosted Zone ID for fusionemsquantum.com
+    Description: Route53 Hosted Zone ID
 
   AcmCertificateArnUsEast1:
     Type: String
-    Description: ACM certificate ARN in us-east-1 covering RootDomainName and ApiDomainName
+    Description: ACM certificate ARN in us-east-1 (for CloudFront)
+
+  AcmCertificateArnRegional:
+    Type: String
+    Description: ACM certificate ARN in deployment region (for ALB)
 
   ImageTag:
     Type: String
@@ -35,27 +39,45 @@ Parameters:
     Type: Number
     Default: 2
 
-  BackendContainerPort:
-    Type: Number
-    Default: 8000
-
-  FrontendContainerPort:
-    Type: Number
-    Default: 3000
-
   DbInstanceClass:
     Type: String
     Default: db.t4g.medium
+
+  DbMultiAZ:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
 
   RedisNodeType:
     Type: String
     Default: cache.t4g.small
 
-Resources:
+  AlertEmail:
+    Type: String
+    Default: founder@fusionemsquantum.com
 
-  ########################################
-  # NETWORK
-  ########################################
+  SesFromEmail:
+    Type: String
+    Default: noreply@fusionemsquantum.com
+
+  GitHubOrg:
+    Type: String
+    Description: GitHub organization or username (for OIDC trust policy)
+    Default: ''
+
+  GitHubRepo:
+    Type: String
+    Description: GitHub repository name (for OIDC trust policy)
+    Default: FusionEMS-Core
+
+  NestedTemplatesBucket:
+    Type: String
+    Description: S3 bucket where packaged nested templates are stored
+
+Conditions:
+  HasGitHubOrg: !Not [!Equals [!Ref GitHubOrg, '']]
+
+Resources:
 
   NetworkStack:
     Type: AWS::CloudFormation::Stack
@@ -70,10 +92,6 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
-  ########################################
-  # DATA LAYER (RDS + REDIS + SECRETS)
-  ########################################
-
   DataStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
@@ -83,6 +101,7 @@ Resources:
         Env: !Ref Env
         AppName: !Ref AppName
         DbInstanceClass: !Ref DbInstanceClass
+        DbMultiAZ: !Ref DbMultiAZ
         RedisNodeType: !Ref RedisNodeType
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
@@ -92,10 +111,6 @@ Resources:
           Value: !Ref Env
         - Key: Application
           Value: !Ref AppName
-
-  ########################################
-  # AUTH (COGNITO)
-  ########################################
 
   CognitoStack:
     Type: AWS::CloudFormation::Stack
@@ -112,15 +127,61 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
-  ########################################
-  # COMPUTE (ECS + ALB + ECR)
-  ########################################
+  S3Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: s3.yml
+      Parameters:
+        Env: !Ref Env
+        AppName: !Ref AppName
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+
+  WafStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: waf.yml
+      Parameters:
+        Env: !Ref Env
+        AppName: !Ref AppName
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+
+  SesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ses.yml
+      Parameters:
+        Env: !Ref Env
+        AppName: !Ref AppName
+        FromEmail: !Ref SesFromEmail
+        RootDomainName: !Ref RootDomainName
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AppName}-${Env}-alerts'
+      DisplayName: !Sub 'FusionEMS ${Env} Alerts'
+
+  AlertTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
 
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - DataStack
       - CognitoStack
+      - S3Stack
+      - WafStack
     Properties:
       TemplateURL: compute.yml
       Parameters:
@@ -133,21 +194,29 @@ Resources:
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
         ImageTag: !Ref ImageTag
         DesiredCount: !Ref DesiredCount
-        BackendContainerPort: !Ref BackendContainerPort
-        FrontendContainerPort: !Ref FrontendContainerPort
         DbSecretArn: !GetAtt DataStack.Outputs.DbSecretArn
-        RedisEndpoint: !GetAtt DataStack.Outputs.RedisEndpoint
+        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
+        RedisPrimaryEndpoint: !GetAtt DataStack.Outputs.RedisPrimaryEndpoint
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
+        AcmCertificateArn: !Ref AcmCertificateArnRegional
+        DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId
+        RedisClusterId: !GetAtt DataStack.Outputs.RedisReplicationGroupId
+        AlertTopicArn: !Ref AlertTopic
       Tags:
         - Key: Environment
           Value: !Ref Env
         - Key: Application
           Value: !Ref AppName
 
-  ########################################
-  # EDGE (CLOUDFRONT + ROUTE53)
-  ########################################
+  WafAlbAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    DependsOn:
+      - WafStack
+      - ComputeStack
+    Properties:
+      ResourceArn: !GetAtt ComputeStack.Outputs.AlbArn
+      WebACLArn: !GetAtt WafStack.Outputs.WebAclArn
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack
@@ -168,10 +237,6 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
-  ########################################
-  # OBSERVABILITY (PROMETHEUS / GRAFANA / CW ALARMS)
-  ########################################
-
   ObservabilityStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: ComputeStack
@@ -180,7 +245,17 @@ Resources:
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
-        ClusterName: !GetAtt ComputeStack.Outputs.ClusterName
+        AlertEmail: !Ref AlertEmail
+        AlertTopicArn: !Ref AlertTopic
+        EcsClusterName: !GetAtt ComputeStack.Outputs.ClusterName
+        BackendServiceName: !GetAtt ComputeStack.Outputs.BackendServiceName
+        FrontendServiceName: !GetAtt ComputeStack.Outputs.FrontendServiceName
+        AlbFullName: !GetAtt ComputeStack.Outputs.AlbFullName
+        BackendTargetGroupFullName: !GetAtt ComputeStack.Outputs.BackendTargetGroupFullName
+        DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId
+        RedisClusterId: !GetAtt DataStack.Outputs.RedisReplicationGroupId
+        RootDomainName: !Ref RootDomainName
+        ApiDomainName: !Ref ApiDomainName
       Tags:
         - Key: Environment
           Value: !Ref Env
@@ -188,7 +263,6 @@ Resources:
           Value: !Ref AppName
 
 Outputs:
-
   RootDomainName:
     Value: !Ref RootDomainName
 
@@ -209,3 +283,6 @@ Outputs:
 
   CognitoUserPoolClientId:
     Value: !GetAtt CognitoStack.Outputs.UserPoolClientId
+
+  AlertTopicArn:
+    Value: !Ref AlertTopic

@@ -21,6 +21,7 @@ from core_app.fax.telnyx_service import TelnyxConfig, send_sms, TelnyxNotConfigu
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
 
 router = APIRouter(prefix="/api/v1/billing", tags=["Billing"])
 
@@ -416,3 +417,33 @@ async def stripe_webhook(
     db: Session = Depends(db_session_dependency),
 ):
     raise HTTPException(status_code=400, detail="Use /api/v1/public/webhooks/stripe")
+
+
+@router.get("/ar-aging")
+async def get_ar_aging(
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    require_role(current, ["founder", "billing", "admin"])
+    report = compute_ar_aging(db, current.tenant_id)
+    return {
+        "as_of_date": report.as_of_date,
+        "total_ar_cents": report.total_ar_cents,
+        "total_claims": report.total_claims,
+        "avg_days_in_ar": report.avg_days_in_ar,
+        "buckets": [
+            {"label": b.label, "count": b.count, "total_cents": b.total_cents}
+            for b in report.buckets
+        ],
+        "payer_breakdown": report.payer_breakdown,
+    }
+
+
+@router.get("/revenue-forecast")
+async def get_revenue_forecast(
+    months: int = 3,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    require_role(current, ["founder", "billing", "admin"])
+    return compute_revenue_forecast(db, current.tenant_id, months=months)

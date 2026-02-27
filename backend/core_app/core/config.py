@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,17 +11,26 @@ class Settings(BaseSettings):
     environment: str = Field(default="development")
     debug: bool = Field(default=False)
 
-    database_url: str = Field(default="postgresql+psycopg://postgres:postgres@localhost:5432/fusionems")
+    database_url: str = Field(default="")
+    api_base_url: str = Field(default="https://api.fusionemsquantum.com")
 
-    jwt_secret_key: str = Field(default="change-me")
+    system_tenant_id: str = Field(
+        default="",
+        description=(
+            "Deterministic UUID for system-level events (webhook receipts, etc.) "
+            "that have no user tenant. Must be set in all environments."
+        ),
+    )
+
+    jwt_secret_key: str = Field(default="")
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_token_expire_minutes: int = Field(default=60)
 
-    redis_url: str = Field(default="redis://localhost:6379/0")
+    redis_url: str = Field(default="")
     s3_bucket_docs: str = Field(default="")
     s3_bucket_exports: str = Field(default="")
 
-    # Integrations (set via environment or injected from Secrets Manager)
+    # Integrations (injected from Secrets Manager via ECS task definition env vars)
     openai_api_key: str = Field(default="")
     stripe_secret_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")
@@ -33,6 +42,18 @@ class Settings(BaseSettings):
     officeally_sftp_username: str = Field(default="")
     officeally_sftp_password: str = Field(default="")
     officeally_sftp_remote_dir: str = Field(default="/")
+    lob_api_key: str = Field(default="")
+    lob_webhook_secret: str = Field(default="")
+    ses_from_email: str = Field(default="noreply@fusionemsquantum.com")
+    ses_configuration_set: str = Field(default="")
+    aws_region: str = Field(default="")
+
+    # Telnyx webhook verification + IVR
+    telnyx_public_key: str = Field(default="", description="Base64-encoded Ed25519 public key from Telnyx portal")
+    telnyx_webhook_tolerance_seconds: int = Field(default=300)
+    ivr_audio_base_url: str = Field(default="", description="S3 or CDN base URL for pre-generated IVR WAV prompts")
+    s3_bucket_audio: str = Field(default="")
+    fax_classify_queue_url: str = Field(default="")
 
     # Cognito (AWS-native identity)
     auth_mode: str = Field(default="local", description="local|cognito")
@@ -45,11 +66,83 @@ class Settings(BaseSettings):
     opa_url: str = Field(default="", description="OPA HTTP endpoint, e.g. http://opa:8181")
     opa_policy_path: str = Field(default="v1/data/fusionems/allow")
 
+    # SQS queues (Lambda workers)
+    lob_events_queue_url: str = Field(default="")
+    stripe_events_queue_url: str = Field(default="")
+
+    # DynamoDB tables (Lambda workers) — no default; must be explicitly set per environment
+    statements_table: str = Field(default="")
+    lob_events_table: str = Field(default="")
+    stripe_events_table: str = Field(default="")
+    tenants_table: str = Field(default="")
+
     # Observability
     otel_enabled: bool = Field(default=True)
     otel_service_name: str = Field(default="fusionems-core-backend")
     otel_exporter_otlp_endpoint: str = Field(default="")
     metrics_enabled: bool = Field(default=True)
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "Settings":
+        env = self.environment.lower()
+        if env in ("production", "prod", "staging"):
+            _REQUIRED: list[tuple[str, str]] = [
+                ("database_url",                    "DATABASE_URL"),
+                ("jwt_secret_key",                  "JWT_SECRET_KEY"),
+                ("stripe_secret_key",               "STRIPE_SECRET_KEY"),
+                ("stripe_webhook_secret",           "STRIPE_WEBHOOK_SECRET"),
+                ("lob_api_key",                     "LOB_API_KEY"),
+                ("lob_webhook_secret",              "LOB_WEBHOOK_SECRET"),
+                ("telnyx_api_key",                  "TELNYX_API_KEY"),
+                ("telnyx_from_number",              "TELNYX_FROM_NUMBER"),
+                ("telnyx_public_key",               "TELNYX_PUBLIC_KEY"),
+                ("ivr_audio_base_url",              "IVR_AUDIO_BASE_URL"),
+                ("fax_classify_queue_url",          "FAX_CLASSIFY_QUEUE_URL"),
+                ("aws_region",                      "AWS_REGION"),
+                ("system_tenant_id",                "SYSTEM_TENANT_ID"),
+                ("lob_events_queue_url",            "LOB_EVENTS_QUEUE_URL"),
+                ("stripe_events_queue_url",         "STRIPE_EVENTS_QUEUE_URL"),
+                ("statements_table",                "STATEMENTS_TABLE"),
+                ("lob_events_table",                "LOB_EVENTS_TABLE"),
+                ("stripe_events_table",             "STRIPE_EVENTS_TABLE"),
+                ("tenants_table",                   "TENANTS_TABLE"),
+            ]
+            missing = [
+                env_name
+                for attr, env_name in _REQUIRED
+                if not getattr(self, attr, "")
+            ]
+            if missing:
+                raise ValueError(
+                    f"The following required environment variables are not set "
+                    f"for environment '{env}': {', '.join(missing)}. "
+                    "All secrets must be injected from AWS Secrets Manager via the ECS task definition."
+                )
+            if self.jwt_secret_key in ("change-me", "changeme", "secret"):
+                raise ValueError(
+                    "JWT_SECRET_KEY is set to a known insecure placeholder value. "
+                    "Generate a cryptographically random key and inject it from Secrets Manager."
+                )
+            if self.auth_mode.lower() == "local":
+                raise ValueError(
+                    f"AUTH_MODE is 'local' in environment '{env}'. "
+                    "Set AUTH_MODE=cognito for staging and production deployments."
+                )
+        return self
+
+    @field_validator("system_tenant_id")
+    @classmethod
+    def _validate_system_tenant_id(cls, v: str) -> str:
+        if not v:
+            return v
+        import uuid as _uuid
+        try:
+            _uuid.UUID(v)
+        except ValueError as exc:
+            raise ValueError(
+                f"SYSTEM_TENANT_ID must be a valid UUID, got: {v!r}"
+            ) from exc
+        return v
 
 
 @lru_cache(maxsize=1)

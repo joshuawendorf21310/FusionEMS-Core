@@ -1,0 +1,570 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  FusionEMS Quantum — Billing Integration Stack
+  Provisions: DynamoDB tables, SQS queues, Lambda workers (Lob + Stripe),
+  Stripe Connect webhook Custom Resource, WAF rate-limit rules on webhook paths.
+
+Parameters:
+  AppName:
+    Type: String
+    Default: fusionems
+  Env:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+  AppSecretsArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing stripe_secret_key, lob_api_key, etc.
+  LambdaSubnets:
+    Type: String
+    Description: Comma-separated private subnet IDs for Lambda VPC config
+  LambdaSecurityGroupId:
+    Type: String
+    Description: Security group for Lambda functions
+  ApiGatewayWebhookUrl:
+    Type: String
+    Default: https://api.fusionemsquantum.com/webhooks/stripe
+    Description: Public URL that Stripe will POST Connect events to
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+  LambdaCodeS3Key:
+    Type: String
+    Default: workers/billing_workers.zip
+
+Conditions:
+  IsProd: !Equals [!Ref Env, prod]
+
+# ─────────────────────────────────────────────────────────────────────────────
+Resources:
+
+  # ── DynamoDB: lob_events ──────────────────────────────────────────────────
+  LobEventsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub '${AppName}-${Env}-lob-events'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: event_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: event_id
+          KeyType: HASH
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+
+  # ── DynamoDB: stripe_events ───────────────────────────────────────────────
+  StripeEventsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub '${AppName}-${Env}-stripe-events'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: event_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: event_id
+          KeyType: HASH
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+
+  # ── DynamoDB: statements ──────────────────────────────────────────────────
+  StatementsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub '${AppName}-${Env}-statements'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: statement_id
+          AttributeType: S
+        - AttributeName: tenant_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: statement_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: tenant_id-index
+          KeySchema:
+            - AttributeName: tenant_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+
+  # ── DynamoDB: tenants ─────────────────────────────────────────────────────
+  TenantsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub '${AppName}-${Env}-tenants'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: tenant_id
+          AttributeType: S
+        - AttributeName: stripe_connected_account_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tenant_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: stripe_connected_account_id-index
+          KeySchema:
+            - AttributeName: stripe_connected_account_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+
+  # ── SQS: lob-events-queue ────────────────────────────────────────────────
+  LobEventsDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-lob-events-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600  # 14 days
+      KmsMasterKeyId: alias/aws/sqs
+
+  LobEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-lob-events.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt LobEventsDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── SQS: stripe-events-queue ─────────────────────────────────────────────
+  StripeEventsDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-stripe-events-dlq.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  StripeEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${Env}-stripe-events.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 300
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt StripeEventsDLQ.Arn
+        maxReceiveCount: 3
+
+  # ── IAM: Lambda execution role ────────────────────────────────────────────
+  WorkerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${Env}-worker-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: WorkerLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt LobEventsTable.Arn
+                  - !GetAtt StripeEventsTable.Arn
+                  - !GetAtt StatementsTable.Arn
+                  - !Sub '${StatementsTable.Arn}/index/*'
+                  - !GetAtt TenantsTable.Arn
+                  - !Sub '${TenantsTable.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource:
+                  - !GetAtt LobEventsQueue.Arn
+                  - !GetAtt StripeEventsQueue.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref AppSecretsArn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppName}-${Env}-lob-worker:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppName}-${Env}-stripe-worker:*'
+
+  # ── Lambda: Lob worker ────────────────────────────────────────────────────
+  LobWorkerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${Env}-lob-worker'
+      Runtime: python3.12
+      Handler: core_app.workers.lob_worker.lambda_handler
+      Role: !GetAtt WorkerLambdaRole.Arn
+      Timeout: 120
+      MemorySize: 512
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      VpcConfig:
+        SubnetIds: !Split [',', !Ref LambdaSubnets]
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+      Environment:
+        Variables:
+          AWS_REGION:       !Ref AWS::Region
+          STATEMENTS_TABLE: !Ref StatementsTable
+          LOB_EVENTS_TABLE: !Ref LobEventsTable
+          TENANTS_TABLE:    !Ref TenantsTable
+          APP_SECRETS_ARN:  !Ref AppSecretsArn
+          ENV:              !Ref Env
+      Layers: []
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+
+  LobWorkerSQSTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt LobEventsQueue.Arn
+      FunctionName: !GetAtt LobWorkerFunction.Arn
+      BatchSize: 10
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  LobWorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AppName}-${Env}-lob-worker'
+      RetentionInDays: !If [IsProd, 90, 30]
+
+  # ── Lambda: Stripe worker ─────────────────────────────────────────────────
+  StripeWorkerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${Env}-stripe-worker'
+      Runtime: python3.12
+      Handler: core_app.workers.stripe_worker.lambda_handler
+      Role: !GetAtt WorkerLambdaRole.Arn
+      Timeout: 120
+      MemorySize: 512
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      VpcConfig:
+        SubnetIds: !Split [',', !Ref LambdaSubnets]
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+      Environment:
+        Variables:
+          AWS_REGION:          !Ref AWS::Region
+          STATEMENTS_TABLE:    !Ref StatementsTable
+          STRIPE_EVENTS_TABLE: !Ref StripeEventsTable
+          TENANTS_TABLE:       !Ref TenantsTable
+          APP_SECRETS_ARN:     !Ref AppSecretsArn
+          ENV:                 !Ref Env
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+
+  StripeWorkerSQSTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt StripeEventsQueue.Arn
+      FunctionName: !GetAtt StripeWorkerFunction.Arn
+      BatchSize: 10
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  StripeWorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AppName}-${Env}-stripe-worker'
+      RetentionInDays: !If [IsProd, 90, 30]
+
+  # ── Secrets: Stripe webhook endpoint id + signing secret ─────────────────
+  # Initial value is an empty JSON object; the Custom Resource Lambda overwrites
+  # it on Create/Update. Never relies on a "PENDING" placeholder at runtime.
+  StripeWebhookSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AppName}/${Env}/StripeWebhook'
+      Description: Stripe Connect webhook endpoint_id and signing_secret (managed by Custom Resource)
+      SecretString: '{"endpoint_id":"","signing_secret":""}'
+
+  # ── IAM: Custom Resource Lambda role ─────────────────────────────────────
+  StripeCustomResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${Env}-stripe-cr-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StripeCustomResourcePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:PutSecretValue
+                Resource:
+                  - !Ref AppSecretsArn
+                  - !Ref StripeWebhookSecret
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppName}-${Env}-stripe-webhook-provisioner:*'
+
+  # ── Lambda: Stripe webhook provisioner (Custom Resource) ─────────────────
+  StripeWebhookProvisionerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${Env}-stripe-webhook-provisioner'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt StripeCustomResourceRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json, os, boto3, urllib.request, urllib.parse
+          import cfnresponse
+
+          SM = boto3.client("secretsmanager")
+
+          ENABLED_EVENTS = [
+              "checkout.session.completed",
+              "payment_intent.succeeded",
+              "payment_intent.payment_failed",
+              "charge.refunded",
+              "charge.dispute.created",
+          ]
+
+          def _stripe_api(method, path, data=None, secret_key=None):
+              url = f"https://api.stripe.com/v1{path}"
+              body = urllib.parse.urlencode(data).encode() if data else None
+              req = urllib.request.Request(url, data=body, method=method)
+              import base64
+              creds = base64.b64encode(f"{secret_key}:".encode()).decode()
+              req.add_header("Authorization", f"Basic {creds}")
+              req.add_header("Content-Type", "application/x-www-form-urlencoded")
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  return json.loads(r.read())
+
+          def _get_stripe_key(app_secrets_arn):
+              val = SM.get_secret_value(SecretId=app_secrets_arn)["SecretString"]
+              return json.loads(val)["stripe_secret_key"]
+
+          def handler(event, context):
+              props = event["ResourceProperties"]
+              app_secrets_arn    = props["AppSecretsArn"]
+              webhook_url        = props["WebhookUrl"]
+              webhook_secret_arn = props["WebhookSecretArn"]
+              request_type       = event["RequestType"]
+
+              try:
+                  secret_key = _get_stripe_key(app_secrets_arn)
+
+                  if request_type in ("Create", "Update"):
+                      physical_id = event.get("PhysicalResourceId", "")
+                      endpoint_id = physical_id if physical_id.startswith("we_") else None
+
+                      enabled_events_data = {f"enabled_events[{i}]": e for i, e in enumerate(ENABLED_EVENTS)}
+
+                      if endpoint_id:
+                          resp = _stripe_api(
+                              "POST", f"/webhook_endpoints/{endpoint_id}",
+                              data={**enabled_events_data, "url": webhook_url},
+                              secret_key=secret_key,
+                          )
+                      else:
+                          resp = _stripe_api(
+                              "POST", "/webhook_endpoints",
+                              data={
+                                  "url": webhook_url,
+                                  "connect": "true",
+                                  **enabled_events_data,
+                              },
+                              secret_key=secret_key,
+                          )
+
+                      endpoint_id    = resp["id"]
+                      signing_secret = resp.get("secret", "")
+
+                      if not signing_secret:
+                          raise ValueError(
+                              f"Stripe did not return a signing_secret for endpoint {endpoint_id}. "
+                              "This is only returned on initial Create; for Update, retrieve from existing secret."
+                          )
+
+                      SM.put_secret_value(
+                          SecretId=webhook_secret_arn,
+                          SecretString=json.dumps({
+                              "endpoint_id":    endpoint_id,
+                              "signing_secret": signing_secret,
+                          }),
+                      )
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                       {"EndpointId": endpoint_id}, endpoint_id)
+
+                  elif request_type == "Delete":
+                      endpoint_id = event.get("PhysicalResourceId", "")
+                      if endpoint_id.startswith("we_"):
+                          _stripe_api("DELETE", f"/webhook_endpoints/{endpoint_id}",
+                                      secret_key=secret_key)
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, endpoint_id)
+
+              except Exception as exc:
+                  cfnresponse.send(event, context, cfnresponse.FAILED,
+                                   {"Error": str(exc)}, event.get("PhysicalResourceId", "FAILED"))
+
+      Environment:
+        Variables:
+          ENV: !Ref Env
+
+  # ── Custom Resource invocation ────────────────────────────────────────────
+  StripeWebhookEndpoint:
+    Type: Custom::StripeWebhookEndpoint
+    DependsOn:
+      - StripeWebhookProvisionerFunction
+      - StripeWebhookSecret
+    Properties:
+      ServiceToken: !GetAtt StripeWebhookProvisionerFunction.Arn
+      AppSecretsArn: !Ref AppSecretsArn
+      WebhookUrl: !Ref ApiGatewayWebhookUrl
+      WebhookSecretArn: !Ref StripeWebhookSecret
+
+  # ── CloudWatch Alarms: DLQ depth ─────────────────────────────────────────
+  LobDLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-lob-dlq-depth'
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt LobEventsDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmDescription: Lob events landing in DLQ — investigate worker errors
+
+  StripeDLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-stripe-dlq-depth'
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt StripeEventsDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmDescription: Stripe events landing in DLQ — investigate worker errors
+
+# ─────────────────────────────────────────────────────────────────────────────
+Outputs:
+
+  LobEventsQueueUrl:
+    Value: !Ref LobEventsQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-LobEventsQueueUrl'
+
+  StripeEventsQueueUrl:
+    Value: !Ref StripeEventsQueue
+    Export:
+      Name: !Sub '${AppName}-${Env}-StripeEventsQueueUrl'
+
+  StatementsTableName:
+    Value: !Ref StatementsTable
+    Export:
+      Name: !Sub '${AppName}-${Env}-StatementsTable'
+
+  LobEventsTableName:
+    Value: !Ref LobEventsTable
+    Export:
+      Name: !Sub '${AppName}-${Env}-LobEventsTable'
+
+  StripeEventsTableName:
+    Value: !Ref StripeEventsTable
+    Export:
+      Name: !Sub '${AppName}-${Env}-StripeEventsTable'
+
+  TenantsTableName:
+    Value: !Ref TenantsTable
+    Export:
+      Name: !Sub '${AppName}-${Env}-TenantsTable'
+
+  StripeWebhookSecretArn:
+    Value: !Ref StripeWebhookSecret
+    Export:
+      Name: !Sub '${AppName}-${Env}-StripeWebhookSecretArn'
+
+  StripeWebhookEndpointId:
+    Value: !GetAtt StripeWebhookEndpoint.EndpointId
+    Export:
+      Name: !Sub '${AppName}-${Env}-StripeWebhookEndpointId'

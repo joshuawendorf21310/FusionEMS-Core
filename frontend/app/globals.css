@@ -1,8 +1,51 @@
+@import "../styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
-html, body { height: 100%; }
-body { background: theme(colors.bg); color: theme(colors.text); }
-* { box-sizing: border-box; }
+html,
+body {
+  height: 100%;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--leading-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::-moz-selection {
+  background-color: var(--color-brand-orange-ghost);
+  color: var(--color-text-primary);
+}
+
+::selection {
+  background-color: var(--color-brand-orange-ghost);
+  color: var(--color-text-primary);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  clip-path: var(--chamfer-4);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-orange-dim);
+}

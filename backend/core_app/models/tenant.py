@@ -17,6 +17,7 @@ class Tenant(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     billing_tier: Mapped[str] = mapped_column(String(64), nullable=False, default='starter')
     modules_enabled: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     stripe_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    stripe_connected_account_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     billing_status: Mapped[str] = mapped_column(String(32), nullable=False, default='inactive')
     accreditation_status: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

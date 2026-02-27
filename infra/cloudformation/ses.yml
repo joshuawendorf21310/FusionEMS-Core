@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: FusionEMS Quantum - SES Stack (Email Identity + Configuration Set)
+
+Parameters:
+  AppName:
+    Type: String
+  Env:
+    Type: String
+  FromEmail:
+    Type: String
+    Default: noreply@fusionemsquantum.com
+  RootDomainName:
+    Type: String
+    Default: fusionemsquantum.com
+
+Resources:
+
+  SesConfigurationSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: !Sub '${AppName}-${Env}-email'
+
+  SesConfigurationSetEventDestination:
+    Type: AWS::SES::ConfigurationSetEventDestination
+    Properties:
+      ConfigurationSetName: !Ref SesConfigurationSet
+      EventDestination:
+        Name: CloudWatchDestination
+        Enabled: true
+        MatchingEventTypes:
+          - send
+          - bounce
+          - complaint
+          - delivery
+          - reject
+          - open
+          - click
+        CloudWatchDestination:
+          DimensionConfigurations:
+            - DimensionName: MessageTag
+              DimensionValueSource: messageTag
+              DefaultDimensionValue: none
+
+  SesEmailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref RootDomainName
+      DkimAttributes:
+        SigningEnabled: true
+      MailFromAttributes:
+        MailFromDomain: !Sub 'mail.${RootDomainName}'
+        BehaviorOnMxFailure: UseDefaultValue
+      FeedbackAttributes:
+        EmailForwardingEnabled: true
+      ConfigurationSetAttributes:
+        ConfigurationSetName: !Ref SesConfigurationSet
+
+Outputs:
+  ConfigurationSetName:
+    Value: !Ref SesConfigurationSet
+    Export:
+      Name: !Sub '${AppName}-${Env}-SesConfigSet'
+
+  EmailIdentity:
+    Value: !Ref SesEmailIdentity

@@ -1,0 +1,199 @@
+Lob + Stripe Connect Billing Integration — Operational Runbook
+===============================================================
+Domain: api.fusionemsquantum.com
+Stack:  FastAPI backend + Lambda workers + SQS FIFO + DynamoDB + Secrets Manager
+
+────────────────────────────────────────────────────────────────────────────
+1. ENVIRONMENT VARIABLES & SECRETS MAPPING
+────────────────────────────────────────────────────────────────────────────
+
+All secrets live in AWS Secrets Manager at:
+  ${AppName}/${Env}/App                  — stripe_secret_key, lob_api_key, telnyx_api_key, etc.
+  ${AppName}/${Env}/StripeWebhook        — endpoint_id, signing_secret (managed by Custom Resource)
+
+FastAPI process reads from env vars (injected by ECS task definition via Secrets Manager ref):
+
+  LOB_API_KEY                   Lob live publishable API key          (from App secret)
+  LOB_WEBHOOK_SECRET            Lob webhook signing secret            (from App secret)
+  STRIPE_SECRET_KEY             Platform Stripe secret key            (from App secret)
+  STRIPE_WEBHOOK_SECRET         Stripe webhook signing secret         (from StripeWebhook secret)
+  TELNYX_API_KEY                Telnyx messaging API key              (from App secret)
+  TELNYX_FROM_NUMBER            E.164 Telnyx sender number            (from App secret)
+  TELNYX_MESSAGING_PROFILE_ID   Telnyx messaging profile              (from App secret)
+  LOB_EVENTS_QUEUE_URL          SQS FIFO URL for Lob events
+  STRIPE_EVENTS_QUEUE_URL       SQS FIFO URL for Stripe events
+  STATEMENTS_TABLE              DynamoDB table: fusionems-{env}-statements
+  LOB_EVENTS_TABLE              DynamoDB table: fusionems-{env}-lob-events
+  STRIPE_EVENTS_TABLE           DynamoDB table: fusionems-{env}-stripe-events
+  TENANTS_TABLE                 DynamoDB table: fusionems-{env}-tenants
+
+Lambda environment variables (set in CloudFormation billing.yml):
+  Same as above minus STRIPE_WEBHOOK_SECRET (workers don't do sig verification).
+  APP_SECRETS_ARN               Full ARN of App secrets (for runtime reads if needed)
+
+────────────────────────────────────────────────────────────────────────────
+2. ROTATING WEBHOOK SECRETS
+────────────────────────────────────────────────────────────────────────────
+
+2A. Rotating the Lob webhook secret
+  1. In the Lob dashboard, regenerate the webhook signing secret for the endpoint.
+  2. Update Secrets Manager:
+       aws secretsmanager put-secret-value \
+         --secret-id fusionems/${ENV}/App \
+         --secret-string "$(aws secretsmanager get-secret-value \
+           --secret-id fusionems/${ENV}/App \
+           --query SecretString --output text | \
+           python3 -c "import sys,json; d=json.load(sys.stdin); d['lob_webhook_secret']='NEW_SECRET'; print(json.dumps(d))")"
+  3. Force a new ECS task deployment so the new secret is picked up:
+       aws ecs update-service --cluster fusionems-${ENV} \
+         --service fusionems-${ENV}-backend --force-new-deployment
+  4. Verify: send a Lob test webhook from the dashboard and confirm 200 in CloudWatch logs.
+  Note: During the rotation window, Lob may replay with either key. Both will be
+        rejected until the new secret is live. The Lob delivery retry window is
+        24 hours, so complete the rotation in < 1 hour.
+
+2B. Rotating the Stripe webhook signing secret
+  Option A — Automated (preferred):
+    Update the CloudFormation stack (trigger a no-op change on StripeWebhookEndpoint)
+    which will trigger the Custom Resource Lambda to call Stripe's API and refresh
+    the signing secret, writing it back to Secrets Manager automatically.
+
+  Option B — Manual:
+  1. In Stripe Dashboard > Webhooks > your Connect endpoint > Roll signing secret.
+  2. Update Secrets Manager:
+       aws secretsmanager put-secret-value \
+         --secret-id fusionems/${ENV}/StripeWebhook \
+         --secret-string '{"endpoint_id":"we_xxx","signing_secret":"whsec_NEW_SECRET"}'
+  3. Force ECS redeployment (same as step 3 above).
+  4. Verify: use Stripe CLI to send a test event:
+       stripe trigger payment_intent.succeeded --stripe-account acct_test \
+         --webhook-endpoint we_xxx
+
+────────────────────────────────────────────────────────────────────────────
+3. REPLAYING EVENTS SAFELY
+────────────────────────────────────────────────────────────────────────────
+
+3A. Replaying a Lob event
+  Scenario: Worker failed after the event was dequeued; DynamoDB shows processed=false.
+
+  1. Find the raw event payload in DynamoDB lob_events table:
+       aws dynamodb get-item --table-name fusionems-${ENV}-lob-events \
+         --key '{"event_id":{"S":"evt_xxx"}}'
+
+  2. Manually re-publish to SQS (the worker will re-check idempotency — if processed=true it
+     will no-op, if processed=false it will re-process):
+       aws sqs send-message \
+         --queue-url https://sqs.us-east-1.amazonaws.com/ACCT/fusionems-${ENV}-lob-events.fifo \
+         --message-body '{"source":"manual_replay","event_id":"evt_xxx","event_type":"letter.rendered_pdf",...}' \
+         --message-group-id default \
+         --message-deduplication-id "replay_$(date +%s)_evt_xxx"
+
+  3. If you need to force a replay even though processed=true:
+     a. Set processed=false in DynamoDB:
+          aws dynamodb update-item --table-name fusionems-${ENV}-lob-events \
+            --key '{"event_id":{"S":"evt_xxx"}}' \
+            --update-expression "SET processed = :f" \
+            --expression-attribute-values '{":f":{"BOOL":false}}'
+     b. Re-publish with a NEW deduplication id (FIFO queues deduplicate by id within 5 min).
+
+3B. Replaying a Stripe event
+  1. Use the Stripe CLI:
+       stripe events resend evt_xxx --stripe-account acct_test
+     Stripe will POST to the registered webhook URL. The handler re-checks DynamoDB
+     idempotency; if already processed it returns 200 "duplicate" without re-processing.
+
+  2. For bulk replay (e.g., after a prolonged outage):
+       stripe events list --limit 100 --type payment_intent.succeeded | \
+         jq -r '.data[].id' | \
+         xargs -I{} stripe events resend {}
+     Monitor SQS queue depth in CloudWatch (should drain within seconds per event).
+
+────────────────────────────────────────────────────────────────────────────
+4. DEBUGGING WITH CORRELATION IDs
+────────────────────────────────────────────────────────────────────────────
+
+Every inbound request generates a correlation_id (UUID) injected by TenantContextMiddleware.
+It is threaded through:
+  - HTTP response header: X-Correlation-ID
+  - All structured log lines: correlation_id=<uuid>
+  - DynamoDB event records: correlation_id field
+  - SQS message body: correlation_id field
+
+4A. Tracing a Lob webhook end-to-end
+  1. Find the correlation_id from the HTTP log:
+       CloudWatch Logs Insights, log group: /ecs/fusionems-${ENV}-backend
+       filter @message like "lob_webhook_received" and @message like "stmt_XXXX"
+       | fields @timestamp, correlation_id, event_id, event_type
+
+  2. Follow correlation_id into the worker:
+       log group: /aws/lambda/fusionems-${ENV}-lob-worker
+       filter @message like "correlation_id=<ID_FROM_STEP_1>"
+
+  3. Inspect the statement's current state:
+       aws dynamodb get-item --table-name fusionems-${ENV}-statements \
+         --key '{"statement_id":{"S":"stmt_xxx"}}'
+
+4B. Tracing a Stripe payment end-to-end
+  1. Stripe Dashboard > Developers > Events > search by event id or payment intent id.
+  2. Cross-reference with CloudWatch:
+       log group: /ecs/fusionems-${ENV}-backend
+       filter @message like "stripe_webhook_received" and @message like "evt_xxx"
+
+  3. Stripe Connect: all events carry `account` field = the agency's Stripe account id.
+     This is stored in stripe_events DynamoDB as connected_account_id for easy tenant routing lookup.
+
+────────────────────────────────────────────────────────────────────────────
+5. ALERT RESPONSE
+────────────────────────────────────────────────────────────────────────────
+
+Alert: fusionems-${ENV}-lob-dlq-depth >= 1
+  → A Lob worker Lambda failed to process a message 3 times.
+  Action:
+    1. Check Lambda logs: /aws/lambda/fusionems-${ENV}-lob-worker
+    2. Find the failing event_id in lob_events DynamoDB.
+    3. Fix the root cause (e.g., DynamoDB throttle, downstream API error).
+    4. Replay per section 3A above.
+
+Alert: fusionems-${ENV}-stripe-dlq-depth >= 1
+  → A Stripe worker Lambda failed 3 times.
+  Action: same pattern as Lob DLQ above, but use stripe_events table + Stripe replay (3B).
+
+────────────────────────────────────────────────────────────────────────────
+6. DEPLOYING A NEW TEMPLATE VERSION
+────────────────────────────────────────────────────────────────────────────
+
+  1. Increment TEMPLATE_VERSION in billing/statement_pdf.py.
+  2. All new statements generated from that point will embed the new version in:
+     - The PDF audit footer (page 1 and page 2).
+     - The Lob letter metadata[template_version].
+     - The lob_letters outbound log record.
+  3. Old statements already mailed are immutable (Lob does not allow re-rendering).
+  4. Run test suite:
+       cd backend && python -m pytest tests/test_billing_integration.py -v
+
+────────────────────────────────────────────────────────────────────────────
+7. ADDING A NEW AGENCY (STRIPE CONNECT ONBOARDING)
+────────────────────────────────────────────────────────────────────────────
+
+  1. Agency completes Stripe Connect OAuth or Express onboarding.
+  2. Store the resulting stripe_connected_account_id in:
+     - PostgreSQL tenants.stripe_connected_account_id
+     - DynamoDB tenants table with stripe_connected_account_id GSI
+  3. Payments will automatically route to the agency's Stripe account.
+  4. Stripe Connect webhook events will carry account=<stripe_connected_account_id>;
+     the Stripe worker resolves the tenant via the GSI lookup.
+
+────────────────────────────────────────────────────────────────────────────
+8. SECURITY CHECKLIST
+────────────────────────────────────────────────────────────────────────────
+
+  [ ] Webhook endpoints reject requests without valid HMAC signatures (HTTP 400).
+  [ ] Timestamp tolerance enforced (5 minutes) to prevent replay attacks.
+  [ ] Stripe Checkout hosted; card data never enters FusionEMS systems.
+  [ ] Phone number validated (E.164 US) before Telnyx SMS.
+  [ ] No card data stored in DynamoDB or PostgreSQL.
+  [ ] All SQS queues encrypted (KMS alias/aws/sqs).
+  [ ] DynamoDB tables encrypted at rest (SSE enabled).
+  [ ] Secrets in Secrets Manager; never in environment variables directly or source code.
+  [ ] Lambda roles scoped to minimum required DynamoDB actions.
+  [ ] WAF rules on webhook paths (rate limit 100 req/5min per IP, block known bad actors).

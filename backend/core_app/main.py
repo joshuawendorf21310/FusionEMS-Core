@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from core_app.api.audit_router import router as audit_router
@@ -14,6 +15,7 @@ from core_app.core.config import get_settings
 from core_app.core.errors import AppError
 from core_app.core.logging import configure_logging
 from core_app.middleware.audit_logging import AuditLoggingMiddleware
+from core_app.middleware.rate_limiter import TenantRateLimitMiddleware
 from core_app.middleware.tenant_context import TenantContextMiddleware
 from core_app.observability.otel import configure_otel
 
@@ -46,11 +48,48 @@ from core_app.api.fhir_router import router as fhir_router
 from core_app.api.accreditation_router import router as accreditation_router
 from core_app.api.onboarding_router import router as onboarding_router
 from core_app.api.roi_router import router as roi_router
+from core_app.api.auth_rep_router import router as auth_rep_router
+from core_app.api.tracking_router import router as tracking_router
+from core_app.api.lob_router import router as lob_router
+from core_app.api.lob_webhook_router import router as lob_webhook_router
+from core_app.api.stripe_webhook_router import router as stripe_webhook_router
+from core_app.api.statements_router import router as statements_router
+from core_app.api.voice_webhook_router import router as voice_webhook_router
+from core_app.api.sms_webhook_router import router as sms_webhook_router
+from core_app.api.fax_webhook_router import router as fax_webhook_router
+from core_app.api.payments_router import router as payments_router
+from core_app.api.visibility_router import router as visibility_router
+from core_app.api.nemsis_manager_router import router as nemsis_manager_router
+from core_app.api.template_router import router as template_router
+from core_app.api.billing_command_router import router as billing_command_router
+from core_app.api.roi_funnel_router import router as roi_funnel_router
+from core_app.api.mobile_ops_router import router as mobile_ops_router
+from core_app.api.system_health_router import router as system_health_router
+from core_app.api.export_status_router import router as export_status_router
 
 app = FastAPI(title=settings.app_name)
 configure_otel(app)
+
+_allowed_origins = [
+    f"https://{settings.root_domain_name}" if hasattr(settings, "root_domain_name") else "https://fusionemsquantum.com",
+    "https://app.fusionemsquantum.com",
+    "https://api.fusionemsquantum.com",
+]
+if settings.debug:
+    _allowed_origins.extend(["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Tenant-ID", "X-Correlation-ID", "X-Request-ID"],
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-Correlation-ID"],
+    max_age=600,
+)
 app.add_middleware(AuditLoggingMiddleware)
 app.add_middleware(TenantContextMiddleware)
+app.add_middleware(TenantRateLimitMiddleware)
 
 
 @app.exception_handler(AppError)
@@ -94,6 +133,24 @@ app.include_router(accreditation_router, prefix="/api/v1")
 app.include_router(fhir_router, prefix="/api/v1")
 app.include_router(metrics_router)
 app.include_router(ai_router)
+app.include_router(auth_rep_router)
+app.include_router(tracking_router)
+app.include_router(lob_router)
+app.include_router(lob_webhook_router)
+app.include_router(stripe_webhook_router)
+app.include_router(statements_router)
+app.include_router(voice_webhook_router)
+app.include_router(sms_webhook_router)
+app.include_router(fax_webhook_router)
+app.include_router(payments_router, prefix="/api/v1")
+app.include_router(template_router)
+app.include_router(billing_command_router)
+app.include_router(roi_funnel_router)
+app.include_router(mobile_ops_router)
+app.include_router(system_health_router)
+app.include_router(export_status_router)
+app.include_router(visibility_router, prefix="/api/v1")
+app.include_router(nemsis_manager_router, prefix="/api/v1")
 
 
 @app.get("/health")

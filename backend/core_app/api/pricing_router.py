@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, HTTPException
@@ -13,6 +14,7 @@ from core_app.payments.stripe_service import StripeConfig, verify_webhook_signat
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.services.realtime_events import emit_payment_confirmed
 
 router = APIRouter(prefix="/api/v1", tags=["Pricing"])
 
@@ -69,6 +71,26 @@ async def stripe_webhook(request: Request, db: Session = Depends(db_session_depe
         data={"event_id": event_id, "payload_hash": payload_hash, "event": event},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
+
+    event_type = event.get("type") or event.get("event_type") or ""
+    if event_type == "payment_intent.succeeded":
+        pi_obj = event.get("data", {}).get("object", {})
+        amount_cents = pi_obj.get("amount_received") or pi_obj.get("amount") or 0
+        pi_id = pi_obj.get("id")
+        try:
+            tenant_uuid = uuid.UUID(str(tenant_id))
+        except Exception:
+            tenant_uuid = uuid.uuid4()
+        publisher = get_event_publisher()
+        await emit_payment_confirmed(
+            publisher=publisher,
+            tenant_id=tenant_uuid,
+            payment_id=uuid.uuid4(),
+            amount_cents=int(amount_cents),
+            stripe_payment_intent=pi_id,
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+
     return {"status": "ok", "receipt_id": row["id"], "event_id": event_id}
 
 

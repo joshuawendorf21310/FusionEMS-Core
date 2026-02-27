@@ -1,0 +1,8 @@
+--- a/main.py
++++ b/main.py
+@@ -60,6 +60,12 @@ from core_app.api.payments_router import router as payments_router
++from core_app.api.template_router import router as template_router
++from core_app.api.billing_command_router import router as billing_command_router
++from core_app.api.roi_funnel_router import router as roi_funnel_router
++from core_app.api.mobile_ops_router import router as mobile_ops_router
++from core_app.api.system_health_router import router as system_health_router

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Any
 
@@ -18,7 +19,7 @@ TENANT_TABLES: set[str] = {
     "facilities","facility_users","facility_requests","recurring_request_rules","request_documents",
     "documents","document_extractions","missing_document_tasks","signature_requests","signatures","fax_jobs","fax_events",
     "billing_cases","claims","edi_artifacts","eras","denials","appeals","billing_jobs",
-    "pricing_plans","usage_records","stripe_webhook_receipts","patient_payment_links",
+    "pricing_plans","usage_records","stripe_webhook_receipts","lob_webhook_receipts","patient_payment_links",
     "import_batches","import_mappings","import_errors","export_jobs","export_artifacts",
     "ai_runs","ai_policies",
     "fire_incidents","fire_reports","fire_statements","fire_apparatus","fire_personnel_assignments","fire_losses","fire_actions_taken",
@@ -26,7 +27,16 @@ TENANT_TABLES: set[str] = {
     "telnyx_webhook_receipts",
     "builders_rulesets",
     "builders_workflows",
-    "templates"
+    "templates",
+    "auth_rep_sessions","authorized_reps","rep_documents",
+    "track_tokens","track_events",
+    "payments",
+    "fire_preplans","fire_hydrants",
+    "lob_letters",
+    "webhook_dlq",
+    "tenant_subscriptions",
+    "tenant_provisioning_events",
+    "tenants",
 }
 
 
@@ -64,6 +74,20 @@ class DominationRepository:
             LIMIT :limit OFFSET :offset
         """)
         rows = self.db.execute(sql, {"tenant_id": str(tenant_id), "limit": limit, "offset": offset}).mappings().all()
+        return [dict(r) for r in rows]
+
+    _SAFE_FIELD_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]{0,63}$')
+
+    def list_raw_by_field(self, field: str, value: str, *, limit: int = 50) -> list[dict[str, Any]]:
+        if not self._SAFE_FIELD_RE.match(field):
+            raise ValueError(f"Invalid field name: {field!r}")
+        sql = text(
+            f"SELECT id, tenant_id, data, version, created_at, updated_at "
+            f"FROM {self.table} "
+            f"WHERE data->>:field = :value AND deleted_at IS NULL "
+            f"ORDER BY created_at DESC LIMIT :limit"
+        )
+        rows = self.db.execute(sql, {"field": field, "value": value, "limit": limit}).mappings().all()
         return [dict(r) for r in rows]
 
     def update(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID, expected_version: int, patch: dict[str, Any]) -> dict[str, Any] | None:
