@@ -60,6 +60,11 @@ from core_app.api.fax_webhook_router import router as fax_webhook_router
 from core_app.api.payments_router import router as payments_router
 from core_app.api.visibility_router import router as visibility_router
 from core_app.api.nemsis_manager_router import router as nemsis_manager_router
+from core_app.api.nemsis_pack_router import router as nemsis_pack_router
+from core_app.api.nemsis_compliance_studio_router import router as nemsis_compliance_studio_router
+from core_app.api.epcr_router import router as epcr_router
+from core_app.api.epcr_capture_router import router as epcr_capture_router
+from core_app.api.epcr_customization_router import router as epcr_customization_router
 from core_app.api.voice_advanced_router import router as voice_advanced_router
 from core_app.api.template_router import router as template_router
 from core_app.api.billing_command_router import router as billing_command_router
@@ -154,6 +159,12 @@ app.include_router(visibility_router)
 app.include_router(voice_advanced_router)
 app.include_router(nemsis_manager_router)
 
+
+app.include_router(nemsis_pack_router)
+app.include_router(nemsis_compliance_studio_router)
+app.include_router(epcr_router)
+app.include_router(epcr_capture_router)
+app.include_router(epcr_customization_router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
