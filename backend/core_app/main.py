@@ -15,6 +15,7 @@ from core_app.core.config import get_settings
 from core_app.core.errors import AppError
 from core_app.core.logging import configure_logging
 from core_app.middleware.audit_logging import AuditLoggingMiddleware
+from core_app.middleware.phi_lock import PHILockMiddleware
 from core_app.middleware.rate_limiter import TenantRateLimitMiddleware
 from core_app.middleware.tenant_context import TenantContextMiddleware
 from core_app.observability.otel import configure_otel
@@ -72,6 +73,12 @@ from core_app.api.roi_funnel_router import router as roi_funnel_router
 from core_app.api.mobile_ops_router import router as mobile_ops_router
 from core_app.api.system_health_router import router as system_health_router
 from core_app.api.export_status_router import router as export_status_router
+from core_app.api.founder_documents_router import router as founder_documents_router
+from core_app.api.events_router import router as events_router
+from core_app.api.support_router import router as support_router
+from core_app.api.doc_kit_router import router as doc_kit_router
+from core_app.billing.edi_router import router as edi_router
+from core_app.api.claim_packet_router import router as claim_packet_router
 
 app = FastAPI(title=settings.app_name)
 configure_otel(app)
@@ -94,6 +101,7 @@ app.add_middleware(
     max_age=600,
 )
 app.add_middleware(AuditLoggingMiddleware)
+app.add_middleware(PHILockMiddleware)
 app.add_middleware(TenantContextMiddleware)
 app.add_middleware(TenantRateLimitMiddleware)
 
@@ -134,7 +142,7 @@ app.include_router(fire_epcr_router)
 app.include_router(fire_statements_router)
 app.include_router(founder_router)
 app.include_router(roi_router, prefix="/api/v1")
-app.include_router(onboarding_router, prefix="/api/v1")
+app.include_router(onboarding_router)
 app.include_router(accreditation_router, prefix="/api/v1")
 app.include_router(fhir_router, prefix="/api/v1")
 app.include_router(metrics_router)
@@ -159,12 +167,19 @@ app.include_router(visibility_router)
 app.include_router(voice_advanced_router)
 app.include_router(nemsis_manager_router)
 
-
 app.include_router(nemsis_pack_router)
 app.include_router(nemsis_compliance_studio_router)
 app.include_router(epcr_router)
 app.include_router(epcr_capture_router)
 app.include_router(epcr_customization_router)
+
+app.include_router(founder_documents_router)
+app.include_router(events_router)
+app.include_router(support_router)
+app.include_router(doc_kit_router)
+app.include_router(edi_router)
+app.include_router(claim_packet_router)
+
 
 @app.get("/health")
 def health() -> dict[str, str]:

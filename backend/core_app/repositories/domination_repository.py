@@ -41,6 +41,11 @@ TENANT_TABLES: set[str] = {
     "tenant_subscriptions",
     "tenant_provisioning_events",
     "tenants",
+    "legal_packets","legal_documents","legal_sign_events","document_events",
+    "submission_batches","claim_status_history","claim_documents",
+    "document_matches","generated_pdfs",
+    "support_threads","support_messages","support_escalations",
+    "platform_events","event_reads","onboarding_idempotency_keys",
 }
 
 
