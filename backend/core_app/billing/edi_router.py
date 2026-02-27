@@ -304,3 +304,69 @@ async def explain_claim_status(
 
     result = await svc.get_claim_explain(str(claim_id), ai)
     return result
+
+
+_VALID_TRANSACTION_TYPES = {"999", "277", "835"}
+
+
+@router.post("/ingest/{transaction_type}")
+async def ingest_generic(
+    transaction_type: str,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    if current.role not in ("founder", "admin", "billing"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if transaction_type not in _VALID_TRANSACTION_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported_transaction_type: must be one of {sorted(_VALID_TRANSACTION_TYPES)}",
+        )
+    try:
+        body_json = await request.json()
+    except Exception:
+        body_json = {}
+
+    publisher = get_event_publisher()
+    svc = EDIService(db, publisher, current.tenant_id)
+
+    if transaction_type == "999":
+        x12 = body_json.get("x12_content", "")
+        batch_id = body_json.get("batch_id", str(uuid.uuid4()))
+        result = svc.parse_999(x12, batch_id)
+        publisher.publish_sync(
+            topic=f"tenant.{current.tenant_id}.edi.999.received",
+            tenant_id=current.tenant_id,
+            entity_id=batch_id,
+            entity_type="edi_batch",
+            event_type="EDI_999_RECEIVED",
+            payload=result,
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+    elif transaction_type == "277":
+        x12 = body_json.get("x12_content", "")
+        result = svc.parse_277(x12)
+        publisher.publish_sync(
+            topic=f"tenant.{current.tenant_id}.edi.277.received",
+            tenant_id=current.tenant_id,
+            entity_id=uuid.uuid4(),
+            entity_type="claim_status",
+            event_type="EDI_277_RECEIVED",
+            payload=result,
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+    else:
+        x12 = body_json.get("x12_content", "")
+        result = await svc.parse_835(x12)
+        publisher.publish_sync(
+            topic=f"tenant.{current.tenant_id}.edi.835.received",
+            tenant_id=current.tenant_id,
+            entity_id=uuid.uuid4(),
+            entity_type="era",
+            event_type="EDI_835_RECEIVED",
+            payload={"denial_count": len(result.get("denials", [])), "payment_amount": result.get("payment_amount")},
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+
+    return result

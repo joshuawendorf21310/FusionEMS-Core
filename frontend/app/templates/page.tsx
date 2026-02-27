@@ -82,16 +82,16 @@ export default function TemplatesPage() {
     fetch(`${API}/api/v1/templates${params}`)
       .then((r) => r.json())
       .then((d) => setTemplates(d.templates ?? []))
-      .catch(() => {})
+      .catch((e: unknown) => { console.warn("[fetch error]", e); })
       .finally(() => setLoading(false));
     fetch(`${API}/api/v1/templates/lifecycle/management`)
       .then((r) => r.json())
       .then(setLifecycle)
-      .catch(() => {});
+      .catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/templates/analytics/top-performing`)
       .then((r) => r.json())
       .then((d) => setTopPerforming(d.top_templates ?? []))
-      .catch(() => {});
+      .catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, [selectedCategory]);
 
   const handleCreate = async () => {
@@ -106,7 +106,7 @@ export default function TemplatesPage() {
     fetch(`${API}/api/v1/templates`)
       .then((r) => r.json())
       .then((d) => setTemplates(d.templates ?? []))
-      .catch(() => {});
+      .catch((e: unknown) => { console.warn("[fetch error]", e); });
   };
 
   const handleApprove = async (id: string) => {

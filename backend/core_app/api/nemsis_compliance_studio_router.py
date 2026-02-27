@@ -629,3 +629,52 @@ async def update_patch_task_status(
     if result is None:
         raise HTTPException(status_code=409, detail="Version conflict")
     return result
+
+
+@router.post("/patch-tasks/generate-from-result")
+async def generate_patch_tasks_from_result(
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(_WRITE),
+    db: Session = Depends(db_session_dependency),
+):
+    validation_result_id = payload.get("validation_result_id")
+    if not validation_result_id:
+        raise HTTPException(status_code=400, detail="validation_result_id required")
+
+    vr = _svc(db).repo("nemsis_validation_results").get(
+        tenant_id=current.tenant_id, record_id=uuid.UUID(str(validation_result_id))
+    )
+    if vr is None:
+        raise HTTPException(status_code=404, detail="Validation result not found")
+
+    issues = vr.get("data", {}).get("issues", [])
+    errors = [i for i in issues if i.get("severity") == "error"]
+    correlation_id = getattr(request.state, "correlation_id", None)
+    created_ids = []
+    for issue in errors:
+        element_id = issue.get("element_id", "")
+        rec = await _svc(db).create(
+            table="nemsis_patch_tasks",
+            tenant_id=current.tenant_id,
+            actor_user_id=current.user_id,
+            data={
+                "task_id": str(uuid.uuid4()),
+                "title": f"Fix {element_id}: {issue.get('plain_message', issue.get('technical_message', '')[:80])}",
+                "description": issue.get("technical_message", issue.get("plain_message", "")),
+                "affected_file_hint": issue.get("ui_section", ""),
+                "element_id": element_id,
+                "fix_type": "structural" if issue.get("severity") == "error" else "data",
+                "steps": [issue.get("fix_hint", "Review the failing element and correct the value.")] if issue.get("fix_hint") else [],
+                "status": "pending",
+                "source_validation_result_id": str(validation_result_id),
+            },
+            correlation_id=correlation_id,
+        )
+        created_ids.append(str(rec["id"]))
+
+    return {
+        "generated": len(created_ids),
+        "task_ids": created_ids,
+        "source_validation_result_id": str(validation_result_id),
+    }

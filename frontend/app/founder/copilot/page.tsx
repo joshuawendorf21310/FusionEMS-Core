@@ -260,14 +260,14 @@ export default function FounderCopilotPage() {
   useEffect(() => {
     apiFetch(`${API}/sessions`)
       .then((d) => setSessions(d.sessions || []))
-      .catch(() => {});
+      .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Request failed"); });
   }, []);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     try {
       const d = await apiFetch(`${API}/sessions/${sessionId}/messages`);
       setMessages(d.messages || []);
-    } catch {}
+    } catch (e: unknown) { console.warn("[fetch error]", e); }
   }, []);
 
   const selectSession = useCallback(
@@ -372,7 +372,7 @@ export default function FounderCopilotPage() {
         if (['passed', 'blocked', 'failed', 'approved', 'merged'].includes(d.run.status)) {
           if (pollRef.current) clearInterval(pollRef.current);
         }
-      } catch {}
+      } catch (e: unknown) { console.warn("[fetch error]", e); }
     }, 5000);
   }, []);
 

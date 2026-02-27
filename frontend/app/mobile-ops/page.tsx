@@ -61,14 +61,14 @@ export default function MobileOpsPage() {
   const [shortage, setShortage] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
-    fetch(`${API}/api/v1/mobile-ops/pwa/deployments`).then(r => r.json()).then(setDeployments).catch(() => {});
-    fetch(`${API}/api/v1/mobile-ops/devices`).then(r => r.json()).then(setDevices).catch(() => {});
-    fetch(`${API}/api/v1/mobile-ops/pwa/version-adoption`).then(r => r.json()).then(setVersionAdoption).catch(() => {});
-    fetch(`${API}/api/v1/mobile-ops/sync/health`).then(r => r.json()).then(setSyncHealth).catch(() => {});
-    fetch(`${API}/api/v1/mobile-ops/push/analytics`).then(r => r.json()).then(setPushAnalytics).catch(() => {});
-    fetch(`${API}/api/v1/mobile-ops/adoption/kpis`).then(r => r.json()).then(setAdoptionKpis).catch(() => {});
-    fetch(`${API}/api/v1/mobile-ops/credentials/compliance`).then(r => r.json()).then(setCredCompliance).catch(() => {});
-    fetch(`${API}/api/v1/mobile-ops/staffing/shortage-predictor`).then(r => r.json()).then(setShortage).catch(() => {});
+    fetch(`${API}/api/v1/mobile-ops/pwa/deployments`).then(r => r.json()).then(setDeployments).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/mobile-ops/devices`).then(r => r.json()).then(setDevices).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/mobile-ops/pwa/version-adoption`).then(r => r.json()).then(setVersionAdoption).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/mobile-ops/sync/health`).then(r => r.json()).then(setSyncHealth).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/mobile-ops/push/analytics`).then(r => r.json()).then(setPushAnalytics).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/mobile-ops/adoption/kpis`).then(r => r.json()).then(setAdoptionKpis).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/mobile-ops/credentials/compliance`).then(r => r.json()).then(setCredCompliance).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/mobile-ops/staffing/shortage-predictor`).then(r => r.json()).then(setShortage).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   const fmtN = (v: unknown) => typeof v === "number" ? v.toLocaleString() : (v != null ? String(v) : "—");

@@ -69,14 +69,14 @@ export default function SystemHealthPage() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/v1/system-health/dashboard`).then(r => r.json()).then(setDash).catch(() => {});
-    fetch(`${API}/api/v1/system-health/services`).then(r => r.json()).then(d => setServices(d.services ?? [])).catch(() => {});
-    fetch(`${API}/api/v1/system-health/alerts`).then(r => r.json()).then(setAlerts).catch(() => {});
-    fetch(`${API}/api/v1/system-health/uptime/sla`).then(r => r.json()).then(setUptime).catch(() => {});
-    fetch(`${API}/api/v1/system-health/resilience-score`).then(r => r.json()).then(setResilience).catch(() => {});
-    fetch(`${API}/api/v1/system-health/ssl/expiration`).then(r => r.json()).then(setSsl).catch(() => {});
-    fetch(`${API}/api/v1/system-health/backups/status`).then(r => r.json()).then(setBackups).catch(() => {});
-    fetch(`${API}/api/v1/system-health/monitoring/coverage`).then(r => r.json()).then(setCoverage).catch(() => {});
+    fetch(`${API}/api/v1/system-health/dashboard`).then(r => r.json()).then(setDash).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/services`).then(r => r.json()).then(d => setServices(d.services ?? [])).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/alerts`).then(r => r.json()).then(setAlerts).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/uptime/sla`).then(r => r.json()).then(setUptime).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/resilience-score`).then(r => r.json()).then(setResilience).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/ssl/expiration`).then(r => r.json()).then(setSsl).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/backups/status`).then(r => r.json()).then(setBackups).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/monitoring/coverage`).then(r => r.json()).then(setCoverage).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   const fmtN = (v: unknown) => typeof v === "number" ? v.toLocaleString() : (v != null ? String(v) : "—");

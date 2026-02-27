@@ -67,7 +67,7 @@ export default function FounderCompliancePacksPage() {
     fetch(`${API}/packs/index`)
       .then((r) => r.json())
       .then(setIndex)
-      .catch(() => {});
+      .catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function FounderCompliancePacksPage() {
 
     for (const packId of set.pack_ids) {
       addLog(`Ingesting ${packId}…`);
-      await fetch(`${API}/packs/${packId}/ingest`, { method: "POST" }).catch(() => {});
+      await fetch(`${API}/packs/${packId}/ingest`, { method: "POST" }).catch((e: unknown) => { console.warn("[fetch error]", e); });
       addLog(`${packId} ingested`);
     }
 

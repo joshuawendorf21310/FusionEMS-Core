@@ -76,9 +76,9 @@ export default function ROIFunnelPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/v1/roi-funnel/conversion-funnel`).then(r => r.json()).then(setFunnelData).catch(() => {});
-    fetch(`${API}/api/v1/roi-funnel/conversion-kpis`).then(r => r.json()).then(setKpis).catch(() => {});
-    fetch(`${API}/api/v1/roi-funnel/revenue-pipeline`).then(r => r.json()).then(setPipeline).catch(() => {});
+    fetch(`${API}/api/v1/roi-funnel/conversion-funnel`).then(r => r.json()).then(setFunnelData).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/roi-funnel/conversion-kpis`).then(r => r.json()).then(setKpis).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/roi-funnel/revenue-pipeline`).then(r => r.json()).then(setPipeline).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   const handleCalculate = async () => {
@@ -91,9 +91,7 @@ export default function ROIFunnelPage() {
       });
       const d = await r.json();
       setRoiResult(d.outputs ?? d);
-    } catch {
-      // ignore
-    } finally {
+    } catch (e: unknown) { console.warn("[roi-estimate error]", e); } finally {
       setLoading(false);
     }
   };

@@ -128,11 +128,11 @@ export default function FounderExecutivePage() {
   const [complianceGauges, setComplianceGauges] = useState<Array<{ label: string; value: number; color: string }> | null>(null);
 
   useEffect(() => {
-    fetch(`${API}/api/v1/founder/dashboard`).then((r) => r.json()).then(setMetrics).catch(() => {});
-    fetch(`${API}/api/v1/billing/ar-aging`).then((r) => r.json()).then(setAging).catch(() => {});
+    fetch(`${API}/api/v1/founder/dashboard`).then((r) => r.json()).then(setMetrics).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/billing/ar-aging`).then((r) => r.json()).then(setAging).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/founder/compliance/status`).then((r) => r.json()).then((d) => {
       if (d?.gauges) setComplianceGauges(d.gauges);
-    }).catch(() => {});
+    }).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   const mrr = (metrics as { mrr_cents?: number })?.mrr_cents;

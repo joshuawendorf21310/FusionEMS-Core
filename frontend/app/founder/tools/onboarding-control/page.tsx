@@ -429,7 +429,7 @@ export default function OnboardingControlPage() {
     })
       .then((r) => r.json())
       .then((d) => setSignEvents(Array.isArray(d) ? d : d.events ?? []))
-      .catch(() => {})
+      .catch((e: unknown) => { console.warn("[fetch error]", e); })
       .finally(() => setLoadingEvents(false));
   }, [detailApp]);
 

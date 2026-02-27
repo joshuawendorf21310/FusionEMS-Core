@@ -953,7 +953,7 @@ function RulesBrowserTab({ activePackId, packs }: { activePackId: string | null;
     })
       .then((r) => r.json())
       .then((d) => setPackDetail(d))
-      .catch(() => {})
+      .catch((e: unknown) => { console.warn("[fetch error]", e); })
       .finally(() => setLoading(false));
   }, [activePackId]);
 

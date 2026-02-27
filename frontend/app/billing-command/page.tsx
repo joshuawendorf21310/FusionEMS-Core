@@ -48,12 +48,12 @@ export default function BillingCommandPage() {
   const [exec, setExec] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
-    fetch(`${API}/api/v1/billing-command/dashboard`).then(r => r.json()).then(setDashboard).catch(() => {});
-    fetch(`${API}/api/v1/billing-command/billing-health`).then(r => r.json()).then(setHealth).catch(() => {});
-    fetch(`${API}/api/v1/billing-command/payer-performance`).then(r => r.json()).then(setPayers).catch(() => {});
-    fetch(`${API}/api/v1/billing-command/revenue-leakage`).then(r => r.json()).then(setLeakage).catch(() => {});
-    fetch(`${API}/api/v1/billing-command/ar-concentration-risk`).then(r => r.json()).then(setArConc).catch(() => {});
-    fetch(`${API}/api/v1/billing-command/executive-summary`).then(r => r.json()).then(setExec).catch(() => {});
+    fetch(`${API}/api/v1/billing-command/dashboard`).then(r => r.json()).then(setDashboard).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/billing-command/billing-health`).then(r => r.json()).then(setHealth).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/billing-command/payer-performance`).then(r => r.json()).then(setPayers).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/billing-command/revenue-leakage`).then(r => r.json()).then(setLeakage).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/billing-command/ar-concentration-risk`).then(r => r.json()).then(setArConc).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/billing-command/executive-summary`).then(r => r.json()).then(setExec).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   const fmt$ = (v: unknown) => typeof v === "number" ? `$${(v / 100).toLocaleString()}` : "—";

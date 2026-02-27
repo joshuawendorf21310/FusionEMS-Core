@@ -931,13 +931,13 @@ export default function FireIncidentsPage() {
         setPackRules(d);
         if (d.department_id) setDepartmentId(d.department_id);
       })
-      .catch(() => {});
+      .catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/tenant/neris/onboarding/status`, {
       headers: { Authorization: getToken() },
     })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d?.department?.id && setDepartmentId(d.department.id))
-      .catch(() => {});
+      .catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   // Fetch apparatus
@@ -948,7 +948,7 @@ export default function FireIncidentsPage() {
     })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d && setApparatus(Array.isArray(d) ? d : d.apparatus ?? []))
-      .catch(() => {});
+      .catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, [departmentId]);
 
   // Fetch incidents

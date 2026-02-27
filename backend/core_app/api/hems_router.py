@@ -11,6 +11,8 @@ from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.epcr.chart_model import Chart
+from core_app.epcr.completeness_engine import CompletenessEngine
 
 router = APIRouter(prefix="/api/v1/hems", tags=["HEMS"])
 
@@ -394,9 +396,34 @@ async def complete_mission(
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
+    chart_id = str(uuid.uuid4())
+    chart = Chart(
+        chart_id=chart_id,
+        tenant_id=str(current.tenant_id),
+        chart_mode="hems",
+        created_by=str(current.user_id),
+        last_modified_by=str(current.user_id),
+    )
+    chart_dict = chart.to_dict()
+    chart_dict["mission_id"] = str(mission_id)
+    chart_dict["billing_case_id"] = str(billing_row["id"])
+    chart_dict["wheels_up_time"] = payload.get("wheels_up_time")
+    chart_dict["wheels_down_time"] = payload.get("wheels_down_time")
+    score_result = CompletenessEngine().score_chart(chart_dict, "hems")
+    chart_dict["completeness_score"] = score_result["score"]
+    chart_dict["completeness_issues"] = [m["label"] for m in score_result["missing"]]
+    epcr_row = await svc.create(
+        table="epcr_charts",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=chart_dict,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
     return {
         "mission_event_id": row["id"],
         "billing_case_id": billing_row["id"],
+        "epcr_chart_id": epcr_row["id"],
         "status": "completed",
         "epcr_required": True,
     }
