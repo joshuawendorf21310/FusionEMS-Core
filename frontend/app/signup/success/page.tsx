@@ -218,7 +218,7 @@ export default function SuccessPage() {
           <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
             {isComplete
               ? 'Your FusionEMS Quantum environment is ready.'
-              : 'This typically takes about 2 minutes. You can leave this page — we'll send login credentials to your email.'}
+              : 'This typically takes about 2 minutes. You can leave this page — we&apos;ll send login credentials to your email.'}
           </p>
         </div>
       </div>

@@ -39,6 +39,94 @@ Parameters:
   EcsServiceSecurityGroupId:
     Type: String
 
+  StripeSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Stripe secret key (sk_live_*)
+  StripeWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Stripe webhook signing secret
+  StripePublishableKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Stripe publishable key (pk_live_*)
+  TelnyxApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Telnyx API key
+  TelnyxWebhookPublicKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Telnyx webhook public key
+  TelnyxFromNumber:
+    Type: String
+    Default: ''
+    Description: Telnyx sending phone number (E.164)
+  TelnyxMessagingProfileId:
+    Type: String
+    Default: ''
+    Description: Telnyx messaging profile ID
+  LobApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Lob API key
+  LobWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Lob webhook secret
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: OpenAI API key
+  OfficeAllySftpHost:
+    Type: String
+    Default: ''
+    Description: OfficeAlly SFTP host
+  OfficeAllySftpUsername:
+    Type: String
+    Default: ''
+    Description: OfficeAlly SFTP username
+  OfficeAllySftpPassword:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: OfficeAlly SFTP password
+  JwtSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: JWT signing secret (min 64 chars)
+  SesFromEmail:
+    Type: String
+    Default: 'noreply@fusionemsquantum.com'
+    Description: SES sender address
+  GraphTenantId:
+    Type: String
+    Default: ''
+    Description: Azure AD tenant ID for Microsoft Graph
+  GraphClientId:
+    Type: String
+    Default: ''
+    Description: Entra app client ID for Microsoft Graph
+  GraphClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Entra app client secret for Microsoft Graph
+  GraphFounderEmail:
+    Type: String
+    Default: ''
+    Description: Founder mailbox UPN (email) for Graph API calls
+
 Conditions:
   IsProd: !Equals [!Ref Env, 'prod']
   EnablePI: !Equals [!Ref DbEnablePerformanceInsights, 'true']
@@ -97,21 +185,25 @@ Resources:
       Description: !Sub '${AppName} ${Env} application secrets (Stripe, Telnyx, LOB, SES, OpenAI, OfficeAlly)'
       SecretString: !Sub |
         {
-          "stripe_secret_key": "REPLACE_WITH_STRIPE_SECRET_KEY",
-          "stripe_webhook_secret": "REPLACE_WITH_STRIPE_WEBHOOK_SECRET",
-          "stripe_publishable_key": "REPLACE_WITH_STRIPE_PUBLISHABLE_KEY",
-          "telnyx_api_key": "REPLACE_WITH_TELNYX_API_KEY",
-          "telnyx_webhook_public_key": "REPLACE_WITH_TELNYX_WEBHOOK_PUBLIC_KEY",
-          "telnyx_from_number": "REPLACE_WITH_TELNYX_FROM_NUMBER",
-          "telnyx_messaging_profile_id": "REPLACE_WITH_TELNYX_MESSAGING_PROFILE_ID",
-          "lob_api_key": "REPLACE_WITH_LOB_API_KEY",
-          "lob_webhook_secret": "REPLACE_WITH_LOB_WEBHOOK_SECRET",
-          "openai_api_key": "REPLACE_WITH_OPENAI_API_KEY",
-          "officeally_sftp_host": "REPLACE_WITH_OFFICEALLY_SFTP_HOST",
-          "officeally_sftp_username": "REPLACE_WITH_OFFICEALLY_SFTP_USERNAME",
-          "officeally_sftp_password": "REPLACE_WITH_OFFICEALLY_SFTP_PASSWORD",
-          "jwt_secret_key": "REPLACE_WITH_STRONG_RANDOM_SECRET_64CHARS",
-          "ses_from_email": "noreply@fusionemsquantum.com"
+          "stripe_secret_key": "${StripeSecretKey}",
+          "stripe_webhook_secret": "${StripeWebhookSecret}",
+          "stripe_publishable_key": "${StripePublishableKey}",
+          "telnyx_api_key": "${TelnyxApiKey}",
+          "telnyx_webhook_public_key": "${TelnyxWebhookPublicKey}",
+          "telnyx_from_number": "${TelnyxFromNumber}",
+          "telnyx_messaging_profile_id": "${TelnyxMessagingProfileId}",
+          "lob_api_key": "${LobApiKey}",
+          "lob_webhook_secret": "${LobWebhookSecret}",
+          "openai_api_key": "${OpenAIApiKey}",
+          "officeally_sftp_host": "${OfficeAllySftpHost}",
+          "officeally_sftp_username": "${OfficeAllySftpUsername}",
+          "officeally_sftp_password": "${OfficeAllySftpPassword}",
+          "jwt_secret_key": "${JwtSecretKey}",
+          "ses_from_email": "${SesFromEmail}",
+          "graph_tenant_id": "${GraphTenantId}",
+          "graph_client_id": "${GraphClientId}",
+          "graph_client_secret": "${GraphClientSecret}",
+          "graph_founder_email": "${GraphFounderEmail}"
         }
 
   RdsMonitoringRole:
@@ -144,7 +236,7 @@ Resources:
     DeletionPolicy: Snapshot
     Properties:
       Engine: postgres
-      EngineVersion: '16.3'
+      EngineVersion: '16.6'
       DBInstanceClass: !Ref DbInstanceClass
       AllocatedStorage: !Ref DbAllocatedStorage
       MaxAllocatedStorage: !Ref DbMaxAllocatedStorage

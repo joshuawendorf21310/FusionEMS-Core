@@ -49,7 +49,7 @@ Resources:
         SigningEnabled: true
       MailFromAttributes:
         MailFromDomain: !Sub 'mail.${RootDomainName}'
-        BehaviorOnMxFailure: UseDefaultValue
+        BehaviorOnMxFailure: USE_DEFAULT_VALUE
       FeedbackAttributes:
         EmailForwardingEnabled: true
       ConfigurationSetAttributes:

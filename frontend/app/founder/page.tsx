@@ -125,10 +125,14 @@ export default function FounderExecutivePage() {
   const [metrics, setMetrics] = useState<Record<string, unknown>>({});
   const [aging, setAging] = useState<{ buckets: Array<{ label: string; total_cents: number; count: number }> } | null>(null);
   const [incidentMode, setIncidentMode] = useState(false);
+  const [complianceGauges, setComplianceGauges] = useState<Array<{ label: string; value: number; color: string }> | null>(null);
 
   useEffect(() => {
     fetch(`${API}/api/v1/founder/dashboard`).then((r) => r.json()).then(setMetrics).catch(() => {});
     fetch(`${API}/api/v1/billing/ar-aging`).then((r) => r.json()).then(setAging).catch(() => {});
+    fetch(`${API}/api/v1/founder/compliance/status`).then((r) => r.json()).then((d) => {
+      if (d?.gauges) setComplianceGauges(d.gauges);
+    }).catch(() => {});
   }, []);
 
   const mrr = (metrics as { mrr_cents?: number })?.mrr_cents;
@@ -277,13 +281,13 @@ export default function FounderExecutivePage() {
         />
         <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Module 7 · Compliance Readiness</div>
-          {[
-            { label: 'NEMSIS v3.5.0', value: 100, color: '#4caf50' },
-            { label: 'CMS Billing Rules', value: 97, color: '#4caf50' },
-            { label: 'DEA / Controlled', value: 100, color: '#4caf50' },
-            { label: 'HIPAA / BAA Coverage', value: 94, color: '#ff9800' },
-            { label: 'State Export Compat.', value: 89, color: '#ff9800' },
-          ].map((item) => (
+          {(complianceGauges ?? [
+            { label: 'NEMSIS v3.5.0', value: 0, color: 'rgba(255,255,255,0.18)' },
+            { label: 'CMS Billing Rules', value: 0, color: 'rgba(255,255,255,0.18)' },
+            { label: 'DEA / Controlled', value: 0, color: 'rgba(255,255,255,0.18)' },
+            { label: 'HIPAA / BAA Coverage', value: 0, color: 'rgba(255,255,255,0.18)' },
+            { label: 'State Export Compat.', value: 0, color: 'rgba(255,255,255,0.18)' },
+          ]).map((item) => (
             <div key={item.label} className="mb-2">
               <div className="flex justify-between text-[11px] mb-0.5">
                 <span className="text-[rgba(255,255,255,0.55)]">{item.label}</span>

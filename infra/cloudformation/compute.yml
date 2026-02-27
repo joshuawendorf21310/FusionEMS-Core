@@ -95,6 +95,31 @@ Parameters:
     Type: String
     Default: ''
     Description: SQS queue URL for NERIS export worker
+  S3BucketDocs:
+    Type: String
+    Default: ''
+    Description: S3 bucket name for agency documents (docs bucket)
+  SystemTenantId:
+    Type: String
+    Default: ''
+    Description: UUID of the system/platform tenant for internal operations
+  GraphTenantId:
+    Type: String
+    Default: ''
+    Description: Azure AD tenant ID for Microsoft Graph
+  GraphClientId:
+    Type: String
+    Default: ''
+    Description: Entra app client ID
+  GraphClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Entra app client secret
+  GraphFounderEmail:
+    Type: String
+    Default: ''
+    Description: Founder mailbox UPN for Graph calls
 
 Conditions:
   IsProd: !Equals [!Ref Env, 'prod']
@@ -483,6 +508,18 @@ Resources:
               Value: !Ref NERISPackCompileQueueUrl
             - Name: NERIS_EXPORT_QUEUE_URL
               Value: !Ref NERISExportQueueUrl
+            - Name: S3_BUCKET_DOCS
+              Value: !Ref S3BucketDocs
+            - Name: SYSTEM_TENANT_ID
+              Value: !Ref SystemTenantId
+            - Name: GRAPH_TENANT_ID
+              Value: !Ref GraphTenantId
+            - Name: GRAPH_CLIENT_ID
+              Value: !Ref GraphClientId
+            - Name: GRAPH_CLIENT_SECRET
+              Value: !Ref GraphClientSecret
+            - Name: GRAPH_FOUNDER_EMAIL
+              Value: !Ref GraphFounderEmail
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub '${DbSecretArn}'

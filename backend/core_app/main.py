@@ -74,6 +74,7 @@ from core_app.api.mobile_ops_router import router as mobile_ops_router
 from core_app.api.system_health_router import router as system_health_router
 from core_app.api.export_status_router import router as export_status_router
 from core_app.api.founder_documents_router import router as founder_documents_router
+from core_app.api.founder_graph_router import router as founder_graph_router
 from core_app.api.events_router import router as events_router
 from core_app.api.support_router import router as support_router
 from core_app.api.doc_kit_router import router as doc_kit_router
@@ -188,6 +189,7 @@ app.include_router(epcr_capture_router)
 app.include_router(epcr_customization_router)
 
 app.include_router(founder_documents_router)
+app.include_router(founder_graph_router)
 app.include_router(events_router)
 app.include_router(support_router)
 app.include_router(doc_kit_router)

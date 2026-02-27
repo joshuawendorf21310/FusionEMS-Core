@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
@@ -95,6 +95,7 @@ async def mail_statement(
     correlation_id = getattr(request.state, "correlation_id", str(uuid.uuid4()))
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
+    settings = get_settings()
 
     # Build pay URL (statement must already have a checkout link or we generate on-demand)
     pay_url = f"{settings.api_base_url}/api/v1/statements/{statement_id}/pay"
@@ -122,7 +123,6 @@ async def mail_statement(
         logger.error("pdf_generation_failed statement_id=%s error=%s", statement_id, exc)
         raise HTTPException(status_code=500, detail=f"pdf_generation_failed: {exc}")
 
-    settings = get_settings()
     from_address = {
         "name": body.agency_address.get("agency_name") or body.agency_address.get("name", ""),
         "line1": body.agency_address.get("line1", ""),
@@ -137,7 +137,7 @@ async def mail_statement(
     }
 
     try:
-        lob_cfg = _get_lob_config()
+        _get_lob_config()
         lob_resp = send_statement_letter(
             pdf_bytes=pdf_bytes,
             outbound_sha256=outbound_sha256,

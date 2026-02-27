@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     lob_api_key: str = Field(default="")
     lob_webhook_secret: str = Field(default="")
     ses_from_email: str = Field(default="noreply@fusionemsquantum.com")
+
+    # Microsoft Graph (application permissions — client credentials flow)
+    graph_tenant_id: str = Field(default="", description="Azure AD tenant ID")
+    graph_client_id: str = Field(default="", description="Entra app client ID")
+    graph_client_secret: str = Field(default="", description="Entra app client secret (from Secrets Manager)")
+    graph_founder_email: str = Field(default="", description="Founder mailbox UPN — used for all Graph calls")
     ses_configuration_set: str = Field(default="")
     aws_region: str = Field(default="")
 

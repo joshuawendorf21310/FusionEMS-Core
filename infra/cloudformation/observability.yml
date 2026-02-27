@@ -10,6 +10,10 @@ Parameters:
     Type: String
     Description: Email address for operational alerts
     Default: founder@fusionemsquantum.com
+  AlertTopicArn:
+    Type: String
+    Default: ''
+    Description: SNS topic ARN passed from root stack (unused; observability creates its own)
   EcsClusterName:
     Type: String
   BackendServiceName:

@@ -8,6 +8,8 @@ const LINKS = [
   { href: '/founder/tools/invoice-creator', label: 'Invoice Creator', desc: 'Generate and track invoices for agency clients', color: '#ff6b1a' },
   { href: '/founder/tools/expense-ledger', label: 'Expense Ledger', desc: 'Track and categorize business expenses', color: '#ff6b1a' },
   { href: '/founder/tools/task-center', label: 'Task Center', desc: 'Action items, priorities, delegation, deadlines', color: '#ff6b1a' },
+  { href: '/founder/tools/email', label: 'Email Inbox', desc: 'Microsoft Graph mail — inbox, compose, reply, attachments', color: '#29b6f6' },
+  { href: '/founder/tools/files', label: 'OneDrive Files', desc: 'Microsoft Graph files — browse, preview, download', color: '#29b6f6' },
 ];
 
 export default function ToolsPage() {
