@@ -49,6 +49,56 @@ TENANT_TABLES = [
     "fire_incidents","fire_reports","fire_statements","fire_apparatus","fire_personnel_assignments","fire_losses","fire_actions_taken",
     # Compliance
     "nemsis_export_jobs","nemsis_validation_results","neris_export_jobs","neris_validation_results","governance_scores",
+    # AR / Revenue Cycle
+    "ar_accounts","ar_charges","ar_disputes","ar_marker_sheets","ar_markers","ar_payment_plans","ar_payments","ar_statements",
+    "billing_runs","claim_documents","claim_status_history","ledger_entries",
+    "submission_batches","trip_debts","trip_exports","trip_postings","trip_reject_imports","trip_settings",
+    # Cases + Payments + Pricebook
+    "cases","payments","pricebook_items","pricebooks","patient_statements",
+    # Events + Platform
+    "event_reads","platform_events","document_events","usage_events",
+    # CMS / Collections
+    "cms_gate_results","collections_placements","collections_settings","collections_status_updates","collections_vendor_profiles",
+    # Compliance Packs (extended)
+    "compliance_check_templates","compliance_findings","compliance_inspections","compliance_pack_versions",
+    "compliance_packs","compliance_reports","compliance_rules",
+    # Documents / Legal
+    "document_matches","legal_documents","legal_packets","legal_sign_events",
+    # Entitlements + Onboarding
+    "entitlements","onboarding_checklists","onboarding_idempotency_keys",
+    # Fire (extended)
+    "fire_departments","fire_incident_actions","fire_incident_documents","fire_incident_outcomes",
+    "fire_incident_units","fire_personnel","fire_stations",
+    # Formulary + Generated PDFs
+    "formulary_items","generated_pdfs",
+    # HEMS (extended)
+    "hems_acceptance_records","hems_mission_events","hems_risk_audits","hems_weather_briefs",
+    # Inspection
+    "inspection_instances","inspection_templates",
+    # Inventory + Kit + Narc
+    "compartment_items","inventory_items","inventory_transaction_lines","inventory_transactions",
+    "kit_compartments","kit_templates","kitlink_anomaly_flags","kitlink_ocr_jobs","kitlink_wizard_state",
+    "narc_counts","narc_discrepancies","narc_kits","narc_seals","narc_waste_events",
+    "unit_layout_kits","unit_layouts",
+    # Maintenance
+    "maintenance_work_orders",
+    # NEMSIS / NERIS (extended)
+    "nemsis_audit_bundles","nemsis_export_batches","nemsis_extensions","nemsis_state_rejections",
+    "neris_compiled_rules","neris_onboarding","neris_pack_files","neris_packs",
+    "neris_value_set_definitions","neris_value_set_items",
+    # Readiness + Scheduling AI
+    "ai_scheduling_drafts","aircraft_readiness_events","readiness_scores",
+    # Rep Signatures + Builders
+    "builders_rulesets","rep_signatures","stripe_bootstrap_log",
+    # Stock
+    "stock_balances","stock_locations",
+    # Support (extended)
+    "support_escalations","support_messages","support_threads",
+    # Tenant config
+    "tenant_billing_config","tenant_compliance_config",
+    # Visibility
+    "visibility_access_alerts","visibility_anomaly_events","visibility_approval_requests",
+    "visibility_audit_log","visibility_compliance_locks","visibility_rules",
 ]
 
 

@@ -64,6 +64,11 @@ TENANT_TABLES: set[str] = {
     "hems_mission_events","rep_signatures","auth_rep_sessions","authorized_reps","rep_documents","billing_cases","patient_statements",
     "appeal_drafts","baa_signatures","billing_alert_thresholds","bulk_generation_jobs","claim_events","conversion_events","denial_predictions","device_registrations","emergency_locks","geo_alerts","global_variables","incident_postmortems","incidents","lead_scores","mobile_alerts","mobile_errors","mobile_sessions","nemsis_audit_bundles","nemsis_export_batches","nemsis_extensions","nemsis_state_rejections","ocr_captures","offline_sync_jobs","onboarding_checklists","payer_follow_ups","production_change_approvals","proposals","push_notifications","pwa_deployments","pwa_installs","pwa_manifest_updates","recovery_simulations","roi_funnel_scenarios","roi_share_links","scheduled_deliveries","self_healing_actions","self_healing_rules","shift_swaps","system_alerts","template_ab_tests","template_downloads","template_renders","template_secure_links","template_versions","user_credentials","visibility_access_alerts","visibility_anomaly_events","visibility_approval_requests","visibility_audit_log","visibility_compliance_locks","visibility_rules",
     "founder_chat_sessions","founder_chat_messages","founder_chat_runs","founder_chat_actions","voice_screen_pops","voice_alert_policies","voice_script_packs","voice_compliance_guard_events","voice_onboarding_sessions","voice_founder_busy_states","voice_callback_slots","voice_ab_tests","voice_cost_caps","voice_preferences","voice_recording_governance","voice_recording_access_log","voice_war_room_incidents","voice_human_review_queue","voice_improvement_tickets","tenant_users","support_tickets","invoices",
+    "accreditation_evidence","accreditation_items","audit_logs","fax_documents","fhir_artifacts",
+    "icd10_codes","icd10_versions","onboarding_applications","patients","roi_scenarios",
+    "telnyx_calls","telnyx_events","telnyx_opt_outs","telnyx_sms_messages","tenant_phone_numbers",
+    "users","vitals",
+    "communications","document_audit_events","tenant_provisioning_idempotency",
 }
 
 
