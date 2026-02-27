@@ -9,6 +9,7 @@ Architecture:
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from typing import Any
 
@@ -41,17 +42,21 @@ class _TokenCache:
     def __init__(self) -> None:
         self._access_token: str = ""
         self._expires_at: float = 0.0
+        self._lock = threading.Lock()
 
     def is_valid(self) -> bool:
-        return bool(self._access_token) and time.monotonic() < self._expires_at - _REFRESH_BUFFER_SECONDS
+        with self._lock:
+            return bool(self._access_token) and time.monotonic() < self._expires_at - _REFRESH_BUFFER_SECONDS
 
     def set(self, access_token: str, expires_in: int) -> None:
-        self._access_token = access_token
-        self._expires_at = time.monotonic() + expires_in
+        with self._lock:
+            self._access_token = access_token
+            self._expires_at = time.monotonic() + expires_in
 
     @property
     def token(self) -> str:
-        return self._access_token
+        with self._lock:
+            return self._access_token
 
 
 _cache = _TokenCache()
@@ -72,7 +77,8 @@ def _acquire_token(tenant_id: str, client_id: str, client_secret: str) -> str:
             data = _json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         body_text = exc.read().decode("utf-8", errors="replace")
-        raise GraphApiError(exc.code, f"token_acquisition_failed: {body_text}") from exc
+        logger.error("graph_token_acquisition_failed status=%d body=%.200s", exc.code, body_text)
+        raise GraphApiError(exc.code if 400 <= exc.code <= 599 else 502, "graph_token_acquisition_failed") from exc
 
     access_token: str = data.get("access_token", "")
     expires_in: int = int(data.get("expires_in", 3600))
@@ -113,7 +119,8 @@ def _graph_request(
             return _json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
         body_text = exc.read().decode("utf-8", errors="replace")
-        raise GraphApiError(exc.code, body_text) from exc
+        logger.warning("graph_api_error status=%d body=%.200s", exc.code, body_text)
+        raise GraphApiError(exc.code if 400 <= exc.code <= 599 else 502, "graph_api_error") from exc
 
 
 def _graph_request_bytes(method: str, path: str, token: str) -> bytes:
@@ -125,7 +132,8 @@ def _graph_request_bytes(method: str, path: str, token: str) -> bytes:
             return resp.read()
     except urllib.error.HTTPError as exc:
         body_text = exc.read().decode("utf-8", errors="replace")
-        raise GraphApiError(exc.code, body_text) from exc
+        logger.warning("graph_bytes_api_error status=%d body=%.200s", exc.code, body_text)
+        raise GraphApiError(exc.code if 400 <= exc.code <= 599 else 502, "graph_api_error") from exc
 
 
 class GraphClient:
@@ -216,6 +224,17 @@ class GraphClient:
         item = self.get_drive_item(item_id)
         url: str = item.get("@microsoft.graph.downloadUrl") or item.get("webUrl") or ""
         return url
+
+    def download_drive_item_bytes(self, item_id: str) -> tuple[bytes, str]:
+        """Download a drive item and return (bytes, content_type).
+        Used to proxy file content through the backend — never returns Graph URLs to the frontend.
+        """
+        token = self._token()
+        path = f"/users/{self._mailbox()}/drive/items/{item_id}/content"
+        raw = _graph_request_bytes("GET", path, token)
+        item = self.get_drive_item(item_id)
+        mime: str = (item.get("file") or {}).get("mimeType") or "application/octet-stream"
+        return raw, mime
 
 
 def get_graph_client() -> GraphClient:

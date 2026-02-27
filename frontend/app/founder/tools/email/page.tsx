@@ -226,7 +226,7 @@ export default function FounderEmailPage() {
                       ref={iframeRef}
                       srcDoc={selected.body.content}
                       className="w-full min-h-[300px] border-0 bg-white rounded-sm"
-                      sandbox="allow-same-origin"
+                      sandbox=""
                       title="message-body"
                     />
                   ) : (

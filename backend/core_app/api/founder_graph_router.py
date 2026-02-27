@@ -18,7 +18,7 @@ OneDrive endpoints:
   GET  /founder/graph/drive                         list root drive items
   GET  /founder/graph/drive/folders/{item_id}       list folder children
   GET  /founder/graph/drive/items/{item_id}         item metadata + webUrl
-  GET  /founder/graph/drive/items/{item_id}/download-url  presigned/download URL
+  GET  /founder/graph/drive/items/{item_id}/download       stream file bytes through backend
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ _FOUNDER = Depends(require_role("founder"))
 
 
 def _raise_graph(exc: GraphApiError) -> None:
-    raise HTTPException(status_code=exc.status if exc.status < 600 else 502, detail=exc.message)
+    raise HTTPException(status_code=exc.status if 400 <= exc.status <= 599 else 502, detail=exc.message)
 
 
 def _raise_not_configured(exc: GraphNotConfigured) -> None:
@@ -62,6 +62,9 @@ class ReplyRequest(BaseModel):
     comment_html: str
 
 
+_ALLOWED_FOLDERS = frozenset({"inbox", "sentitems", "drafts", "deleteditems", "archive", "junkemail"})
+
+
 @router.get("/mail")
 async def list_messages(
     folder: str = "inbox",
@@ -69,6 +72,8 @@ async def list_messages(
     skip: int = 0,
     current: CurrentUser = _FOUNDER,
 ) -> dict[str, Any]:
+    if folder not in _ALLOWED_FOLDERS:
+        raise HTTPException(status_code=400, detail=f"invalid_folder: must be one of {sorted(_ALLOWED_FOLDERS)}")
     logger.info("graph_mail_list user=%s folder=%s", current.user_id, folder)
     try:
         client = get_graph_client()
@@ -209,18 +214,18 @@ async def get_drive_item(
     return {}
 
 
-@router.get("/drive/items/{item_id}/download-url")
-async def get_drive_download_url(
+@router.get("/drive/items/{item_id}/download")
+async def download_drive_item(
     item_id: str,
     current: CurrentUser = _FOUNDER,
-) -> dict[str, str]:
-    logger.info("graph_drive_download_url user=%s item_id=%s", current.user_id, item_id)
+) -> Response:
+    logger.info("graph_drive_download user=%s item_id=%s", current.user_id, item_id)
     try:
         client = get_graph_client()
-        url = client.get_drive_item_download_url(item_id)
-        return {"download_url": url}
+        raw, content_type = client.download_drive_item_bytes(item_id)
+        return Response(content=raw, media_type=content_type)
     except GraphNotConfigured as exc:
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return {}
+    return Response(content=b"", media_type="application/octet-stream")

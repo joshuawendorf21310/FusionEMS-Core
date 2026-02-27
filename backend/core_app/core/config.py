@@ -118,6 +118,10 @@ class Settings(BaseSettings):
                 ("lob_events_table",                "LOB_EVENTS_TABLE"),
                 ("stripe_events_table",             "STRIPE_EVENTS_TABLE"),
                 ("tenants_table",                   "TENANTS_TABLE"),
+                ("graph_tenant_id",                 "GRAPH_TENANT_ID"),
+                ("graph_client_id",                 "GRAPH_CLIENT_ID"),
+                ("graph_client_secret",             "GRAPH_CLIENT_SECRET"),
+                ("graph_founder_email",             "GRAPH_FOUNDER_EMAIL"),
             ]
             missing = [
                 env_name
@@ -141,6 +145,15 @@ class Settings(BaseSettings):
                     "Set AUTH_MODE=cognito for staging and production deployments."
                 )
         return self
+
+    @field_validator("graph_founder_email")
+    @classmethod
+    def _validate_graph_founder_email(cls, v: str) -> str:
+        if v and "@" not in v:
+            raise ValueError(
+                f"GRAPH_FOUNDER_EMAIL must be a valid UPN (email address), got: {v!r}"
+            )
+        return v
 
     @field_validator("system_tenant_id")
     @classmethod

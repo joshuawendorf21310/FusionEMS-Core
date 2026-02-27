@@ -106,19 +106,12 @@ export default function FounderFilesPage() {
     if (isOfficeFile(item) && item.webUrl) {
       setPreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(item.webUrl)}`);
     } else if (isPdf(item)) {
-      setPreviewLoading(true);
-      fetch(`${API}/api/v1/founder/graph/drive/items/${item.id}/download-url`)
-        .then((r) => r.json())
-        .then((d) => setPreviewUrl(d.download_url ?? ''))
-        .catch(() => setPreviewUrl(''))
-        .finally(() => setPreviewLoading(false));
+      setPreviewUrl(`${API}/api/v1/founder/graph/drive/items/${item.id}/download`);
     }
   };
 
-  const downloadItem = async (item: DriveItem) => {
-    const resp = await fetch(`${API}/api/v1/founder/graph/drive/items/${item.id}/download-url`);
-    const d = await resp.json();
-    if (d.download_url) window.open(d.download_url, '_blank');
+  const downloadItem = (item: DriveItem) => {
+    window.open(`${API}/api/v1/founder/graph/drive/items/${item.id}/download`, '_blank');
   };
 
   return (
