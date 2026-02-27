@@ -596,6 +596,7 @@ function ValidateTab({
   const [incidentError, setIncidentError] = useState('');
   const [copilotResult, setCopilotResult] = useState<CopilotResult | null>(null);
   const [loadingCopilot, setLoadingCopilot] = useState(false);
+  const [copilotError, setCopilotError] = useState('');
 
   async function validateEntity() {
     if (!activePackId) { setEntityError('No active pack. Activate a pack first.'); return; }
@@ -657,8 +658,8 @@ function ValidateTab({
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail ?? `HTTP ${res.status}`);
       setCopilotResult(json);
-    } catch {
-      /* silently fail */
+    } catch (e: unknown) {
+      setCopilotError(e instanceof Error ? e.message : 'Copilot explain failed');
     } finally {
       setLoadingCopilot(false);
     }
@@ -837,8 +838,8 @@ function FixListTab({ issues }: { issues: ValidationIssue[] }) {
       const json = await res.json();
       if (!res.ok) throw new Error();
       setCopilotResult(json);
-    } catch {
-      /* silently fail */
+    } catch (e: unknown) {
+      console.warn('[copilot explain error]', e);
     } finally {
       setLoadingCopilot(false);
     }

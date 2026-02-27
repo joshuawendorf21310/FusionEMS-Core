@@ -121,6 +121,7 @@ function StatusChip({ status }: { status: StatementStatus }) {
 export default function PatientStatementsPage() {
   const [statements, setStatements] = useState<Statement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -129,8 +130,9 @@ export default function PatientStatementsPage() {
         if (!res.ok) throw new Error('Not OK');
         const data = await res.json();
         setStatements(data);
-      } catch {
-        setStatements(MOCK_STATEMENTS);
+      } catch (e: unknown) {
+        console.warn('[statements load error]', e);
+        setFetchError(true);
       } finally {
         setLoading(false);
       }
@@ -141,6 +143,12 @@ export default function PatientStatementsPage() {
   const totalDue = statements.reduce(
     (sum, s) => (s.status !== 'paid' ? sum + s.balance : sum),
     0
+  );
+
+  if (fetchError) return (
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Unable to load statements. Please try again later.</div>
+    </div>
   );
 
   return (
