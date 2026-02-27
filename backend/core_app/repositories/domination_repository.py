@@ -50,6 +50,7 @@ TENANT_TABLES: set[str] = {
     "document_matches","generated_pdfs",
     "support_threads","support_messages","support_escalations",
     "platform_events","event_reads","onboarding_idempotency_keys",
+    "cases","cms_gate_results","hems_acceptance_records","hems_weather_briefs","hems_risk_audits","aircraft_readiness_events","maintenance_work_orders","inspection_templates","inspection_instances","readiness_scores","ai_scheduling_drafts",
 }
 
 

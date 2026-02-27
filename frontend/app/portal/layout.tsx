@@ -15,6 +15,9 @@ const NAV_LINKS = [
   { href: '/portal/documents', label: 'Documents' },
   { href: '/portal/neris-onboarding', label: 'NERIS Onboarding' },
   { href: '/portal/incidents/fire', label: 'Fire Incidents' },
+  { href: '/portal/cases', label: 'Cases' },
+  { href: '/portal/hems', label: 'HEMS Pilot' },
+  { href: '/portal/fleet', label: 'Fleet Intelligence' },
 ];
 
 function TopBar() {

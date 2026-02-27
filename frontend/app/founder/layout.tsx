@@ -64,6 +64,8 @@ const NAV_DOMAINS = [
       { href: '/founder/compliance/certification', label: 'Certification Monitor' },
       { href: '/founder/compliance/niers', label: 'NIERS Manager' },
       { href: '/founder/compliance/neris', label: 'NERIS Compliance Studio' },
+      { href: '/founder/compliance/hems', label: 'HEMS Safety Audit' },
+      { href: '/founder/compliance/cms-gate', label: 'CMS Gate Monitor' },
     ],
   },
   {
@@ -139,6 +141,19 @@ const NAV_DOMAINS = [
       { href: '/founder/tools/invoice-creator', label: 'Invoice Creator' },
       { href: '/founder/tools/expense-ledger', label: 'Expense Ledger' },
       { href: '/founder/tools/task-center', label: 'Task Center' },
+    ],
+  },
+  {
+    id: 'operations',
+    label: '12 · Operations',
+    icon: '◈',
+    color: '#22d3ee',
+    links: [
+      { href: '/portal/cases', label: 'Cases (Cross-Portal)' },
+      { href: '/founder/ops/fleet-intelligence', label: 'Fleet Intelligence' },
+      { href: '/founder/ops/readiness', label: 'Readiness Monitor' },
+      { href: '/founder/ops/hems', label: 'HEMS Overview' },
+      { href: '/founder/ops/scheduling-ai', label: 'AI Scheduling Studio' },
     ],
   },
 ];
