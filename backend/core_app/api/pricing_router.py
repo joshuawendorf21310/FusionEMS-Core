@@ -32,7 +32,29 @@ async def roi(payload: dict[str, Any], request: Request):
 
 @router.post("/public/signup/start", include_in_schema=True)
 async def signup(payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)):
-    return {"status": "ok", "next": "stripe_checkout"}
+    settings = get_settings()
+    system_tenant = settings.system_tenant_id
+    try:
+        tenant_uuid = uuid.UUID(system_tenant) if system_tenant else uuid.uuid4()
+    except Exception:
+        tenant_uuid = uuid.uuid4()
+    svc = DominationService(db, get_event_publisher())
+    application = await svc.create(
+        table="onboarding_applications",
+        tenant_id=tenant_uuid,
+        actor_user_id=None,
+        data={
+            "agency_name": payload.get("agency_name", ""),
+            "contact_email": payload.get("email", ""),
+            "agency_type": payload.get("agency_type", ""),
+            "annual_call_volume": payload.get("annual_call_volume"),
+            "selected_modules": payload.get("modules", []),
+            "status": "pending_payment",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return {"status": "ok", "application_id": application["id"], "next": "stripe_checkout"}
 
 
 @router.post("/public/webhooks/stripe", include_in_schema=True)

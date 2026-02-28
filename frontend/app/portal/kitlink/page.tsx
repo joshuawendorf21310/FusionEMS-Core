@@ -1,6 +1,6 @@
 "use client";
 import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 const TABS = ["Dashboard", "Items & Formulary", "Kit Templates", "Unit Layouts", "AR Markers", "Reports"] as const;
@@ -37,7 +37,7 @@ async function post(path: string, tenantId: string, body: object): Promise<any> 
   }
 }
 
-export default function KitLinkPage() {
+function KitLinkPageInner() {
   const params = useSearchParams();
   const tenantId = params.get("tenant_id") ?? "";
   const [activeTab, setActiveTab] = useState<Tab>("Dashboard");
@@ -579,5 +579,13 @@ function ReportPanel({ title, count, items, renderItem }: { title: string; count
         <p className="text-xs text-text-muted">No data</p>
       )}
     </div>
+  );
+}
+
+export default function KitLinkPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-bg-base flex items-center justify-center text-text-muted">Loading...</div>}>
+      <KitLinkPageInner />
+    </Suspense>
   );
 }

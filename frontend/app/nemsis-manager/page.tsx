@@ -228,8 +228,8 @@ export default function NEMSISManagerPage() {
 
   const token =
     typeof window !== "undefined"
-      ? localStorage.getItem("access_token") || "demo-token"
-      : "demo-token";
+      ? localStorage.getItem("access_token") || ""
+      : "";
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
   const api = useCallback(

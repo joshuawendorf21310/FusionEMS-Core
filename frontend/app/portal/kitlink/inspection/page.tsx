@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 const API = "/api/v1/kitlink/compliance";
@@ -26,7 +26,7 @@ interface Responses {
   [key: string]: CheckValue;
 }
 
-export default function InspectionPage() {
+function InspectionPageInner() {
   const params = useSearchParams();
   const tenantId = params.get("tenant_id") ?? "";
 
@@ -298,5 +298,13 @@ function CheckRow({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function InspectionPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-bg-base flex items-center justify-center text-text-muted">Loading...</div>}>
+      <InspectionPageInner />
+    </Suspense>
   );
 }

@@ -219,7 +219,7 @@ export default function VisibilityRuleMakerPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const token = typeof window !== "undefined" ? (localStorage.getItem("access_token") || "demo-token") : "demo-token";
+  const token = typeof window !== "undefined" ? (localStorage.getItem("access_token") || "") : "";
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
   const api = useCallback(async (path: string, method = "GET", body?: unknown) => {

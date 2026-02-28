@@ -82,7 +82,6 @@ async def list_messages(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return {}
 
 
 @router.get("/mail/{message_id}")
@@ -98,7 +97,6 @@ async def get_message(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return {}
 
 
 @router.get("/mail/{message_id}/attachments")
@@ -114,7 +112,6 @@ async def list_attachments(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return {}
 
 
 @router.get("/mail/{message_id}/attachments/{attachment_id}/download")
@@ -133,7 +130,6 @@ async def download_attachment(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return Response(content=b"", media_type="application/octet-stream")
 
 
 @router.post("/mail/send", status_code=204)
@@ -179,7 +175,6 @@ async def list_drive_root(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return {}
 
 
 @router.get("/drive/folders/{item_id}")
@@ -195,7 +190,6 @@ async def list_drive_folder(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return {}
 
 
 @router.get("/drive/items/{item_id}")
@@ -211,7 +205,6 @@ async def get_drive_item(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return {}
 
 
 @router.get("/drive/items/{item_id}/download")
@@ -228,4 +221,3 @@ async def download_drive_item(
         _raise_not_configured(exc)
     except GraphApiError as exc:
         _raise_graph(exc)
-    return Response(content=b"", media_type="application/octet-stream")

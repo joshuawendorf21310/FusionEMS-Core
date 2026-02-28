@@ -1,6 +1,6 @@
 "use client";
 import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 const COMPLIANCE_API = "/api/v1/kitlink/compliance";
@@ -56,7 +56,7 @@ const STEPS = [
 
 type StepId = typeof STEPS[number]["id"];
 
-export default function WizardPage() {
+function WizardPageInner() {
   const params = useSearchParams();
   const router = useRouter();
   const tenantId = params.get("tenant_id") ?? "";
@@ -433,5 +433,13 @@ function GenericStep({ step }: { step: typeof STEPS[number] }) {
     <div className="p-4 rounded-lg border border-border-subtle bg-bg-panel/50 text-sm text-text-secondary">
       {hints[step.id] ?? "Complete this step in the KitLink dashboard."}
     </div>
+  );
+}
+
+export default function WizardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-bg-base flex items-center justify-center text-text-muted">Loading...</div>}>
+      <WizardPageInner />
+    </Suspense>
   );
 }
