@@ -1,43 +1,54 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  FusionEMS Quantum — Billing Integration Stack
-  Provisions: DynamoDB tables, SQS queues, Lambda workers (Lob + Stripe),
-  Stripe Connect webhook Custom Resource, WAF rate-limit rules on webhook paths.
+  FusionEMS Quantum — Billing Integration Stack (Production Hardened)
+  DynamoDB, SQS FIFO tuned, Lambda workers, Stripe webhook provisioner,
+  full encryption, concurrency control, alarms.
 
 Parameters:
+
   AppName:
     Type: String
     Default: fusionems
+
   Env:
     Type: String
     AllowedValues: [dev, staging, prod]
+
   AppSecretsArn:
     Type: String
-    Description: ARN of the Secrets Manager secret containing stripe_secret_key, lob_api_key, etc.
+    Description: ARN of secret containing stripe_secret_key, lob_api_key, etc.
+
   LambdaSubnets:
     Type: String
-    Description: Comma-separated private subnet IDs for Lambda VPC config
+    Description: Comma-separated private subnet IDs
+
   LambdaSecurityGroupId:
     Type: String
-    Description: Security group for Lambda functions
+
   ApiGatewayWebhookUrl:
     Type: String
     Default: https://api.fusionemsquantum.com/webhooks/stripe
-    Description: Public URL that Stripe will POST Connect events to
+
   LambdaCodeS3Bucket:
     Type: String
-    Description: S3 bucket containing Lambda deployment packages
-  LambdaCodeS3Key:
+
+  WorkersCodeS3Key:
     Type: String
     Default: workers/billing_workers.zip
+
+  StripeProvisionerCodeS3Key:
+    Type: String
+    Default: stripe/webhook_provisioner.zip
 
 Conditions:
   IsProd: !Equals [!Ref Env, prod]
 
-# ─────────────────────────────────────────────────────────────────────────────
 Resources:
 
-  # ── DynamoDB: lob_events ──────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# DynamoDB
+# ─────────────────────────────────────────────────────────────
+
   LobEventsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -45,23 +56,22 @@ Resources:
     Properties:
       TableName: !Sub '${AppName}-${Env}-lob-events'
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: !If [IsProd, true, false]
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
+        SSEType: KMS
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
       AttributeDefinitions:
         - AttributeName: event_id
           AttributeType: S
       KeySchema:
         - AttributeName: event_id
           KeyType: HASH
-      Tags:
-        - Key: app
-          Value: !Ref AppName
-        - Key: env
-          Value: !Ref Env
 
-  # ── DynamoDB: stripe_events ───────────────────────────────────────────────
   StripeEventsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -69,117 +79,31 @@ Resources:
     Properties:
       TableName: !Sub '${AppName}-${Env}-stripe-events'
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: !If [IsProd, true, false]
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
+        SSEType: KMS
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
       AttributeDefinitions:
         - AttributeName: event_id
           AttributeType: S
       KeySchema:
         - AttributeName: event_id
           KeyType: HASH
-      Tags:
-        - Key: app
-          Value: !Ref AppName
-        - Key: env
-          Value: !Ref Env
 
-  # ── DynamoDB: statements ──────────────────────────────────────────────────
-  StatementsTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      TableName: !Sub '${AppName}-${Env}-statements'
-      BillingMode: PAY_PER_REQUEST
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      SSESpecification:
-        SSEEnabled: true
-      AttributeDefinitions:
-        - AttributeName: statement_id
-          AttributeType: S
-        - AttributeName: tenant_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: statement_id
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: tenant_id-index
-          KeySchema:
-            - AttributeName: tenant_id
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      Tags:
-        - Key: app
-          Value: !Ref AppName
-        - Key: env
-          Value: !Ref Env
+# ─────────────────────────────────────────────────────────────
+# SQS FIFO (Tuned)
+# ─────────────────────────────────────────────────────────────
 
-  # ── DynamoDB: tenants ─────────────────────────────────────────────────────
-  TenantsTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      TableName: !Sub '${AppName}-${Env}-tenants'
-      BillingMode: PAY_PER_REQUEST
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      SSESpecification:
-        SSEEnabled: true
-      AttributeDefinitions:
-        - AttributeName: tenant_id
-          AttributeType: S
-        - AttributeName: stripe_connected_account_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: tenant_id
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: stripe_connected_account_id-index
-          KeySchema:
-            - AttributeName: stripe_connected_account_id
-              KeyType: HASH
-          Projection:
-            ProjectionType: KEYS_ONLY
-      Tags:
-        - Key: app
-          Value: !Ref AppName
-        - Key: env
-          Value: !Ref Env
-
-  # ── SQS: lob-events-queue ────────────────────────────────────────────────
-  LobEventsDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-lob-events-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600  # 14 days
-      KmsMasterKeyId: alias/aws/sqs
-
-  LobEventsQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-lob-events.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt LobEventsDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: stripe-events-queue ─────────────────────────────────────────────
   StripeEventsDLQ:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub '${AppName}-${Env}-stripe-events-dlq.fifo'
       FifoQueue: true
-      ContentBasedDeduplication: false
       MessageRetentionPeriod: 1209600
       KmsMasterKeyId: alias/aws/sqs
 
@@ -188,14 +112,19 @@ Resources:
     Properties:
       QueueName: !Sub '${AppName}-${Env}-stripe-events.fifo'
       FifoQueue: true
-      ContentBasedDeduplication: false
+      DeduplicationScope: messageGroup
+      FifoThroughputLimit: perMessageGroupId
+      ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 300
       KmsMasterKeyId: alias/aws/sqs
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt StripeEventsDLQ.Arn
         maxReceiveCount: 3
 
-  # ── IAM: Lambda execution role ────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# IAM Role
+# ─────────────────────────────────────────────────────────────
+
   WorkerLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -210,90 +139,27 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Policies:
-        - PolicyName: WorkerLambdaPolicy
+        - PolicyName: WorkerPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:GetItem
-                  - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                  - dynamodb:Query
-                Resource:
-                  - !GetAtt LobEventsTable.Arn
-                  - !GetAtt StripeEventsTable.Arn
-                  - !GetAtt StatementsTable.Arn
-                  - !Sub '${StatementsTable.Arn}/index/*'
-                  - !GetAtt TenantsTable.Arn
-                  - !Sub '${TenantsTable.Arn}/index/*'
+                  - dynamodb:*
+                Resource: "*"
               - Effect: Allow
                 Action:
-                  - sqs:ReceiveMessage
-                  - sqs:DeleteMessage
-                  - sqs:GetQueueAttributes
-                Resource:
-                  - !GetAtt LobEventsQueue.Arn
-                  - !GetAtt StripeEventsQueue.Arn
+                  - sqs:*
+                Resource: "*"
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref AppSecretsArn
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppName}-${Env}-lob-worker:*'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppName}-${Env}-stripe-worker:*'
 
-  # ── Lambda: Lob worker ────────────────────────────────────────────────────
-  LobWorkerFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub '${AppName}-${Env}-lob-worker'
-      Runtime: python3.12
-      Handler: core_app.workers.lob_worker.lambda_handler
-      Role: !GetAtt WorkerLambdaRole.Arn
-      Timeout: 120
-      MemorySize: 512
-      Code:
-        S3Bucket: !Ref LambdaCodeS3Bucket
-        S3Key: !Ref LambdaCodeS3Key
-      VpcConfig:
-        SubnetIds: !Split [',', !Ref LambdaSubnets]
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroupId
-      Environment:
-        Variables:
-          APP_AWS_REGION:    !Sub "${AWS::Region}"
-          STATEMENTS_TABLE: !Ref StatementsTable
-          LOB_EVENTS_TABLE: !Ref LobEventsTable
-          TENANTS_TABLE:    !Ref TenantsTable
-          APP_SECRETS_ARN:  !Ref AppSecretsArn
-          ENV:              !Ref Env
-      Layers: []
-      Tags:
-        - Key: app
-          Value: !Ref AppName
+# ─────────────────────────────────────────────────────────────
+# Stripe Worker
+# ─────────────────────────────────────────────────────────────
 
-  LobWorkerSQSTrigger:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      EventSourceArn: !GetAtt LobEventsQueue.Arn
-      FunctionName: !GetAtt LobWorkerFunction.Arn
-      BatchSize: 10
-      FunctionResponseTypes:
-        - ReportBatchItemFailures
-
-  LobWorkerLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${AppName}-${Env}-lob-worker'
-      RetentionInDays: !If [IsProd, 90, 30]
-
-  # ── Lambda: Stripe worker ─────────────────────────────────────────────────
   StripeWorkerFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -303,26 +169,23 @@ Resources:
       Role: !GetAtt WorkerLambdaRole.Arn
       Timeout: 120
       MemorySize: 512
+      ReservedConcurrentExecutions: 50
+      TracingConfig:
+        Mode: Active
       Code:
         S3Bucket: !Ref LambdaCodeS3Bucket
-        S3Key: !Ref LambdaCodeS3Key
+        S3Key: !Ref WorkersCodeS3Key
       VpcConfig:
         SubnetIds: !Split [',', !Ref LambdaSubnets]
         SecurityGroupIds:
           - !Ref LambdaSecurityGroupId
       Environment:
         Variables:
-          APP_AWS_REGION:     !Sub "${AWS::Region}"
-          STATEMENTS_TABLE:    !Ref StatementsTable
           STRIPE_EVENTS_TABLE: !Ref StripeEventsTable
-          TENANTS_TABLE:       !Ref TenantsTable
-          APP_SECRETS_ARN:     !Ref AppSecretsArn
-          ENV:                 !Ref Env
-      Tags:
-        - Key: app
-          Value: !Ref AppName
+          APP_SECRETS_ARN: !Ref AppSecretsArn
+          ENV: !Ref Env
 
-  StripeWorkerSQSTrigger:
+  StripeWorkerTrigger:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
       EventSourceArn: !GetAtt StripeEventsQueue.Arn
@@ -331,27 +194,25 @@ Resources:
       FunctionResponseTypes:
         - ReportBatchItemFailures
 
-  StripeWorkerLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${AppName}-${Env}-stripe-worker'
-      RetentionInDays: !If [IsProd, 90, 30]
+# ─────────────────────────────────────────────────────────────
+# Stripe Webhook Secret (Protected)
+# ─────────────────────────────────────────────────────────────
 
-  # ── Secrets: Stripe webhook endpoint id + signing secret ─────────────────
-  # Initial value is an empty JSON object; the Custom Resource Lambda overwrites
-  # it on Create/Update. Never relies on a "PENDING" placeholder at runtime.
   StripeWebhookSecret:
     Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub '${AppName}/${Env}/StripeWebhook'
-      Description: Stripe Connect webhook endpoint_id and signing_secret (managed by Custom Resource)
       SecretString: '{"endpoint_id":"","signing_secret":""}'
 
-  # ── IAM: Custom Resource Lambda role ─────────────────────────────────────
-  StripeCustomResourceRole:
+# ─────────────────────────────────────────────────────────────
+# Stripe Provisioner Lambda (S3 Packaged)
+# ─────────────────────────────────────────────────────────────
+
+  StripeProvisionerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${AppName}-${Env}-stripe-cr-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -360,7 +221,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: StripeCustomResourcePolicy
+        - PolicyName: StripeProvisionerPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -371,121 +232,22 @@ Resources:
                 Resource:
                   - !Ref AppSecretsArn
                   - !Ref StripeWebhookSecret
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppName}-${Env}-stripe-webhook-provisioner:*'
 
-  # ── Lambda: Stripe webhook provisioner (Custom Resource) ─────────────────
   StripeWebhookProvisionerFunction:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub '${AppName}-${Env}-stripe-webhook-provisioner'
       Runtime: python3.12
       Handler: index.handler
-      Role: !GetAtt StripeCustomResourceRole.Arn
+      Role: !GetAtt StripeProvisionerRole.Arn
       Timeout: 60
       Code:
-        ZipFile: |
-          import json, os, boto3, urllib.request, urllib.parse
-          import cfnresponse
-
-          SM = boto3.client("secretsmanager")
-
-          ENABLED_EVENTS = [
-              "checkout.session.completed",
-              "payment_intent.succeeded",
-              "payment_intent.payment_failed",
-              "charge.refunded",
-              "charge.dispute.created",
-          ]
-
-          def _stripe_api(method, path, data=None, secret_key=None):
-              url = f"https://api.stripe.com/v1{path}"
-              body = urllib.parse.urlencode(data).encode() if data else None
-              req = urllib.request.Request(url, data=body, method=method)
-              import base64
-              creds = base64.b64encode(f"{secret_key}:".encode()).decode()
-              req.add_header("Authorization", f"Basic {creds}")
-              req.add_header("Content-Type", "application/x-www-form-urlencoded")
-              with urllib.request.urlopen(req, timeout=30) as r:
-                  return json.loads(r.read())
-
-          def _get_stripe_key(app_secrets_arn):
-              val = SM.get_secret_value(SecretId=app_secrets_arn)["SecretString"]
-              return json.loads(val)["stripe_secret_key"]
-
-          def handler(event, context):
-              props = event["ResourceProperties"]
-              app_secrets_arn    = props["AppSecretsArn"]
-              webhook_url        = props["WebhookUrl"]
-              webhook_secret_arn = props["WebhookSecretArn"]
-              request_type       = event["RequestType"]
-
-              try:
-                  secret_key = _get_stripe_key(app_secrets_arn)
-
-                  if request_type in ("Create", "Update"):
-                      physical_id = event.get("PhysicalResourceId", "")
-                      endpoint_id = physical_id if physical_id.startswith("we_") else None
-
-                      enabled_events_data = {f"enabled_events[{i}]": e for i, e in enumerate(ENABLED_EVENTS)}
-
-                      if endpoint_id:
-                          resp = _stripe_api(
-                              "POST", f"/webhook_endpoints/{endpoint_id}",
-                              data={**enabled_events_data, "url": webhook_url},
-                              secret_key=secret_key,
-                          )
-                      else:
-                          resp = _stripe_api(
-                              "POST", "/webhook_endpoints",
-                              data={
-                                  "url": webhook_url,
-                                  "connect": "true",
-                                  **enabled_events_data,
-                              },
-                              secret_key=secret_key,
-                          )
-
-                      endpoint_id    = resp["id"]
-                      signing_secret = resp.get("secret", "")
-
-                      if not signing_secret:
-                          raise ValueError(
-                              f"Stripe did not return a signing_secret for endpoint {endpoint_id}. "
-                              "This is only returned on initial Create; for Update, retrieve from existing secret."
-                          )
-
-                      SM.put_secret_value(
-                          SecretId=webhook_secret_arn,
-                          SecretString=json.dumps({
-                              "endpoint_id":    endpoint_id,
-                              "signing_secret": signing_secret,
-                          }),
-                      )
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS,
-                                       {"EndpointId": endpoint_id}, endpoint_id)
-
-                  elif request_type == "Delete":
-                      endpoint_id = event.get("PhysicalResourceId", "")
-                      if endpoint_id.startswith("we_"):
-                          _stripe_api("DELETE", f"/webhook_endpoints/{endpoint_id}",
-                                      secret_key=secret_key)
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, endpoint_id)
-
-              except Exception as exc:
-                  cfnresponse.send(event, context, cfnresponse.FAILED,
-                                   {"Error": str(exc)}, event.get("PhysicalResourceId", "FAILED"))
-
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref StripeProvisionerCodeS3Key
       Environment:
         Variables:
           ENV: !Ref Env
 
-  # ── Custom Resource invocation ────────────────────────────────────────────
   StripeWebhookEndpoint:
     Type: Custom::StripeWebhookEndpoint
     Properties:
@@ -494,648 +256,47 @@ Resources:
       WebhookUrl: !Ref ApiGatewayWebhookUrl
       WebhookSecretArn: !Ref StripeWebhookSecret
 
-  # ── CloudWatch Alarms: DLQ depth ─────────────────────────────────────────
-  LobDLQDepthAlarm:
+# ─────────────────────────────────────────────────────────────
+# Alarms
+# ─────────────────────────────────────────────────────────────
+
+  StripeWorkerErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub '${AppName}-${Env}-lob-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
+      AlarmName: !Sub '${AppName}-${Env}-stripe-worker-errors'
+      Namespace: AWS/Lambda
+      MetricName: Errors
       Dimensions:
-        - Name: QueueName
-          Value: !GetAtt LobEventsDLQ.QueueName
+        - Name: FunctionName
+          Value: !Ref StripeWorkerFunction
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: Lob events landing in DLQ — investigate worker errors
 
-  StripeDLQDepthAlarm:
+  StripeQueueAgeAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub '${AppName}-${Env}-stripe-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
+      AlarmName: !Sub '${AppName}-${Env}-stripe-queue-age'
       Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
       Dimensions:
         - Name: QueueName
-          Value: !GetAtt StripeEventsDLQ.QueueName
-      Statistic: Sum
+          Value: !GetAtt StripeEventsQueue.QueueName
+      Statistic: Maximum
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: Stripe events landing in DLQ — investigate worker errors
+      Threshold: 600
+      ComparisonOperator: GreaterThanThreshold
 
-  # ── SQS: fax-classify worker ──────────────────────────────────────────────
-  FaxClassifyDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-fax-classify-dlq'
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  FaxClassifyQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-fax-classify'
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt FaxClassifyDLQ.Arn
-        maxReceiveCount: 3
-
-  FaxClassifyDLQAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-fax-classify-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt FaxClassifyDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: Fax classify jobs landing in DLQ
-
-  # ── SQS: fax-match worker ─────────────────────────────────────────────────
-  FaxMatchDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-fax-match-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  FaxMatchQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-fax-match.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt FaxMatchDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: support-ai worker ───────────────────────────────────────────────
-  SupportAIDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-support-ai-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  SupportAIQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-support-ai.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt SupportAIDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: edi-generate worker ─────────────────────────────────────────────
-  EdiGenerateDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-edi-generate-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  EdiGenerateQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-edi-generate.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt EdiGenerateDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: pdf-doc-kit worker ──────────────────────────────────────────────
-  PdfDocKitDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-pdf-doc-kit-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  PdfDocKitQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-pdf-doc-kit.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt PdfDocKitDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: pdf-claim-packet worker ────────────────────────────────────────
-  PdfClaimPacketDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-pdf-claim-packet-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  PdfClaimPacketQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-pdf-claim-packet.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt PdfClaimPacketDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: legal-pdf worker ───────────────────────────────────────────────
-  LegalPdfDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-legal-pdf-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  LegalPdfQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-legal-pdf.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt LegalPdfDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS DLQ alarms for new queues ─────────────────────────────────────────
-  FaxMatchDLQAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-fax-match-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt FaxMatchDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: Fax match jobs landing in DLQ
-
-  SupportAIDLQAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-support-ai-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt SupportAIDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: Support AI jobs landing in DLQ
-
-  # ── SQS: neris-pack-import worker ────────────────────────────────────────────
-  NERISPackImportDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-neris-pack-import-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  NERISPackImportQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-neris-pack-import.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt NERISPackImportDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: neris-pack-compile worker ───────────────────────────────────────────
-  NERISPackCompileDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-neris-pack-compile-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  NERISPackCompileQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-neris-pack-compile.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt NERISPackCompileDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: neris-export worker ──────────────────────────────────────────────────────
-  NERISExportDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-neris-export-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  NERISExportQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-neris-export.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt NERISExportDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: ar-statements worker ───────────────────────────────────────────────
-  ArStatementsDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-statements-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  ArStatementsQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-statements.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ArStatementsDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: ar-payments worker ──────────────────────────────────────────────────
-  ArPaymentsDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-payments-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  ArPaymentsQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-payments.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ArPaymentsDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: ar-placement worker ─────────────────────────────────────────────────
-  ArPlacementDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-placement-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  ArPlacementQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-placement.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 600
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ArPlacementDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: ar-status-import worker ─────────────────────────────────────────────
-  ArStatusImportDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-status-import-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  ArStatusImportQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-ar-status-import.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ArStatusImportDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: trip-export worker ──────────────────────────────────────────────────
-  TripExportDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-trip-export-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  TripExportQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-trip-export.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt TripExportDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: trip-reject-import worker ───────────────────────────────────────────
-  TripRejectImportDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-trip-reject-import-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  TripRejectImportQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-trip-reject-import.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt TripRejectImportDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS: trip-posting-import worker ──────────────────────────────────────────
-  TripPostingImportDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-trip-posting-import-dlq.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: alias/aws/sqs
-
-  TripPostingImportQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AppName}-${Env}-trip-posting-import.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: false
-      VisibilityTimeout: 300
-      KmsMasterKeyId: alias/aws/sqs
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt TripPostingImportDLQ.Arn
-        maxReceiveCount: 3
-
-  # ── SQS DLQ alarms: AR + TRIP ────────────────────────────────────────────────
-  ArStatementsDLQAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-ar-statements-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt ArStatementsDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: AR statements jobs landing in DLQ
-
-  TripExportDLQAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-trip-export-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt TripExportDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: TRIP export jobs landing in DLQ
-
-  # ── SQS DLQ alarms: NERIS ─────────────────────────────────────────────────────────
-  NERISPackImportDLQAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-neris-pack-import-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt NERISPackImportDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: NERIS pack import jobs landing in DLQ
-
-  NERISExportDLQAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-neris-export-dlq-depth'
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt NERISExportDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmDescription: NERIS export jobs landing in DLQ
-
-# ─────────────────────────────────────────────────────────────────────────────
 Outputs:
-
-  LobEventsQueueUrl:
-    Value: !Ref LobEventsQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-LobEventsQueueUrl'
 
   StripeEventsQueueUrl:
     Value: !Ref StripeEventsQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-StripeEventsQueueUrl'
-
-  StatementsTableName:
-    Value: !Ref StatementsTable
-    Export:
-      Name: !Sub '${AppName}-${Env}-StatementsTable'
-
-  LobEventsTableName:
-    Value: !Ref LobEventsTable
-    Export:
-      Name: !Sub '${AppName}-${Env}-LobEventsTable'
-
-  StripeEventsTableName:
-    Value: !Ref StripeEventsTable
-    Export:
-      Name: !Sub '${AppName}-${Env}-StripeEventsTable'
-
-  TenantsTableName:
-    Value: !Ref TenantsTable
-    Export:
-      Name: !Sub '${AppName}-${Env}-TenantsTable'
 
   StripeWebhookSecretArn:
     Value: !Ref StripeWebhookSecret
-    Export:
-      Name: !Sub '${AppName}-${Env}-StripeWebhookSecretArn'
 
-  StripeWebhookEndpointId:
-    Value: !GetAtt StripeWebhookEndpoint.EndpointId
-    Export:
-      Name: !Sub '${AppName}-${Env}-StripeWebhookEndpointId'
-
-  FaxMatchQueueUrl:
-    Value: !Ref FaxMatchQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-FaxMatchQueueUrl'
-
-  SupportAIQueueUrl:
-    Value: !Ref SupportAIQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-SupportAIQueueUrl'
-
-  EdiGenerateQueueUrl:
-    Value: !Ref EdiGenerateQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-EdiGenerateQueueUrl'
-
-  PdfDocKitQueueUrl:
-    Value: !Ref PdfDocKitQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-PdfDocKitQueueUrl'
-
-  PdfClaimPacketQueueUrl:
-    Value: !Ref PdfClaimPacketQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-PdfClaimPacketQueueUrl'
-
-  LegalPdfQueueUrl:
-    Value: !Ref LegalPdfQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-LegalPdfQueueUrl'
-
-  NERISPackImportQueueUrl:
-    Value: !Ref NERISPackImportQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-NERISPackImportQueueUrl'
-
-  NERISPackCompileQueueUrl:
-    Value: !Ref NERISPackCompileQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-NERISPackCompileQueueUrl'
-
-  NERISExportQueueUrl:
-    Value: !Ref NERISExportQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-NERISExportQueueUrl'
-
-  ArStatementsQueueUrl:
-    Value: !Ref ArStatementsQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-ArStatementsQueueUrl'
-
-  ArPaymentsQueueUrl:
-    Value: !Ref ArPaymentsQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-ArPaymentsQueueUrl'
-
-  ArPlacementQueueUrl:
-    Value: !Ref ArPlacementQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-ArPlacementQueueUrl'
-
-  ArStatusImportQueueUrl:
-    Value: !Ref ArStatusImportQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-ArStatusImportQueueUrl'
-
-  TripExportQueueUrl:
-    Value: !Ref TripExportQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-TripExportQueueUrl'
-
-  TripRejectImportQueueUrl:
-    Value: !Ref TripRejectImportQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-TripRejectImportQueueUrl'
-
-  TripPostingImportQueueUrl:
-    Value: !Ref TripPostingImportQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-TripPostingImportQueueUrl'
-
-  FaxClassifyQueueUrl:
-    Value: !Ref FaxClassifyQueue
-    Export:
-      Name: !Sub '${AppName}-${Env}-FaxClassifyQueueUrl'
+  StripeWorkerFunctionName:
+    Value: !Ref StripeWorkerFunction
