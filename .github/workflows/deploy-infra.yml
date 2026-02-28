@@ -76,15 +76,31 @@ jobs:
             --query 'Stacks[0].StackStatus' \
             --output text 2>/dev/null || echo "DOES_NOT_EXIST")
           echo "Current stack status: $STATUS"
+          delete_stack() {
+            aws cloudformation delete-stack --stack-name "${CFN_STACK_NAME}" "$@"
+            aws cloudformation wait stack-delete-complete \
+              --stack-name "${CFN_STACK_NAME}" \
+              --cli-read-timeout 600 || true
+          }
           case "$STATUS" in
-            ROLLBACK_COMPLETE|ROLLBACK_FAILED|DELETE_FAILED|CREATE_FAILED)
-              echo "Stack is in $STATUS — force-deleting before redeploy..."
-              aws cloudformation delete-stack \
+            ROLLBACK_FAILED)
+              echo "Stack is in ROLLBACK_FAILED — continuing rollback first..."
+              aws cloudformation continue-update-rollback --stack-name "${CFN_STACK_NAME}" || true
+              aws cloudformation wait stack-rollback-complete \
                 --stack-name "${CFN_STACK_NAME}" \
-                --deletion-mode FORCE_DELETE_STACK
-              aws cloudformation wait stack-delete-complete \
-                --stack-name "${CFN_STACK_NAME}" \
-                --cli-read-timeout 600 || true
+                --cli-read-timeout 300 || true
+              echo "Deleting stack..."
+              delete_stack
+              echo "Stack deleted."
+              ;;
+            ROLLBACK_COMPLETE|CREATE_FAILED)
+              echo "Stack is in $STATUS — deleting before redeploy..."
+              delete_stack
+              echo "Stack deleted."
+              ;;
+            DELETE_FAILED)
+              echo "Stack is in DELETE_FAILED — force-deleting..."
+              delete_stack --deletion-mode FORCE_DELETE_STACK
               echo "Stack deleted."
               ;;
           esac
