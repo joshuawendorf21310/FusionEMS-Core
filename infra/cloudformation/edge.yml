@@ -25,7 +25,6 @@ Resources:
   # CLOUDFRONT CACHE POLICIES
   ########################################
 
-  # Zero-TTL policy for API and WebSocket paths — never cache dynamic responses
   NoCachePolicy:
     Type: AWS::CloudFront::CachePolicy
     Properties:
@@ -44,7 +43,6 @@ Resources:
           CookiesConfig:
             CookieBehavior: none
 
-  # Origin request policy — forward everything needed for API + WebSocket
   AllForwardOriginRequestPolicy:
     Type: AWS::CloudFront::OriginRequestPolicy
     Properties:
@@ -83,7 +81,6 @@ Resources:
               OriginReadTimeout: 60
               OriginKeepaliveTimeout: 60
 
-        # Default behavior: static frontend assets with standard caching
         DefaultCacheBehavior:
           TargetOriginId: AlbOrigin
           ViewerProtocolPolicy: redirect-to-https
@@ -105,7 +102,6 @@ Resources:
               - Access-Control-Request-Headers
 
         CacheBehaviors:
-          # WebSocket upgrade path — must bypass cache and forward all headers
           - PathPattern: /ws
             TargetOriginId: AlbOrigin
             ViewerProtocolPolicy: https-only
@@ -134,7 +130,6 @@ Resources:
             CachePolicyId: !Ref NoCachePolicy
             OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
 
-          # All API routes — zero TTL, full header/cookie/query passthrough
           - PathPattern: /api/*
             TargetOriginId: AlbOrigin
             ViewerProtocolPolicy: redirect-to-https
@@ -149,7 +144,6 @@ Resources:
             CachePolicyId: !Ref NoCachePolicy
             OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
 
-          # Webhook inbound paths — zero TTL, full passthrough
           - PathPattern: /webhooks/*
             TargetOriginId: AlbOrigin
             ViewerProtocolPolicy: redirect-to-https
@@ -164,7 +158,6 @@ Resources:
             CachePolicyId: !Ref NoCachePolicy
             OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
 
-          # Pixel tracking — zero TTL
           - PathPattern: /track/*
             TargetOriginId: AlbOrigin
             ViewerProtocolPolicy: redirect-to-https
@@ -174,7 +167,6 @@ Resources:
             CachePolicyId: !Ref NoCachePolicy
             OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
 
-          # Health check — zero TTL
           - PathPattern: /healthz
             TargetOriginId: AlbOrigin
             ViewerProtocolPolicy: redirect-to-https
@@ -200,10 +192,10 @@ Resources:
             ErrorCachingMinTTL: 0
 
   ########################################
-  # ROUTE53 RECORDS
+  # ROUTE53 RECORDS (A + AAAA for IPv4/IPv6)
   ########################################
 
-  RootDomainRecord:
+  RootDomainRecordA:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -213,7 +205,17 @@ Resources:
         DNSName: !GetAtt CloudFrontDistribution.DomainName
         HostedZoneId: Z2FDTNDATAQYW2
 
-  ApiDomainRecord:
+  RootDomainRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref RootDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  ApiDomainRecordA:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -223,14 +225,34 @@ Resources:
         DNSName: !GetAtt CloudFrontDistribution.DomainName
         HostedZoneId: Z2FDTNDATAQYW2
 
+  ApiDomainRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref ApiDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
 Outputs:
 
   CloudFrontDomain:
+    Description: CloudFront distribution domain name
     Value: !GetAtt CloudFrontDistribution.DomainName
     Export:
       Name: !Sub '${AppName}-${Env}-CloudFrontDomain'
 
   CloudFrontDistributionId:
+    Description: CloudFront distribution ID
     Value: !Ref CloudFrontDistribution
     Export:
       Name: !Sub '${AppName}-${Env}-CloudFrontDistributionId'
+
+  RootDomainName:
+    Description: Frontend domain served by CloudFront
+    Value: !Ref RootDomainName
+
+  ApiDomainName:
+    Description: API domain served by CloudFront
+    Value: !Ref ApiDomainName

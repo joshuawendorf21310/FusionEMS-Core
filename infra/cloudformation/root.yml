@@ -13,7 +13,7 @@ Parameters:
 
   RootDomainName:
     Type: String
-    Default: fusionemsquantum.com
+    Default: app.fusionemsquantum.com
 
   ApiDomainName:
     Type: String
@@ -22,10 +22,7 @@ Parameters:
   HostedZoneId:
     Type: String
     Description: Route53 Hosted Zone ID
-
-  AcmCertificateArnUsEast1:
-    Type: String
-    Description: ACM certificate ARN in us-east-1 (for CloudFront)
+    Default: Z0858801IZXAHSWCPH85
 
   AcmCertificateArnRegional:
     Type: String
@@ -78,6 +75,22 @@ Conditions:
   HasGitHubOrg: !Not [!Equals [!Ref GitHubOrg, '']]
 
 Resources:
+
+  AcmStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: acm.yml
+      Parameters:
+        Env: !Ref Env
+        AppName: !Ref AppName
+        RootDomainName: !Ref RootDomainName
+        ApiDomainName: !Ref ApiDomainName
+        HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+        - Key: Application
+          Value: !Ref AppName
 
   NetworkStack:
     Type: AWS::CloudFormation::Stack
@@ -253,7 +266,9 @@ Resources:
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: ComputeStack
+    DependsOn:
+      - ComputeStack
+      - AcmStack
     Properties:
       TemplateURL: edge.yml
       Parameters:
@@ -262,7 +277,7 @@ Resources:
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
         HostedZoneId: !Ref HostedZoneId
-        AcmCertificateArnUsEast1: !Ref AcmCertificateArnUsEast1
+        AcmCertificateArnUsEast1: !GetAtt AcmStack.Outputs.CertificateArn
         AlbDnsName: !GetAtt ComputeStack.Outputs.AlbDnsName
       Tags:
         - Key: Environment
@@ -304,6 +319,13 @@ Outputs:
 
   CloudFrontDomain:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDomain
+
+  CloudFrontDistributionId:
+    Value: !GetAtt EdgeStack.Outputs.CloudFrontDistributionId
+
+  AcmCertificateArn:
+    Description: ACM certificate ARN in us-east-1 (auto-provisioned)
+    Value: !GetAtt AcmStack.Outputs.CertificateArn
 
   BackendEcrRepoUri:
     Value: !GetAtt ComputeStack.Outputs.BackendEcrRepoUri
