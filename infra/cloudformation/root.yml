@@ -166,18 +166,6 @@ Resources:
         - Key: Environment
           Value: !Ref Env
 
-  SesStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: ses.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        RootDomainName: !Ref RootDomainName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
