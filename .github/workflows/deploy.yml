@@ -2,19 +2,21 @@ name: Deploy (Push to main)
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   id-token: write
   contents: read
 
 concurrency:
-  group: deploy-main
+  group: deploy-main-${{ vars.CFN_ENV }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -28,6 +30,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ======================================================
+      # VALIDATE REQUIRED VARIABLES
+      # ======================================================
+      - name: Validate required variables
+        run: |
+          set -euo pipefail
+          for var in AWS_REGION CFN_STACK_NAME CFN_ARTIFACTS_BUCKET CFN_HOSTED_ZONE_ID; do
+            if [ -z "${!var}" ]; then
+              echo "$var is required"
+              exit 1
+            fi
+          done
+
+      # ======================================================
+      # AWS AUTH
+      # ======================================================
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -35,83 +53,105 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # ======================================================
+      # VALIDATE TEMPLATES
+      # ======================================================
+      - name: Validate CloudFormation templates
+        run: |
+          set -euo pipefail
+          for template in infra/cloudformation/*.yml; do
+            echo "Validating $template..."
+            aws cloudformation validate-template --template-body "file://$template"
+          done
+
+      # ======================================================
+      # RESOLVE ECR REPOS (REQUIRE STACK OUTPUTS)
+      # ======================================================
       - name: Resolve ECR repository URIs
         id: repos
         run: |
           set -euo pipefail
+
           FRONTEND_REPO=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" \
-            --output text 2>/dev/null || echo "")
+            --output text)
+
           BACKEND_REPO=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" \
-            --output text 2>/dev/null || echo "")
-          # Fall back to conventional naming if stack outputs not yet available
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          REGION="${AWS_REGION}"
-          APP="fusionems-quantum"
-          ENV="${CFN_ENV:-dev}"
-          if [ -z "$FRONTEND_REPO" ]; then
-            FRONTEND_REPO="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${APP}-${ENV}-frontend"
+            --output text)
+
+          if [ -z "$FRONTEND_REPO" ] || [ "$FRONTEND_REPO" = "None" ]; then
+            echo "FrontendEcrRepoUri output missing"
+            exit 1
           fi
-          if [ -z "$BACKEND_REPO" ]; then
-            BACKEND_REPO="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${APP}-${ENV}-backend"
+
+          if [ -z "$BACKEND_REPO" ] || [ "$BACKEND_REPO" = "None" ]; then
+            echo "BackendEcrRepoUri output missing"
+            exit 1
           fi
+
           echo "frontend_repo=${FRONTEND_REPO}" >> "$GITHUB_OUTPUT"
           echo "backend_repo=${BACKEND_REPO}" >> "$GITHUB_OUTPUT"
 
+      # ======================================================
+      # BUILD + PUSH IMAGES
+      # ======================================================
       - name: Build and push frontend image
         run: |
           set -euo pipefail
           IMAGE="${{ steps.repos.outputs.frontend_repo }}:${GITHUB_SHA}"
-          API_DOMAIN="${CFN_API_DOMAIN_NAME}"
-          ROOT_DOMAIN="${CFN_ROOT_DOMAIN_NAME}"
+
           docker build \
             --file frontend/Dockerfile \
             --tag "$IMAGE" \
-            --build-arg NEXT_PUBLIC_API_BASE="https://${API_DOMAIN}" \
-            --build-arg NEXT_PUBLIC_WS_URL="wss://${API_DOMAIN}/ws" \
-            --build-arg NEXT_PUBLIC_ROOT_DOMAIN="https://${ROOT_DOMAIN}" \
+            --build-arg NEXT_PUBLIC_API_BASE="https://${CFN_API_DOMAIN_NAME}" \
+            --build-arg NEXT_PUBLIC_WS_URL="wss://${CFN_API_DOMAIN_NAME}/ws" \
+            --build-arg NEXT_PUBLIC_ROOT_DOMAIN="https://${CFN_ROOT_DOMAIN_NAME}" \
             frontend/
+
           docker push "$IMAGE"
-          echo "Pushed frontend: ${IMAGE}"
 
       - name: Build and push backend image
         run: |
           set -euo pipefail
           IMAGE="${{ steps.repos.outputs.backend_repo }}:${GITHUB_SHA}"
+
           docker build \
             --file backend/Dockerfile \
             --tag "$IMAGE" \
             --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --build-arg GIT_SHA="${GITHUB_SHA}" \
             backend/
-          docker push "$IMAGE"
-          echo "Pushed backend: ${IMAGE}"
 
-      - name: Package CloudFormation templates
+          docker push "$IMAGE"
+
+      # ======================================================
+      # PACKAGE + DEPLOY
+      # ======================================================
+      - name: Package CloudFormation
         run: |
           set -euo pipefail
           aws cloudformation package \
             --template-file infra/cloudformation/root.yml \
             --s3-bucket "${CFN_ARTIFACTS_BUCKET}" \
-            --s3-prefix "cfn/$(date +%Y%m%d)-${GITHUB_SHA:0:8}" \
+            --s3-prefix "cfn/${GITHUB_SHA:0:8}" \
             --output-template-file packaged.root.yml
 
       - name: Deploy CloudFormation stack
         run: |
           set -euo pipefail
+
           aws cloudformation deploy \
             --stack-name "${CFN_STACK_NAME}" \
             --template-file packaged.root.yml \
             --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
-              Env="${CFN_ENV:-prod}" \
+              Env="${CFN_ENV}" \
               RootDomainName="${CFN_ROOT_DOMAIN_NAME}" \
               ApiDomainName="${CFN_API_DOMAIN_NAME}" \
               HostedZoneId="${CFN_HOSTED_ZONE_ID}" \
@@ -120,27 +160,22 @@ jobs:
               ImageTagFrontend="${GITHUB_SHA}" \
               ImageTagBackend="${GITHUB_SHA}" \
             --tags \
-              Environment="${CFN_ENV:-prod}" \
+              Environment="${CFN_ENV}" \
               GitSha="${GITHUB_SHA}" \
               DeployedAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-      - name: Wait for stack update to complete
+      # ======================================================
+      # DEBUG ON FAILURE
+      # ======================================================
+      - name: Dump stack events on failure
+        if: failure()
         run: |
-          set -euo pipefail
-          STATUS=$(aws cloudformation describe-stacks \
+          echo "=== Stack Failure Events ==="
+          aws cloudformation describe-stack-events \
             --stack-name "${CFN_STACK_NAME}" \
-            --query 'Stacks[0].StackStatus' \
-            --output text)
-          echo "Final stack status: ${STATUS}"
-          case "${STATUS}" in
-            UPDATE_COMPLETE|CREATE_COMPLETE)
-              echo "Stack deployed successfully."
-              ;;
-            *)
-              echo "Stack deployment ended with status: ${STATUS}"
-              exit 1
-              ;;
-          esac
+            --max-items 50 \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`||ResourceStatus==`UPDATE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
+            --output table || true
 
       - name: Output stack results
         if: success()
