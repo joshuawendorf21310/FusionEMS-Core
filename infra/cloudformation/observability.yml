@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Observability Stack (CloudWatch Alarms + SNS + Dashboard)
+Description: FusionEMS Quantum - Observability Stack (CloudWatch Alarms + SNS + Dashboard + Log Monitoring)
 
 Parameters:
   AppName:
@@ -9,7 +9,7 @@ Parameters:
   AlertEmail:
     Type: String
     Description: Email address for operational alerts
-    Default: founder@fusionemsquantum.com
+    Default: joshua.j.wendorf@fusionemsquantum.com
   EcsClusterName:
     Type: String
   BackendServiceName:
@@ -37,6 +37,10 @@ Conditions:
 
 Resources:
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # SNS Alerts
+  # ────────────────────────────────────────────────────────────────────────────
+
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -52,11 +56,19 @@ Resources:
       Protocol: email
       Endpoint: !Ref AlertEmail
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Log Groups
+  # ────────────────────────────────────────────────────────────────────────────
+
   AuditLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/${AppName}/${Env}/audit'
       RetentionInDays: !Ref LogRetentionDays
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ALB Alarms
+  # ────────────────────────────────────────────────────────────────────────────
 
   Alb5xxAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -74,10 +86,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
-      OKActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
 
   BackendTarget5xxAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -96,28 +106,30 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
 
-  BackendLatencyAlarm:
+  AlbLatencyP95Alarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub '${AppName}-${Env}-Backend-Latency-P95'
+      AlarmName: !Sub '${AppName}-${Env}-ALB-Latency-P95'
       Namespace: AWS/ApplicationELB
       MetricName: TargetResponseTime
+      ExtendedStatistic: p95
       Dimensions:
         - Name: LoadBalancer
           Value: !Ref AlbFullName
         - Name: TargetGroup
           Value: !Ref BackendTargetGroupFullName
-      Statistic: Average
       Period: 60
       EvaluationPeriods: 5
       Threshold: !If [IsProd, 1.5, 3.0]
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ECS Alarms
+  # ────────────────────────────────────────────────────────────────────────────
 
   BackendCpuAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -136,8 +148,7 @@ Resources:
       Threshold: !If [IsProd, 80, 90]
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
 
   BackendMemAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -156,8 +167,11 @@ Resources:
       Threshold: !If [IsProd, 80, 90]
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # RDS Alarms
+  # ────────────────────────────────────────────────────────────────────────────
 
   RdsCpuAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -174,8 +188,7 @@ Resources:
       Threshold: !If [IsProd, 75, 90]
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
 
   RdsFreeStorageAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -192,8 +205,28 @@ Resources:
       Threshold: 5368709120
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
+
+  RdsConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${Env}-RDS-Connections-High'
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DbInstanceId
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: !If [IsProd, 200, 100]
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Redis Alarms
+  # ────────────────────────────────────────────────────────────────────────────
 
   RedisCpuAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -210,8 +243,7 @@ Resources:
       Threshold: !If [IsProd, 75, 90]
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
 
   RedisMemAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -228,8 +260,11 @@ Resources:
       Threshold: 134217728
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AlertTopic
+      AlarmActions: [!Ref AlertTopic]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # CloudWatch Dashboard
+  # ────────────────────────────────────────────────────────────────────────────
 
   OpsDashboard:
     Type: AWS::CloudWatch::Dashboard
@@ -241,16 +276,18 @@ Resources:
             {
               "type": "text",
               "x": 0, "y": 0, "width": 24, "height": 2,
-              "properties": { "markdown": "# ${AppName} (${Env}) — Founder Ops Dashboard\nLanding: https://${RootDomainName}\nAPI: https://${ApiDomainName}" }
+              "properties": {
+                "markdown": "# ${AppName} (${Env}) — Founder Ops Dashboard\nFrontend: https://${RootDomainName}\nAPI: https://${ApiDomainName}"
+              }
             },
             {
               "type": "metric",
               "x": 0, "y": 2, "width": 12, "height": 6,
               "properties": {
-                "title": "ALB 5XX Errors",
+                "title": "ALB Errors",
                 "metrics": [
-                  [ "AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", "${AlbFullName}", { "stat": "Sum", "period": 60 } ],
-                  [ ".", "HTTPCode_Target_5XX_Count", ".", ".", "TargetGroup", "${BackendTargetGroupFullName}", { "stat": "Sum", "period": 60 } ]
+                  [ "AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", "${AlbFullName}", { "stat": "Sum" } ],
+                  [ ".", "HTTPCode_Target_5XX_Count", ".", ".", "TargetGroup", "${BackendTargetGroupFullName}", { "stat": "Sum" } ]
                 ]
               }
             },
@@ -258,9 +295,9 @@ Resources:
               "type": "metric",
               "x": 12, "y": 2, "width": 12, "height": 6,
               "properties": {
-                "title": "Backend Latency",
+                "title": "Latency (p95)",
                 "metrics": [
-                  [ "AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${AlbFullName}", "TargetGroup", "${BackendTargetGroupFullName}", { "stat": "Average", "period": 60 } ]
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${AlbFullName}", "TargetGroup", "${BackendTargetGroupFullName}", { "stat": "p95" } ]
                 ]
               }
             },
@@ -268,10 +305,10 @@ Resources:
               "type": "metric",
               "x": 0, "y": 8, "width": 12, "height": 6,
               "properties": {
-                "title": "ECS CPU/Memory",
+                "title": "ECS CPU / Memory",
                 "metrics": [
-                  [ "AWS/ECS", "CPUUtilization", "ClusterName", "${EcsClusterName}", "ServiceName", "${BackendServiceName}", { "stat": "Average" } ],
-                  [ ".", "MemoryUtilization", ".", ".", ".", ".", { "stat": "Average" } ]
+                  [ "AWS/ECS", "CPUUtilization", "ClusterName", "${EcsClusterName}", "ServiceName", "${BackendServiceName}" ],
+                  [ ".", "MemoryUtilization", ".", ".", ".", "." ]
                 ]
               }
             },
@@ -279,10 +316,10 @@ Resources:
               "type": "metric",
               "x": 12, "y": 8, "width": 12, "height": 6,
               "properties": {
-                "title": "RDS CPU / Free Storage",
+                "title": "RDS",
                 "metrics": [
-                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DbInstanceId}", { "stat": "Average" } ],
-                  [ ".", "FreeStorageSpace", ".", ".", { "stat": "Minimum" } ]
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DbInstanceId}" ],
+                  [ ".", "DatabaseConnections", ".", "." ]
                 ]
               }
             },
@@ -290,10 +327,10 @@ Resources:
               "type": "metric",
               "x": 0, "y": 14, "width": 12, "height": 6,
               "properties": {
-                "title": "Redis CPU / Free Mem",
+                "title": "Redis",
                 "metrics": [
-                  [ "AWS/ElastiCache", "EngineCPUUtilization", "ReplicationGroupId", "${RedisClusterId}", { "stat": "Average" } ],
-                  [ ".", "FreeableMemory", ".", ".", { "stat": "Minimum" } ]
+                  [ "AWS/ElastiCache", "EngineCPUUtilization", "ReplicationGroupId", "${RedisClusterId}" ],
+                  [ ".", "FreeableMemory", ".", "." ]
                 ]
               }
             }
