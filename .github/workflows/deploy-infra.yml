@@ -68,7 +68,7 @@ jobs:
             --s3-prefix "cfn/$(date +%Y%m%d)-${GITHUB_SHA:0:8}" \
             --output-template-file packaged.root.yml
 
-      - name: Delete stack if in ROLLBACK_COMPLETE
+      - name: Clean up broken stack if needed
         run: |
           set -euo pipefail
           STATUS=$(aws cloudformation describe-stacks \
@@ -76,12 +76,18 @@ jobs:
             --query 'Stacks[0].StackStatus' \
             --output text 2>/dev/null || echo "DOES_NOT_EXIST")
           echo "Current stack status: $STATUS"
-          if [ "$STATUS" = "ROLLBACK_COMPLETE" ]; then
-            echo "Stack is in ROLLBACK_COMPLETE — deleting before redeploy..."
-            aws cloudformation delete-stack --stack-name "${CFN_STACK_NAME}"
-            aws cloudformation wait stack-delete-complete --stack-name "${CFN_STACK_NAME}"
-            echo "Stack deleted."
-          fi
+          case "$STATUS" in
+            ROLLBACK_COMPLETE|ROLLBACK_FAILED|DELETE_FAILED|CREATE_FAILED)
+              echo "Stack is in $STATUS — force-deleting before redeploy..."
+              aws cloudformation delete-stack \
+                --stack-name "${CFN_STACK_NAME}" \
+                --deletion-mode FORCE_DELETE_STACK
+              aws cloudformation wait stack-delete-complete \
+                --stack-name "${CFN_STACK_NAME}" \
+                --cli-read-timeout 600 || true
+              echo "Stack deleted."
+              ;;
+          esac
 
       - name: Deploy infrastructure stack
         run: |
