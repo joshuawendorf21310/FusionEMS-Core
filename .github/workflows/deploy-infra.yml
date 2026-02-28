@@ -207,11 +207,33 @@ jobs:
       - name: Dump stack events on failure
         if: failure()
         run: |
-          aws cloudformation describe-stack-events \
-            --stack-name "${CFN_STACK_NAME}" \
-            --max-items 50 \
-            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`||ResourceStatus==`UPDATE_FAILED`||ResourceStatus==`DELETE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
-            --output table || true
+          dump_nested_events() {
+            local stack="$1"
+            local indent="$2"
+            aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --max-items 50 \
+              --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`||ResourceStatus==`UPDATE_FAILED`||ResourceStatus==`DELETE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
+              --output table 2>/dev/null || true
+
+            # Recurse into nested stacks that failed
+            local failed_nested
+            failed_nested=$(aws cloudformation describe-stack-events \
+              --stack-name "$stack" \
+              --max-items 50 \
+              --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`&&ResourceType==`AWS::CloudFormation::Stack`].PhysicalResourceId' \
+              --output text 2>/dev/null || true)
+            for nested_arn in $failed_nested; do
+              [ -z "$nested_arn" ] && continue
+              local nested_name
+              nested_name=$(echo "$nested_arn" | sed 's|.*stack/||;s|/.*||')
+              echo "${indent}  ↳ Nested stack: $nested_name"
+              dump_nested_events "$nested_arn" "${indent}  "
+            done
+          }
+
+          echo "=== Root stack events ==="
+          dump_nested_events "${CFN_STACK_NAME}" ""
 
       - name: Output stack results
         if: success()

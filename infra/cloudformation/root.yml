@@ -166,19 +166,6 @@ Resources:
         - Key: Environment
           Value: !Ref Env
 
-  AlertTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: !Sub '${AppName}-${Env}-alerts'
-      DisplayName: !Sub 'FusionEMS ${Env} Alerts'
-
-  AlertTopicSubscription:
-    Type: AWS::SNS::Subscription
-    Properties:
-      TopicArn: !Ref AlertTopic
-      Protocol: email
-      Endpoint: !Ref AlertEmail
-
   BillingStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -316,4 +303,4 @@ Outputs:
     Value: !GetAtt CognitoStack.Outputs.UserPoolClientId
 
   AlertTopicArn:
-    Value: !Ref AlertTopic
+    Value: !GetAtt ObservabilityStack.Outputs.AlertTopicArn
