@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { Suspense, useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -13,14 +13,14 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'billing', label: 'Billing Portal' },
 ];
 
-export default function LoginPage() {
+function LoginPageInner() {
   const [activeTab, setActiveTab] = useState<TabKey>('staff');
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
 
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const ssoError = searchParams.get('error');
@@ -52,7 +52,7 @@ export default function LoginPage() {
       setError('');
       setLoading(true);
       try {
-        login(email.trim());
+        await login(email.trim(), password);
       } catch {
         setError('Authentication failed. Verify your credentials and try again.');
         setLoading(false);
@@ -321,5 +321,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

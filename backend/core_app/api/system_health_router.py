@@ -250,7 +250,6 @@ async def ssl_expiration(
         "domains": [
             {"domain": "app.fusionemsquantum.com", "expires_in_days": 90, "status": "valid"},
             {"domain": "api.fusionemsquantum.com", "expires_in_days": 90, "status": "valid"},
-            {"domain": "app.fusionemsquantum.com", "expires_in_days": 90, "status": "valid"},
         ],
         "as_of": datetime.now(timezone.utc).isoformat(),
     }

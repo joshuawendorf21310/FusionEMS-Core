@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { MetricPlate, PlateCard } from '@/components/ui/PlateCard';
@@ -56,7 +56,7 @@ function SkeletonPlate() {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function DashboardPage() {
+function DashboardPageInner() {
   const [summary, setSummary] = useState<ExecutiveSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
@@ -89,7 +89,7 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   useEffect(() => {
@@ -270,5 +270,13 @@ export default function DashboardPage() {
 
       </div>
     </AppShell>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardPageInner />
+    </Suspense>
   );
 }

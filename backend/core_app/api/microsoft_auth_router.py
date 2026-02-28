@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -152,7 +152,6 @@ def _fetch_userinfo(access_token: str) -> dict[str, Any]:
 
 @router.get("/callback")
 def microsoft_callback(
-    request: Request,
     code: str = Query(default=""),
     error: str = Query(default=""),
     error_description: str = Query(default=""),
@@ -194,7 +193,7 @@ def microsoft_callback(
             status_code=302,
         )
 
-    jwt_token = create_access_token(str(user.id), str(user.tenant_id), user.role)
+    jwt_token = create_access_token(str(user.id), str(user.tenant_id), user.role or "")
     logger.info("entra_login_success user_id=%s email=%s", user.id, email)
 
     redirect_url = f"{s.microsoft_post_login_url}?token={jwt_token}"
