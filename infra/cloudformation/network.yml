@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Network Stack (VPC, Subnets, NAT, Security Groups)
+Description: FusionEMS Quantum - Network Stack (VPC, Subnets, NAT HA, Security Groups, VPC Endpoints)
 
 Parameters:
   AppName:
@@ -21,6 +21,14 @@ Parameters:
   PrivateSubnet2Cidr:
     Type: String
     Default: 10.0.12.0/24
+  EnableVpcEndpoints:
+    Type: String
+    AllowedValues: ['true','false']
+    Default: 'true'
+    Description: Create Gateway/Interface VPC endpoints for private subnets
+
+Conditions:
+  UseEndpoints: !Equals [!Ref EnableVpcEndpoints, 'true']
 
 Resources:
 
@@ -46,6 +54,10 @@ Resources:
     Properties:
       VpcId: !Ref Vpc
       InternetGatewayId: !Ref InternetGateway
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Subnets (2 AZs)
+  # ────────────────────────────────────────────────────────────────────────────
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -91,6 +103,10 @@ Resources:
         - Key: Name
           Value: !Sub '${AppName}-${Env}-private-az2'
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Public route table
+  # ────────────────────────────────────────────────────────────────────────────
+
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -119,50 +135,91 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
-  NatEip:
+  # ────────────────────────────────────────────────────────────────────────────
+  # NAT Gateways (HA: one per AZ) + Private route tables (one per AZ)
+  # ────────────────────────────────────────────────────────────────────────────
+
+  NatEipAz1:
     Type: AWS::EC2::EIP
     DependsOn: AttachIgw
     Properties:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Env}-nat-eip'
+          Value: !Sub '${AppName}-${Env}-nat-eip-az1'
 
-  NatGateway:
+  NatGatewayAz1:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt NatEip.AllocationId
+      AllocationId: !GetAtt NatEipAz1.AllocationId
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Env}-nat'
+          Value: !Sub '${AppName}-${Env}-nat-az1'
 
-  PrivateRouteTable:
+  NatEipAz2:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachIgw
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-${Env}-nat-eip-az2'
+
+  NatGatewayAz2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEipAz2.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-${Env}-nat-az2'
+
+  PrivateRouteTableAz1:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref Vpc
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Env}-rtb-private'
+          Value: !Sub '${AppName}-${Env}-rtb-private-az1'
 
-  PrivateDefaultRoute:
+  PrivateDefaultRouteAz1:
     Type: AWS::EC2::Route
     Properties:
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTableAz1
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway
+      NatGatewayId: !Ref NatGatewayAz1
 
-  PrivateSubnetAssoc1:
+  PrivateSubnetAssocAz1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTableAz1
 
-  PrivateSubnetAssoc2:
+  PrivateRouteTableAz2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-${Env}-rtb-private-az2'
+
+  PrivateDefaultRouteAz2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableAz2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayAz2
+
+  PrivateSubnetAssocAz2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTableAz2
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Security Groups
+  # ────────────────────────────────────────────────────────────────────────────
 
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -205,6 +262,120 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AppName}-${Env}-sg-ecs'
+
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: UseEndpoints
+    Properties:
+      GroupDescription: Interface VPC endpoints SG (allow HTTPS from ECS SG)
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref EcsServiceSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-${Env}-sg-vpce'
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # VPC Endpoints (best practice for private workloads)
+  # ────────────────────────────────────────────────────────────────────────────
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: UseEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTableAz1
+        - !Ref PrivateRouteTableAz2
+
+  DynamoDbGatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: UseEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.dynamodb'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTableAz1
+        - !Ref PrivateRouteTableAz2
+
+  EcrApiEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: UseEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      VpcEndpointType: Interface
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+
+  EcrDkrEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: UseEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      VpcEndpointType: Interface
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+
+  LogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: UseEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      VpcEndpointType: Interface
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: UseEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      VpcEndpointType: Interface
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+
+  SqsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: UseEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      VpcEndpointType: Interface
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sqs'
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
 
 Outputs:
   VpcId:
