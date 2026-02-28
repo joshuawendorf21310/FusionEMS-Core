@@ -3,6 +3,7 @@
 Endpoints:
   GET  /auth/microsoft/login    — Redirect to Entra authorize URL
   GET  /auth/microsoft/callback — Exchange code for tokens, issue JWT, redirect to frontend
+  GET  /auth/microsoft/logout   — Redirect to Entra logout, then back to frontend login page
 """
 from __future__ import annotations
 
@@ -30,7 +31,8 @@ router = APIRouter(prefix="/auth/microsoft", tags=["auth"])
 _AUTHORIZE_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
 _TOKEN_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
 _USERINFO_URL = "https://graph.microsoft.com/v1.0/me"
-_SCOPES = "openid User.Read"
+_LOGOUT_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/logout"
+_SCOPES = "openid email profile User.Read"
 
 _active_states: dict[str, bool] = {}
 
@@ -160,3 +162,13 @@ def microsoft_callback(
 
     redirect_url = f"{s.microsoft_post_login_url}?token={jwt_token}"
     return RedirectResponse(url=redirect_url, status_code=302)
+
+@router.get("/logout")
+def microsoft_logout() -> RedirectResponse:
+    _check_entra_configured()
+    s = get_settings()
+    params = {
+        "post_logout_redirect_uri": s.microsoft_post_logout_url,
+    }
+    url = _LOGOUT_URL.format(tenant_id=s.graph_tenant_id) + "?" + urllib.parse.urlencode(params)
+    return RedirectResponse(url=url, status_code=302)

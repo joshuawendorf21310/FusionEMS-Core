@@ -68,6 +68,10 @@ class Settings(BaseSettings):
         default="https://app.fusionemsquantum.com/dashboard",
         description="Frontend URL to redirect to after successful Microsoft login",
     )
+    microsoft_post_logout_url: str = Field(
+        default="https://app.fusionemsquantum.com/login",
+        description="Frontend URL Entra redirects to after logout (matches manifest logoutUrl)",
+    )
 
     ses_configuration_set: str = Field(default="")
     aws_region: str = Field(default="")
