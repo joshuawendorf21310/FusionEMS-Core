@@ -230,6 +230,54 @@ export default function LoginPage() {
               Forgot password?
             </button>
           </div>
+
+          <div className="flex items-center gap-3 py-3">
+            <span
+              className="flex-1"
+              style={{ height: 1, backgroundColor: 'var(--color-border-subtle)' }}
+            />
+            <span
+              className="micro-caps"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              or
+            </span>
+            <span
+              className="flex-1"
+              style={{ height: 1, backgroundColor: 'var(--color-border-subtle)' }}
+            />
+          </div>
+
+          <a
+            href="/api/v1/auth/microsoft/login"
+            className="chamfer-8 flex w-full items-center justify-center gap-2 py-2.5 transition-colors duration-[150ms]"
+            style={{
+              fontFamily:      'var(--font-label)',
+              fontSize:        'var(--text-label)',
+              fontWeight:      600,
+              letterSpacing:   'var(--tracking-label)',
+              textTransform:   'uppercase',
+              color:           'var(--color-text-primary)',
+              backgroundColor: 'var(--color-bg-input)',
+              border:          '1px solid var(--color-border-default)',
+              textDecoration:  'none',
+            }}
+          >
+            <svg
+              aria-hidden="true"
+              width="16"
+              height="16"
+              viewBox="0 0 21 21"
+              fill="none"
+            >
+              <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+              <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+              <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+              <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+            </svg>
+            Sign in with Microsoft
+          </a>
+
         </form>
 
         {/* Footer */}

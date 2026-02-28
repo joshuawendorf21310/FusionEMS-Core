@@ -30,7 +30,7 @@ router = APIRouter(prefix="/auth/microsoft", tags=["auth"])
 _AUTHORIZE_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
 _TOKEN_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
 _USERINFO_URL = "https://graph.microsoft.com/v1.0/me"
-_SCOPES = "openid email profile"
+_SCOPES = "openid User.Read"
 
 _active_states: dict[str, bool] = {}
 

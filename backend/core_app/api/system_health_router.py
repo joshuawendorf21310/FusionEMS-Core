@@ -248,7 +248,7 @@ async def ssl_expiration(
     require_role(current, ["founder", "admin"])
     return {
         "domains": [
-            {"domain": "fusionemsquantum.com", "expires_in_days": 90, "status": "valid"},
+            {"domain": "app.fusionemsquantum.com", "expires_in_days": 90, "status": "valid"},
             {"domain": "api.fusionemsquantum.com", "expires_in_days": 90, "status": "valid"},
             {"domain": "app.fusionemsquantum.com", "expires_in_days": 90, "status": "valid"},
         ],
