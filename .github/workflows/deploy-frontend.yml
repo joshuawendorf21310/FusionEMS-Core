@@ -31,6 +31,8 @@ concurrency:
 jobs:
   build-push:
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.push.outputs.image }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -59,6 +61,7 @@ jobs:
           echo "ecr_repo=${REPO}" >> $GITHUB_OUTPUT
 
       - name: Build and push frontend image
+        id: push
         run: |
           set -euo pipefail
           IMAGE="${{ steps.repo.outputs.ecr_repo }}:${GITHUB_SHA}"
@@ -73,13 +76,12 @@ jobs:
           docker build \
             --file frontend/Dockerfile \
             --tag "$IMAGE" \
-            --tag "${{ steps.repo.outputs.ecr_repo }}:latest" \
             --build-arg NEXT_PUBLIC_API_BASE="https://${API_DOMAIN}" \
             --build-arg NEXT_PUBLIC_WS_URL="wss://${API_DOMAIN}/ws" \
             --build-arg NEXT_PUBLIC_ROOT_DOMAIN="https://${ROOT_DOMAIN}" \
             frontend/
           docker push "$IMAGE"
-          docker push "${{ steps.repo.outputs.ecr_repo }}:latest"
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
   deploy-service:
     needs: build-push
@@ -98,9 +100,10 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Update ECS frontend service
+      - name: Update ECS task definition and deploy
         run: |
           set -euo pipefail
+          IMAGE="${{ needs.build-push.outputs.image }}"
           CLUSTER=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
@@ -109,15 +112,34 @@ jobs:
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue" \
             --output text)
+          CURRENT_TASK_DEF_ARN=$(aws ecs describe-services \
+            --cluster "$CLUSTER" \
+            --services "$FRONTEND_SERVICE" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          # Remove read-only fields returned by describe-task-definition before
+          # re-registering, then pin the container image to the SHA build.
+          NEW_TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition "$CURRENT_TASK_DEF_ARN" \
+            --query 'taskDefinition' \
+            --output json | \
+            jq --arg IMAGE "$IMAGE" \
+              'del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                   .placementConstraints, .compatibilities, .registeredAt, .registeredBy)
+               | .containerDefinitions[0].image = $IMAGE')
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
           aws ecs update-service \
             --cluster "$CLUSTER" \
             --service "$FRONTEND_SERVICE" \
-            --force-new-deployment \
+            --task-definition "$NEW_TASK_DEF_ARN" \
             --no-cli-pager
           aws ecs wait services-stable \
             --cluster "$CLUSTER" \
             --services "$FRONTEND_SERVICE"
-          echo "Frontend deployed."
+          echo "Frontend deployed: ${IMAGE}"
 
       - name: Smoke test
         run: |
