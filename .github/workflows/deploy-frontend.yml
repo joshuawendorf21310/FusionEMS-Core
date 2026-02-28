@@ -7,6 +7,7 @@ on:
         description: 'Environment (dev/prod)'
         required: true
         type: string
+
   workflow_dispatch:
     inputs:
       env:
@@ -14,9 +15,13 @@ on:
         required: true
         default: dev
         type: choice
-        options: [dev, prod]
+        options:
+          - dev
+          - prod
+
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - 'frontend/**'
 
@@ -25,14 +30,20 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-frontend-${{ github.ref }}
+  group: deploy-frontend-${{ inputs.env || github.ref }}
   cancel-in-progress: false
 
 jobs:
+
+  # ==========================================================
+  # BUILD & PUSH IMAGE
+  # ==========================================================
   build-push:
     runs-on: ubuntu-latest
+
     outputs:
-      image: ${{ steps.push.outputs.image }}
+      image: ${{ steps.build.outputs.image }}
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -48,31 +59,42 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Get ECR repo URI
+      - name: Resolve ECR repository
         id: repo
         run: |
+          set -euo pipefail
+
           REPO=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" \
             --output text)
+
+          if [ -z "$REPO" ] || [ "$REPO" = "None" ]; then
+            echo "FrontendEcrRepoUri not found in CloudFormation outputs"
+            exit 1
+          fi
+
           echo "ecr_repo=${REPO}" >> $GITHUB_OUTPUT
 
       - name: Build and push frontend image
-        id: push
+        id: build
         run: |
           set -euo pipefail
+
           IMAGE="${{ steps.repo.outputs.ecr_repo }}:${GITHUB_SHA}"
+
           API_DOMAIN=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='ApiDomainName'].OutputValue" \
-            --output text 2>/dev/null || echo "${{ vars.CFN_API_DOMAIN_NAME }}")
+            --output text || echo "${{ vars.CFN_API_DOMAIN_NAME }}")
+
           ROOT_DOMAIN=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='RootDomainName'].OutputValue" \
-            --output text 2>/dev/null || echo "${{ vars.CFN_ROOT_DOMAIN_NAME }}")
+            --output text || echo "${{ vars.CFN_ROOT_DOMAIN_NAME }}")
+
           docker build \
             --file frontend/Dockerfile \
             --tag "$IMAGE" \
@@ -80,12 +102,19 @@ jobs:
             --build-arg NEXT_PUBLIC_WS_URL="wss://${API_DOMAIN}/ws" \
             --build-arg NEXT_PUBLIC_ROOT_DOMAIN="https://${ROOT_DOMAIN}" \
             frontend/
+
           docker push "$IMAGE"
+
           echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
+
+  # ==========================================================
+  # DEPLOY TO ECS
+  # ==========================================================
   deploy-service:
     needs: build-push
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -94,61 +123,90 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Update ECS task definition and deploy
+      - name: Deploy updated frontend task definition
         run: |
           set -euo pipefail
+
           IMAGE="${{ needs.build-push.outputs.image }}"
+
           CLUSTER=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
             --output text)
-          FRONTEND_SERVICE=$(aws cloudformation describe-stacks \
+
+          SERVICE=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue" \
             --output text)
-          CURRENT_TASK_DEF_ARN=$(aws ecs describe-services \
+
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "Cluster not found"
+            exit 1
+          fi
+
+          if [ -z "$SERVICE" ] || [ "$SERVICE" = "None" ]; then
+            echo "Frontend service not found"
+            exit 1
+          fi
+
+          CURRENT_TASK_DEF=$(aws ecs describe-services \
             --cluster "$CLUSTER" \
-            --services "$FRONTEND_SERVICE" \
+            --services "$SERVICE" \
             --query 'services[0].taskDefinition' \
             --output text)
-          # Remove read-only fields returned by describe-task-definition before
-          # re-registering, then pin the container image to the SHA build.
+
           NEW_TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition "$CURRENT_TASK_DEF_ARN" \
+            --task-definition "$CURRENT_TASK_DEF" \
             --query 'taskDefinition' \
             --output json | \
             jq --arg IMAGE "$IMAGE" \
-              'del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-                   .placementConstraints, .compatibilities, .registeredAt, .registeredBy)
-               | .containerDefinitions[0].image = $IMAGE')
+              'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,
+                   .placementConstraints,.compatibilities,.registeredAt,.registeredBy)
+               | .containerDefinitions |= map(
+                   if .name == "frontend"
+                   then .image = $IMAGE
+                   else .
+                   end
+                 )')
+
           NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
             --cli-input-json "$NEW_TASK_DEF" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
+
           aws ecs update-service \
             --cluster "$CLUSTER" \
-            --service "$FRONTEND_SERVICE" \
-            --task-definition "$NEW_TASK_DEF_ARN" \
-            --no-cli-pager
+            --service "$SERVICE" \
+            --task-definition "$NEW_TASK_DEF_ARN"
+
+          echo "Waiting for frontend service to stabilize..."
           aws ecs wait services-stable \
             --cluster "$CLUSTER" \
-            --services "$FRONTEND_SERVICE"
+            --services "$SERVICE"
+
           echo "Frontend deployed: ${IMAGE}"
 
       - name: Smoke test
         run: |
-          for i in {1..20}; do
+          set -euo pipefail
+
+          for i in {1..40}; do
             if curl -fsS "https://${{ vars.CFN_ROOT_DOMAIN_NAME }}/healthz" >/dev/null 2>&1; then
               echo "Frontend healthy"
               exit 0
             fi
-            echo "Retry $i/20..."
+            echo "Retry $i/40..."
             sleep 10
           done
+
+          echo "Frontend health check failed"
           exit 1
