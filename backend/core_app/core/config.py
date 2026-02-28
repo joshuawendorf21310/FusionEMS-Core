@@ -58,6 +58,17 @@ class Settings(BaseSettings):
     graph_client_id: str = Field(default="", description="Entra app client ID")
     graph_client_secret: str = Field(default="", description="Entra app client secret (from Secrets Manager)")
     graph_founder_email: str = Field(default="", description="Founder mailbox UPN - used for all Graph calls")
+
+    # Microsoft Entra user login (authorization code flow)
+    microsoft_redirect_uri: str = Field(
+        default="https://api.fusionemsquantum.com/api/v1/auth/microsoft/callback",
+        description="Canonical redirect URI registered in Entra app registration",
+    )
+    microsoft_post_login_url: str = Field(
+        default="https://app.fusionemsquantum.com/dashboard",
+        description="Frontend URL to redirect to after successful Microsoft login",
+    )
+
     ses_configuration_set: str = Field(default="")
     aws_region: str = Field(default="")
 

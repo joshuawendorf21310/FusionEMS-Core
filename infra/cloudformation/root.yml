@@ -134,6 +134,7 @@ Resources:
         Env: !Ref Env
         AppName: !Ref AppName
         RootDomainName: !Ref RootDomainName
+        ApiDomainName: !Ref ApiDomainName
       Tags:
         - Key: Environment
           Value: !Ref Env

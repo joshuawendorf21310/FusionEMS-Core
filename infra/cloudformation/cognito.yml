@@ -9,6 +9,9 @@ Parameters:
     Type: String
   RootDomainName:
     Type: String
+  ApiDomainName:
+    Type: String
+    Default: api.fusionemsquantum.com
 
 Resources:
   UserPool:
@@ -38,6 +41,8 @@ Resources:
       AllowedOAuthScopes: [openid, email, profile]
       CallbackURLs:
         - !Sub 'https://${RootDomainName}/auth/callback'
+        - !Sub 'https://${ApiDomainName}/api/v1/auth/microsoft/callback'
+        - !Sub 'https://${RootDomainName}/api/v1/auth/microsoft/callback'
       LogoutURLs:
         - !Sub 'https://${RootDomainName}/'
       ExplicitAuthFlows:
