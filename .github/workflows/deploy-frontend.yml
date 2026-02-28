@@ -1,6 +1,12 @@
 name: Deploy Frontend
 
 on:
+  workflow_call:
+    inputs:
+      env:
+        description: 'Environment (dev/prod)'
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       env:
