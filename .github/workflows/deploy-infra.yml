@@ -54,21 +54,18 @@ jobs:
         id: resolve-env
         run: |
           set -euo pipefail
-          # If CFN_ENV is empty or mismatched, derive from stack name
           if [[ "${CFN_STACK_NAME}" == *-prod* ]]; then
             DERIVED_ENV=prod
           else
             DERIVED_ENV=dev
           fi
           EFFECTIVE_ENV="${CFN_ENV:-$DERIVED_ENV}"
-          # Enforce consistency: prod stack must use prod env
           if [[ "${CFN_STACK_NAME}" == *-prod* && "$EFFECTIVE_ENV" != "prod" ]]; then
             echo "Auto-correcting: stack name contains 'prod', overriding CFN_ENV from '$EFFECTIVE_ENV' to 'prod'"
             EFFECTIVE_ENV=prod
           fi
           echo "CFN_ENV=$EFFECTIVE_ENV" >> "$GITHUB_ENV"
           echo "Effective environment: $EFFECTIVE_ENV"
-          # Validate required vars
           if [[ -z "${CFN_HOSTED_ZONE_ID}" ]]; then echo "CFN_HOSTED_ZONE_ID is required"; exit 1; fi
           if [[ -z "${CFN_ARTIFACTS_BUCKET}" ]]; then echo "CFN_ARTIFACTS_BUCKET is required"; exit 1; fi
 
@@ -93,37 +90,61 @@ jobs:
       - name: Clean up broken stack if needed
         run: |
           set -euo pipefail
+
+          delete_stack_hard() {
+            echo "Deleting stack (normal)..."
+            aws cloudformation delete-stack --stack-name "${CFN_STACK_NAME}" || true
+
+            if ! aws cloudformation wait stack-delete-complete --stack-name "${CFN_STACK_NAME}" --cli-read-timeout 600; then
+              STATUS2=$(aws cloudformation describe-stacks \
+                --stack-name "${CFN_STACK_NAME}" \
+                --query 'Stacks[0].StackStatus' \
+                --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+              echo "Delete wait failed. Current status: $STATUS2"
+
+              if [[ "$STATUS2" == "DELETE_FAILED" ]]; then
+                echo "Stack is DELETE_FAILED — retrying with FORCE_DELETE_STACK..."
+                aws cloudformation delete-stack \
+                  --stack-name "${CFN_STACK_NAME}" \
+                  --deletion-mode FORCE_DELETE_STACK
+
+                aws cloudformation wait stack-delete-complete \
+                  --stack-name "${CFN_STACK_NAME}" \
+                  --cli-read-timeout 900 || true
+              fi
+            fi
+
+            FINAL=$(aws cloudformation describe-stacks \
+              --stack-name "${CFN_STACK_NAME}" \
+              --query 'Stacks[0].StackStatus' \
+              --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+            echo "Final stack status after delete attempts: $FINAL"
+
+            if [[ "$FINAL" != "DOES_NOT_EXIST" ]]; then
+              echo "Stack was not deleted successfully (status=$FINAL). Failing fast."
+              exit 1
+            fi
+
+            echo "Stack fully deleted."
+          }
+
           STATUS=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query 'Stacks[0].StackStatus' \
             --output text 2>/dev/null || echo "DOES_NOT_EXIST")
           echo "Current stack status: $STATUS"
 
-          delete_stack() {
-            aws cloudformation delete-stack --stack-name "${CFN_STACK_NAME}" "$@"
-            aws cloudformation wait stack-delete-complete \
-              --stack-name "${CFN_STACK_NAME}" \
-              --cli-read-timeout 600 || true
-          }
-
           case "$STATUS" in
             DOES_NOT_EXIST)
               echo "Stack does not exist. Proceeding."
               ;;
-            DELETE_FAILED)
-              echo "Stack is DELETE_FAILED — force deleting..."
-              delete_stack --deletion-mode FORCE_DELETE_STACK
-              echo "Stack deleted (force)."
-              ;;
-            ROLLBACK_COMPLETE|ROLLBACK_FAILED|CREATE_FAILED|UPDATE_ROLLBACK_FAILED|UPDATE_ROLLBACK_COMPLETE|IMPORT_ROLLBACK_FAILED)
+            ROLLBACK_COMPLETE|ROLLBACK_FAILED|CREATE_FAILED|UPDATE_ROLLBACK_FAILED|UPDATE_ROLLBACK_COMPLETE|IMPORT_ROLLBACK_FAILED|DELETE_FAILED)
               echo "Stack is $STATUS — deleting before redeploy..."
               aws cloudformation continue-update-rollback --stack-name "${CFN_STACK_NAME}" 2>/dev/null || true
-              sleep 10
-              delete_stack
-              echo "Stack deleted."
+              delete_stack_hard
               ;;
             *)
-              echo "Stack is in $STATUS — proceeding with deploy."
+              echo "Stack is in $STATUS — not auto-deleting."
               ;;
           esac
 
@@ -147,6 +168,15 @@ jobs:
               Environment="${CFN_ENV}" \
               GitSha="${GITHUB_SHA}" \
               DeployedAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Dump stack events on failure
+        if: failure()
+        run: |
+          aws cloudformation describe-stack-events \
+            --stack-name "${CFN_STACK_NAME}" \
+            --max-items 50 \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`||ResourceStatus==`UPDATE_FAILED`||ResourceStatus==`DELETE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
+            --output table || true
 
       - name: Output stack results
         if: success()
