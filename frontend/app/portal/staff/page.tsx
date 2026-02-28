@@ -55,12 +55,12 @@ const PRIORITY_STYLE: Record<Priority, React.CSSProperties> = {
   HIGH: {
     background: 'rgba(220,38,38,0.15)',
     border: '1px solid rgba(220,38,38,0.35)',
-    color: '#f87171',
+    color: 'var(--color-brand-red)',
   },
   MED: {
     background: 'rgba(234,179,8,0.12)',
     border: '1px solid rgba(234,179,8,0.3)',
-    color: '#fde047',
+    color: 'var(--color-status-warning)',
   },
   LOW: {
     background: 'rgba(255,255,255,0.06)',
@@ -107,7 +107,7 @@ function StatCard({ label, value, sub }: StatCardProps) {
 export default function StaffDashboardPage() {
   return (
     <AppShell>
-      <div style={{ background: 'var(--color-bg-base, #0b0f14)', minHeight: 'calc(100vh - 120px)' }}>
+      <div style={{ background: 'var(--color-bg-base, var(--color-bg-base))', minHeight: 'calc(100vh - 120px)' }}>
         {/* Page header */}
         <div style={{ marginBottom: '28px' }}>
           <h1 style={{ color: 'var(--color-text-primary)', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 4px' }}>

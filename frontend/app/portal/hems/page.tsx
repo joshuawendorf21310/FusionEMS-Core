@@ -71,7 +71,7 @@ const READINESS_STYLE: Record<ReadinessState, { label: string; color: string; bg
   ready:            { label: 'READY',            color: 'var(--q-green)', bg: 'rgba(76,175,80,0.12)' },
   limited:          { label: 'LIMITED',          color: 'var(--q-yellow)', bg: 'rgba(255,152,0,0.12)' },
   no_go:            { label: 'NO-GO',            color: 'var(--q-red)', bg: 'rgba(229,57,53,0.12)' },
-  maintenance_hold: { label: 'MAINTENANCE HOLD', color: '#9e9e9e', bg: 'rgba(158,158,158,0.12)' },
+  maintenance_hold: { label: 'MAINTENANCE HOLD', color: 'var(--color-text-muted)', bg: 'rgba(158,158,158,0.12)' },
 };
 
 const CHECKLIST_KEYS = [
@@ -373,7 +373,7 @@ export default function HemsPage() {
         {/* ── Shared ID inputs ── */}
         <div
           className="p-4 rounded-sm"
-          style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>Session IDs</p>
           <div className="flex flex-wrap gap-3">
@@ -403,7 +403,7 @@ export default function HemsPage() {
         {/* ── 1. Aircraft Readiness Panel ── */}
         <div
           className="p-4 rounded-sm"
-          style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>
@@ -454,7 +454,7 @@ export default function HemsPage() {
         {/* ── 2. Mission Acceptance Checklist ── */}
         <div
           className="p-4 rounded-sm"
-          style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
             Mission Acceptance Checklist
@@ -536,7 +536,7 @@ export default function HemsPage() {
         {/* ── 3. Weather Brief ── */}
         <div
           className="p-4 rounded-sm"
-          style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
             Weather Brief
@@ -627,7 +627,7 @@ export default function HemsPage() {
         {/* ── 4. Safety Timeline ── */}
         <div
           className="p-4 rounded-sm"
-          style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>

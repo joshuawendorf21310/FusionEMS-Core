@@ -585,7 +585,7 @@ function IncidentForm({
                 value={form.incident_type_code}
                 onChange={(e) => update('incident_type_code', e.target.value)}
                 className={getInputClass('incident_type_code')}
-                style={{ background: '#0b0f14' }}
+                style={{ background: 'var(--color-bg-base)' }}
               >
                 <option value="" className="bg-bg-base">— Select —</option>
                 {(incidentTypeValues.length > 0
@@ -660,7 +660,7 @@ function IncidentForm({
                 value={form.property_use_code}
                 onChange={(e) => update('property_use_code', e.target.value)}
                 className={getInputClass('property_use_code')}
-                style={{ background: '#0b0f14' }}
+                style={{ background: 'var(--color-bg-base)' }}
               >
                 <option value="" className="bg-bg-base">— Select —</option>
                 {(propertyUseValues.length > 0
@@ -722,7 +722,7 @@ function IncidentForm({
                         update('units', updated);
                       }}
                       className={inputClass}
-                      style={{ background: '#0b0f14' }}
+                      style={{ background: 'var(--color-bg-base)' }}
                     >
                       <option value="" className="bg-bg-base">— Select —</option>
                       {apparatus.map((a) => (
@@ -782,7 +782,7 @@ function IncidentForm({
                         update('actions', updated);
                       }}
                       className={inputClass}
-                      style={{ background: '#0b0f14' }}
+                      style={{ background: 'var(--color-bg-base)' }}
                     >
                       <option value="" className="bg-bg-base">— Select —</option>
                       {(actionTakenValues.length > 0
@@ -868,7 +868,7 @@ function IncidentForm({
       {/* ── Action Bar ── */}
       <div
         className="flex-shrink-0 px-5 py-3 border-t border-border-DEFAULT flex items-center gap-3 flex-wrap"
-        style={{ background: '#0b0f14' }}
+        style={{ background: 'var(--color-bg-base)' }}
       >
         <button
           onClick={saveDraft}

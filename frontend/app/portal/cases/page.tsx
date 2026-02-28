@@ -110,9 +110,9 @@ function truncateId(id: string): string {
 }
 
 const TRANSPORT_STYLE: Record<TransportMode, { label: string; color: string; bg: string }> = {
-  ground:    { label: 'GROUND',     color: '#42a5f5', bg: 'rgba(66,165,245,0.12)'   },
+  ground:    { label: 'GROUND',     color: 'var(--color-status-info)', bg: 'rgba(66,165,245,0.12)'   },
   rotor:     { label: 'ROTOR',      color: 'var(--q-orange)', bg: 'rgba(255,107,26,0.12)'   },
-  fixed_wing:{ label: 'FIXED WING', color: '#ce93d8', bg: 'rgba(206,147,216,0.12)'  },
+  fixed_wing:{ label: 'FIXED WING', color: 'var(--color-system-compliance)', bg: 'rgba(206,147,216,0.12)'  },
 };
 
 const STATUS_FLOW: Record<string, string> = {
@@ -126,10 +126,10 @@ const STATUS_FLOW: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   created:     'rgba(255,255,255,0.5)',
-  assigned:    '#42a5f5',
+  assigned:    'var(--color-status-info)',
   en_route:    'var(--color-status-warning)',
   on_scene:    'var(--color-brand-orange)',
-  transporting:'#ce93d8',
+  transporting:'var(--color-system-compliance)',
   arrived:     'var(--color-status-info)',
   completed:   'var(--color-status-active)',
   cancelled:   'var(--color-brand-red)',
@@ -429,7 +429,7 @@ export default function CasesPage() {
                     {/* Row */}
                     <div
                       className="px-3 py-2.5 flex flex-wrap items-center gap-2 cursor-pointer"
-                      style={{ background: '#0b0f14' }}
+                      style={{ background: 'var(--color-bg-base)' }}
                       onClick={() => setExpandedId(isExpanded ? null : c.case_id)}
                     >
                       <span
@@ -462,7 +462,7 @@ export default function CasesPage() {
                     {isExpanded && (
                       <div
                         className="px-4 py-3 space-y-3"
-                        style={{ background: '#0d1117', borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                        style={{ background: 'var(--color-bg-input)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
                       >
                         {/* Linked IDs */}
                         <div className="flex flex-wrap gap-4">
@@ -539,7 +539,7 @@ export default function CasesPage() {
           <div className="space-y-4">
             <div
               className="p-4 rounded-sm"
-              style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 New Transport Case
@@ -606,7 +606,7 @@ export default function CasesPage() {
             {showCmsAfterNew && createdCaseId && (
               <div
                 className="p-4 rounded-sm"
-                style={{ background: '#0b0f14', border: '1px solid rgba(255,107,26,0.2)' }}
+                style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,107,26,0.2)' }}
               >
                 <p className="text-xs font-semibold mb-1" style={{ color: 'var(--q-orange)' }}>
                   CMS Gate — Case {createdCaseId}
@@ -637,7 +637,7 @@ export default function CasesPage() {
           <div className="space-y-4">
             <div
               className="p-4 rounded-sm"
-              style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 CMS Gate Evaluation
@@ -712,7 +712,7 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
       {/* Score + pass/fail */}
       <div
         className="p-4 rounded-sm"
-        style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+        style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div className="flex items-center gap-3 mb-3">
           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Score</span>

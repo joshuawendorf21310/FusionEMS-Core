@@ -447,7 +447,7 @@ function Step4({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
                 value={row.unit_type_code}
                 onChange={(e) => updateRow(i, 'unit_type_code', e.target.value)}
                 className={inputClass}
-                style={{ background: '#0b0f14' }}
+                style={{ background: 'var(--color-bg-base)' }}
               >
                 {UNIT_TYPES.map((t) => (
                   <option key={t} value={t} className="bg-bg-base">{t}</option>
@@ -715,7 +715,7 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
         </Field>
       </div>
       <Field label="Incident Type">
-        <select value={form.incident_type_code} onChange={(e) => update('incident_type_code', e.target.value)} className={inputClass} style={{ background: '#0b0f14' }}>
+        <select value={form.incident_type_code} onChange={(e) => update('incident_type_code', e.target.value)} className={inputClass} style={{ background: 'var(--color-bg-base)' }}>
           {INCIDENT_TYPE_VALUES.map((v) => (
             <option key={v.code} value={v.code} className="bg-bg-base">{v.label}</option>
           ))}

@@ -144,7 +144,7 @@ export default function RepSignPage() {
 
   return (
     <div
-      style={{ background: 'var(--color-bg-base, #0b0f14)', minHeight: '100vh' }}
+      style={{ background: 'var(--color-bg-base, var(--color-bg-base))', minHeight: '100vh' }}
       className="flex items-center justify-center px-4 py-12"
     >
       <div style={{ width: '100%', maxWidth: '600px' }}>
@@ -337,7 +337,7 @@ export default function RepSignPage() {
               background: 'rgba(220,38,38,0.12)',
               border: '1px solid rgba(220,38,38,0.35)',
               clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-              color: '#f87171',
+              color: 'var(--color-brand-red)',
               fontSize: '0.8125rem',
               padding: '10px 12px',
               marginBottom: '16px',
