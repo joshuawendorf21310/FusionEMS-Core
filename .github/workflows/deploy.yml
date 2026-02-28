@@ -26,16 +26,11 @@ jobs:
       - name: Detect changed paths
         id: changes
         run: |
-          INFRA=false; BACKEND=false; FRONTEND=false
-          git diff --name-only HEAD~1 HEAD | while read f; do
-            [[ "$f" == infra/* ]] && INFRA=true
-            [[ "$f" == backend/* || "$f" == opa/* ]] && BACKEND=true
-            [[ "$f" == frontend/* ]] && FRONTEND=true
-          done
           git diff --name-only HEAD~1 HEAD > /tmp/changed_files.txt
-          grep -q '^infra/' /tmp/changed_files.txt && echo "infra=true" >> $GITHUB_OUTPUT || echo "infra=false" >> $GITHUB_OUTPUT
-          grep -q '^backend/\|^opa/' /tmp/changed_files.txt && echo "backend=true" >> $GITHUB_OUTPUT || echo "backend=false" >> $GITHUB_OUTPUT
-          grep -q '^frontend/' /tmp/changed_files.txt && echo "frontend=true" >> $GITHUB_OUTPUT || echo "frontend=false" >> $GITHUB_OUTPUT
+          cat /tmp/changed_files.txt
+          if grep -qE '^infra/' /tmp/changed_files.txt; then echo "infra=true" >> "$GITHUB_OUTPUT"; else echo "infra=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE '^(backend|opa)/' /tmp/changed_files.txt; then echo "backend=true" >> "$GITHUB_OUTPUT"; else echo "backend=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE '^frontend/' /tmp/changed_files.txt; then echo "frontend=true" >> "$GITHUB_OUTPUT"; else echo "frontend=false" >> "$GITHUB_OUTPUT"; fi
 
   deploy-infra:
     needs: detect-changes
