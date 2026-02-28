@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from typing import Any
 
@@ -71,9 +73,6 @@ async def detect_vendor_endpoint(
 ):
     """Detect the vendor format from the first row of a CSV upload."""
     content = await file.read()
-    import csv
-    import io
-
     text = content.decode("utf-8-sig", errors="replace")
     reader = csv.DictReader(io.StringIO(text))
     rows = list(reader)

@@ -6,9 +6,6 @@ Parameters:
     Type: String
   Env:
     Type: String
-  FromEmail:
-    Type: String
-    Default: noreply@fusionemsquantum.com
   RootDomainName:
     Type: String
     Default: fusionemsquantum.com

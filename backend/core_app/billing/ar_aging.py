@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import copy
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
+from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
+
+from core_app.services.domination_service import DominationService
+from core_app.services.event_publisher import get_event_publisher
 
 
 @dataclass
@@ -38,14 +43,11 @@ AGING_BUCKETS = [
 ]
 
 
-def compute_ar_aging(db: Session, tenant_id: uuid.UUID) -> ArAgingReport:
-    from core_app.services.domination_service import DominationService
-    from core_app.services.event_publisher import NoOpEventPublisher
-
-    svc = DominationService(db, NoOpEventPublisher())
+def compute_ar_aging(db: Session, tenant_id: uuid.UUID, svc: DominationService | None = None) -> ArAgingReport:
+    if svc is None:
+        svc = DominationService(db, get_event_publisher())
     today = date.today()
 
-    import copy
     buckets = [copy.deepcopy(b) for b in AGING_BUCKETS]
 
     claims = svc.repo("billing_cases").list(tenant_id=tenant_id, limit=50000)
@@ -111,11 +113,9 @@ def compute_ar_aging(db: Session, tenant_id: uuid.UUID) -> ArAgingReport:
     )
 
 
-def compute_revenue_forecast(db: Session, tenant_id: uuid.UUID, months: int = 3) -> dict[str, Any]:
-    from core_app.services.domination_service import DominationService
-    from core_app.services.event_publisher import NoOpEventPublisher
-
-    svc = DominationService(db, NoOpEventPublisher())
+def compute_revenue_forecast(db: Session, tenant_id: uuid.UUID, months: int = 3, svc: DominationService | None = None) -> dict[str, Any]:
+    if svc is None:
+        svc = DominationService(db, get_event_publisher())
 
     payments = svc.repo("payments").list(tenant_id=tenant_id, limit=50000)
 
@@ -136,8 +136,6 @@ def compute_revenue_forecast(db: Session, tenant_id: uuid.UUID, months: int = 3)
     recent_months = sorted_months[-6:] if len(sorted_months) >= 6 else sorted_months
     avg_monthly = int(sum(monthly_revenue[m] for m in recent_months) / len(recent_months)) if recent_months else 0
 
-    from datetime import date
-    from dateutil.relativedelta import relativedelta
     today = date.today()
     forecast = []
     for i in range(1, months + 1):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 
@@ -411,7 +412,6 @@ async def roi_share_link(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    import hashlib
     token = hashlib.sha256(f"{current.tenant_id}{datetime.now(timezone.utc).isoformat()}".encode()).hexdigest()[:16]
     record = await svc.create(
         table="roi_share_links",

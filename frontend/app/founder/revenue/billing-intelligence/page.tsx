@@ -1,6 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { PlateCard } from '@/components/ui/PlateCard';
+
+const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 /* ─── Data ─────────────────────────────────────────────────────────── */
 
@@ -126,6 +129,21 @@ function MetricRow({
 /* ─── Page ──────────────────────────────────────────────────────────── */
 
 export default function BillingIntelligencePage() {
+  const [revBars, setRevBars] = useState<number[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}/api/v1/billing-command/executive-summary`)
+      .then(r => r.json())
+      .then(data => {
+        const monthly = data.monthly_revenue_cents;
+        if (Array.isArray(monthly) && monthly.length > 0) {
+          const maxVal = Math.max(...monthly, 1);
+          setRevBars(monthly.map((v: number) => Math.round((v / maxVal) * 100)));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div style={{ padding: '20px 24px', minHeight: '100%' }}>
       {/* Page header */}
@@ -193,7 +211,6 @@ export default function BillingIntelligencePage() {
             </span>
           }
         >
-          {/* Chart placeholder */}
           <div
             style={{
               height: 120,
@@ -208,7 +225,6 @@ export default function BillingIntelligencePage() {
               overflow: 'hidden',
             }}
           >
-            {/* Fake sparkline bars */}
             <div
               style={{
                 position: 'absolute',
@@ -220,7 +236,7 @@ export default function BillingIntelligencePage() {
                 opacity: 0.35,
               }}
             >
-              {[55, 62, 58, 70, 68, 75, 80, 78, 85, 88, 92, 100].map((h, i) => (
+              {(revBars.length ? revBars : [55, 62, 58, 70, 68, 75, 80, 78, 85, 88, 92, 100]).map((h, i) => (
                 <div
                   key={i}
                   style={{

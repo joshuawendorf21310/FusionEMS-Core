@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as _dt
 import uuid
 from typing import Any
 
@@ -164,7 +165,6 @@ async def fatigue_report(
     db: Session = Depends(db_session_dependency),
 ):
     from core_app.services.domination_service import DominationService
-    import datetime as _dt
     svc = DominationService(db, get_event_publisher())
     assignments = svc.repo("crew_assignments").list(tenant_id=current.tenant_id, limit=1000)
     now = _dt.datetime.now(tz=_dt.timezone.utc)

@@ -53,20 +53,6 @@ Parameters:
     Type: String
     Default: founder@fusionemsquantum.com
 
-  SesFromEmail:
-    Type: String
-    Default: noreply@fusionemsquantum.com
-
-  GitHubOrg:
-    Type: String
-    Description: GitHub organization or username (for OIDC trust policy)
-    Default: ''
-
-  GitHubRepo:
-    Type: String
-    Description: GitHub repository name (for OIDC trust policy)
-    Default: FusionEMS-Core
-
   NestedTemplatesBucket:
     Type: String
     Description: S3 bucket where packaged nested templates are stored
@@ -91,9 +77,6 @@ Parameters:
     Type: String
     Default: ''
     Description: Founder mailbox UPN for Graph API calls
-
-Conditions:
-  HasGitHubOrg: !Not [!Equals [!Ref GitHubOrg, '']]
 
 Resources:
 
@@ -195,7 +178,6 @@ Resources:
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
-        FromEmail: !Ref SesFromEmail
         RootDomainName: !Ref RootDomainName
       Tags:
         - Key: Environment
@@ -260,9 +242,6 @@ Resources:
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
         AcmCertificateArn: !Ref AcmCertificateArnRegional
-        DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId
-        RedisClusterId: !GetAtt DataStack.Outputs.RedisReplicationGroupId
-        AlertTopicArn: !Ref AlertTopic
         FaxClassifyQueueUrl: !GetAtt BillingStack.Outputs.FaxClassifyQueueUrl
         FaxMatchQueueUrl: !GetAtt BillingStack.Outputs.FaxMatchQueueUrl
         SupportAIQueueUrl: !GetAtt BillingStack.Outputs.SupportAIQueueUrl
@@ -324,10 +303,8 @@ Resources:
         Env: !Ref Env
         AppName: !Ref AppName
         AlertEmail: !Ref AlertEmail
-        AlertTopicArn: !Ref AlertTopic
         EcsClusterName: !GetAtt ComputeStack.Outputs.ClusterName
         BackendServiceName: !GetAtt ComputeStack.Outputs.BackendServiceName
-        FrontendServiceName: !GetAtt ComputeStack.Outputs.FrontendServiceName
         AlbFullName: !GetAtt ComputeStack.Outputs.AlbFullName
         BackendTargetGroupFullName: !GetAtt ComputeStack.Outputs.BackendTargetGroupFullName
         DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId

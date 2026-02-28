@@ -164,11 +164,8 @@ def _try_decode_qr_from_pdf(*, bucket: str, s3_key: str) -> dict | None:
     try:
         from core_app.fax.claim_matcher import ClaimMatcher
 
-        class _FakeMatcher(ClaimMatcher):
-            def __init__(self):
-                pass
-
-        return _FakeMatcher().decode_qr_payload(first_page_bytes)
+        matcher = ClaimMatcher.__new__(ClaimMatcher)
+        return matcher.decode_qr_payload(first_page_bytes)
     except Exception as exc:
         logger.debug("fax_match_qr_decode_failed error=%s", exc)
         return None

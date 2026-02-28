@@ -67,8 +67,8 @@ Resources:
                   - iam:DeleteInstanceProfile
                   - iam:AddRoleToInstanceProfile
                   - iam:RemoveRoleFromInstanceProfile
-                  - iam:CreateOIDCProvider
-                  - iam:GetOIDCProvider
+                  - iam:CreateOpenIDConnectProvider
+                  - iam:GetOpenIDConnectProvider
                   - iam:TagRole
                   - iam:UntagRole
                   - iam:UpdateRoleDescription

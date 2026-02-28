@@ -234,6 +234,7 @@ Resources:
   DbInstance:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
     Properties:
       Engine: postgres
       EngineVersion: '16.6'

@@ -13,14 +13,14 @@ from core_app.schemas.incident import (
     IncidentTransitionRequest,
     IncidentUpdateRequest,
 )
-from core_app.services.event_publisher import NoOpEventPublisher
+from core_app.services.event_publisher import get_event_publisher
 from core_app.services.incident_service import IncidentService
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
 def incident_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -> IncidentService:
-    return IncidentService(db=db, publisher=NoOpEventPublisher())
+    return IncidentService(db=db, publisher=get_event_publisher())
 
 
 @router.post("", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED)

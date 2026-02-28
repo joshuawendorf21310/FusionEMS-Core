@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os as _os
 import uuid
 import zipfile
 from datetime import datetime, timezone
@@ -331,7 +332,6 @@ async def payment_webhook(
         account_id = uuid.UUID(account_id_str)
     except ValueError:
         return {"status": "invalid_account_id"}
-    import os as _os
     system_tenant = _os.environ.get("SYSTEM_TENANT_ID", "00000000-0000-0000-0000-000000000000")
     from core_app.core.config import get_settings
     system_tenant = get_settings().system_tenant_id or system_tenant

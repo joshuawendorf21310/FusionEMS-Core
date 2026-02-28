@@ -40,12 +40,6 @@ Parameters:
     Type: String
   AcmCertificateArn:
     Type: String
-  DbInstanceId:
-    Type: String
-  RedisClusterId:
-    Type: String
-  AlertTopicArn:
-    Type: String
   IvrAudioBaseUrl:
     Type: String
     Default: ''
@@ -124,9 +118,6 @@ Parameters:
     Type: String
     Default: ''
     Description: Founder mailbox UPN for Graph calls
-
-Conditions:
-  IsProd: !Equals [!Ref Env, 'prod']
 
 Resources:
 

@@ -481,7 +481,7 @@ Resources:
       Targets:
         - Id: KitLinkExpirationSweepTarget
           Arn: !GetAtt KitLinkExpirationSweepLambda.Arn
-          Input: !Sub '{"Records":[{"body":"{\"days_ahead\":30,\"source\":\"eventbridge\"}"}]}'
+          Input: '{"Records":[{"body":"{\"days_ahead\":30,\"source\":\"eventbridge\"}"}]}'
 
   KitLinkSweepLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -700,9 +700,6 @@ Resources:
 
   ComplianceSeedPackCustomResource:
     Type: Custom::ComplianceSeedPack
-    DependsOn:
-      - KitLinkArtifactsBucket
-      - ComplianceSeedPackLambda
     Properties:
       ServiceToken: !GetAtt ComplianceSeedPackLambda.Arn
 

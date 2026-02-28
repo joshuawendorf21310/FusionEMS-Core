@@ -41,6 +41,7 @@ Resources:
   LobEventsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${AppName}-${Env}-lob-events'
       BillingMode: PAY_PER_REQUEST
@@ -64,6 +65,7 @@ Resources:
   StripeEventsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${AppName}-${Env}-stripe-events'
       BillingMode: PAY_PER_REQUEST
@@ -87,6 +89,7 @@ Resources:
   StatementsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${AppName}-${Env}-statements'
       BillingMode: PAY_PER_REQUEST
@@ -119,6 +122,7 @@ Resources:
   TenantsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${AppName}-${Env}-tenants'
       BillingMode: PAY_PER_REQUEST
@@ -484,9 +488,6 @@ Resources:
   # ── Custom Resource invocation ────────────────────────────────────────────
   StripeWebhookEndpoint:
     Type: Custom::StripeWebhookEndpoint
-    DependsOn:
-      - StripeWebhookProvisionerFunction
-      - StripeWebhookSecret
     Properties:
       ServiceToken: !GetAtt StripeWebhookProvisionerFunction.Arn
       AppSecretsArn: !Ref AppSecretsArn

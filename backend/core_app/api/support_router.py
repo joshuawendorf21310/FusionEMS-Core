@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json as _json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -240,7 +241,6 @@ async def founder_resolve(
     current: CurrentUser = Depends(require_role("founder")),
     db: Session = Depends(db_session_dependency),
 ):
-    import json as _json
     result = db.execute(
         text(
             "UPDATE support_threads "
@@ -268,8 +268,6 @@ async def founder_summarize(
     current: CurrentUser = Depends(require_role("founder")),
     db: Session = Depends(db_session_dependency),
 ):
-    import json as _json
-
     row = db.execute(
         text("SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"),
         {"id": thread_id},

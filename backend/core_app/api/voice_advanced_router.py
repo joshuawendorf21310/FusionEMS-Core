@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
+import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -195,7 +197,6 @@ def create_script_pack(
     db: Session = Depends(db_session_dependency),
     _user: dict = Depends(get_current_user),
 ) -> dict:
-    import json
     pid = _db_insert(db, "voice_script_packs", {
         "tenant_id": body.tenant_id,
         "pack_name": body.pack_name,
@@ -463,13 +464,13 @@ def smart_hold_narrate(
 ) -> dict:
     narrations = {
         "claim_status": f"I'm pulling the claim status now. This will take about {body.estimated_seconds} seconds.",
-        "invoice_lookup": f"I'm retrieving your invoice details now.",
-        "export_check": f"I'm checking your NEMSIS export status.",
-        "ticket_create": f"I'm creating a support ticket for you.",
-        "schedule_check": f"I'm checking available callback slots.",
+        "invoice_lookup": "I'm retrieving your invoice details now.",
+        "export_check": "I'm checking your NEMSIS export status.",
+        "ticket_create": "I'm creating a support ticket for you.",
+        "schedule_check": "I'm checking available callback slots.",
     }
     action_key = next((k for k in narrations if k in body.action_being_taken.lower()), None)
-    narration = narrations.get(action_key, f"I'm working on that now. One moment please.") if action_key else f"I'm working on that now. One moment please."
+    narration = narrations.get(action_key, "I'm working on that now. One moment please.") if action_key else "I'm working on that now. One moment please."
     _db_insert(db, "voice_hold_events", {
         "call_control_id": body.call_control_id,
         "action": body.action_being_taken,
@@ -491,7 +492,6 @@ def speech_to_fields(
     body: SpeechExtractRequest,
     _user: dict = Depends(get_current_user),
 ) -> dict:
-    import re
     transcript = body.transcript
 
     claim_ids = re.findall(r'\b(?:claim|CLM)[- ]?(\d{4,12})\b', transcript, re.IGNORECASE)
@@ -672,7 +672,6 @@ def callback_slot_optimizer(
     db: Session = Depends(db_session_dependency),
     _user: dict = Depends(get_current_user),
 ) -> dict:
-    from datetime import timedelta
     base = datetime.now(timezone.utc)
     if body.urgency_score >= 80:
         slot_offset_hours = 1
@@ -724,7 +723,6 @@ def create_ab_test(
     db: Session = Depends(db_session_dependency),
     _user: dict = Depends(get_current_user),
 ) -> dict:
-    import json
     tid = _db_insert(db, "voice_ab_tests", {
         "test_name": body.test_name,
         "variant_a": json.dumps(body.variant_a),

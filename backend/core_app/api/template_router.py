@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -499,7 +500,6 @@ async def validate_template(
     if not content.strip():
         errors.append("Template content is empty")
     declared_vars = set(data.get("variables", []))
-    import re
     used_vars = set(re.findall(r"\{\{(\w+)\}\}", content))
     undeclared = used_vars - declared_vars
     if undeclared:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv as _csv
 import hashlib
 import io
 import uuid
@@ -312,7 +313,6 @@ async def import_rejects(
     body = await request.body()
     rows = []
     try:
-        import csv as _csv
         reader = _csv.DictReader(io.StringIO(body.decode("utf-8", errors="replace")))
         rows = list(reader)
     except Exception:
@@ -371,7 +371,6 @@ async def import_postings(
     body = await request.body()
     rows = []
     try:
-        import csv as _csv
         reader = _csv.DictReader(io.StringIO(body.decode("utf-8", errors="replace")))
         rows = list(reader)
     except Exception:

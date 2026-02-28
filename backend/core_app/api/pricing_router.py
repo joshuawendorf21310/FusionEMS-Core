@@ -32,6 +32,8 @@ async def roi(payload: dict[str, Any], request: Request):
 
 @router.post("/public/signup/start", include_in_schema=True)
 async def signup(payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)):
+    import stripe as stripe_lib
+
     settings = get_settings()
     system_tenant = settings.system_tenant_id
     try:
@@ -54,7 +56,45 @@ async def signup(payload: dict[str, Any], request: Request, db: Session = Depend
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"status": "ok", "application_id": application["id"], "next": "stripe_checkout"}
+    application_id = application["id"]
+
+    if not settings.stripe_secret_key:
+        return {"status": "ok", "application_id": application_id, "checkout_url": None, "note": "stripe_not_configured"}
+
+    stripe_lib.api_key = settings.stripe_secret_key
+    selected_modules = payload.get("modules", [])
+    annual_call_volume = int(payload.get("annual_call_volume") or 0)
+
+    base_amount_cents = 50000
+    if annual_call_volume > 5000:
+        base_amount_cents = 150000
+    elif annual_call_volume > 2000:
+        base_amount_cents = 100000
+    module_amount_cents = len(selected_modules) * 5000
+
+    base_url = settings.api_base_url.rstrip("/")
+    session = stripe_lib.checkout.Session.create(
+        mode="subscription",
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": f"FusionEMS Quantum — {payload.get('agency_name', 'New Agency')}",
+                        "description": f"Platform subscription — {annual_call_volume} annual calls, {len(selected_modules)} modules",
+                    },
+                    "unit_amount": base_amount_cents + module_amount_cents,
+                    "recurring": {"interval": "month"},
+                },
+                "quantity": 1,
+            }
+        ],
+        metadata={"application_id": str(application_id), "source": "public_signup"},
+        success_url=f"{base_url}/onboarding/success?application_id={application_id}",
+        cancel_url=f"{base_url}/onboarding/cancel?application_id={application_id}",
+    )
+
+    return {"status": "ok", "application_id": application_id, "checkout_url": session.url}
 
 
 @router.post("/public/webhooks/stripe", include_in_schema=True)

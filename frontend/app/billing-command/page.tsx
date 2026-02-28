@@ -20,24 +20,7 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
   );
 }
 
-function HeatCell({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? value / max : 0;
-  const bg = pct > 0.7 ? "#9c1b1b" : pct > 0.4 ? "#b84a0f" : pct > 0.15 ? "#ff9800" : "#1a2535";
-  return (
-    <div className="flex items-center justify-center h-9 text-[11px] font-semibold" style={{ background: bg, color: pct > 0.4 ? "#fff" : "rgba(255,255,255,0.7)" }}>
-      {value}
-    </div>
-  );
-}
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-const MOCK_HEATMAP = [
-  { payer: "Medicare", values: [14, 12, 18, 10, 22, 15] },
-  { payer: "Medicaid", values: [28, 31, 25, 29, 27, 30] },
-  { payer: "BlueCross", values: [8, 9, 7, 11, 6, 9] },
-  { payer: "Aetna", values: [19, 21, 20, 17, 23, 24] },
-  { payer: "Uninsured", values: [45, 43, 48, 42, 46, 50] },
-];
+type HeatmapEntry = { reason_code: string; count: number };
 
 export default function BillingCommandPage() {
   const [dashboard, setDashboard] = useState<Record<string, unknown>>({});
@@ -46,6 +29,7 @@ export default function BillingCommandPage() {
   const [leakage, setLeakage] = useState<Record<string, unknown>>({});
   const [arConc, setArConc] = useState<{ concentration?: Array<{ payer: string; pct: number; risk: string }>; total_ar_cents?: number }>({});
   const [exec, setExec] = useState<Record<string, unknown>>({});
+  const [heatmapData, setHeatmapData] = useState<{ heatmap: HeatmapEntry[]; total_denials: number; top_reason: string | null }>({ heatmap: [], total_denials: 0, top_reason: null });
 
   useEffect(() => {
     fetch(`${API}/api/v1/billing-command/dashboard`).then(r => r.json()).then(setDashboard).catch((e: unknown) => { console.warn("[fetch error]", e); });
@@ -54,6 +38,7 @@ export default function BillingCommandPage() {
     fetch(`${API}/api/v1/billing-command/revenue-leakage`).then(r => r.json()).then(setLeakage).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/billing-command/ar-concentration-risk`).then(r => r.json()).then(setArConc).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/billing-command/executive-summary`).then(r => r.json()).then(setExec).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/billing-command/denial-heatmap`).then(r => r.json()).then(setHeatmapData).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   const fmt$ = (v: unknown) => typeof v === "number" ? `$${(v / 100).toLocaleString()}` : "—";
@@ -118,24 +103,23 @@ export default function BillingCommandPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Denial Heatmap — By Payer × Month</div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[360px] text-xs">
-              <thead>
-                <tr>
-                  <th className="text-left text-[10px] text-[rgba(255,255,255,0.3)] pb-2 pr-3">Payer</th>
-                  {MONTHS.map(m => <th key={m} className="text-[10px] text-[rgba(255,255,255,0.3)] pb-2 px-0.5">{m}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {MOCK_HEATMAP.map(row => (
-                  <tr key={row.payer}>
-                    <td className="text-[rgba(255,255,255,0.6)] pr-3 py-0.5 text-[11px] whitespace-nowrap">{row.payer}</td>
-                    {row.values.map((v, i) => <td key={i} className="px-0.5 py-0.5"><HeatCell value={v} max={50} /></td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Denial Heatmap — By Reason Code · {heatmapData.total_denials} total</div>
+          <div className="space-y-2">
+            {heatmapData.heatmap.slice(0, 10).map(entry => {
+              const maxCount = heatmapData.heatmap[0]?.count || 1;
+              return (
+                <div key={entry.reason_code}>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="text-[rgba(255,255,255,0.6)] truncate mr-2">{entry.reason_code}</span>
+                    <span className="font-semibold text-[rgba(255,255,255,0.8)] flex-shrink-0">{entry.count}</span>
+                  </div>
+                  <div className="h-2 bg-[rgba(255,255,255,0.06)] overflow-hidden">
+                    <motion.div className="h-full" style={{ background: entry.count / maxCount > 0.7 ? "#9c1b1b" : entry.count / maxCount > 0.4 ? "#b84a0f" : "#ff9800" }} initial={{ width: 0 }} animate={{ width: `${(entry.count / maxCount) * 100}%` }} transition={{ duration: 0.6 }} />
+                  </div>
+                </div>
+              );
+            })}
+            {!heatmapData.heatmap.length && <div className="text-xs text-[rgba(255,255,255,0.3)]">No denial data available</div>}
           </div>
         </div>
 

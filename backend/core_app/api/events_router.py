@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json as _json
 import os
 from datetime import datetime, timezone
 from typing import Any
@@ -40,7 +41,6 @@ async def emit_platform_event(
         if existing:
             return {"event_id": str(existing["id"]), "created": False}
 
-    import json as _json
     data = {
         "event_type": event_type,
         "entity_type": entity_type,
@@ -132,7 +132,6 @@ async def mark_event_read(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    import json as _json
     db.execute(
         text(
             "INSERT INTO event_reads (tenant_id, data) "

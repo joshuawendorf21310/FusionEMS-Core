@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -435,8 +437,6 @@ async def mission_stream(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    import asyncio
-    import json
     from fastapi.responses import StreamingResponse
 
     async def event_generator():
