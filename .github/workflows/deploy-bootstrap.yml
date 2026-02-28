@@ -1,4 +1,4 @@
-name: Deploy Bootstrap (Elite)
+name: Deploy - (Bootstrap)
 
 on:
   workflow_call:
@@ -18,12 +18,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: bootstrap-${{ inputs.env }}
+  group: bootstrap-${{ vars.CFN_STACK_NAME }}
   cancel-in-progress: false
 
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
@@ -32,15 +33,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ============================
+      # AWS AUTH (OIDC ONLY)
+      # ============================
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # ==========================================
-      # RESOLVE STACK OUTPUTS (NO GUESSING)
-      # ==========================================
-      - name: Resolve infrastructure outputs
+      # ============================
+      # VALIDATE STACK STATE
+      # ============================
+      - name: Validate stack
+        run: |
+          set -euo pipefail
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$CFN_STACK_NAME" \
+            --query 'Stacks[0].StackStatus' \
+            --output text)
+
+          case "$STATUS" in
+            CREATE_COMPLETE|UPDATE_COMPLETE) ;;
+            *)
+              echo "Stack not ready: $STATUS"
+              exit 1
+              ;;
+          esac
+
+      # ============================
+      # RESOLVE INFRA OUTPUTS
+      # ============================
+      - name: Resolve outputs
         id: infra
         run: |
           set -euo pipefail
@@ -52,93 +75,73 @@ jobs:
               --output text
           }
 
-          echo "cluster=$(get_output ClusterName)" >> $GITHUB_OUTPUT
-          echo "task_def=$(get_output BackendTaskDefinitionArn)" >> $GITHUB_OUTPUT
-          echo "subnets=$(get_output PrivateSubnetIds)" >> $GITHUB_OUTPUT
-          echo "sg=$(get_output EcsSecurityGroupId)" >> $GITHUB_OUTPUT
+          CLUSTER=$(get_output ClusterName)
+          TASK_DEF=$(get_output BootstrapTaskDefinitionArn)
+          SUBNETS=$(get_output PrivateSubnetIds | tr ' ' ',')
+          SG=$(get_output EcsSecurityGroupId)
+          LOG_GROUP=$(get_output BootstrapLogGroup)
 
-      # ==========================================
-      # STRIPE SYNC (IN CONTAINER)
-      # ==========================================
-      - name: Stripe sync via ECS
-        if: ${{ inputs.seed_stripe }}
+          for v in CLUSTER TASK_DEF SUBNETS SG LOG_GROUP; do
+            [ -z "${!v}" ] && echo "Missing $v" && exit 1
+          done
+
+          echo "cluster=$CLUSTER" >> $GITHUB_OUTPUT
+          echo "task_def=$TASK_DEF" >> $GITHUB_OUTPUT
+          echo "subnets=$SUBNETS" >> $GITHUB_OUTPUT
+          echo "sg=$SG" >> $GITHUB_OUTPUT
+          echo "log_group=$LOG_GROUP" >> $GITHUB_OUTPUT
+
+      # ============================
+      # GENERIC TASK RUNNER
+      # ============================
+      - name: Run bootstrap tasks
         run: |
           set -euo pipefail
 
-          TASK_ARN=$(aws ecs run-task \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --task-definition "${{ steps.infra.outputs.task_def }}" \
-            --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.infra.outputs.subnets }}],securityGroups=[${{ steps.infra.outputs.sg }}],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"backend","command":["python","-m","backend.scripts.sync_stripe"]}]}' \
-            --query 'tasks[0].taskArn' \
-            --output text)
+          run_task () {
+            COMMAND_JSON=$1
 
-          aws ecs wait tasks-stopped \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --tasks "$TASK_ARN"
+            TASK_ARN=$(aws ecs run-task \
+              --cluster "${{ steps.infra.outputs.cluster }}" \
+              --task-definition "${{ steps.infra.outputs.task_def }}" \
+              --capacity-provider-strategy capacityProvider=FARGATE,weight=1 \
+              --network-configuration "awsvpcConfiguration={subnets=[${{ steps.infra.outputs.subnets }}],securityGroups=[${{ steps.infra.outputs.sg }}],assignPublicIp=DISABLED}" \
+              --overrides "{\"containerOverrides\":[{\"name\":\"bootstrap\",\"command\":$COMMAND_JSON}]}" \
+              --query 'tasks[0].taskArn' \
+              --output text)
 
-          EXIT_CODE=$(aws ecs describe-tasks \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' \
-            --output text)
+            echo "Task: $TASK_ARN"
 
-          [ "$EXIT_CODE" = "0" ] || exit 1
+            aws ecs wait tasks-stopped \
+              --cluster "${{ steps.infra.outputs.cluster }}" \
+              --tasks "$TASK_ARN" \
+              --cli-read-timeout 900
 
-      # ==========================================
-      # NEMSIS SEED (IN CONTAINER)
-      # ==========================================
-      - name: NEMSIS seed via ECS
-        if: ${{ inputs.seed_nemsis }}
-        run: |
-          set -euo pipefail
+            EXIT_CODE=$(aws ecs describe-tasks \
+              --cluster "${{ steps.infra.outputs.cluster }}" \
+              --tasks "$TASK_ARN" \
+              --query 'tasks[0].containers[0].exitCode' \
+              --output text)
 
-          TASK_ARN=$(aws ecs run-task \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --task-definition "${{ steps.infra.outputs.task_def }}" \
-            --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.infra.outputs.subnets }}],securityGroups=[${{ steps.infra.outputs.sg }}],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"backend","command":["python","-m","backend.scripts.seed_nemsis_valuesets"]}]}' \
-            --query 'tasks[0].taskArn' \
-            --output text)
+            if [ "$EXIT_CODE" != "0" ]; then
+              echo "Failure detected. Logs in:"
+              echo "/aws/ecs/${{ steps.infra.outputs.log_group }}"
+              aws ecs describe-tasks \
+                --cluster "${{ steps.infra.outputs.cluster }}" \
+                --tasks "$TASK_ARN" \
+                --output table
+              exit 1
+            fi
+          }
 
-          aws ecs wait tasks-stopped \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --tasks "$TASK_ARN"
+          if [ "${{ inputs.seed_stripe }}" = "true" ]; then
+            run_task '["python","-m","bootstrap.sync_stripe"]'
+          fi
 
-          EXIT_CODE=$(aws ecs describe-tasks \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' \
-            --output text)
+          if [ "${{ inputs.seed_nemsis }}" = "true" ]; then
+            run_task '["python","-m","bootstrap.seed_nemsis"]'
+          fi
 
-          [ "$EXIT_CODE" = "0" ] || exit 1
+          run_task '["python","-m","bootstrap.seed_database"]'
 
-      # ==========================================
-      # DATABASE SEED (IN CONTAINER)
-      # ==========================================
-      - name: Database seed via ECS
-        run: |
-          set -euo pipefail
-
-          TASK_ARN=$(aws ecs run-task \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --task-definition "${{ steps.infra.outputs.task_def }}" \
-            --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.infra.outputs.subnets }}],securityGroups=[${{ steps.infra.outputs.sg }}],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"backend","command":["python","-m","backend.scripts.seed_database"]}]}' \
-            --query 'tasks[0].taskArn' \
-            --output text)
-
-          aws ecs wait tasks-stopped \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --tasks "$TASK_ARN"
-
-          EXIT_CODE=$(aws ecs describe-tasks \
-            --cluster "${{ steps.infra.outputs.cluster }}" \
-            --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' \
-            --output text)
-
-          [ "$EXIT_CODE" = "0" ] || exit 1
+          echo "Bootstrap completed successfully."
