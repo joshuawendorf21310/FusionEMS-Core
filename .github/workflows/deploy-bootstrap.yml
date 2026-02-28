@@ -15,6 +15,7 @@ on:
         description: 'Seed NEMSIS value sets'
         type: boolean
         default: true
+
   workflow_dispatch:
     inputs:
       env:
@@ -22,7 +23,9 @@ on:
         required: true
         default: dev
         type: choice
-        options: [dev, prod]
+        options:
+          - dev
+          - prod
       seed_stripe:
         description: 'Sync Stripe products/prices'
         type: boolean
@@ -39,6 +42,7 @@ permissions:
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -52,6 +56,9 @@ jobs:
           python-version: '3.12'
           cache: pip
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -62,66 +69,157 @@ jobs:
         run: |
           pip install boto3 requests stripe python-dotenv
 
+      # ==========================================================
+      # FETCH SECRETS
+      # ==========================================================
       - name: Fetch app secrets from Secrets Manager
+        id: secrets
         run: |
           set -euo pipefail
+
           APP_SECRETS_ARN=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='AppSecretsArn'].OutputValue" \
-            --output text 2>/dev/null || echo "")
-          if [ -n "$APP_SECRETS_ARN" ] && [ "$APP_SECRETS_ARN" != "None" ]; then
-            aws secretsmanager get-secret-value \
-              --secret-id "$APP_SECRETS_ARN" \
-              --query 'SecretString' \
-              --output text > /tmp/app_secrets.json
-            echo "APP_SECRETS loaded"
+            --output text || echo "")
+
+          if [ -z "$APP_SECRETS_ARN" ] || [ "$APP_SECRETS_ARN" = "None" ]; then
+            echo "No AppSecretsArn output found"
+            exit 0
           fi
 
+          aws secretsmanager get-secret-value \
+            --secret-id "$APP_SECRETS_ARN" \
+            --query 'SecretString' \
+            --output text > /tmp/app_secrets.json
+
+          echo "Secrets loaded"
+
+      # ==========================================================
+      # STRIPE SYNC
+      # ==========================================================
       - name: Sync Stripe products and prices
         if: ${{ inputs.seed_stripe }}
         run: |
           python - <<'EOF'
           import json, os, sys
+          import stripe
+
           try:
-              import stripe
+              if not os.path.exists("/tmp/app_secrets.json"):
+                  print("No secrets file found, skipping Stripe sync")
+                  sys.exit(0)
+
               with open('/tmp/app_secrets.json') as f:
                   secrets = json.load(f)
+
               stripe.api_key = secrets.get('stripe_secret_key', '')
-              if not stripe.api_key or stripe.api_key.startswith('REPLACE'):
+
+              if not stripe.api_key or stripe.api_key.startswith("REPLACE"):
                   print("Stripe key not configured, skipping")
                   sys.exit(0)
+
+              print("Fetching existing products...")
+              existing_products = stripe.Product.list(limit=100)
+              existing_names = {p["name"]: p for p in existing_products.auto_paging_iter()}
+
               products = [
-                  {'name': 'FusionEMS Base Platform', 'metadata': {'type': 'base'}},
-                  {'name': 'FusionEMS Per-Transport Fee', 'metadata': {'type': 'per_call'}},
-                  {'name': 'FusionEMS Overlay Mode', 'metadata': {'type': 'overlay'}},
+                  {"name": "FusionEMS Base Platform", "metadata": {"type": "base"}},
+                  {"name": "FusionEMS Per-Transport Fee", "metadata": {"type": "per_call"}},
+                  {"name": "FusionEMS Overlay Mode", "metadata": {"type": "overlay"}},
               ]
+
               for p in products:
-                  existing = stripe.Product.list(active=True)
-                  names = [e['name'] for e in existing['data']]
-                  if p['name'] not in names:
-                      prod = stripe.Product.create(name=p['name'], metadata=p['metadata'])
-                      print(f"Created product: {prod['id']} - {p['name']}")
-                  else:
+                  if p["name"] in existing_names:
                       print(f"Product exists: {p['name']}")
+                  else:
+                      prod = stripe.Product.create(
+                          name=p["name"],
+                          metadata=p["metadata"],
+                          active=True,
+                      )
+                      print(f"Created product: {prod['id']} - {p['name']}")
+
+              print("Stripe sync complete")
+
           except Exception as e:
               print(f"Stripe sync error: {e}")
+              sys.exit(1)
           EOF
 
+      # ==========================================================
+      # NEMSIS SEED (LOCAL SCRIPT)
+      # ==========================================================
       - name: Seed NEMSIS value sets
         if: ${{ inputs.seed_nemsis }}
         run: |
-          echo "NEMSIS value set seeding - placeholder for actual NEMSIS data import"
-          echo "Run: python backend/scripts/seed_nemsis_valuesets.py"
+          set -euo pipefail
+          if [ -f backend/scripts/seed_nemsis_valuesets.py ]; then
+            pip install -r backend/requirements.txt
+            python backend/scripts/seed_nemsis_valuesets.py
+            echo "NEMSIS seed complete"
+          else
+            echo "NEMSIS seed script not found, skipping"
+          fi
 
+      # ==========================================================
+      # ECS DATABASE SEED TASK
+      # ==========================================================
       - name: Run DB seed via ECS task
         run: |
           set -euo pipefail
+
           CLUSTER=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
-            --output text 2>/dev/null || echo "")
+            --output text || echo "")
+
           if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
             echo "Cluster not deployed yet, skipping ECS seed"
             exit 0
           fi
-          echo "Bootstrap complete. Run tenant setup via /api/v1/onboarding/provision"
+
+          TASK_DEF=$(aws ecs list-task-definitions \
+            --family-prefix "fusionems-quantum-${CFN_ENV}-backend" \
+            --sort DESC \
+            --query 'taskDefinitionArns[0]' \
+            --output text)
+
+          PRIVATE_SUBNETS=$(aws cloudformation describe-stacks \
+            --stack-name "${CFN_STACK_NAME}" \
+            --query "Stacks[0].Outputs[?contains(OutputKey,'PrivateSubnets')].OutputValue" \
+            --output text)
+
+          ECS_SG=$(aws ec2 describe-security-groups \
+            --filters "Name=tag:Name,Values=fusionems-quantum-${CFN_ENV}-sg-ecs" \
+            --query 'SecurityGroups[0].GroupId' \
+            --output text)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNETS],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["python","-m","backend.scripts.seed_database"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Seed task ARN: $TASK_ARN"
+
+          aws ecs wait tasks-stopped \
+            --cluster "$CLUSTER" \
+            --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          echo "Seed exit code: $EXIT_CODE"
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Seed failed"
+            exit 1
+          fi
+
+          echo "Bootstrap complete"
