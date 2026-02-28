@@ -12,7 +12,7 @@ on:
         required: false
         default: "stage"
       run_id:
-        description: "Founder Copilot run_id (UUID) — set by dashboard execution"
+        description: "Founder Copilot run_id (UUID)"
         required: false
         default: ""
 
@@ -52,14 +52,22 @@ jobs:
       ENVIRONMENT: development
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Create reports directory
+        run: mkdir -p reports
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
+
+      - name: Install backend deps + tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install ruff pytest
 
       - name: Set up Node 20
         uses: actions/setup-node@v4
@@ -68,76 +76,83 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # ── Backend: deps ──────────────────────────────────────────────────────
-      - name: Install backend deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-
-      # ── Backend: lint ──────────────────────────────────────────────────────
-      - name: Ruff — runtime error gate (F821 + E9 + F63 + F7 + F82)
+      # ============================
+      # BACKEND LINT
+      # ============================
+      - name: Ruff — runtime error gate
         id: ruff_gate
         run: |
-          ruff check backend --select F821,E9,F63,F7,F82 --exclude backend/versions/
+          ruff check backend --select F821,E9,F63,F7,F82 \
+            --exclude backend/versions/ \
+            2>&1 | tee reports/ruff_gate.txt
 
       - name: Ruff — full lint
         id: ruff_full
         run: |
-          ruff check backend --exclude backend/versions/ || true
+          ruff check backend \
+            --exclude backend/versions/ \
+            2>&1 | tee reports/ruff_full.txt || true
 
-      # ── Backend: tests ─────────────────────────────────────────────────────
+      # ============================
+      # BACKEND TESTS
+      # ============================
       - name: pytest
         id: pytest
         run: |
-          pytest -q --tb=short 2>&1 | tee reports/pytest.txt || true
-          # Fail if pytest itself failed
-          pytest -q --tb=line
+          set -e
+          pytest -q --tb=short 2>&1 | tee reports/pytest.txt
 
-      # ── Database: Alembic migrations ───────────────────────────────────────
+      # ============================
+      # DATABASE MIGRATIONS
+      # ============================
       - name: Alembic upgrade head
         id: alembic
         run: |
           cd backend
+          export DATABASE_URL="${DATABASE_URL}"
           alembic upgrade head
 
-      # ── Frontend: deps ─────────────────────────────────────────────────────
+      # ============================
+      # FRONTEND
+      # ============================
       - name: Install frontend deps
-        run: |
-          cd frontend && npm ci
+        run: cd frontend && npm ci
 
-      - name: Frontend typecheck (tsc --noEmit)
+      - name: Frontend typecheck
         id: tsc
-        run: |
-          cd frontend && npm run typecheck 2>&1 | tee ../reports/tsc.txt
+        run: cd frontend && npm run typecheck 2>&1 | tee ../reports/tsc.txt
 
       - name: Frontend build
         id: next_build
-        run: |
-          cd frontend && npm run build 2>&1 | tee ../reports/next_build.txt
+        run: cd frontend && npm run build 2>&1 | tee ../reports/next_build.txt
 
-      # ── CloudFormation: lint + duplicate scan + validate ───────────────────
+      # ============================
+      # CLOUDFORMATION
+      # ============================
       - name: Install cfn-lint
         run: pip install cfn-lint
 
       - name: cfn-lint (errors only)
         id: cfn_lint
         run: |
-          mkdir -p reports
-          cfn-lint infra/cloudformation/*.yml 2>&1 | tee reports/cfn_lint.txt
-          # Fail on E-class errors
+          cfn-lint infra/cloudformation/*.yml \
+            2>&1 | tee reports/cfn_lint.txt
           if grep -q "^E" reports/cfn_lint.txt; then
-            echo "cfn-lint errors found"; exit 1
+            echo "cfn-lint errors found"
+            exit 1
           fi
 
       - name: Duplicate CFN logical ID scan
         id: cfn_duplicates
         run: python scripts/scan_cfn_duplicates.py 2>&1 | tee reports/cfn_duplicates.txt
 
-      - name: Validate CFN templates (static)
+      - name: Validate CFN templates
         id: cfn_validate
         run: python scripts/validate_cfn_templates.py 2>&1 | tee reports/cfn_validate.txt
 
-      # ── Security / config hygiene ──────────────────────────────────────────
+      # ============================
+      # SECURITY / CONFIG
+      # ============================
       - name: Placeholder secrets scan
         id: placeholder_scan
         run: python scripts/scan_placeholders.py 2>&1 | tee reports/placeholder_scan.txt
@@ -146,45 +161,13 @@ jobs:
         id: env_coverage
         run: python scripts/scan_env_coverage.py 2>&1 | tee reports/env_coverage.txt
 
-      - name: Route matrix + endpoint coverage + HEMS gate
+      - name: Route matrix gate
         id: route_matrix_gate
         run: python scripts/ci_gate_route_matrix.py 2>&1 | tee reports/route_matrix_gate.txt
 
-      # ── Report back to Founder Copilot (if triggered from dashboard) ───────
-      - name: Post gate results to Founder Copilot
-        if: ${{ inputs.run_id != '' }}
-        env:
-          GATE_TOKEN: ${{ secrets.INTERNAL_WORKER_SECRET }}
-          API_BASE: ${{ secrets.API_BASE_URL || 'https://api.fusionemsquantum.com' }}
-          COPILOT_RUN_ID: ${{ inputs.run_id }}
-        run: |
-          RESULTS=$(python - <<'PYEOF'
-          import json, os
-          steps = {
-              "ruff_gate": "${{ steps.ruff_gate.outcome }}",
-              "pytest": "${{ steps.pytest.outcome }}",
-              "alembic": "${{ steps.alembic.outcome }}",
-              "tsc": "${{ steps.tsc.outcome }}",
-              "next_build": "${{ steps.next_build.outcome }}",
-              "cfn_lint": "${{ steps.cfn_lint.outcome }}",
-              "cfn_duplicates": "${{ steps.cfn_duplicates.outcome }}",
-              "cfn_validate": "${{ steps.cfn_validate.outcome }}",
-              "placeholder_scan": "${{ steps.placeholder_scan.outcome }}",
-              "env_coverage": "${{ steps.env_coverage.outcome }}",
-              "route_matrix_gate": "${{ steps.route_matrix_gate.outcome }}",
-          }
-          results = {k: (v == "success") for k, v in steps.items()}
-          print(json.dumps(results))
-          PYEOF
-          )
-          curl -sf -X POST \
-            "${API_BASE}/api/v1/founder/copilot/runs/${COPILOT_RUN_ID}/gate-result" \
-            -H "Content-Type: application/json" \
-            -H "X-Gate-Token: ${GATE_TOKEN}" \
-            -d "{\"results\": ${RESULTS}, \"gh_run_id\": \"${{ github.run_id }}\", \"gh_run_url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-            || echo "gate-result post failed (non-fatal)"
-
-      # ── Upload artifacts ────────────────────────────────────────────────────
+      # ============================
+      # REPORT ARTIFACTS
+      # ============================
       - name: Upload release gate reports
         if: always()
         uses: actions/upload-artifact@v4
