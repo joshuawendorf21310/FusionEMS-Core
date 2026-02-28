@@ -172,6 +172,17 @@ jobs:
               ;;
           esac
 
+          AFTER_STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "${CFN_STACK_NAME}" \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+          if [[ "$AFTER_STATUS" == "DOES_NOT_EXIST" ]]; then
+            echo "Cleaning up any orphaned SES identity before fresh stack creation..."
+            aws sesv2 delete-email-identity --email-identity "${CFN_ROOT_DOMAIN_NAME}" 2>/dev/null \
+              && echo "Deleted orphaned SES identity." \
+              || echo "No SES identity to clean up."
+          fi
+
       - name: Deploy infrastructure stack
         run: |
           set -euo pipefail
