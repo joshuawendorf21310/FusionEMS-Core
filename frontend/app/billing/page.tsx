@@ -9,45 +9,45 @@ const NAV_CARDS = [
     href: '/billing/dashboard',
     title: 'Dashboard',
     description: 'KPIs, AR aging, collection metrics',
-    accent: '#22d3ee',
+    accent: 'var(--color-status-info)',
   },
   {
     href: '/billing/claims',
     title: 'Claims',
     description: 'Active, pending, denied claim management',
-    accent: '#22d3ee',
+    accent: 'var(--color-status-info)',
   },
   {
     href: '/billing/documents',
     title: 'Documents',
     description: 'PCRs, ABNs, authorizations, attachments',
-    accent: '#22d3ee',
+    accent: 'var(--color-status-info)',
   },
   {
     href: '/billing/reports',
     title: 'Reports',
     description: 'Payer mix, denial analysis, productivity',
-    accent: '#22d3ee',
+    accent: 'var(--color-status-info)',
   },
   {
     href: '/billing-command',
     title: 'Command Center',
     description: 'Full billing intelligence dashboard',
-    accent: '#ff6b1a',
+    accent: 'var(--color-brand-orange)',
   },
   {
     href: '/compliance',
     title: 'Compliance',
     description: 'HIPAA, billing compliance monitoring',
-    accent: '#a855f7',
+    accent: 'var(--color-system-compliance)',
   },
 ];
 
 const QUICK_STATS = [
-  { label: 'Monthly Revenue', value: '$2,847,391', unit: 'USD', accent: '#22d3ee' },
-  { label: 'Clean Claim Rate', value: '94.2', unit: '%', accent: '#4caf50' },
-  { label: 'Days in AR', value: '28.4', unit: 'days', accent: '#ff9800' },
-  { label: 'Denial Rate', value: '3.8', unit: '%', accent: '#e53935' },
+  { label: 'Monthly Revenue', value: '$2,847,391', unit: 'USD', accent: 'var(--color-status-info)' },
+  { label: 'Clean Claim Rate', value: '94.2', unit: '%', accent: 'var(--color-status-active)' },
+  { label: 'Days in AR', value: '28.4', unit: 'days', accent: 'var(--color-status-warning)' },
+  { label: 'Denial Rate', value: '3.8', unit: '%', accent: 'var(--color-brand-red)' },
 ];
 
 export default function BillingPage() {

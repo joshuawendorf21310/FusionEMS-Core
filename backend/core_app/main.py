@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import sqlalchemy
+import redis.asyncio as aioredis
+from core_app.db.session import async_engine
 
 from core_app.api.audit_router import router as audit_router  # noqa: E402
 from core_app.api.auth_router import router as auth_router  # noqa: E402
@@ -223,3 +226,36 @@ app.include_router(nemsis_submissions_router)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/healthz")
+async def healthz() -> JSONResponse:
+    checks: dict[str, str] = {}
+
+    # Database check
+    try:
+        async with async_engine.connect() as conn:
+            await conn.execute(sqlalchemy.text("SELECT 1"))
+        checks["db"] = "ok"
+    except Exception:
+        checks["db"] = "unreachable"
+
+    # Redis check
+    redis_ok = False
+    if settings.redis_url:
+        try:
+            async with aioredis.from_url(settings.redis_url, socket_connect_timeout=2) as r:
+                await r.ping()
+            redis_ok = True
+            checks["redis"] = "ok"
+        except Exception:
+            checks["redis"] = "unreachable"
+    else:
+        checks["redis"] = "not_configured"
+        redis_ok = True
+
+    healthy = checks["db"] == "ok" and redis_ok
+    return JSONResponse(
+        content={"status": "ok" if healthy else "degraded", "checks": checks},
+        status_code=200 if healthy else 503,
+    )

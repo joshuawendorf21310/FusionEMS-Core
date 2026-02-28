@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <!-- Chamfered square -->
+  <polygon points="0,0 32,0 40,8 40,40 0,40" fill="#0B0F14" stroke="#FF6A00" stroke-width="1.5"/>
+  <polygon points="3,3 30,3 37,10 37,37 3,37" fill="#0F172A"/>
+  <!-- F glyph -->
+  <rect x="9" y="10" width="16" height="2.5" fill="#FF6A00"/>
+  <rect x="9" y="10" width="2.5" height="20" fill="#FF6A00"/>
+  <rect x="9" y="19" width="11" height="2.5" fill="#FF2D2D"/>
+</svg>

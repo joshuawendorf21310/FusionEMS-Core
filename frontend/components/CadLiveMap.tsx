@@ -38,15 +38,15 @@ export function CadLiveMap({ units = [], className = '' }: CadLiveMapProps) {
       }).addTo(map);
 
       const statusColors: Record<string, string> = {
-        available: '#48bb78',
-        dispatched: '#f6ad55',
-        on_scene: '#fc6b52',
-        transport: '#3182ce',
-        at_hospital: '#9f7aea',
+        available: 'var(--color-status-active)',
+        dispatched: 'var(--color-status-warning)',
+        on_scene: 'var(--color-brand-orange)',
+        transport: 'var(--color-system-fleet)',
+        at_hospital: 'var(--color-system-compliance)',
       };
 
       units.forEach((unit) => {
-        const color = statusColors[unit.status] || '#64748b';
+        const color = statusColors[unit.status] || 'var(--color-text-muted)';
         const icon = L.divIcon({
           className: '',
           html: `<div style="background:${color};width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 0 6px ${color}"></div>`,

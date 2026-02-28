@@ -15,8 +15,8 @@ function HexLogo() {
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
       <polygon
         points="18,2 33,10 33,26 18,34 3,26 3,10"
-        fill="#ff6b1a"
-        stroke="#ff8c42"
+        fill="var(--color-brand-orange)"
+        stroke="var(--color-brand-orange)"
         strokeWidth="1"
       />
       <text
@@ -56,17 +56,17 @@ function StepIndicator({ pathname }: { pathname: string }) {
                 className="flex items-center justify-center rounded-sm text-xs font-bold px-3 py-1 transition-colors"
                 style={{
                   backgroundColor: isActive
-                    ? '#ff6b1a'
+                    ? 'var(--color-brand-orange)'
                     : isCompleted
                     ? 'rgba(255,107,26,0.2)'
                     : 'rgba(255,255,255,0.05)',
                   color: isActive
                     ? '#000'
                     : isCompleted
-                    ? '#ff6b1a'
+                    ? 'var(--color-brand-orange)'
                     : 'rgba(255,255,255,0.35)',
                   border: isActive
-                    ? '1px solid #ff6b1a'
+                    ? '1px solid var(--color-brand-orange)'
                     : isCompleted
                     ? '1px solid rgba(255,107,26,0.4)'
                     : '1px solid rgba(255,255,255,0.08)',
@@ -84,7 +84,7 @@ function StepIndicator({ pathname }: { pathname: string }) {
                   >
                     <path
                       d="M1.5 5l2.5 2.5 4.5-4.5"
-                      stroke="#ff6b1a"
+                      stroke="var(--color-brand-orange)"
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"

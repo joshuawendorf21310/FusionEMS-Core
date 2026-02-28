@@ -16,9 +16,10 @@ Parameters:
     Type: String
   EcsServiceSecurityGroupId:
     Type: String
-  ImageTag:
+  ImageTagFrontend:
     Type: String
-    Default: latest
+  ImageTagBackend:
+    Type: String
   DesiredCount:
     Type: Number
     Default: 2
@@ -452,7 +453,7 @@ Resources:
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: backend
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTag}'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTagBackend}'
           PortMappings:
             - ContainerPort: !Ref BackendContainerPort
               Protocol: tcp
@@ -577,7 +578,7 @@ Resources:
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: worker
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTag}'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTagBackend}'
           Command: ['python', '-m', 'core_app.worker']
           Environment:
             - Name: ENVIRONMENT
@@ -662,7 +663,7 @@ Resources:
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: frontend
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-frontend:${ImageTag}'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-frontend:${ImageTagFrontend}'
           PortMappings:
             - ContainerPort: !Ref FrontendContainerPort
               Protocol: tcp

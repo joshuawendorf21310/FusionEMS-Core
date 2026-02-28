@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 32" fill="none">
+  <!-- Flat chamfered badge -->
+  <polygon points="0,0 188,0 200,12 200,32 0,32" fill="#111827"/>
+  <polygon points="0,0 186,0 198,12 198,32 0,32" fill="none" stroke="#FF6A00" stroke-width="1"/>
+  <!-- Mark -->
+  <rect x="8" y="8" width="16" height="2.5" fill="#FF6A00"/>
+  <rect x="8" y="8" width="2.5" height="16" fill="#FF6A00"/>
+  <rect x="8" y="14.75" width="11" height="2.5" fill="#FF2D2D"/>
+  <!-- Text -->
+  <text x="32" y="21" font-family="'Barlow Condensed','Barlow',system-ui,sans-serif" font-size="14" font-weight="700" letter-spacing="3" fill="#E5E7EB">FUSIONEMS</text>
+</svg>

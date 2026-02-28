@@ -113,7 +113,7 @@ export default function CheckoutPage() {
             <div className="flex items-center gap-2 mb-0.5">
               {/* Hex icon */}
               <svg width="18" height="18" viewBox="0 0 36 36" fill="none">
-                <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" fill="#ff6b1a" />
+                <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" fill="var(--color-brand-orange)" />
                 <text x="18" y="23" textAnchor="middle" fill="black" fontSize="11" fontWeight="900" fontFamily="'Barlow Condensed', sans-serif">FQ</text>
               </svg>
               <span className="text-sm font-bold text-text-primary tracking-wide">
@@ -160,7 +160,7 @@ export default function CheckoutPage() {
             ].map(feature => (
               <div key={feature} className="flex items-center gap-1.5">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="#4caf50" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="var(--color-status-active)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{feature}</span>
               </div>
@@ -173,8 +173,8 @@ export default function CheckoutPage() {
       {status === 'loading' && (
         <div className="flex flex-col items-center justify-center py-10 gap-4">
           <svg className="animate-spin h-10 w-10" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="#ff6b1a" strokeWidth="3" />
-            <path className="opacity-80" fill="#ff6b1a" d="M4 12a8 8 0 018-8v8z" />
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="var(--color-brand-orange)" strokeWidth="3" />
+            <path className="opacity-80" fill="var(--color-brand-orange)" d="M4 12a8 8 0 018-8v8z" />
           </svg>
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
             Preparing your checkout session…
@@ -186,8 +186,8 @@ export default function CheckoutPage() {
         <div className="flex flex-col items-center justify-center py-10 gap-4">
           <div className="flex items-center gap-3">
             <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-20" cx="12" cy="12" r="10" stroke="#22d3ee" strokeWidth="3" />
-              <path className="opacity-80" fill="#22d3ee" d="M4 12a8 8 0 018-8v8z" />
+              <circle className="opacity-20" cx="12" cy="12" r="10" stroke="var(--color-status-info)" strokeWidth="3" />
+              <path className="opacity-80" fill="var(--color-status-info)" d="M4 12a8 8 0 018-8v8z" />
             </svg>
             <p className="text-sm font-semibold" style={{ color: 'var(--color-system-billing)' }}>
               Redirecting to Stripe Checkout…
@@ -240,7 +240,7 @@ export default function CheckoutPage() {
             style={{
               backgroundColor: 'rgba(255,59,59,0.08)',
               borderColor: 'rgba(255,59,59,0.3)',
-              color: '#ff6b6b',
+              color: 'var(--color-brand-red)',
             }}
           >
             <span className="font-semibold">Error: </span>{errorMsg}

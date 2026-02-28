@@ -30,23 +30,24 @@ function MetricCard({ label, value, color }: { label: string; value: string; col
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
-      <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
+      <div className="text-2xl font-bold" style={{ color: color ?? "var(--color-text-primary)" }}>{value}</div>
     </div>
   );
 }
 
 function StatusChip({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    draft: "#ff9800",
-    approved: "#4caf50",
-    archived: "#94a3b8",
-    rejected: "#e53935",
-    pending: "#22d3ee",
+    draft: "var(--color-brand-orange)",
+    approved: "var(--color-status-active)",
+    archived: "var(--color-text-muted)",
+    rejected: "var(--color-brand-red)",
+    pending: "var(--color-status-warning)",
   };
+  const color = colors[status] ?? "var(--color-text-muted)";
   return (
     <span
       className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm"
-      style={{ background: `${colors[status] ?? "#94a3b8"}22`, color: colors[status] ?? "#94a3b8", border: `1px solid ${colors[status] ?? "#94a3b8"}44` }}
+      style={{ background: `color-mix(in srgb, ${color} 12%, transparent)`, color, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)` }}
     >
       {status}
     </span>
@@ -156,11 +157,11 @@ export default function TemplatesPage() {
 
       {/* Lifecycle Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <MetricCard label="Total Templates" value={String(lifecycle.total ?? templates.length)} color="#22d3ee" />
-        <MetricCard label="Draft" value={String(lifecycle.draft ?? "—")} color="#ff9800" />
-        <MetricCard label="Approved" value={String(lifecycle.approved ?? "—")} color="#4caf50" />
-        <MetricCard label="Archived" value={String(lifecycle.archived ?? "—")} color="#94a3b8" />
-        <MetricCard label="Locked" value={String(lifecycle.locked ?? "—")} color="#e53935" />
+        <MetricCard label="Total Templates" value={String(lifecycle.total ?? templates.length)} color="var(--color-status-info)" />
+        <MetricCard label="Draft" value={String(lifecycle.draft ?? "—")} color="var(--color-brand-orange)" />
+        <MetricCard label="Approved" value={String(lifecycle.approved ?? "—")} color="var(--color-status-active)" />
+        <MetricCard label="Archived" value={String(lifecycle.archived ?? "—")} color="var(--color-text-muted)" />
+        <MetricCard label="Locked" value={String(lifecycle.locked ?? "—")} color="var(--color-brand-red)" />
       </div>
 
       {/* Category Filter */}
