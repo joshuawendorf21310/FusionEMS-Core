@@ -59,7 +59,7 @@ jobs:
   summary:
     needs: [deploy-backend, deploy-frontend, deploy-bootstrap]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Summary
         run: |
