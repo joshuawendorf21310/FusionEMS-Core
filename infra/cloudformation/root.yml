@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Root Nested Stack (Enterprise Production-Ready)
+Description: FusionEMS Quantum - Root Nested Stack (Enterprise Production-Ready, Packaged + Ordered)
 
 Parameters:
   Env:
@@ -58,30 +58,33 @@ Parameters:
   GraphTenantId:
     Type: String
     Default: ''
-    Description: Azure AD tenant ID for Microsoft Graph
 
   GraphClientId:
     Type: String
     Default: ''
-    Description: Entra app client ID
 
   GraphClientSecret:
     Type: String
     NoEcho: true
     Default: ''
-    Description: Entra app client secret
 
   GraphFounderEmail:
     Type: String
     Default: ''
-    Description: Founder mailbox UPN for Graph API calls
+
+Conditions:
+  IsProd: !Equals [!Ref Env, 'prod']
 
 Resources:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ACM (us-east-1 for CloudFront)
+  # ────────────────────────────────────────────────────────────────────────────
 
   AcmStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: acm.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/acm.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -94,10 +97,14 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Network
+  # ────────────────────────────────────────────────────────────────────────────
+
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: network.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/network.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -107,10 +114,15 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Data (RDS + Redis + Secrets)
+  # ────────────────────────────────────────────────────────────────────────────
+
   DataStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
     Properties:
-      TemplateURL: data.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/data.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -130,11 +142,15 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Cognito
+  # ────────────────────────────────────────────────────────────────────────────
+
   CognitoStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: cognito.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/cognito.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -146,21 +162,29 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # S3 Buckets
+  # ────────────────────────────────────────────────────────────────────────────
+
   S3Stack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: s3.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/s3.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
       Tags:
         - Key: Environment
           Value: !Ref Env
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # WAF
+  # ────────────────────────────────────────────────────────────────────────────
 
   WafStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: waf.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/waf.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -168,10 +192,15 @@ Resources:
         - Key: Environment
           Value: !Ref Env
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Billing / Queues
+  # ────────────────────────────────────────────────────────────────────────────
+
   BillingStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: DataStack
     Properties:
-      TemplateURL: billing.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/billing.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -185,12 +214,19 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Compute (ECS + ALB)
+  # ────────────────────────────────────────────────────────────────────────────
+
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
+      - DataStack
+      - CognitoStack
       - WafStack
+      - BillingStack
     Properties:
-      TemplateURL: compute.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/compute.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -230,16 +266,23 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
+  # Associate WAF with ALB
   WafAlbAssociation:
     Type: AWS::WAFv2::WebACLAssociation
+    DependsOn: ComputeStack
     Properties:
       ResourceArn: !GetAtt ComputeStack.Outputs.AlbArn
       WebACLArn: !GetAtt WafStack.Outputs.WebAclArn
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Edge (CloudFront + Route53)
+  # ────────────────────────────────────────────────────────────────────────────
+
   EdgeStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: ComputeStack
     Properties:
-      TemplateURL: edge.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/edge.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -254,10 +297,17 @@ Resources:
         - Key: Application
           Value: !Ref AppName
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Observability
+  # ────────────────────────────────────────────────────────────────────────────
+
   ObservabilityStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - ComputeStack
+      - DataStack
     Properties:
-      TemplateURL: observability.yml
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/observability.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -290,7 +340,7 @@ Outputs:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDistributionId
 
   AcmCertificateArn:
-    Description: ACM certificate ARN in us-east-1 (auto-provisioned)
+    Description: ACM certificate ARN (CloudFront)
     Value: !GetAtt AcmStack.Outputs.CertificateArn
 
   BackendEcrRepoUri:
