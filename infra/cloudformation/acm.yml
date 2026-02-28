@@ -23,8 +23,9 @@ Resources:
 
   AcmCertLambdaRole:
     Type: AWS::IAM::Role
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
-      RoleName: !Sub '${AppName}-${Env}-acm-cert-lambda-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -61,7 +62,6 @@ Resources:
   AcmCertLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AppName}-${Env}-acm-cert-provision'
       Runtime: python3.12
       Handler: index.handler
       Timeout: 900
