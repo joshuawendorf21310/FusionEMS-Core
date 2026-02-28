@@ -48,7 +48,7 @@ async def process_webhook_with_retry(
     On failure, enqueues to DLQ for background retry rather than sleeping inline.
     """
     try:
-        result = await handler(payload)
+        await handler(payload)
         return {"status": "ok", "attempts": 1}
     except Exception as e:
         logger.warning("Webhook delivery failed for %s %s: %s — enqueuing DLQ", source, event_id, e)

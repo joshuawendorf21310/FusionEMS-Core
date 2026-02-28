@@ -37,7 +37,7 @@ def process_fax_classify(message: dict[str, Any]) -> None:
     fax_id: str = message.get("fax_id", "")
     tenant_id: str | None = message.get("tenant_id")
     s3_key: str = message.get("s3_key", "")
-    sha256: str | None = message.get("sha256")
+    message.get("sha256")
     case_id: str | None = message.get("case_id")
 
     logger.info(

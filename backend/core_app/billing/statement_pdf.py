@@ -8,12 +8,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 try:
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter as LETTER_SIZE
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import inch, mm
-    from reportlab.pdfgen import canvas as rl_canvas
-    from reportlab.platypus import (
+    from reportlab.lib import colors  # noqa: F401
+    from reportlab.lib.pagesizes import letter as LETTER_SIZE  # noqa: F401
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet  # noqa: F401
+    from reportlab.lib.units import inch, mm  # noqa: F401
+    from reportlab.pdfgen import canvas as rl_canvas  # noqa: F401
+    from reportlab.platypus import (  # noqa: F401
         BaseDocTemplate,
         Frame,
         PageTemplate,
@@ -179,7 +179,6 @@ def _build_page1(c: Any, ctx: StatementContext, pdf_hash: str) -> None:
     # We leave the zone completely CLEAR of graphics and only print the address text
     win_x = LOB_WINDOW_X
     win_y = LOB_WINDOW_Y
-    win_w = LOB_WINDOW_W
     win_h = LOB_WINDOW_H
 
     # Recipient address inside window

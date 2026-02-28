@@ -91,7 +91,7 @@ def process_pack_import(body: dict, correlation_id: str) -> dict:
     db = _Session()
     try:
         tenant_uuid = uuid.UUID(tenant_id) if tenant_id else None
-        actor_uuid = uuid.UUID(actor_user_id) if actor_user_id else None
+        uuid.UUID(actor_user_id) if actor_user_id else None
 
         for fr in file_records:
             file_id = uuid.uuid4()

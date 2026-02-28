@@ -296,7 +296,6 @@ async def upload_rep_document_multipart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    from fastapi import UploadFile
     from starlette.datastructures import FormData
 
     form: FormData = await request.form()
@@ -318,7 +317,6 @@ async def upload_rep_document_multipart(
     if len(content) > MAX_BYTES:
         raise HTTPException(status_code=413, detail="file_too_large")
 
-    from core_app.core.config import get_settings
     from core_app.documents.s3_storage import put_bytes, default_docs_bucket
     bucket = default_docs_bucket()
     doc_key = f"tenants/{current.tenant_id}/rep-docs/{uuid.uuid4()}/{getattr(file, 'filename', 'upload')}"

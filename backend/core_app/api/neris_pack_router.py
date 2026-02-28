@@ -50,7 +50,7 @@ async def import_pack(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
     db: Session = Depends(db_session_dependency),
 ):
-    source_type = payload.get("source_type", "github")
+    payload.get("source_type", "github")
     repo = payload.get("repo", "ulfsri/neris-framework")
     ref = payload.get("ref", "main")
     name = payload.get("name", "")

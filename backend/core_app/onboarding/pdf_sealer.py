@@ -1,26 +1,27 @@
 from __future__ import annotations
-import hashlib, io
+import hashlib
+import io
 
 try:
-    from pyhanko.sign import signers, fields
-    from pyhanko.sign.fields import SigFieldSpec
-    from pyhanko_certvalidator import CertificateValidator
+    from pyhanko.sign import signers, fields  # noqa: F401
+    from pyhanko.sign.fields import SigFieldSpec  # noqa: F401
+    from pyhanko_certvalidator import CertificateValidator  # noqa: F401
     PYHANKO_AVAILABLE = True
 except ImportError:
     PYHANKO_AVAILABLE = False
 
 try:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
+    from reportlab.lib.pagesizes import letter  # noqa: F401
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # noqa: F401
+    from reportlab.lib.units import inch  # noqa: F401
+    from reportlab.lib import colors  # noqa: F401
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle  # noqa: F401
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
 try:
-    from pypdf import PdfWriter, PdfReader
+    from pypdf import PdfWriter, PdfReader  # noqa: F401
     PYPDF_AVAILABLE = True
 except ImportError:
     try:
@@ -73,7 +74,8 @@ class PDFSealer:
         }
 
     def _attempt_pyhanko_seal(self, pdf_bytes: bytes, signer_name: str, signer_email: str) -> bytes:
-        import tempfile, os
+        import tempfile
+        import os
         from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
         from pyhanko.sign import signers as ph_signers
         from pyhanko.sign.fields import append_signature_field, SigFieldSpec

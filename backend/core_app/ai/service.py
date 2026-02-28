@@ -16,7 +16,7 @@ class AiService:
         self.client = OpenAI(api_key=settings.openai_api_key)
 
     def chat(self, *, system: str, user: str, max_tokens: int | None = None) -> tuple[str, dict[str, Any]]:
-        settings = get_settings()
+        get_settings()
         start = time.time()
         create_kwargs: dict[str, Any] = {
             "model": "gpt-4o-mini",

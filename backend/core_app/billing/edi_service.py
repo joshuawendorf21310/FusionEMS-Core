@@ -18,14 +18,14 @@ from core_app.services.domination_service import DominationService
 logger = logging.getLogger(__name__)
 
 try:
-    import pyx12
-    import pyx12.x12context
+    import pyx12  # noqa: F401
+    import pyx12.x12context  # noqa: F401
     PYX12_AVAILABLE = True
 except ImportError:
     PYX12_AVAILABLE = False
 
 try:
-    from linuxforhealth.x12.io import X12ModelReader
+    from linuxforhealth.x12.io import X12ModelReader  # noqa: F401
     LFH_AVAILABLE = True
 except ImportError:
     LFH_AVAILABLE = False

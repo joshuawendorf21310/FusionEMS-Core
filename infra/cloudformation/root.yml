@@ -111,7 +111,6 @@ Resources:
 
   DataStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: NetworkStack
     Properties:
       TemplateURL: data.yml
       Parameters:
@@ -198,9 +197,6 @@ Resources:
 
   BillingStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - DataStack
-      - NetworkStack
     Properties:
       TemplateURL: billing.yml
       Parameters:
@@ -219,11 +215,7 @@ Resources:
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - DataStack
-      - CognitoStack
-      - S3Stack
       - WafStack
-      - BillingStack
     Properties:
       TemplateURL: compute.yml
       Parameters:
@@ -266,18 +258,12 @@ Resources:
 
   WafAlbAssociation:
     Type: AWS::WAFv2::WebACLAssociation
-    DependsOn:
-      - WafStack
-      - ComputeStack
     Properties:
       ResourceArn: !GetAtt ComputeStack.Outputs.AlbArn
       WebACLArn: !GetAtt WafStack.Outputs.WebAclArn
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - ComputeStack
-      - AcmStack
     Properties:
       TemplateURL: edge.yml
       Parameters:
@@ -296,7 +282,6 @@ Resources:
 
   ObservabilityStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: ComputeStack
     Properties:
       TemplateURL: observability.yml
       Parameters:

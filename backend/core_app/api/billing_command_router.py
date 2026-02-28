@@ -310,7 +310,7 @@ async def batch_resubmit(
         if not claim:
             results.append({"claim_id": str(claim_id), "status": "not_found"})
             continue
-        updated = await svc.update(
+        await svc.update(
             table="claims",
             tenant_id=current.tenant_id,
             record_id=claim["id"],
@@ -473,7 +473,7 @@ async def billing_alerts(
     if len(denied) > 50:
         alerts.append({"type": "high_denial_volume", "count": len(denied), "severity": "high"})
     overdue_links = svc.repo("patient_payment_links").list(tenant_id=current.tenant_id, limit=1000)
-    overdue = [l for l in overdue_links if l.get("data", {}).get("status") == "overdue"]
+    overdue = [lnk for lnk in overdue_links if lnk.get("data", {}).get("status") == "overdue"]
     if overdue:
         alerts.append({"type": "overdue_payments", "count": len(overdue), "severity": "medium"})
     return {"alerts": alerts, "total": len(alerts), "as_of": datetime.now(timezone.utc).isoformat()}

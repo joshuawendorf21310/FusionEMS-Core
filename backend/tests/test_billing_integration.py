@@ -15,8 +15,6 @@ import hmac
 import json
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -161,7 +159,6 @@ class TestStripeSignatureVerification:
 
     def test_valid_signature_passes(self):
         """Verify real HMAC construction — does NOT patch construct_event."""
-        import stripe
         from core_app.payments.stripe_service import StripeConfig, verify_webhook_signature
 
         body = self._make_event()

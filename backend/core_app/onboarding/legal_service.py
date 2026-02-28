@@ -1,5 +1,7 @@
 from __future__ import annotations
-import hashlib, io, uuid
+import hashlib
+import io
+import uuid
 from datetime import datetime, timezone
 
 from core_app.services.domination_service import DominationService
@@ -27,7 +29,7 @@ class LegalService:
     ) -> dict:
         import asyncio
 
-        packet_id = str(uuid.uuid4())
+        str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
 
         loop = asyncio.get_event_loop()
@@ -218,7 +220,7 @@ class LegalService:
             from reportlab.lib.units import inch
             from reportlab.lib import colors
             from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-            from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+            from reportlab.lib.enums import TA_CENTER  # noqa: F401
 
             buffer = io.BytesIO()
             doc = SimpleDocTemplate(
@@ -231,7 +233,7 @@ class LegalService:
             )
 
             DARK_NAVY = colors.HexColor("#0f1720")
-            ACCENT = colors.HexColor("#1a9dff")
+            colors.HexColor("#1a9dff")
             LIGHT_GRAY = colors.HexColor("#c8d0d8")
             WHITE = colors.white
             styles = getSampleStyleSheet()
@@ -628,9 +630,9 @@ class LegalService:
                 f"4 0 obj\n<< /Length {text_len} >>\nstream\n"
             ).encode("utf-8")
             trailer = (
-                f"\nendstream\nendobj\n"
-                f"xref\n0 5\n0000000000 65535 f\n"
-                f"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n9\n%%EOF\n"
+                "\nendstream\nendobj\n"
+                "xref\n0 5\n0000000000 65535 f\n"
+                "trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n9\n%%EOF\n"
             ).encode("utf-8")
             return b"".join(lines) + page_stream + text_content + trailer
 

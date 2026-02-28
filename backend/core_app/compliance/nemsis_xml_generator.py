@@ -136,7 +136,6 @@ def _format_nemsis_time(val: Any) -> str:
 def validate_nemsis_xml(xml_bytes: bytes) -> dict[str, Any]:
     try:
         ET.fromstring(xml_bytes)
-        errors = []
         root = ET.fromstring(xml_bytes)
 
         def check_element(elem, path=""):

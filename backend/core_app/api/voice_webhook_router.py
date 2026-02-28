@@ -290,7 +290,6 @@ async def telnyx_voice_webhook(
     to_number: str = ep.get("to", "") or ep.get("call_leg_id", "")
     from_number: str = ep.get("from", "")
 
-    correlation_id = f"voice:{call_control_id}:{event_id}"
     logger.info(
         "telnyx_voice event_type=%s call_control_id=%s event_id=%s",
         event_type, call_control_id, event_id,

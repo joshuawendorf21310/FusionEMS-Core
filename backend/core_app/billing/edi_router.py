@@ -148,7 +148,7 @@ async def submit_batch_sftp(
 ):
     if current.role not in ("founder", "admin", "billing"):
         raise HTTPException(status_code=403, detail="Forbidden")
-    svc = DominationService(db, get_event_publisher())
+    DominationService(db, get_event_publisher())
     repo = DominationRepository(db, table="edi_artifacts")
     batch = repo.get(tenant_id=current.tenant_id, record_id=batch_id)
     if not batch:

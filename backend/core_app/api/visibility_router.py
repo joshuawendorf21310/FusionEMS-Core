@@ -426,7 +426,7 @@ async def validate_secure_link(
     db: Session = Depends(db_session_dependency),
 ):
     links = _svc(db).repo("visibility_secure_links").list(tenant_id=current.tenant_id)
-    match = next((l for l in links if l.get("data", {}).get("token") == token), None)
+    match = next((lnk for lnk in links if lnk.get("data", {}).get("token") == token), None)
     if not match:
         return {"valid": False, "reason": "not_found"}
     d = match.get("data", {})
@@ -673,7 +673,7 @@ async def compliance_lock_status(
     db: Session = Depends(db_session_dependency),
 ):
     locks = _svc(db).repo("visibility_compliance_locks").list(tenant_id=current.tenant_id)
-    active_locks = [l for l in locks if l.get("data", {}).get("active")]
+    active_locks = [lk for lk in locks if lk.get("data", {}).get("active")]
     return {"locked": bool(active_locks), "active_locks": len(active_locks), "locks": active_locks}
 
 
@@ -884,7 +884,7 @@ async def visibility_dashboard(
     approvals = svc.repo("visibility_approval_requests").list(tenant_id=current.tenant_id)
     active_rules = [r for r in rules if r.get("data", {}).get("status") == "active"]
     pending_approvals = [a for a in approvals if a.get("data", {}).get("status") == "pending"]
-    active_locks = [l for l in locks if l.get("data", {}).get("active")]
+    active_locks = [lk for lk in locks if lk.get("data", {}).get("active")]
     return {
         "total_rules": len(rules),
         "active_rules": len(active_rules),
@@ -1240,7 +1240,7 @@ async def live_validate_policy(
     warnings = []
     if not policy.get("rule_name"):
         errors.append("rule_name is required")
-    if not policy.get("action") in ("show", "mask", "deny"):
+    if policy.get("action") not in ("show", "mask", "deny"):
         errors.append("action must be one of: show, mask, deny")
     if not policy.get("fields"):
         warnings.append("No fields specified; rule will have no effect")

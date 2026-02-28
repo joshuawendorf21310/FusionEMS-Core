@@ -329,7 +329,7 @@ async def payment_webhook(
     if not account_id_str or amount_cents <= 0:
         return {"status": "ignored"}
     try:
-        account_id = uuid.UUID(account_id_str)
+        uuid.UUID(account_id_str)
     except ValueError:
         return {"status": "invalid_account_id"}
     system_tenant = _os.environ.get("SYSTEM_TENANT_ID", "00000000-0000-0000-0000-000000000000")
@@ -339,12 +339,6 @@ async def payment_webhook(
         system_tenant_uuid = uuid.UUID(system_tenant)
     except ValueError:
         system_tenant_uuid = uuid.UUID("00000000-0000-0000-0000-000000000000")
-
-    accounts = svc.repo("ar_accounts").list(tenant_id=system_tenant_uuid, limit=1)
-    account = None
-    all_accs = []
-    tenants_repo = svc.repo("ar_accounts")
-    all_accs_global = tenants_repo.list(tenant_id=system_tenant_uuid, limit=1)
 
     payment = await svc.create(
         table="ar_payments",

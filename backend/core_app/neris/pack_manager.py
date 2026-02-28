@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: E402
 
 """
 NERIS Pack Manager.
@@ -7,15 +7,15 @@ Pulls the ulfsri/neris-framework repo zip from GitHub, stores raw files in S3,
 records neris_packs + neris_pack_files rows via DominationService.
 """
 
-import os
-import uuid
-from datetime import datetime, timezone
-from typing import Any
+import os  # noqa: E402
+import uuid  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+from typing import Any  # noqa: E402
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session  # noqa: E402
 
-from core_app.services.domination_service import DominationService
-from core_app.services.event_publisher import EventPublisher
+from core_app.services.domination_service import DominationService  # noqa: E402
+from core_app.services.event_publisher import EventPublisher  # noqa: E402
 
 
 GITHUB_ZIP_URL = "https://github.com/{repo}/archive/{ref}.zip"
@@ -114,12 +114,12 @@ class NERISPackManager:
 
 
 def _enqueue_pack_import(*, pack_id: str, repo: str, ref: str, name: str, tenant_id: str, actor_user_id: str) -> None:
-    import json
-    import boto3
+    import json  # noqa: E402
+    import boto3  # noqa: E402
     queue_url = os.environ.get("NERIS_PACK_IMPORT_QUEUE_URL", "")
     if not queue_url:
         return
-    import logging as _logging
+    import logging as _logging  # noqa: E402
     _log = _logging.getLogger(__name__)
     try:
         sqs = boto3.client("sqs")

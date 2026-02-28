@@ -118,7 +118,7 @@ async def legal_packet_create(payload: dict[str, Any], db: Session = Depends(db_
     application_id = str(payload.get("application_id", "")).strip()
     signer_name = str(payload.get("signer_name", "")).strip()
     signer_email = str(payload.get("signer_email", "")).strip()
-    signer_title = str(payload.get("signer_title", "")).strip()
+    str(payload.get("signer_title", "")).strip()
 
     if not application_id:
         raise HTTPException(status_code=422, detail="application_id is required")

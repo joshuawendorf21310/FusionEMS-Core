@@ -123,7 +123,7 @@ async def recalculate_roi(
     existing_inputs = record.get("data", {}).get("inputs", {})
     merged_inputs = {**existing_inputs, **body}
     new_outputs = compute_roi(merged_inputs)
-    updated = await svc.update(
+    await svc.update(
         table="roi_funnel_scenarios",
         tenant_id=current.tenant_id,
         record_id=record["id"],
@@ -227,8 +227,6 @@ async def generate_proposal(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    scenario = svc.repo("roi_funnel_scenarios").list(tenant_id=current.tenant_id, limit=1)
-    expiration_date = datetime.now(timezone.utc).isoformat()
     proposal = await svc.create(
         table="proposals",
         tenant_id=current.tenant_id,

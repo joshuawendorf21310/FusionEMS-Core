@@ -266,7 +266,7 @@ class NEMSISValidator:
         ]
 
         for element_id, rule_id, plain_msg, tech_msg, source, hint in checks:
-            local = element_id.split(".")[-1] if "." in element_id else element_id
+            element_id.split(".")[-1] if "." in element_id else element_id
             parent_local = element_id.split(".")[0] if "." in element_id else element_id
             val = _find_text(root, parent_local + "." + (element_id.split(".")[-1]))
             if val is None:

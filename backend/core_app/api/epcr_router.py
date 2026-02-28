@@ -170,7 +170,7 @@ async def cancel_chart(
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     updated_data = {**rec["data"], "chart_status": ChartStatus.CANCELLED.value}
-    updated_rec = await _svc(db).update(
+    await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
@@ -368,7 +368,7 @@ async def sync_chart(
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     local_chart = payload.get("local_chart", {})
-    device_id = payload.get("device_id", "")
+    payload.get("device_id", "")
     conflict_policy_str = payload.get("conflict_policy", "last_write_wins")
     try:
         policy = SyncConflictPolicy(conflict_policy_str)
@@ -377,7 +377,7 @@ async def sync_chart(
     server_chart_data = rec.get("data", {})
     resolved, conflict_notes = SyncEngine().resolve_conflict(local_chart, server_chart_data, policy)
     resolved["updated_at"] = datetime.now(timezone.utc).isoformat()
-    updated_rec = await _svc(db).update(
+    await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,

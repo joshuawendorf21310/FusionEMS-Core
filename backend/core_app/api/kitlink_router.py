@@ -616,7 +616,7 @@ def confirm_ocr_job(job_id: str, payload: dict[str, Any], db: Session = Depends(
     job = next((r for r in rows if str(r["id"]) == job_id), None)
     if not job:
         raise HTTPException(status_code=404, detail="OCR job not found")
-    updated = repo.update("kitlink_ocr_jobs", tid, uuid.UUID(job_id), {
+    repo.update("kitlink_ocr_jobs", tid, uuid.UUID(job_id), {
         **job["data"],
         "status": "confirmed",
         "confirmed_data": payload,

@@ -5,16 +5,16 @@ from datetime import datetime, timezone
 from typing import Any
 
 try:
-    from weasyprint import HTML, CSS
+    from weasyprint import HTML, CSS  # noqa: F401
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
 
 try:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib import colors
-    from reportlab.lib.units import inch
-    from reportlab.platypus import (
+    from reportlab.lib.pagesizes import letter  # noqa: F401
+    from reportlab.lib import colors  # noqa: F401
+    from reportlab.lib.units import inch  # noqa: F401
+    from reportlab.platypus import (  # noqa: F401
         SimpleDocTemplate,
         Paragraph,
         Spacer,
@@ -23,7 +23,7 @@ try:
         HRFlowable,
         PageBreak,
     )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # noqa: F401
     RL_AVAILABLE = True
 except ImportError:
     RL_AVAILABLE = False

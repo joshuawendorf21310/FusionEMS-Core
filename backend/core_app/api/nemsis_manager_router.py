@@ -628,7 +628,7 @@ async def version_lock_status(
     db: Session = Depends(db_session_dependency),
 ):
     locks = _svc(db).repo("nemsis_version_locks").list(tenant_id=current.tenant_id)
-    active = next((l for l in locks if l.get("data", {}).get("active")), None)
+    active = next((lk for lk in locks if lk.get("data", {}).get("active")), None)
     return {
         "locked_version": active.get("data", {}).get("version") if active else NEMSIS_351_SCHEMA["version"],
         "lock_active": bool(active),
@@ -686,7 +686,7 @@ async def normalize_data(
 ):
     record = payload.get("record", {})
     normalized = dict(record)
-    bool_to_yn = {True: "Yes", False: "No", 1: "Yes", 0: "No"}
+    bool_to_yn = {True: "Yes", False: "No"}
     for elem_id in ["eDispatch.02"]:
         if elem_id in normalized and normalized[elem_id] in bool_to_yn:
             normalized[elem_id] = bool_to_yn[normalized[elem_id]]
@@ -1001,7 +1001,7 @@ async def get_lineage(
     db: Session = Depends(db_session_dependency),
 ):
     lineage = _svc(db).repo("nemsis_data_lineage").list(tenant_id=current.tenant_id)
-    incident_lineage = [l for l in lineage if l.get("data", {}).get("incident_id") == incident_id]
+    incident_lineage = [rec for rec in lineage if rec.get("data", {}).get("incident_id") == incident_id]
     return {"incident_id": incident_id, "lineage": incident_lineage, "count": len(incident_lineage)}
 
 
@@ -1393,8 +1393,8 @@ async def provider_ranking(
 ):
     lineage = _svc(db).repo("nemsis_data_lineage").list(tenant_id=current.tenant_id)
     provider_counts: dict[str, int] = {}
-    for l in lineage:
-        actor = str(l.get("data", {}).get("actor", "unknown"))
+    for rec in lineage:
+        actor = str(rec.get("data", {}).get("actor", "unknown"))
         provider_counts[actor] = provider_counts.get(actor, 0) + 1
     ranked = sorted(provider_counts.items(), key=lambda x: x[1], reverse=True)
     return {"providers": [{"provider_id": p, "submissions": c} for p, c in ranked]}

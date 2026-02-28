@@ -184,7 +184,6 @@ async def compliance_status(
     require_role(current, ["founder", "admin"])
     from core_app.services.domination_service import DominationService
     from core_app.services.event_publisher import get_event_publisher
-    from sqlalchemy.orm import Session as _Session
 
     svc = DominationService(db, get_event_publisher())
 

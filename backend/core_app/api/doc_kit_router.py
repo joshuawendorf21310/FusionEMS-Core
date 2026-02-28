@@ -106,7 +106,7 @@ async def generate_claim_cover_sheet(
         raise HTTPException(status_code=403, detail="Forbidden")
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
-    settings = get_settings()
+    get_settings()
 
     case = svc.repo("billing_cases").get(tenant_id=current.tenant_id, record_id=claim_id)
     if not case:
@@ -177,7 +177,7 @@ async def get_latest_claim_cover_sheet(
 ):
     if current.role not in ("founder", "admin", "billing", "agency_admin", "ems"):
         raise HTTPException(status_code=403, detail="Forbidden")
-    svc = DominationService(db, get_event_publisher())
+    DominationService(db, get_event_publisher())
 
     repo = DominationRepository(db, table="documents")
     all_docs = repo.list_raw_by_field("doc_type", "claim_cover_sheet", limit=200)
