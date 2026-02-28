@@ -26,7 +26,6 @@ Resources:
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
-      RoleName: !Sub '${AppName}-${Env}-acm-cert-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -64,7 +63,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub '${AppName}-${Env}-acm-cert-provisioner'
-      Runtime: python3.12
+      Runtime: python3.11
       Handler: index.handler
       Timeout: 900
       MemorySize: 256
@@ -73,8 +72,9 @@ Resources:
         ZipFile: |
           import json
           import time
+          import urllib.request
+          import urllib.error
           import boto3
-          import urllib3
 
           acm = boto3.client("acm", region_name="us-east-1")
           r53 = boto3.client("route53")
@@ -83,14 +83,22 @@ Resources:
               body = json.dumps({
                   "Status": status,
                   "Reason": reason or f"See CloudWatch Log Stream: {context.log_group_name}/{context.log_stream_name}",
-                  "PhysicalResourceId": data.get("CertificateArn", event.get("PhysicalResourceId", "none")),
+                  "PhysicalResourceId": (data or {}).get("CertificateArn", event.get("PhysicalResourceId", "none")),
                   "StackId": event["StackId"],
                   "RequestId": event["RequestId"],
                   "LogicalResourceId": event["LogicalResourceId"],
                   "Data": data or {},
               }).encode("utf-8")
-              http = urllib3.PoolManager()
-              http.request("PUT", event["ResponseURL"], body=body, headers={"content-type": ""})
+              try:
+                  req = urllib.request.Request(
+                      event["ResponseURL"],
+                      data=body,
+                      method="PUT",
+                      headers={"content-type": ""},
+                  )
+                  urllib.request.urlopen(req)
+              except Exception as exc:
+                  print(f"WARNING: send_response failed – CloudFormation will not receive a callback: {exc}")
 
           def handler(event, context):
               print(json.dumps(event))
