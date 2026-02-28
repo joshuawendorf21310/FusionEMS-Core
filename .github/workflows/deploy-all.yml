@@ -1,10 +1,10 @@
-name: Deploy All (Orchestrator)
+name: Deploy All (Production Orchestrator)
 
 on:
   workflow_dispatch:
     inputs:
       env:
-        description: 'Environment (dev/prod)'
+        description: "Environment (dev/prod)"
         required: true
         default: dev
         type: choice
@@ -12,11 +12,9 @@ on:
           - dev
           - prod
       skip_infra:
-        description: 'Skip infrastructure deploy'
         type: boolean
         default: false
       skip_bootstrap:
-        description: 'Skip bootstrap seeding'
         type: boolean
         default: false
 
@@ -24,12 +22,15 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: release-${{ inputs.env }}
+  cancel-in-progress: false
+
 jobs:
 
   # ==============================
   # Infrastructure
   # ==============================
-
   deploy-infra:
     if: ${{ inputs.skip_infra != true }}
     uses: ./.github/workflows/deploy-infra.yml
@@ -40,10 +41,13 @@ jobs:
   # ==============================
   # Backend
   # ==============================
-
   deploy-backend:
     needs: [deploy-infra]
-    if: ${{ inputs.skip_infra == true || needs.deploy-infra.result == 'success' }}
+    if: >
+      ${{
+        inputs.skip_infra == true ||
+        needs.deploy-infra.result == 'success'
+      }}
     uses: ./.github/workflows/deploy-backend.yml
     with:
       env: ${{ inputs.env }}
@@ -52,10 +56,9 @@ jobs:
   # ==============================
   # Frontend
   # ==============================
-
   deploy-frontend:
-    needs: [deploy-infra]
-    if: ${{ inputs.skip_infra == true || needs.deploy-infra.result == 'success' }}
+    needs: [deploy-backend]
+    if: ${{ needs.deploy-backend.result == 'success' }}
     uses: ./.github/workflows/deploy-frontend.yml
     with:
       env: ${{ inputs.env }}
@@ -64,13 +67,11 @@ jobs:
   # ==============================
   # Bootstrap
   # ==============================
-
   deploy-bootstrap:
-    needs: [deploy-backend, deploy-frontend]
+    needs: [deploy-frontend]
     if: >
       ${{
         inputs.skip_bootstrap != true &&
-        needs.deploy-backend.result == 'success' &&
         needs.deploy-frontend.result == 'success'
       }}
     uses: ./.github/workflows/deploy-bootstrap.yml
@@ -83,9 +84,9 @@ jobs:
   # ==============================
   # Summary
   # ==============================
-
   summary:
     needs:
+      - deploy-infra
       - deploy-backend
       - deploy-frontend
       - deploy-bootstrap
@@ -96,6 +97,7 @@ jobs:
         run: |
           echo "=== Deploy All Summary ==="
           echo "Environment: ${{ inputs.env }}"
+          echo "Infra: ${{ needs.deploy-infra.result || 'skipped' }}"
           echo "Backend: ${{ needs.deploy-backend.result }}"
           echo "Frontend: ${{ needs.deploy-frontend.result }}"
           echo "Bootstrap: ${{ needs.deploy-bootstrap.result || 'skipped' }}"
