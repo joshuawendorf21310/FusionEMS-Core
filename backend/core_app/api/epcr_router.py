@@ -512,8 +512,6 @@ async def submit_chart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    from sqlalchemy import text as _text
-
     rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
@@ -564,9 +562,7 @@ async def submit_chart(
     corr_id = getattr(request.state, "correlation_id", None)
     svc = _svc(db)
 
-    # --- Transactional write ---
     try:
-        # 1. Update epcr_charts (optimistic lock via version)
         updated_rec = await svc.update(
             table="epcr_charts",
             tenant_id=current.tenant_id,
@@ -580,11 +576,11 @@ async def submit_chart(
                 "sha256_submitted": sha256_hex,
             },
             correlation_id=corr_id,
+            commit=False,
         )
         if updated_rec is None:
             raise HTTPException(status_code=409, detail="Version conflict — retry")
 
-        # 2. Append epcr_event_log
         event_entry = SyncEngine().create_event_log_entry(
             chart_id=chart_id,
             action="chart_submitted",
@@ -597,10 +593,10 @@ async def submit_chart(
             actor_user_id=current.user_id,
             data={**event_entry, "chart_id": chart_id, "sha256_submitted": sha256_hex},
             correlation_id=corr_id,
+            commit=False,
         )
 
-        # 3. audit_log is written by DominationService.update above automatically
-        # (no extra call needed — AuditService.log_mutation is called inside svc.update)
+        db.commit()
 
     except HTTPException:
         db.rollback()

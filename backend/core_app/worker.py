@@ -104,12 +104,12 @@ async def _dlq_processing_loop(stop: asyncio.Event) -> None:
     await asyncio.sleep(60)
     while not stop.is_set():
         try:
-            from core_app.db.session import get_db_session
+            from core_app.db.session import get_db_session_ctx
             from core_app.services.domination_service import DominationService
             from core_app.services.event_publisher import NoOpEventPublisher
             from core_app.services.webhook_dlq import process_dlq_batch
 
-            with get_db_session() as db:
+            with get_db_session_ctx() as db:
                 svc = DominationService(db, NoOpEventPublisher())
                 from core_app.api.lob_webhook_router import handle_lob_event
                 from core_app.api.stripe_webhook_router import handle_stripe_event

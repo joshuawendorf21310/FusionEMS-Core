@@ -126,7 +126,7 @@ def _sweep_table(
         f"UPDATE {table} "
         f"SET deleted_at = NOW() "
         f"WHERE deleted_at IS NULL "
-        f"AND {date_col} < :cutoff"
+        f"AND COALESCE({date_col}, created_at) < :cutoff"
         f"{where_legal} "
         f"RETURNING id"
     )
@@ -174,8 +174,8 @@ async def _epcr_retention_loop(stop: asyncio.Event) -> None:
     await asyncio.sleep(300)
     while not stop.is_set():
         try:
-            from core_app.db.session import get_db_session
-            await run_retention_sweep(get_db_session)
+            from core_app.db.session import get_db_session_ctx
+            await run_retention_sweep(get_db_session_ctx)
         except Exception as exc:
             logger.error("Retention loop error: %s", exc)
         await asyncio.sleep(SWEEP_INTERVAL_SECONDS)

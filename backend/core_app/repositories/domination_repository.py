@@ -72,6 +72,25 @@ TENANT_TABLES: set[str] = {
     "nemsis_submission_results","nemsis_submission_status_history",
 }
 
+_TABLE_TYPED_COLUMNS: dict[str, frozenset[str]] = {
+    "epcr_charts": frozenset({
+        "status", "submitted_at", "deleted_at", "legal_hold",
+        "schema_version", "sha256_submitted", "case_id",
+    }),
+    "nemsis_submission_results": frozenset({
+        "chart_id", "state_code", "status", "deleted_at",
+    }),
+    "nemsis_submission_status_history": frozenset({
+        "submission_id", "chart_id", "to_status", "deleted_at",
+    }),
+    "audit_logs": frozenset({
+        "deleted_at",
+    }),
+    "epcr_event_log": frozenset({
+        "deleted_at",
+    }),
+}
+
 
 class DominationRepository:
     def __init__(self, db: Session, *, table: str) -> None:
@@ -79,33 +98,41 @@ class DominationRepository:
             raise ValueError(f"Unsupported table: {table}")
         self.db = db
         self.table = table
+        self._typed_cols = _TABLE_TYPED_COLUMNS.get(table, frozenset())
 
-    def create(self, *, tenant_id: uuid.UUID, data: dict[str, Any]) -> dict[str, Any]:
-        sql = text(f"""
-            INSERT INTO {self.table} (tenant_id, data)
-            VALUES (:tenant_id, CAST(:data AS jsonb))
-            RETURNING id, tenant_id, data, version, created_at, updated_at
-        """)
-        row = self.db.execute(sql, {"tenant_id": str(tenant_id), "data": json_dumps(data)}).mappings().one()
+    def create(self, *, tenant_id: uuid.UUID, data: dict[str, Any], typed_columns: dict[str, Any] | None = None) -> dict[str, Any]:
+        cols = ["tenant_id", "data"]
+        vals = [":tenant_id", "CAST(:data AS jsonb)"]
+        params: dict[str, Any] = {"tenant_id": str(tenant_id), "data": json_dumps(data)}
+        if typed_columns:
+            for col, val in typed_columns.items():
+                cols.append(col)
+                param_key = f"_tc_{col}"
+                vals.append(f":{param_key}")
+                params[param_key] = val
+        sql = text(
+            f"INSERT INTO {self.table} ({', '.join(cols)}) "
+            f"VALUES ({', '.join(vals)}) "
+            f"RETURNING *"
+        )
+        row = self.db.execute(sql, params).mappings().one()
         return dict(row)
 
     def get(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID) -> dict[str, Any] | None:
-        sql = text(f"""
-            SELECT id, tenant_id, data, version, created_at, updated_at, deleted_at
-            FROM {self.table}
-            WHERE tenant_id = :tenant_id AND id = :id AND deleted_at IS NULL
-        """)
+        sql = text(
+            f"SELECT * FROM {self.table} "
+            f"WHERE tenant_id = :tenant_id AND id = :id AND deleted_at IS NULL"
+        )
         row = self.db.execute(sql, {"tenant_id": str(tenant_id), "id": str(record_id)}).mappings().first()
         return dict(row) if row else None
 
     def list(self, *, tenant_id: uuid.UUID, limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
-        sql = text(f"""
-            SELECT id, tenant_id, data, version, created_at, updated_at
-            FROM {self.table}
-            WHERE tenant_id = :tenant_id AND deleted_at IS NULL
-            ORDER BY created_at DESC
-            LIMIT :limit OFFSET :offset
-        """)
+        sql = text(
+            f"SELECT * FROM {self.table} "
+            f"WHERE tenant_id = :tenant_id AND deleted_at IS NULL "
+            f"ORDER BY created_at DESC "
+            f"LIMIT :limit OFFSET :offset"
+        )
         rows = self.db.execute(sql, {"tenant_id": str(tenant_id), "limit": limit, "offset": offset}).mappings().all()
         return [dict(r) for r in rows]
 
@@ -115,18 +142,12 @@ class DominationRepository:
         if not self._SAFE_FIELD_RE.match(field):
             raise ValueError(f"Invalid field name: {field!r}")
         sql = text(
-            f"SELECT id, tenant_id, data, version, created_at, updated_at "
-            f"FROM {self.table} "
+            f"SELECT * FROM {self.table} "
             f"WHERE data->>:field = :value AND deleted_at IS NULL "
             f"ORDER BY created_at DESC LIMIT :limit"
         )
         rows = self.db.execute(sql, {"field": field, "value": value, "limit": limit}).mappings().all()
         return [dict(r) for r in rows]
-
-    _TYPED_COLUMNS = frozenset({
-        "status", "submitted_at", "deleted_at", "legal_hold",
-        "schema_version", "sha256_submitted", "case_id",
-    })
 
     def update(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID, expected_version: int, patch: dict[str, Any]) -> dict[str, Any] | None:
         typed_sets: list[str] = []
@@ -137,15 +158,21 @@ class DominationRepository:
         }
 
         jsonb_patch = {}
+        full_data_replace = None
         for key, val in patch.items():
-            if key in self._TYPED_COLUMNS:
+            if key == "data":
+                full_data_replace = val
+            elif key in self._typed_cols:
                 typed_sets.append(f"{key} = :_tc_{key}")
                 params[f"_tc_{key}"] = val
             else:
                 jsonb_patch[key] = val
 
         set_clauses = ["version = version + 1", "updated_at = now()"]
-        if jsonb_patch:
+        if full_data_replace is not None:
+            set_clauses.append("data = CAST(:data_replace AS jsonb)")
+            params["data_replace"] = json_dumps(full_data_replace)
+        elif jsonb_patch:
             set_clauses.append("data = data || CAST(:patch AS jsonb)")
             params["patch"] = json_dumps(jsonb_patch)
         set_clauses.extend(typed_sets)
@@ -155,17 +182,17 @@ class DominationRepository:
             f"SET {', '.join(set_clauses)} "
             f"WHERE tenant_id = :tenant_id AND id = :id "
             f"AND deleted_at IS NULL AND version = :expected_version "
-            f"RETURNING id, tenant_id, data, version, created_at, updated_at"
+            f"RETURNING *"
         )
         row = self.db.execute(sql, params).mappings().first()
         return dict(row) if row else None
 
     def soft_delete(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID) -> bool:
-        sql = text(f"""
-            UPDATE {self.table}
-            SET deleted_at = now(), updated_at = now()
-            WHERE tenant_id = :tenant_id AND id = :id AND deleted_at IS NULL
-        """)
+        sql = text(
+            f"UPDATE {self.table} "
+            f"SET deleted_at = now(), updated_at = now() "
+            f"WHERE tenant_id = :tenant_id AND id = :id AND deleted_at IS NULL"
+        )
         res = self.db.execute(sql, {"tenant_id": str(tenant_id), "id": str(record_id)})
         return res.rowcount > 0
 

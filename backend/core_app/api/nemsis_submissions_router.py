@@ -34,6 +34,7 @@ Status machine:
 """
 from __future__ import annotations
 
+import base64 as _b64
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -144,6 +145,7 @@ async def create_submission(
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data=sub_data,
+        typed_columns={"chart_id": chart_id, "state_code": state_code, "status": "pending"},
         correlation_id=corr,
     )
 
@@ -162,6 +164,7 @@ async def create_submission(
             "s3_key": xml_s3_key,
             "note": "submission_created",
         },
+        typed_columns={"submission_id": str(sub_rec["id"]), "chart_id": chart_id, "to_status": "pending"},
         correlation_id=corr,
     )
 
@@ -177,8 +180,9 @@ async def list_submissions(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    all_recs = _svc(db).repo("nemsis_submission_results").list(tenant_id=current.tenant_id)
-    return [r for r in all_recs if r.get("data", {}).get("chart_id") == chart_id]
+    return _svc(db).repo("nemsis_submission_results").list_raw_by_field(
+        "chart_id", chart_id, limit=200,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -197,11 +201,9 @@ async def get_submission(
     if rec is None:
         raise HTTPException(status_code=404, detail="Submission not found")
 
-    history = [
-        h for h in svc.repo("nemsis_submission_status_history").list(tenant_id=current.tenant_id)
-        if h.get("data", {}).get("submission_id") == submission_id
-    ]
-    history.sort(key=lambda h: h.get("data", {}).get("occurred_at", ""))
+    history = svc.repo("nemsis_submission_status_history").list_raw_by_field(
+        "submission_id", submission_id, limit=200,
+    )
 
     return {**rec, "status_history": history}
 
@@ -255,9 +257,9 @@ async def accept_submission(
         note_key="accept_note",
         s3_patch_keys=("response_s3_bucket", "response_s3_key"),
         timestamp_field="accepted_at",
+        commit=False,
     )
 
-    # Lock chart on acceptance
     svc = _svc(db)
     sub_rec = svc.repo("nemsis_submission_results").get(
         tenant_id=current.tenant_id, record_id=submission_id
@@ -282,7 +284,10 @@ async def accept_submission(
                     expected_version=chart_rec["version"],
                     patch={"data": locked_data, "status": ChartStatus.LOCKED.value},
                     correlation_id=getattr(request.state, "correlation_id", None),
+                    commit=False,
                 )
+
+    db.commit()
     return result
 
 
@@ -378,6 +383,7 @@ async def retry_submission(
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data=sub_data,
+        typed_columns={"chart_id": chart_id, "state_code": orig_data.get("state_code", ""), "status": "pending"},
         correlation_id=corr,
     )
 
@@ -396,6 +402,7 @@ async def retry_submission(
             "s3_bucket": xml_s3_bucket,
             "s3_key": xml_s3_key,
         },
+        typed_columns={"submission_id": str(new_rec["id"]), "chart_id": chart_id, "to_status": "pending"},
         correlation_id=corr,
     )
 
@@ -418,6 +425,7 @@ async def _advance_status(
     note_key: str,
     s3_patch_keys: tuple[str, str],
     timestamp_field: str,
+    commit: bool = True,
 ) -> dict:
     svc = _svc(db)
     corr = getattr(request.state, "correlation_id", None)
@@ -447,7 +455,7 @@ async def _advance_status(
     s3_key_str: str | None = None
     response_content: bytes | None = payload.get("response_xml_bytes")
     if isinstance(response_content, str):
-        response_content = response_content.encode()
+        response_content = _b64.b64decode(response_content)
     if response_content:
         s3_key_str = (
             f"nemsis-submissions/{current.tenant_id}/{chart_id}/{submission_id}/{s3_subfolder}.xml"
@@ -477,6 +485,7 @@ async def _advance_status(
         expected_version=rec["version"],
         patch={"data": patch_data, "status": to_status},
         correlation_id=corr,
+        commit=False,
     )
     if updated is None:
         raise HTTPException(status_code=409, detail="Version conflict")
@@ -496,7 +505,12 @@ async def _advance_status(
             "s3_bucket": s3_bucket,
             "s3_key": s3_key_str,
         },
+        typed_columns={"submission_id": submission_id, "chart_id": chart_id, "to_status": to_status},
         correlation_id=corr,
+        commit=False,
     )
+
+    if commit:
+        db.commit()
 
     return updated
