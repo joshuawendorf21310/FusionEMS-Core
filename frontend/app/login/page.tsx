@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { login } from '@/services/auth';
@@ -18,6 +19,17 @@ export default function LoginPage() {
   const [password, setPassword]   = useState('');
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
+
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const ssoError = searchParams.get('error');
+    if (ssoError === 'entra_denied') {
+      setError('Microsoft login was denied. Contact your administrator.');
+    } else if (ssoError === 'no_account') {
+      setError('No FusionEMS account is linked to that Microsoft identity.');
+    }
+  }, [searchParams]);
 
   const handleTabChange = useCallback((key: TabKey) => {
     setActiveTab(key);

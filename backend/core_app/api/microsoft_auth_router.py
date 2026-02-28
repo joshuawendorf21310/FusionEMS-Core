@@ -34,7 +34,34 @@ _USERINFO_URL = "https://graph.microsoft.com/v1.0/me"
 _LOGOUT_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/logout"
 _SCOPES = "openid email profile User.Read"
 
-_active_states: dict[str, bool] = {}
+_STATE_TTL_SECONDS = 600
+
+
+def _sign_state(nonce: str) -> str:
+    import hmac
+    s = get_settings()
+    payload = f"{nonce}|{int(__import__('time').time())}"
+    sig = hmac.new(s.jwt_secret_key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}|{sig}"
+
+
+def _verify_state(state: str) -> bool:
+    import hmac
+    import time as _time
+    s = get_settings()
+    parts = state.split("|")
+    if len(parts) != 3:
+        return False
+    nonce, ts_str, sig = parts
+    try:
+        ts = int(ts_str)
+    except ValueError:
+        return False
+    if abs(_time.time() - ts) > _STATE_TTL_SECONDS:
+        return False
+    expected_payload = f"{nonce}|{ts_str}"
+    expected_sig = hmac.new(s.jwt_secret_key.encode(), expected_payload.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(sig, expected_sig)
 
 
 def _check_entra_configured() -> None:
@@ -50,8 +77,7 @@ def _check_entra_configured() -> None:
 def microsoft_login() -> RedirectResponse:
     _check_entra_configured()
     s = get_settings()
-    state = hashlib.sha256(secrets.token_bytes(32)).hexdigest()
-    _active_states[state] = True
+    state = _sign_state(secrets.token_hex(16))
     params = {
         "client_id": s.graph_client_id,
         "response_type": "code",
@@ -92,6 +118,12 @@ def _exchange_code(code: str) -> dict[str, Any]:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to exchange authorization code with Entra",
         ) from exc
+    except urllib.error.URLError as exc:
+        logger.error("entra_token_exchange_network_error reason=%s", exc.reason)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Network error contacting Entra token endpoint",
+        ) from exc
 
 
 def _fetch_userinfo(access_token: str) -> dict[str, Any]:
@@ -110,6 +142,12 @@ def _fetch_userinfo(access_token: str) -> dict[str, Any]:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to fetch user profile from Microsoft Graph",
         ) from exc
+    except urllib.error.URLError as exc:
+        logger.error("entra_userinfo_network_error reason=%s", exc.reason)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Network error contacting Microsoft Graph",
+        ) from exc
 
 
 @router.get("/callback")
@@ -127,16 +165,15 @@ def microsoft_callback(
     if error:
         logger.warning("entra_callback_error error=%s desc=%s", error, error_description)
         return RedirectResponse(
-            url=f"{s.microsoft_post_login_url}?error=entra_denied",
+            url=f"{s.microsoft_post_logout_url}?error=entra_denied",
             status_code=302,
         )
 
     if not code:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing authorization code")
 
-    if state not in _active_states:
+    if not _verify_state(state):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired state parameter")
-    _active_states.pop(state, None)
 
     token_data = _exchange_code(code)
     ms_access_token: str = token_data.get("access_token", "")
@@ -153,7 +190,7 @@ def microsoft_callback(
     if user is None:
         logger.warning("entra_login_no_matching_user email=%s", email)
         return RedirectResponse(
-            url=f"{s.microsoft_post_login_url}?error=no_account",
+            url=f"{s.microsoft_post_logout_url}?error=no_account",
             status_code=302,
         )
 

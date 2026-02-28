@@ -71,6 +71,27 @@ Parameters:
     Type: String
     Description: S3 bucket where packaged nested templates are stored
 
+  GraphTenantId:
+    Type: String
+    Default: ''
+    Description: Azure AD tenant ID for Microsoft Graph
+
+  GraphClientId:
+    Type: String
+    Default: ''
+    Description: Entra app client ID
+
+  GraphClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Entra app client secret
+
+  GraphFounderEmail:
+    Type: String
+    Default: ''
+    Description: Founder mailbox UPN for Graph API calls
+
 Conditions:
   HasGitHubOrg: !Not [!Equals [!Ref GitHubOrg, '']]
 
@@ -119,6 +140,10 @@ Resources:
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
+        GraphTenantId: !Ref GraphTenantId
+        GraphClientId: !Ref GraphClientId
+        GraphClientSecret: !Ref GraphClientSecret
+        GraphFounderEmail: !Ref GraphFounderEmail
       Tags:
         - Key: Environment
           Value: !Ref Env
@@ -250,6 +275,10 @@ Resources:
         NERISExportQueueUrl: !GetAtt BillingStack.Outputs.NERISExportQueueUrl
         S3BucketDocs: !GetAtt S3Stack.Outputs.DocsBucketName
         S3BucketExports: !GetAtt S3Stack.Outputs.ExportsBucketName
+        GraphTenantId: !Ref GraphTenantId
+        GraphClientId: !Ref GraphClientId
+        GraphClientSecret: !Ref GraphClientSecret
+        GraphFounderEmail: !Ref GraphFounderEmail
       Tags:
         - Key: Environment
           Value: !Ref Env

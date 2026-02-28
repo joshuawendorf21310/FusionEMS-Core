@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { MetricPlate, PlateCard } from '@/components/ui/PlateCard';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -87,6 +88,17 @@ export default function DashboardPage() {
 
     return () => { cancelled = true; };
   }, []);
+
+  const [searchParams] = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      localStorage.setItem('token', token);
+      router.replace('/dashboard');
+    }
+  }, [searchParams, router]);
 
   return (
     <AppShell>
