@@ -7,6 +7,7 @@ on:
         description: "Environment (dev/prod)"
         required: true
         type: string
+
   workflow_dispatch:
     inputs:
       env:
@@ -14,9 +15,13 @@ on:
         required: true
         default: dev
         type: choice
-        options: [dev, prod]
+        options:
+          - dev
+          - prod
+
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - "infra/**"
 
@@ -25,12 +30,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-infra-${{ github.ref }}
+  group: deploy-infra-${{ inputs.env || github.ref }}
   cancel-in-progress: false
 
 jobs:
   deploy-infra:
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -50,33 +56,24 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Resolve and validate environment
-        id: resolve-env
+      - name: Validate required variables
         run: |
           set -euo pipefail
-          if [[ "${CFN_STACK_NAME}" == *-prod* ]]; then
-            DERIVED_ENV=prod
-          else
-            DERIVED_ENV=dev
-          fi
-          EFFECTIVE_ENV="${CFN_ENV:-$DERIVED_ENV}"
-          if [[ "${CFN_STACK_NAME}" == *-prod* && "$EFFECTIVE_ENV" != "prod" ]]; then
-            echo "Auto-correcting: stack name contains 'prod', overriding CFN_ENV from '$EFFECTIVE_ENV' to 'prod'"
-            EFFECTIVE_ENV=prod
-          fi
-          echo "CFN_ENV=$EFFECTIVE_ENV" >> "$GITHUB_ENV"
-          echo "Effective environment: $EFFECTIVE_ENV"
-          if [[ -z "${CFN_HOSTED_ZONE_ID}" ]]; then echo "CFN_HOSTED_ZONE_ID is required"; exit 1; fi
-          if [[ -z "${CFN_ARTIFACTS_BUCKET}" ]]; then echo "CFN_ARTIFACTS_BUCKET is required"; exit 1; fi
 
-      - name: Validate all CloudFormation templates
+          for var in CFN_STACK_NAME CFN_HOSTED_ZONE_ID CFN_ARTIFACTS_BUCKET; do
+            if [ -z "${!var}" ]; then
+              echo "$var is required"
+              exit 1
+            fi
+          done
+
+      - name: Validate CloudFormation templates
         run: |
           set -euo pipefail
           for template in infra/cloudformation/*.yml; do
             echo "Validating $template..."
             aws cloudformation validate-template --template-body "file://$template"
           done
-          echo "All templates valid."
 
       - name: Package CloudFormation
         run: |
@@ -84,108 +81,13 @@ jobs:
           aws cloudformation package \
             --template-file infra/cloudformation/root.yml \
             --s3-bucket "$CFN_ARTIFACTS_BUCKET" \
-            --s3-prefix "cfn/$(date +%Y%m%d)-${GITHUB_SHA:0:8}" \
+            --s3-prefix "cfn/${GITHUB_SHA:0:8}" \
             --output-template-file packaged.root.yml
-
-      - name: Clean up broken stack if needed
-        run: |
-          set -euo pipefail
-
-          dump_delete_failed_events() {
-            aws cloudformation describe-stack-events \
-              --stack-name "${CFN_STACK_NAME}" \
-              --max-items 50 \
-              --query 'StackEvents[?ResourceStatus==`DELETE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
-              --output table 2>/dev/null || true
-          }
-
-          delete_stack_hard() {
-            echo "Deleting stack (normal)..."
-            aws cloudformation delete-stack --stack-name "${CFN_STACK_NAME}" || true
-
-            if ! aws cloudformation wait stack-delete-complete --stack-name "${CFN_STACK_NAME}" --cli-read-timeout 600; then
-              STATUS2=$(aws cloudformation describe-stacks \
-                --stack-name "${CFN_STACK_NAME}" \
-                --query 'Stacks[0].StackStatus' \
-                --output text 2>/dev/null || echo "DOES_NOT_EXIST")
-              echo "Delete wait failed. Current status: $STATUS2"
-
-              if [[ "$STATUS2" == "DELETE_FAILED" ]]; then
-                echo "DELETE_FAILED events:"
-                dump_delete_failed_events
-
-                # Hard gate: fail immediately if AccessDenied — permissions must be fixed first
-                ACCESS_DENIED=$(aws cloudformation describe-stack-events \
-                  --stack-name "${CFN_STACK_NAME}" \
-                  --max-items 50 \
-                  --query 'StackEvents[?ResourceStatus==`DELETE_FAILED`].ResourceStatusReason' \
-                  --output text 2>/dev/null || echo "")
-                if echo "$ACCESS_DENIED" | grep -qiE "AccessDenied|not authorized|is not authorized"; then
-                  echo "HARD GATE: AccessDenied during stack deletion."
-                  echo "Fix IAM permissions on the deploy role before retrying."
-                  echo "Run: aws cloudformation deploy --stack-name fusionems-bootstrap-iam --template-file infra/cloudformation/bootstrap-iam.yml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides RoleName=FusionEMSQuantum-GitHubDeployRole GitHubOrg=joshuawendorf21310"
-                  exit 1
-                fi
-
-                echo "Retrying with FORCE_DELETE_STACK..."
-                aws cloudformation delete-stack \
-                  --stack-name "${CFN_STACK_NAME}" \
-                  --deletion-mode FORCE_DELETE_STACK
-
-                aws cloudformation wait stack-delete-complete \
-                  --stack-name "${CFN_STACK_NAME}" \
-                  --cli-read-timeout 900 || true
-              fi
-            fi
-
-            FINAL=$(aws cloudformation describe-stacks \
-              --stack-name "${CFN_STACK_NAME}" \
-              --query 'Stacks[0].StackStatus' \
-              --output text 2>/dev/null || echo "DOES_NOT_EXIST")
-            echo "Final stack status after delete attempts: $FINAL"
-
-            if [[ "$FINAL" != "DOES_NOT_EXIST" ]]; then
-              echo "Stack was not deleted successfully (status=$FINAL). Failing fast."
-              exit 1
-            fi
-
-            echo "Stack fully deleted."
-          }
-
-          STATUS=$(aws cloudformation describe-stacks \
-            --stack-name "${CFN_STACK_NAME}" \
-            --query 'Stacks[0].StackStatus' \
-            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
-          echo "Current stack status: $STATUS"
-
-          case "$STATUS" in
-            DOES_NOT_EXIST)
-              echo "Stack does not exist. Proceeding."
-              ;;
-            ROLLBACK_COMPLETE|ROLLBACK_FAILED|CREATE_FAILED|UPDATE_ROLLBACK_FAILED|UPDATE_ROLLBACK_COMPLETE|IMPORT_ROLLBACK_FAILED|DELETE_FAILED)
-              echo "Stack is $STATUS — deleting before redeploy..."
-              aws cloudformation continue-update-rollback --stack-name "${CFN_STACK_NAME}" 2>/dev/null || true
-              delete_stack_hard
-              ;;
-            *)
-              echo "Stack is in $STATUS — not auto-deleting."
-              ;;
-          esac
-
-          AFTER_STATUS=$(aws cloudformation describe-stacks \
-            --stack-name "${CFN_STACK_NAME}" \
-            --query 'Stacks[0].StackStatus' \
-            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
-          if [[ "$AFTER_STATUS" == "DOES_NOT_EXIST" ]]; then
-            echo "Cleaning up any orphaned SES identity before fresh stack creation..."
-            aws sesv2 delete-email-identity --email-identity "${CFN_ROOT_DOMAIN_NAME}" 2>/dev/null \
-              && echo "Deleted orphaned SES identity." \
-              || echo "No SES identity to clean up."
-          fi
 
       - name: Deploy infrastructure stack
         run: |
           set -euo pipefail
+
           aws cloudformation deploy \
             --stack-name "${CFN_STACK_NAME}" \
             --template-file packaged.root.yml \
@@ -197,44 +99,20 @@ jobs:
               ApiDomainName="${CFN_API_DOMAIN_NAME}" \
               HostedZoneId="${CFN_HOSTED_ZONE_ID}" \
               AlertEmail="${CFN_ALERT_EMAIL:-founder@fusionemsquantum.com}" \
-              ImageTagFrontend="${GITHUB_SHA}" \
-              ImageTagBackend="${GITHUB_SHA}" \
               NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}" \
             --tags \
               Environment="${CFN_ENV}" \
-              GitSha="${GITHUB_SHA}" \
-              DeployedAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              GitSha="${GITHUB_SHA}"
 
       - name: Dump stack events on failure
         if: failure()
         run: |
-          dump_nested_events() {
-            local stack="$1"
-            local indent="$2"
-            aws cloudformation describe-stack-events \
-              --stack-name "$stack" \
-              --max-items 50 \
-              --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`||ResourceStatus==`UPDATE_FAILED`||ResourceStatus==`DELETE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
-              --output table 2>/dev/null || true
-
-            # Recurse into nested stacks that failed
-            local failed_nested
-            failed_nested=$(aws cloudformation describe-stack-events \
-              --stack-name "$stack" \
-              --max-items 50 \
-              --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`&&ResourceType==`AWS::CloudFormation::Stack`].PhysicalResourceId' \
-              --output text 2>/dev/null || true)
-            for nested_arn in $failed_nested; do
-              [ -z "$nested_arn" ] && continue
-              local nested_name
-              nested_name=$(echo "$nested_arn" | sed 's|.*stack/||;s|/.*||')
-              echo "${indent}  ↳ Nested stack: $nested_name"
-              dump_nested_events "$nested_arn" "${indent}  "
-            done
-          }
-
-          echo "=== Root stack events ==="
-          dump_nested_events "${CFN_STACK_NAME}" ""
+          echo "=== Stack Failure Events ==="
+          aws cloudformation describe-stack-events \
+            --stack-name "${CFN_STACK_NAME}" \
+            --max-items 50 \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`||ResourceStatus==`UPDATE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
+            --output table || true
 
       - name: Output stack results
         if: success()
