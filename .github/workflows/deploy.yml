@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       infra: ${{ steps.changes.outputs.infra }}
       backend: ${{ steps.changes.outputs.backend }}
