@@ -6,6 +6,11 @@ on:
     paths:
       - "backend/**"
       - "opa/**"
+  workflow_call:
+    inputs:
+      env:
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -154,16 +159,18 @@ jobs:
       # --------------------------------
       - name: Package template
         run: |
+          set -euo pipefail
           aws cloudformation package \
             --template-file infra/cloudformation/root.yml \
             --s3-bucket "$CFN_ARTIFACTS_BUCKET" \
+            --s3-prefix "cfn/${GITHUB_SHA:0:8}" \
             --output-template-file packaged.yml
 
       # --------------------------------
       # CHANGE SET
       # --------------------------------
       - name: Create change set
-        id: cs
+        id: changeset
         run: |
           set -euo pipefail
           CHANGE_SET="backend-${GITHUB_SHA:0:8}"
@@ -200,10 +207,11 @@ jobs:
           echo "name=$CHANGE_SET" >> $GITHUB_OUTPUT
 
       - name: Execute change set
+        if: steps.changeset.outputs.name != ''
         run: |
           aws cloudformation execute-change-set \
             --stack-name "$CFN_STACK_NAME" \
-            --change-set-name "${{ steps.cs.outputs.name }}"
+            --change-set-name "${{ steps.changeset.outputs.name }}"
 
           aws cloudformation wait stack-update-complete \
             --stack-name "$CFN_STACK_NAME"
