@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 const LINKS = [
-  { href: '/founder/pwa/crewlink', label: 'CrewLink', desc: 'Mobile field app for crew, ePCR entry, and real-time sync', color: '#3b82f6' },
-  { href: '/founder/pwa/scheduling', label: 'Scheduling', desc: 'Mobile shift scheduling and crew coverage interface', color: '#3b82f6' },
-  { href: '/founder/pwa/deployment', label: 'Deployment Monitor', desc: 'PWA version control, device updates, feature flags', color: '#3b82f6' },
-  { href: '/founder/pwa/device-analytics', label: 'Device Analytics', desc: 'Device fleet health, OS distribution, usage heatmap', color: '#3b82f6' },
+  { href: '/founder/pwa/crewlink', label: 'CrewLink', desc: 'Mobile field app for crew, ePCR entry, and real-time sync', color: 'var(--color-system-fleet)' },
+  { href: '/founder/pwa/scheduling', label: 'Scheduling', desc: 'Mobile shift scheduling and crew coverage interface', color: 'var(--color-system-fleet)' },
+  { href: '/founder/pwa/deployment', label: 'Deployment Monitor', desc: 'PWA version control, device updates, feature flags', color: 'var(--color-system-fleet)' },
+  { href: '/founder/pwa/device-analytics', label: 'Device Analytics', desc: 'Device fleet health, OS distribution, usage heatmap', color: 'var(--color-system-fleet)' },
 ];
 
 export default function PWAPage() {

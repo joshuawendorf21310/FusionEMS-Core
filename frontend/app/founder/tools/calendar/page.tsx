@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -125,7 +125,7 @@ export default function FounderCalendarPage() {
                 style={{
                   background: selectedDay === i ? 'rgba(255,107,26,0.1)' : 'rgba(255,255,255,0.02)',
                   border: i === TODAY_INDEX
-                    ? '1px solid #ff6b1a'
+                    ? '1px solid var(--color-brand-orange)'
                     : selectedDay === i
                     ? '1px solid rgba(255,107,26,0.4)'
                     : '1px solid rgba(255,255,255,0.06)',
@@ -134,7 +134,7 @@ export default function FounderCalendarPage() {
                 <span className="text-[10px] font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-widest">{day}</span>
                 <span
                   className="text-lg font-bold mt-0.5"
-                  style={{ color: i === TODAY_INDEX ? '#ff6b1a' : 'rgba(255,255,255,0.85)' }}
+                  style={{ color: i === TODAY_INDEX ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.85)' }}
                 >
                   {WEEK_DATES[i]}
                 </span>
@@ -248,7 +248,7 @@ export default function FounderCalendarPage() {
             <div className="flex items-end">
               <button
                 className="px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-sm transition-all hover:brightness-110"
-                style={{ background: '#ff6b1a', color: '#000' }}
+                style={{ background: 'var(--color-brand-orange)', color: '#000' }}
                 onClick={() => setForm({ title: '', date: '', category: 'Compliance', priority: 'high' })}
               >
                 Add Event

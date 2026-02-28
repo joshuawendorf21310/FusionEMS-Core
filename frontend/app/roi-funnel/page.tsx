@@ -11,7 +11,7 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
       className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
-      <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
+      <div className="text-2xl font-bold" style={{ color: color ?? "var(--color-text-primary)" }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.35)] mt-1">{sub}</div>}
     </motion.div>
   );
@@ -25,14 +25,14 @@ function Slider({ label, min, max, value, onChange, unit }: { label: string; min
         <span className="font-semibold text-text-primary">{value.toLocaleString()}{unit}</span>
       </div>
       <input type="range" min={min} max={max} value={value} onChange={e => onChange(Number(e.target.value))}
-        className="w-full accent-[#ff6b1a] h-1.5 cursor-pointer" />
+        className="w-full accent-[var(--color-brand-orange)] h-1.5 cursor-pointer" />
     </div>
   );
 }
 
 const PLANS = [
-  { key: "standard", label: "Standard", price: 499, color: "#94a3b8" },
-  { key: "professional", label: "Professional", price: 899, color: "#22d3ee" },
+  { key: "standard", label: "Standard", price: 499, color: "var(--color-text-muted)" },
+  { key: "professional", label: "Professional", price: 899, color: "var(--color-status-info)" },
   { key: "enterprise", label: "Enterprise", price: 1499, color: "var(--q-orange)" },
 ];
 
@@ -117,9 +117,9 @@ export default function ROIFunnelPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard label="Total Events" value={fmtN(funnelData.total_events)} />
-        <KpiCard label="Active Subscriptions" value={fmtN(kpis.active_subscriptions)} color="#4caf50" />
-        <KpiCard label="Proposal → Paid" value={kpis.proposal_to_paid_conversion_pct != null ? `${kpis.proposal_to_paid_conversion_pct}%` : "—"} color="#22d3ee" />
-        <KpiCard label="Pipeline Value" value={fmt$(pipeline.pending_pipeline_cents)} color="#ff9800" sub="Pending proposals" />
+        <KpiCard label="Active Subscriptions" value={fmtN(kpis.active_subscriptions)} color="var(--color-status-active)" />
+        <KpiCard label="Proposal → Paid" value={kpis.proposal_to_paid_conversion_pct != null ? `${kpis.proposal_to_paid_conversion_pct}%` : "—"} color="var(--color-status-info)" />
+        <KpiCard label="Pipeline Value" value={fmt$(pipeline.pending_pipeline_cents)} color="var(--color-status-warning)" sub="Pending proposals" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -151,7 +151,7 @@ export default function ROIFunnelPage() {
           <div className="border border-border-subtle rounded-sm p-3 space-y-2 text-[11px]">
             <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.45)]">Est. {years}yr Revenue Uplift</span><span className="font-semibold text-status-active">${(est3yrRevenue * 0.08 / 100).toLocaleString()}</span></div>
             <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.45)]">Subscription Cost ({years}yr)</span><span className="font-semibold text-status-warning">${(subscriptionCost / 100).toLocaleString()}</span></div>
-            <div className="flex justify-between border-t border-border-subtle pt-2"><span className="text-[rgba(255,255,255,0.6)]">Estimated ROI</span><span className="text-xl font-black" style={{ color: roi >= 0 ? "#4caf50" : "#e53935" }}>{roi}%</span></div>
+            <div className="flex justify-between border-t border-border-subtle pt-2"><span className="text-[rgba(255,255,255,0.6)]">Estimated ROI</span><span className="text-xl font-black" style={{ color: roi >= 0 ? "var(--color-status-active)" : "var(--color-brand-red)" }}>{roi}%</span></div>
           </div>
 
           <button onClick={handleCalculate} disabled={loading}
@@ -179,7 +179,7 @@ export default function ROIFunnelPage() {
             <div className="space-y-1.5">
               {(funnelData.funnel?.length ? funnelData.funnel : stageOrder.map(s => ({ stage: s, count: 0 }))).map((stage, i) => {
                 const pct = maxCount > 0 ? (stage.count / maxCount) * 100 : 0;
-                const colors = ["#ff6b1a","#ff9800","#f59e0b","#22d3ee","#3b82f6","#4caf50"];
+                const colors = ["var(--color-brand-orange)","var(--color-status-warning)","var(--color-status-warning)","var(--color-status-info)","var(--color-system-fleet)","var(--color-status-active)"];
                 const c = colors[i % colors.length];
                 return (
                   <div key={stage.stage}>
@@ -202,9 +202,9 @@ export default function ROIFunnelPage() {
             <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Revenue Pipeline</div>
             <div className="space-y-2 text-[11px]">
               {[
-                { label: "Pending Pipeline", value: fmt$(pipeline.pending_pipeline_cents), color: "#ff9800" },
-                { label: "Active MRR", value: fmt$(pipeline.active_mrr_cents), color: "#4caf50" },
-                { label: "Pipeline / MRR Ratio", value: pipeline.pipeline_to_mrr_ratio != null ? `${pipeline.pipeline_to_mrr_ratio}x` : "—", color: "#22d3ee" },
+                { label: "Pending Pipeline", value: fmt$(pipeline.pending_pipeline_cents), color: "var(--color-status-warning)" },
+                { label: "Active MRR", value: fmt$(pipeline.active_mrr_cents), color: "var(--color-status-active)" },
+                { label: "Pipeline / MRR Ratio", value: pipeline.pipeline_to_mrr_ratio != null ? `${pipeline.pipeline_to_mrr_ratio}x` : "—", color: "var(--color-status-info)" },
               ].map(item => (
                 <div key={item.label} className="flex justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
                   <span className="text-[rgba(255,255,255,0.5)]">{item.label}</span>

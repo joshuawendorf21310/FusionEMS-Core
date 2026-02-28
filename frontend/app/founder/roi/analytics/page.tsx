@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -48,7 +48,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -78,7 +78,7 @@ const AGENCIES = [
 
 const PAYER_MIX = [
   { label: 'Medicare', pct: 40, color: 'var(--color-status-info)' },
-  { label: 'Medicaid', pct: 30, color: '#a855f7' },
+  { label: 'Medicaid', pct: 30, color: 'var(--color-system-compliance)' },
   { label: 'Commercial', pct: 20, color: 'var(--q-green)' },
   { label: 'Self-Pay', pct: 10, color: 'var(--q-yellow)' },
 ];
@@ -141,11 +141,11 @@ export default function ROIAnalyticsPage() {
 
       {/* MODULE 1 — Revenue KPIs */}
       <div className="grid grid-cols-5 gap-3">
-        <StatCard label="MRR" value="$4,320" color="#22d3ee" />
-        <StatCard label="ARR" value="$51,840" color="#22d3ee" />
-        <StatCard label="Active Agencies" value={4} color="#fff" />
-        <StatCard label="Avg Rev/Agency" value="$1,080/mo" color="#fff" />
-        <StatCard label="MRR Growth (30d)" value="+$1,440" color="#4caf50" sub="vs prior 30d" />
+        <StatCard label="MRR" value="$4,320" color="var(--color-status-info)" />
+        <StatCard label="ARR" value="$51,840" color="var(--color-status-info)" />
+        <StatCard label="Active Agencies" value={4} color="var(--color-text-primary)" />
+        <StatCard label="Avg Rev/Agency" value="$1,080/mo" color="var(--color-text-primary)" />
+        <StatCard label="MRR Growth (30d)" value="+$1,440" color="var(--color-status-active)" sub="vs prior 30d" />
       </div>
 
       {/* MODULE 2 — Agency Revenue Breakdown */}
@@ -213,7 +213,7 @@ export default function ROIAnalyticsPage() {
               <input
                 type="range" min={50} max={1000} step={10} value={calcVolume}
                 onChange={(e) => setCalcVolume(Number(e.target.value))}
-                className="w-full accent-[#ff9800]"
+                className="w-full accent-[var(--color-status-warning)]"
               />
             </div>
             <div>
@@ -223,20 +223,20 @@ export default function ROIAnalyticsPage() {
               <input
                 type="range" min={200} max={1200} step={10} value={calcRate}
                 onChange={(e) => setCalcRate(Number(e.target.value))}
-                className="w-full accent-[#ff9800]"
+                className="w-full accent-[var(--color-status-warning)]"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <StatCard label="Gross Revenue" value={`${fmt(grossRev)}/mo`} color="rgba(255,255,255,0.7)" />
-            <StatCard label="FusionEMS Fee" value={`${fmt(fusionFee)}/mo`} color="#ff9800" />
-            <StatCard label="Competitor Fee (8%)" value={`${fmt(competitorFee)}/mo`} color="#e53935" />
-            <StatCard label="FusionEMS Saving" value={`${fusionSaving >= 0 ? '+' : ''}${fmt(fusionSaving)}/mo`} color={fusionSaving >= 0 ? '#4caf50' : '#e53935'} />
+            <StatCard label="FusionEMS Fee" value={`${fmt(fusionFee)}/mo`} color="var(--color-status-warning)" />
+            <StatCard label="Competitor Fee (8%)" value={`${fmt(competitorFee)}/mo`} color="var(--color-brand-red)" />
+            <StatCard label="FusionEMS Saving" value={`${fusionSaving >= 0 ? '+' : ''}${fmt(fusionSaving)}/mo`} color={fusionSaving >= 0 ? 'var(--color-status-active)' : 'var(--color-brand-red)'} />
           </div>
         </div>
         <div className="p-3 bg-bg-input border border-[rgba(76,175,80,0.15)] rounded-sm flex items-center justify-between">
           <span className="text-[11px] text-[rgba(255,255,255,0.5)]">5-Year Cumulative Saving</span>
-          <span className="text-[15px] font-bold" style={{ color: fiveYrSaving >= 0 ? '#4caf50' : '#e53935' }}>
+          <span className="text-[15px] font-bold" style={{ color: fiveYrSaving >= 0 ? 'var(--color-status-active)' : 'var(--color-brand-red)' }}>
             {fiveYrSaving >= 0 ? '+' : ''}{fmt(fiveYrSaving)}
           </span>
         </div>
@@ -254,7 +254,7 @@ export default function ROIAnalyticsPage() {
                   {g.mrr === 0 ? '$0' : `$${g.mrr.toLocaleString()}`}
                 </span>
               </div>
-              <ProgressBar value={g.mrr} max={5000} color="#22d3ee" />
+              <ProgressBar value={g.mrr} max={5000} color="var(--color-status-info)" />
             </div>
           ))}
           <div className="flex justify-between text-[9px] text-[rgba(255,255,255,0.2)] mt-1">
@@ -292,10 +292,10 @@ export default function ROIAnalyticsPage() {
                           <ProgressBar
                             value={r.agencies}
                             max={r.potential}
-                            color={r.agencies === 0 ? '#ff9800' : '#22d3ee'}
+                            color={r.agencies === 0 ? 'var(--color-status-warning)' : 'var(--color-status-info)'}
                           />
                         </div>
-                        <span className="text-[10px] font-mono w-10 text-right" style={{ color: r.agencies === 0 ? '#ff9800' : '#22d3ee' }}>
+                        <span className="text-[10px] font-mono w-10 text-right" style={{ color: r.agencies === 0 ? 'var(--color-status-warning)' : 'var(--color-status-info)' }}>
                           {pct.toFixed(1)}%
                         </span>
                       </div>
@@ -304,7 +304,7 @@ export default function ROIAnalyticsPage() {
                       {r.agencies === 0 && (
                         <button
                           className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
-                          style={{ background: '#ff980010', color: 'var(--q-yellow)', border: '1px solid #ff980025' }}
+                          style={{ background: 'color-mix(in srgb, var(--color-status-warning) 6%, transparent)', color: 'var(--q-yellow)', border: '1px solid color-mix(in srgb, var(--color-status-warning) 14%, transparent)' }}
                         >
                           Target
                         </button>
@@ -328,7 +328,7 @@ export default function ROIAnalyticsPage() {
                 <div className="text-center w-12">
                   <div
                     className="text-[18px] font-bold"
-                    style={{ color: a.score >= 80 ? '#4caf50' : a.score >= 60 ? '#ff9800' : '#e53935' }}
+                    style={{ color: a.score >= 80 ? 'var(--color-status-active)' : a.score >= 60 ? 'var(--color-status-warning)' : 'var(--color-brand-red)' }}
                   >
                     {a.score}
                   </div>
@@ -340,7 +340,7 @@ export default function ROIAnalyticsPage() {
                     <ProgressBar
                       value={a.score}
                       max={100}
-                      color={a.score >= 80 ? '#4caf50' : '#ff9800'}
+                      color={a.score >= 80 ? 'var(--color-status-active)' : 'var(--color-status-warning)'}
                     />
                   </div>
                 </div>

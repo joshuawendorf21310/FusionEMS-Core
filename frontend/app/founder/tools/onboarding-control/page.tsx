@@ -60,7 +60,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
@@ -90,7 +90,7 @@ const STATUS_MAP: Record<AppStatus, { label: string; color: string; bg: string; 
   provisioning:  { label: 'PROVISIONING',  color: 'var(--q-yellow)',               bg: 'rgba(255,152,0,0.12)',  pulse: true },
   active:        { label: 'ACTIVE',        color: 'var(--q-green)',               bg: 'rgba(76,175,80,0.12)' },
   failed:        { label: 'FAILED',        color: 'var(--q-red)',               bg: 'rgba(229,57,53,0.12)' },
-  revoked:       { label: 'REVOKED',       color: '#b71c1c',               bg: 'rgba(183,28,28,0.18)' },
+  revoked:       { label: 'REVOKED',       color: 'var(--color-brand-red)',               bg: 'color-mix(in srgb, var(--color-brand-red) 18%, transparent)' },
 };
 
 const LEGAL_MAP: Record<string, { label: string; color: string; bg: string }> = {
@@ -139,7 +139,7 @@ function ConfirmModal({
   title,
   message,
   confirmLabel,
-  confirmColor = '#ff6b1a',
+  confirmColor = 'var(--color-brand-orange)',
   children,
   onConfirm,
   onCancel,
@@ -178,7 +178,7 @@ function ConfirmModal({
           <button
             onClick={() => onConfirm(extra || undefined)}
             className="h-8 px-4 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all hover:brightness-110"
-            style={{ background: confirmColor, color: confirmColor === '#e53935' || confirmColor === '#b71c1c' ? '#fff' : '#000' }}
+            style={{ background: confirmColor, color: confirmColor === 'var(--color-brand-red)' ? 'var(--color-text-primary)' : '#000' }}
           >
             {confirmLabel}
           </button>
@@ -294,7 +294,7 @@ function DetailDrawer({
                     <div className="flex flex-col items-center pt-1">
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ background: i === 0 ? '#ff6b1a' : 'rgba(255,255,255,0.2)' }}
+                        style={{ background: i === 0 ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.2)' }}
                       />
                       {i < signEvents.length - 1 && (
                         <span
@@ -546,7 +546,7 @@ export default function OnboardingControlPage() {
               : `Permanently revoke access for "${confirm.app.agency_name}"? This action cannot be undone.`
           }
           confirmLabel={confirm.type === 'provision' ? 'Provision' : 'Revoke'}
-          confirmColor={confirm.type === 'provision' ? '#ff6b1a' : '#e53935'}
+          confirmColor={confirm.type === 'provision' ? 'var(--color-brand-orange)' : 'var(--color-brand-red)'}
           onCancel={() => setConfirm(null)}
           onConfirm={(extra) => {
             if (!actionLoading) handleConfirm(extra);
@@ -702,7 +702,7 @@ export default function OnboardingControlPage() {
                         <Tooltip label="Send Legal">
                           <IconBtn
                             onClick={() => doResendLegal(app)}
-                            color="#ff9800"
+                            color="var(--color-status-warning)"
                             bg="rgba(255,152,0,0.1)"
                             border="rgba(255,152,0,0.25)"
                           >
@@ -715,7 +715,7 @@ export default function OnboardingControlPage() {
                         <Tooltip label="Resend Checkout">
                           <IconBtn
                             onClick={() => doResendCheckout(app)}
-                            color="#29b6f6"
+                            color="var(--color-status-info)"
                             bg="rgba(41,182,246,0.1)"
                             border="rgba(41,182,246,0.25)"
                           >
@@ -728,7 +728,7 @@ export default function OnboardingControlPage() {
                         <Tooltip label="Manual Provision">
                           <IconBtn
                             onClick={() => doManualProvision(app)}
-                            color="#ff6b1a"
+                            color="var(--color-brand-orange)"
                             bg="rgba(255,107,26,0.1)"
                             border="rgba(255,107,26,0.25)"
                           >
@@ -741,7 +741,7 @@ export default function OnboardingControlPage() {
                         <Tooltip label="Revoke">
                           <IconBtn
                             onClick={() => doRevoke(app)}
-                            color="#e53935"
+                            color="var(--color-brand-red)"
                             bg="rgba(229,57,53,0.1)"
                             border="rgba(229,57,53,0.25)"
                           >
@@ -809,7 +809,7 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
       {show && (
         <div
           className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded-sm text-[9px] font-semibold uppercase tracking-wider whitespace-nowrap pointer-events-none z-10"
-          style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)' }}
+          style={{ background: 'var(--color-bg-input)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)' }}
         >
           {label}
         </div>

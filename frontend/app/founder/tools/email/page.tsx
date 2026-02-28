@@ -216,8 +216,8 @@ export default function FounderEmailPage() {
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <h2 className="text-sm font-bold text-text-primary">{selected.subject || '(no subject)'}</h2>
                     <div className="flex gap-2 shrink-0">
-                      {!selected.isRead && <Badge label="Unread" color="#29b6f6" />}
-                      {selected.hasAttachments && <Badge label="Attachments" color="#ff9800" />}
+                      {!selected.isRead && <Badge label="Unread" color="var(--color-status-info)" />}
+                      {selected.hasAttachments && <Badge label="Attachments" color="var(--color-status-warning)" />}
                     </div>
                   </div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.45)] space-y-0.5">
