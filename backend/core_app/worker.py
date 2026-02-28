@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
+import uuid
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -169,9 +170,10 @@ async def _generate_executive_briefing() -> None:
                 logger.warning("OpenAI briefing generation failed: %s", ai_err)
 
         await publisher.publish(
-            event_type="system.executive_briefing",
-            tenant_id="system",
-            payload=briefing,
+            "system.executive_briefing",
+            uuid.UUID(int=0),
+            uuid.UUID(int=0),
+            briefing,
         )
         logger.info("Executive briefing published.")
 

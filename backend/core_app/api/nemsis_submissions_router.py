@@ -276,7 +276,7 @@ async def accept_submission(
                     "chart_status": ChartStatus.LOCKED.value,
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }
-                await svc.update(
+                lock_result = await svc.update(
                     table="epcr_charts",
                     tenant_id=current.tenant_id,
                     actor_user_id=current.user_id,
@@ -286,6 +286,12 @@ async def accept_submission(
                     correlation_id=getattr(request.state, "correlation_id", None),
                     commit=False,
                 )
+                if lock_result is None:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Chart version conflict — could not lock chart after acceptance",
+                    )
 
     db.commit()
     return result

@@ -79,16 +79,23 @@ async def list_charts(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    all_records = _svc(db).repo("epcr_charts").list(tenant_id=current.tenant_id)
-    filtered = []
-    for rec in all_records:
-        data = rec.get("data", {})
-        if status and data.get("chart_status") != status:
-            continue
-        if mode and data.get("chart_mode") != mode:
-            continue
-        filtered.append(rec)
-    return filtered[offset: offset + limit]
+    from sqlalchemy import text
+    clauses = ["tenant_id = :tenant_id", "deleted_at IS NULL"]
+    params: dict[str, Any] = {"tenant_id": str(current.tenant_id), "limit": limit, "offset": offset}
+    if status:
+        clauses.append("data->>'chart_status' = :status")
+        params["status"] = status
+    if mode:
+        clauses.append("data->>'chart_mode' = :mode")
+        params["mode"] = mode
+    sql = text(
+        "SELECT * FROM epcr_charts "
+        f"WHERE {' AND '.join(clauses)} "
+        "ORDER BY created_at DESC "
+        "LIMIT :limit OFFSET :offset"
+    )
+    rows = db.execute(sql, params).mappings().all()
+    return [dict(r) for r in rows]
 
 
 @router.get("/charts/{chart_id}")
@@ -121,7 +128,8 @@ async def update_chart(
     score_result = CompletenessEngine().score_chart(updated_data, mode)
     updated_data["completeness_score"] = score_result["score"]
     updated_data["completeness_issues"] = [m["label"] for m in score_result["missing"]]
-    updated_rec = await _svc(db).update(
+    svc = _svc(db)
+    updated_rec = await svc.update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
@@ -129,6 +137,7 @@ async def update_chart(
         expected_version=rec["version"],
         patch={"data": updated_data},
         correlation_id=getattr(request.state, "correlation_id", None),
+        commit=False,
     )
     if updated_rec is None:
         raise HTTPException(status_code=409, detail="Version conflict")
@@ -138,13 +147,15 @@ async def update_chart(
         actor=str(current.user_id),
         field_changes={"fields": list(patch.keys())},
     )
-    await _svc(db).create(
+    await svc.create(
         table="epcr_event_log",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data={**event_entry, "chart_id": chart_id},
         correlation_id=getattr(request.state, "correlation_id", None),
+        commit=False,
     )
+    db.commit()
     return updated_rec
 
 
@@ -165,7 +176,7 @@ async def cancel_chart(
         actor_user_id=current.user_id,
         record_id=uuid.UUID(str(rec["id"])),
         expected_version=rec["version"],
-        patch={"data": updated_data},
+        patch={"data": updated_data, "status": ChartStatus.CANCELLED.value},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {"cancelled": True, "chart_id": chart_id}
@@ -638,5 +649,6 @@ async def get_event_log(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    all_entries = _svc(db).repo("epcr_event_log").list(tenant_id=current.tenant_id)
-    return [e for e in all_entries if e.get("data", {}).get("chart_id") == chart_id]
+    return _svc(db).repo("epcr_event_log").list_raw_by_field(
+        "chart_id", chart_id, tenant_id=current.tenant_id, limit=200,
+    )

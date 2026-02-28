@@ -274,12 +274,15 @@ async def sign_authorization(
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
+    rep_rec = svc.repo("authorized_reps").get(tenant_id=current.tenant_id, record_id=payload.rep_id)
+    if rep_rec is None:
+        raise HTTPException(status_code=404, detail="authorized_rep_not_found")
     await svc.update(
         table="authorized_reps",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         record_id=payload.rep_id,
-        expected_version=None,
+        expected_version=rep_rec["version"],
         patch={"status": "signed", "signed_at": signed_at},
         correlation_id=getattr(request.state, "correlation_id", None),
     )

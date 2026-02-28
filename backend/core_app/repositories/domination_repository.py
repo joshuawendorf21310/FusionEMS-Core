@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from typing import Any
@@ -61,7 +62,7 @@ TENANT_TABLES: set[str] = {
     "kitlink_ocr_jobs","kitlink_anomaly_flags","compliance_packs","compliance_check_templates",
     "compliance_inspections","compliance_findings","kitlink_wizard_state",
     "compliance_pack_versions","compliance_rules","compliance_reports","tenant_compliance_config",
-    "hems_mission_events","rep_signatures","auth_rep_sessions","authorized_reps","rep_documents","billing_cases","patient_statements",
+    "hems_mission_events","rep_signatures","patient_statements",
     "appeal_drafts","baa_signatures","billing_alert_thresholds","bulk_generation_jobs","claim_events","conversion_events","denial_predictions","device_registrations","emergency_locks","geo_alerts","global_variables","incident_postmortems","incidents","lead_scores","mobile_alerts","mobile_errors","mobile_sessions","nemsis_audit_bundles","nemsis_export_batches","nemsis_extensions","nemsis_state_rejections","ocr_captures","offline_sync_jobs","onboarding_checklists","payer_follow_ups","production_change_approvals","proposals","push_notifications","pwa_deployments","pwa_installs","pwa_manifest_updates","recovery_simulations","roi_funnel_scenarios","roi_share_links","scheduled_deliveries","self_healing_actions","self_healing_rules","shift_swaps","system_alerts","template_ab_tests","template_downloads","template_renders","template_secure_links","template_versions","user_credentials","visibility_access_alerts","visibility_anomaly_events","visibility_approval_requests","visibility_audit_log","visibility_compliance_locks","visibility_rules",
     "founder_chat_sessions","founder_chat_messages","founder_chat_runs","founder_chat_actions","voice_screen_pops","voice_alert_policies","voice_script_packs","voice_compliance_guard_events","voice_onboarding_sessions","voice_founder_busy_states","voice_callback_slots","voice_ab_tests","voice_cost_caps","voice_preferences","voice_recording_governance","voice_recording_access_log","voice_war_room_incidents","voice_human_review_queue","voice_improvement_tickets","tenant_users","support_tickets","invoices",
     "accreditation_evidence","accreditation_items","audit_logs","fax_documents","fhir_artifacts",
@@ -106,6 +107,8 @@ class DominationRepository:
         params: dict[str, Any] = {"tenant_id": str(tenant_id), "data": json_dumps(data)}
         if typed_columns:
             for col, val in typed_columns.items():
+                if col not in self._typed_cols:
+                    raise ValueError(f"Column {col!r} is not a typed column for table {self.table!r}")
                 cols.append(col)
                 param_key = f"_tc_{col}"
                 vals.append(f":{param_key}")
@@ -138,15 +141,20 @@ class DominationRepository:
 
     _SAFE_FIELD_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]{0,63}$')
 
-    def list_raw_by_field(self, field: str, value: str, *, limit: int = 50) -> list[dict[str, Any]]:
+    def list_raw_by_field(self, field: str, value: str, *, tenant_id: uuid.UUID | None = None, limit: int = 50) -> list[dict[str, Any]]:
         if not self._SAFE_FIELD_RE.match(field):
             raise ValueError(f"Invalid field name: {field!r}")
+        tenant_clause = "AND tenant_id = :tenant_id " if tenant_id else ""
         sql = text(
             f"SELECT * FROM {self.table} "
             f"WHERE data->>:field = :value AND deleted_at IS NULL "
+            f"{tenant_clause}"
             f"ORDER BY created_at DESC LIMIT :limit"
         )
-        rows = self.db.execute(sql, {"field": field, "value": value, "limit": limit}).mappings().all()
+        params: dict[str, Any] = {"field": field, "value": value, "limit": limit}
+        if tenant_id:
+            params["tenant_id"] = str(tenant_id)
+        rows = self.db.execute(sql, params).mappings().all()
         return [dict(r) for r in rows]
 
     def update(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID, expected_version: int, patch: dict[str, Any]) -> dict[str, Any] | None:
@@ -198,5 +206,4 @@ class DominationRepository:
 
 
 def json_dumps(obj: Any) -> str:
-    import json
     return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)

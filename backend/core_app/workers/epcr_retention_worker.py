@@ -128,11 +128,9 @@ def _sweep_table(
         f"WHERE deleted_at IS NULL "
         f"AND COALESCE({date_col}, created_at) < :cutoff"
         f"{where_legal} "
-        f"RETURNING id"
     )
     result = db.execute(sql, {"cutoff": cutoff})
-    rows = result.fetchall()
-    return len(rows)
+    return result.rowcount
 
 
 async def run_retention_sweep(db_session_factory: Any) -> dict[str, int]:
@@ -170,7 +168,7 @@ SWEEP_INTERVAL_SECONDS = 6 * 3600
 
 
 async def _epcr_retention_loop(stop: asyncio.Event) -> None:
-    apply_all_s3_lifecycle_policies()
+    await asyncio.get_running_loop().run_in_executor(None, apply_all_s3_lifecycle_policies)
     await asyncio.sleep(300)
     while not stop.is_set():
         try:

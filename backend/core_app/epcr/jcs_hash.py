@@ -35,6 +35,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from decimal import Decimal
 from typing import Any
 
 
@@ -57,6 +58,12 @@ def _jcs_value(value: Any) -> Any:
         return value
     if isinstance(value, int):
         return value
+    if isinstance(value, Decimal):
+        if value.is_nan() or value.is_infinite():
+            raise ValueError(f"JCS does not permit NaN or Infinity, got: {value!r}")
+        if value == value.to_integral_value():
+            return int(value)
+        return float(value)
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
             raise ValueError(f"JCS does not permit NaN or Infinity, got: {value!r}")

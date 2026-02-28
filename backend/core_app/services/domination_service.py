@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import base64
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -18,6 +20,10 @@ def _make_json_safe(obj: Any) -> Any:
         return obj.isoformat()
     if isinstance(obj, uuid.UUID):
         return str(obj)
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (bytes, memoryview)):
+        return base64.b64encode(bytes(obj)).decode("ascii")
     if isinstance(obj, dict):
         return {k: _make_json_safe(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
@@ -58,14 +64,14 @@ class DominationService:
         )
         if commit:
             self.db.commit()
-        await self.publisher.publish(
-            f"{table}.created",
-            tenant_id=tenant_id,
-            entity_id=uuid.UUID(str(rec["id"])),
-            payload=_make_json_safe({"record": rec}),
-            entity_type=table,
-            correlation_id=correlation_id,
-        )
+            await self.publisher.publish(
+                f"{table}.created",
+                tenant_id=tenant_id,
+                entity_id=uuid.UUID(str(rec["id"])),
+                payload=_make_json_safe({"record": rec}),
+                entity_type=table,
+                correlation_id=correlation_id,
+            )
         return rec
 
     async def update(
@@ -95,12 +101,12 @@ class DominationService:
         )
         if commit:
             self.db.commit()
-        await self.publisher.publish(
-            f"{table}.updated",
-            tenant_id=tenant_id,
-            entity_id=record_id,
-            payload=_make_json_safe({"record": rec}),
-            entity_type=table,
-            correlation_id=correlation_id,
-        )
+            await self.publisher.publish(
+                f"{table}.updated",
+                tenant_id=tenant_id,
+                entity_id=record_id,
+                payload=_make_json_safe({"record": rec}),
+                entity_type=table,
+                correlation_id=correlation_id,
+            )
         return rec

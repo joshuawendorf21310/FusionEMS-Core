@@ -197,20 +197,20 @@ async def submit_officeally(
             await svc.update(
                 table="edi_artifacts",
                 tenant_id=current.tenant_id,
-                entity_id=edi_row["id"],
+                record_id=uuid.UUID(str(edi_row["id"])),
                 actor_user_id=current.user_id,
                 expected_version=edi_row["version"],
-                data_patch={"status": "uploaded", "officeally_remote_path": uploaded_path},
+                patch={"status": "uploaded", "officeally_remote_path": uploaded_path},
                 correlation_id=getattr(request.state, "correlation_id", None),
             )
         except OfficeAllyClientError as e:
             await svc.update(
                 table="edi_artifacts",
                 tenant_id=current.tenant_id,
-                entity_id=edi_row["id"],
+                record_id=uuid.UUID(str(edi_row["id"])),
                 actor_user_id=current.user_id,
                 expected_version=edi_row["version"],
-                data_patch={"status": "upload_failed", "error": str(e)},
+                patch={"status": "upload_failed", "error": str(e)},
                 correlation_id=getattr(request.state, "correlation_id", None),
             )
 
@@ -218,7 +218,7 @@ async def submit_officeally(
         topic=f"tenant.{current.tenant_id}.billing.edi.837.created",
         tenant_id=current.tenant_id,
         entity_type="edi_artifact",
-        entity_id=edi_row["id"],
+        record_id=uuid.UUID(str(edi_row["id"])),
         event_type="EDI_837_CREATED",
         payload={"billing_case_id": str(case_id), "edi_artifact_id": edi_row["id"], "uploaded_path": uploaded_path},
         correlation_id=getattr(request.state, "correlation_id", None),
@@ -391,10 +391,10 @@ async def create_payment_link(
         await svc.update(
             table="patient_payment_links",
             tenant_id=current.tenant_id,
-            entity_id=link_row["id"],
+            record_id=uuid.UUID(str(link_row["id"])),
             actor_user_id=current.user_id,
             expected_version=link_row["version"],
-            data_patch={"status": "sms_failed", "sms_error": str(e)},
+            patch={"status": "sms_failed", "sms_error": str(e)},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
 
@@ -402,7 +402,7 @@ async def create_payment_link(
         topic=f"tenant.{current.tenant_id}.billing.payment_link.created",
         tenant_id=current.tenant_id,
         entity_type="patient_payment_link",
-        entity_id=link_row["id"],
+        record_id=uuid.UUID(str(link_row["id"])),
         event_type="PAYMENT_LINK_CREATED",
         payload={"payment_link_id": link_row["id"], "stripe_session_id": sess["id"]},
         correlation_id=getattr(request.state, "correlation_id", None),
