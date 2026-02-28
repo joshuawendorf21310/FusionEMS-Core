@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     environment: str = Field(default="development")
     debug: bool = Field(default=False)
 
+    @field_validator("debug", mode="before")
+    @classmethod
+    def _coerce_debug(cls, v: object) -> bool:
+        if isinstance(v, str):
+            return v.strip().lower() in ("1", "true", "yes")
+        return bool(v)
+
     database_url: str = Field(default="")
     api_base_url: str = Field(default="https://api.fusionemsquantum.com")
 
@@ -46,11 +53,11 @@ class Settings(BaseSettings):
     lob_webhook_secret: str = Field(default="")
     ses_from_email: str = Field(default="noreply@fusionemsquantum.com")
 
-    # Microsoft Graph (application permissions — client credentials flow)
+    # Microsoft Graph (application permissions - client credentials flow)
     graph_tenant_id: str = Field(default="", description="Azure AD tenant ID")
     graph_client_id: str = Field(default="", description="Entra app client ID")
     graph_client_secret: str = Field(default="", description="Entra app client secret (from Secrets Manager)")
-    graph_founder_email: str = Field(default="", description="Founder mailbox UPN — used for all Graph calls")
+    graph_founder_email: str = Field(default="", description="Founder mailbox UPN - used for all Graph calls")
     ses_configuration_set: str = Field(default="")
     aws_region: str = Field(default="")
 
@@ -79,7 +86,7 @@ class Settings(BaseSettings):
     neris_pack_compile_queue_url: str = Field(default="")
     neris_export_queue_url: str = Field(default="")
 
-    # DynamoDB tables (Lambda workers) — no default; must be explicitly set per environment
+    # DynamoDB tables (Lambda workers) - no default; must be explicitly set per environment
     statements_table: str = Field(default="")
     lob_events_table: str = Field(default="")
     stripe_events_table: str = Field(default="")

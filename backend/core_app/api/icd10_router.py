@@ -11,8 +11,6 @@ from core_app.api.dependencies import db_session_dependency, require_role
 router = APIRouter(prefix="/api/v1/coding", tags=["Coding"])
 
 
-from fastapi import Query
-
 @router.get("/icd10/search")
 async def search(q: str = Query(...), db: Session = Depends(db_session_dependency)):
     # global search: uses icd10_codes table; simple LIKE query
@@ -34,4 +32,3 @@ async def import_codes(payload: dict[str, Any], db: Session = Depends(db_session
                              ON CONFLICT (code, version_year) DO NOTHING"""), {"code": c["code"], "sd": c.get("short_description",""), "ld": c.get("long_description",""), "vy": int(c.get("version_year", 0))})
     db.commit()
     return {"imported": len(codes)}
-

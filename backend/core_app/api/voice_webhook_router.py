@@ -7,11 +7,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 
 from core_app.api.dependencies import db_session_dependency
-from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from core_app.core.config import get_settings

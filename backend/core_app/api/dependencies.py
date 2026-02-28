@@ -21,7 +21,6 @@ def db_session_dependency(db: Session = Depends(get_db_session)) -> Session:
     return db
 
 
-
 def get_current_user(
     request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(db_session_dependency)
 ) -> CurrentUser:
@@ -55,8 +54,7 @@ def get_current_user(
                 role = "viewer"
         role = role or "viewer"
 
-        from uuid import UUID as _UUID
-        tenant_uuid = _UUID(str(claims.tenant_id))
+        tenant_uuid = UUID(str(claims.tenant_id))
         email = (claims.email or "").lower()
         if not email:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing email claim")
@@ -78,8 +76,7 @@ def get_current_user(
         except JWTError as exc:
             raise unauthorized from exc
 
-        from uuid import UUID as _UUID
-        user = user_repo.get_by_id_and_tenant(_UUID(subject), _UUID(tenant_id))
+        user = user_repo.get_by_id_and_tenant(UUID(subject), UUID(tenant_id))
         if user is None:
             raise unauthorized
 
@@ -118,13 +115,14 @@ def require_permission(permission: str):
             }
             try:
                 allowed = check_policy(input_doc)
-            except OpaError:
-                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OPA unavailable")
+            except OpaError as exc:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OPA unavailable") from exc
             if not allowed:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         return current_user
 
     return _dependency
+
 
 def get_tenant_id(request: Request, current_user: CurrentUser = Depends(get_current_user)) -> UUID:
     request.state.tenant_id = current_user.tenant_id
