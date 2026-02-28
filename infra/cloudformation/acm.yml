@@ -26,6 +26,7 @@ Resources:
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
+      RoleName: !Sub '${AppName}-${Env}-acm-cert-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -62,6 +63,7 @@ Resources:
   AcmCertLambda:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: !Sub '${AppName}-${Env}-acm-cert-provisioner'
       Runtime: python3.12
       Handler: index.handler
       Timeout: 900
