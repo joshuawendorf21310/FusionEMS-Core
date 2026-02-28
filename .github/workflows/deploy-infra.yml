@@ -1,123 +1,194 @@
-name: Deploy Infrastructure
+name: Deploy Frontend (Production)
 
 on:
-  workflow_call:
-    inputs:
-      env:
-        description: "Environment (dev/prod)"
-        required: true
-        type: string
-
-  workflow_dispatch:
-    inputs:
-      env:
-        description: "Environment (dev/prod)"
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - prod
-
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "infra/**"
+      - "frontend/**"
 
 permissions:
   id-token: write
   contents: read
 
 concurrency:
-  group: deploy-infra-${{ inputs.env || github.ref }}
+  group: frontend-${{ vars.CFN_STACK_NAME }}
   cancel-in-progress: false
 
 jobs:
-  deploy-infra:
+
+  deploy:
     runs-on: ubuntu-latest
+
+    environment:
+      name: production
+      url: https://${{ vars.CFN_ROOT_DOMAIN_NAME }}
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
-      CFN_ENV: ${{ inputs.env || vars.CFN_ENV }}
-      CFN_ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME }}
-      CFN_API_DOMAIN_NAME: ${{ vars.CFN_API_DOMAIN_NAME }}
-      CFN_HOSTED_ZONE_ID: ${{ vars.CFN_HOSTED_ZONE_ID }}
       CFN_ARTIFACTS_BUCKET: ${{ vars.CFN_ARTIFACTS_BUCKET }}
-      CFN_ALERT_EMAIL: ${{ vars.CFN_ALERT_EMAIL }}
+      ROOT_DOMAIN: ${{ vars.CFN_ROOT_DOMAIN_NAME }}
+      API_DOMAIN: ${{ vars.CFN_API_DOMAIN_NAME }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      # ===============================
+      # AWS AUTH
+      # ===============================
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Validate required variables
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      # ===============================
+      # RESOLVE ECR REPO
+      # ===============================
+      - name: Resolve ECR repo
+        id: repo
         run: |
           set -euo pipefail
 
-          for var in CFN_STACK_NAME CFN_HOSTED_ZONE_ID CFN_ARTIFACTS_BUCKET; do
-            if [ -z "${!var}" ]; then
-              echo "$var is required"
-              exit 1
-            fi
-          done
+          REPO=$(aws cloudformation describe-stacks \
+            --stack-name "$CFN_STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" \
+            --output text)
 
-      - name: Validate CloudFormation templates
+          if [ -z "$REPO" ] || [ "$REPO" = "None" ]; then
+            echo "FrontendEcrRepoUri not found"
+            exit 1
+          fi
+
+          echo "repo=$REPO" >> $GITHUB_OUTPUT
+
+      # ===============================
+      # BUILD & PUSH IMAGE
+      # ===============================
+      - name: Build & push image
         run: |
           set -euo pipefail
-          for template in infra/cloudformation/*.yml; do
-            echo "Validating $template..."
-            aws cloudformation validate-template --template-body "file://$template"
-          done
 
+          IMAGE="${{ steps.repo.outputs.repo }}:${GITHUB_SHA}"
+
+          docker build \
+            --file frontend/Dockerfile \
+            --tag "$IMAGE" \
+            --build-arg NEXT_PUBLIC_API_BASE="https://${API_DOMAIN}" \
+            --build-arg NEXT_PUBLIC_WS_URL="wss://${API_DOMAIN}/ws" \
+            --build-arg NEXT_PUBLIC_ROOT_DOMAIN="https://${ROOT_DOMAIN}" \
+            frontend/
+
+          docker push "$IMAGE"
+
+      # ===============================
+      # PACKAGE TEMPLATE
+      # ===============================
       - name: Package CloudFormation
         run: |
           set -euo pipefail
+
           aws cloudformation package \
             --template-file infra/cloudformation/root.yml \
             --s3-bucket "$CFN_ARTIFACTS_BUCKET" \
-            --s3-prefix "cfn/${GITHUB_SHA:0:8}" \
-            --output-template-file packaged.root.yml
+            --output-template-file packaged.yml
 
-      - name: Deploy infrastructure stack
+      # ===============================
+      # CREATE CHANGE SET
+      # ===============================
+      - name: Create change set
+        id: changeset
         run: |
           set -euo pipefail
 
-          aws cloudformation deploy \
-            --stack-name "${CFN_STACK_NAME}" \
-            --template-file packaged.root.yml \
-            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              Env="${CFN_ENV}" \
-              RootDomainName="${CFN_ROOT_DOMAIN_NAME}" \
-              ApiDomainName="${CFN_API_DOMAIN_NAME}" \
-              HostedZoneId="${CFN_HOSTED_ZONE_ID}" \
-              AlertEmail="${CFN_ALERT_EMAIL:-founder@fusionemsquantum.com}" \
-              NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}" \
-            --tags \
-              Environment="${CFN_ENV}" \
-              GitSha="${GITHUB_SHA}"
+          CHANGE_SET="frontend-${GITHUB_SHA:0:8}"
 
-      - name: Dump stack events on failure
+          aws cloudformation create-change-set \
+            --stack-name "$CFN_STACK_NAME" \
+            --change-set-name "$CHANGE_SET" \
+            --template-body file://packaged.yml \
+            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --parameters \
+              ParameterKey=ImageTagFrontend,ParameterValue=${GITHUB_SHA}
+
+          aws cloudformation wait change-set-create-complete \
+            --stack-name "$CFN_STACK_NAME" \
+            --change-set-name "$CHANGE_SET"
+
+          echo "name=$CHANGE_SET" >> $GITHUB_OUTPUT
+
+      # ===============================
+      # SHOW CHANGE SET (Audit)
+      # ===============================
+      - name: Describe change set
+        run: |
+          aws cloudformation describe-change-set \
+            --stack-name "$CFN_STACK_NAME" \
+            --change-set-name "${{ steps.changeset.outputs.name }}" \
+            --output table
+
+      # ===============================
+      # EXECUTE CHANGE SET
+      # ===============================
+      - name: Execute change set
+        run: |
+          set -euo pipefail
+
+          aws cloudformation execute-change-set \
+            --stack-name "$CFN_STACK_NAME" \
+            --change-set-name "${{ steps.changeset.outputs.name }}"
+
+          aws cloudformation wait stack-update-complete \
+            --stack-name "$CFN_STACK_NAME"
+
+      # ===============================
+      # DRIFT DETECTION
+      # ===============================
+      - name: Detect drift
+        run: |
+          set -euo pipefail
+
+          DETECT_ID=$(aws cloudformation detect-stack-drift \
+            --stack-name "$CFN_STACK_NAME" \
+            --query StackDriftDetectionId \
+            --output text)
+
+          aws cloudformation wait stack-drift-detection-complete \
+            --stack-drift-detection-id "$DETECT_ID"
+
+          STATUS=$(aws cloudformation describe-stack-drift-detection-status \
+            --stack-drift-detection-id "$DETECT_ID" \
+            --query StackDriftStatus \
+            --output text)
+
+          echo "Drift status: $STATUS"
+
+      # ===============================
+      # SMOKE TEST
+      # ===============================
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+
+          for i in {1..40}; do
+            if curl -fsS https://${ROOT_DOMAIN}/healthz; then
+              echo "Frontend healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "Health check failed"
+          exit 1
+
+      # ===============================
+      # DUMP STACK EVENTS ON FAILURE
+      # ===============================
+      - name: Dump stack events
         if: failure()
         run: |
-          echo "=== Stack Failure Events ==="
           aws cloudformation describe-stack-events \
-            --stack-name "${CFN_STACK_NAME}" \
+            --stack-name "$CFN_STACK_NAME" \
             --max-items 50 \
-            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED`||ResourceStatus==`UPDATE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
-            --output table || true
-
-      - name: Output stack results
-        if: success()
-        run: |
-          aws cloudformation describe-stacks \
-            --stack-name "${CFN_STACK_NAME}" \
-            --query 'Stacks[0].Outputs' \
             --output table
