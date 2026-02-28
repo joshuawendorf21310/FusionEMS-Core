@@ -1,0 +1,4 @@
+[MAIN]
+init-hook = 'import sys; sys.path.insert(0, "backend")'
+extension-pkg-allow-list = pydantic
+load-plugins = pylint_pydantic
