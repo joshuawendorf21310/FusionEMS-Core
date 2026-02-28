@@ -48,19 +48,19 @@ interface Run {
 type RightTab = 'plan' | 'diff' | 'migrations' | 'cloudformation' | 'gate' | 'notes';
 
 const RISK_COLORS: Record<string, string> = {
-  low: '#4caf50',
-  medium: '#ff9800',
-  high: '#e53935',
+  low: 'var(--color-status-active)',
+  medium: 'var(--color-status-warning)',
+  high: 'var(--color-brand-red)',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  proposed: '#94a3b8',
-  running: '#29b6f6',
-  blocked: '#e53935',
-  passed: '#4caf50',
-  failed: '#e53935',
-  approved: '#a855f7',
-  merged: '#ff6b1a',
+  proposed: 'var(--color-text-muted)',
+  running: 'var(--color-status-info)',
+  blocked: 'var(--color-brand-red)',
+  passed: 'var(--color-status-active)',
+  failed: 'var(--color-brand-red)',
+  approved: 'var(--color-system-compliance)',
+  merged: 'var(--color-brand-orange)',
 };
 
 function authHeaders(): HeadersInit {
@@ -91,7 +91,7 @@ function PlanPanel({ plan }: { plan: ActionPlan }) {
         {plan.risk_level && (
           <span
             className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest rounded"
-            style={{ background: `${RISK_COLORS[plan.risk_level]}22`, color: RISK_COLORS[plan.risk_level] }}
+            style={{ background: `color-mix(in srgb, ${RISK_COLORS[plan.risk_level]} 13%, transparent)`, color: RISK_COLORS[plan.risk_level] }}
           >
             {plan.risk_level} risk
           </span>
@@ -157,7 +157,7 @@ function GatePanel({ results }: { results: GateResult | null }) {
         className="text-xs font-bold uppercase tracking-widest px-3 py-2 rounded"
         style={{
           background: allPassed ? 'rgba(76,175,80,0.1)' : 'rgba(229,57,53,0.1)',
-          color: allPassed ? '#4caf50' : '#e53935',
+          color: allPassed ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           border: `1px solid ${allPassed ? 'rgba(76,175,80,0.3)' : 'rgba(229,57,53,0.3)'}`,
         }}
       >
@@ -190,9 +190,9 @@ function DiffPanel({ diffText }: { diffText: string | null }) {
       <pre className="text-[11px] font-mono whitespace-pre-wrap break-all leading-5">
         {diffText.split('\n').map((line, i) => {
           let color = 'rgba(255,255,255,0.6)';
-          if (line.startsWith('+') && !line.startsWith('+++')) color = '#4caf50';
-          else if (line.startsWith('-') && !line.startsWith('---')) color = '#e53935';
-          else if (line.startsWith('@@')) color = '#29b6f6';
+          if (line.startsWith('+') && !line.startsWith('+++')) color = 'var(--color-status-active)';
+          else if (line.startsWith('-') && !line.startsWith('---')) color = 'var(--color-brand-red)';
+          else if (line.startsWith('@@')) color = 'var(--color-status-info)';
           return (
             <span key={i} style={{ color }} className="block">
               {line}
@@ -452,7 +452,7 @@ export default function FounderCopilotPage() {
               onClick={() => selectSession(s)}
               className={`w-full text-left px-3 py-2 border-b border-border-subtle transition-colors ${
                 activeSession?.id === s.id
-                  ? 'bg-orange-ghost text-text-primary border-l-2 border-l-[#ff6b1a]'
+                  ? 'bg-orange-ghost text-text-primary border-l-2 border-l-[var(--color-brand-orange)]'
                   : 'text-[rgba(255,255,255,0.55)] hover:bg-[rgba(255,255,255,0.04)] hover:text-text-primary'
               }`}
             >
@@ -481,9 +481,9 @@ export default function FounderCopilotPage() {
               <span
                 className="px-2 py-0.5 text-[10px] font-bold uppercase rounded"
                 style={{
-                  background: `${STATUS_COLORS[activeRun.status] || '#94a3b8'}22`,
-                  color: STATUS_COLORS[activeRun.status] || '#94a3b8',
-                  border: `1px solid ${STATUS_COLORS[activeRun.status] || '#94a3b8'}44`,
+                  background: `color-mix(in srgb, ${STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)'} 13%, transparent)`,
+                  color: STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)',
+                  border: `1px solid ${STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)'}44`,
                 }}
               >
                 {activeRun.status}
@@ -660,7 +660,7 @@ export default function FounderCopilotPage() {
                   <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-2">Run Details</div>
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.4)]">Run ID</span><code className="text-[rgba(255,255,255,0.7)] font-mono text-[10px]">{activeRun.id.slice(0, 12)}…</code></div>
-                    <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.4)]">Status</span><span style={{ color: STATUS_COLORS[activeRun.status] || '#94a3b8' }} className="font-semibold">{activeRun.status}</span></div>
+                    <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.4)]">Status</span><span style={{ color: STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)' }} className="font-semibold">{activeRun.status}</span></div>
                     <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.4)]">Created</span><span className="text-[rgba(255,255,255,0.7)]">{new Date(activeRun.created_at).toLocaleString()}</span></div>
                     {activeRun.gh_run_url && <div className="pt-2"><a href={activeRun.gh_run_url} target="_blank" rel="noopener noreferrer" className="text-status-info hover:underline text-xs">View GitHub Actions run ↗</a></div>}
                   </div>

@@ -64,7 +64,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
@@ -298,8 +298,8 @@ export default function SupportInboxPage() {
                 onClick={() => setFilter(tab.key)}
                 className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors"
                 style={{
-                  color: filter === tab.key ? '#ff6b1a' : 'rgba(255,255,255,0.38)',
-                  borderBottom: filter === tab.key ? '2px solid #ff6b1a' : '2px solid transparent',
+                  color: filter === tab.key ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.38)',
+                  borderBottom: filter === tab.key ? '2px solid var(--color-brand-orange)' : '2px solid transparent',
                 }}
               >
                 {tab.label}
@@ -323,7 +323,7 @@ export default function SupportInboxPage() {
                   className="w-full text-left px-3 py-3 border-b border-[rgba(255,255,255,0.05)] transition-colors hover:bg-[rgba(255,255,255,0.03)]"
                   style={{
                     background: isActive ? 'rgba(255,107,26,0.06)' : 'transparent',
-                    borderLeft: isActive ? '3px solid #ff6b1a' : '3px solid transparent',
+                    borderLeft: isActive ? '3px solid var(--color-brand-orange)' : '3px solid transparent',
                   }}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -331,7 +331,7 @@ export default function SupportInboxPage() {
                       {agencyName(thread)}
                     </span>
                     {thread.unread && (
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#ff6b1a' }} />
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--color-brand-orange)' }} />
                     )}
                     {(thread.escalated || thread.status === 'escalated') && (
                       <span
@@ -361,7 +361,7 @@ export default function SupportInboxPage() {
           {!activeThread ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-2">
-                <div className="text-3xl text-[rgba(255,255,255,0.06)]">&#9656;</div>
+                <div className="text-3xl text-[rgba(255,255,255,0.06)]">{'\u25B8'}</div>
                 <p className="text-[11px] text-[rgba(255,255,255,0.3)] uppercase tracking-wider">
                   Select a thread
                 </p>
@@ -497,8 +497,8 @@ export default function SupportInboxPage() {
                     disabled={sendingReply || !replyText.trim()}
                     className="h-9 px-4 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all"
                     style={{
-                      background: replyText.trim() && !sendingReply ? '#ff6b1a' : 'rgba(255,107,26,0.2)',
-                      color: replyText.trim() && !sendingReply ? '#000' : 'rgba(255,107,26,0.5)',
+                      background: replyText.trim() && !sendingReply ? 'var(--color-brand-orange)' : 'rgba(255,107,26,0.2)',
+                      color: replyText.trim() && !sendingReply ? 'black' : 'rgba(255,107,26,0.5)',
                     }}
                   >
                     {sendingReply ? '…' : 'Send'}

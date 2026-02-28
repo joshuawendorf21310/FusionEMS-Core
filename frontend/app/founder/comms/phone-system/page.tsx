@@ -36,7 +36,7 @@ function KpiStrip() {
         { label: 'Pending', value: '6', color: 'var(--q-yellow)' },
         { label: 'AI Resolution Rate', value: '79%', color: 'var(--color-system-billing)' },
         { label: 'Avg Call Latency', value: '210ms', color: 'var(--q-green)' },
-        { label: 'Escalation Rate', value: '8.2%', color: '#a855f7' },
+        { label: 'Escalation Rate', value: '8.2%', color: 'var(--color-system-compliance)' },
       ].map((item) => (
         <div
           key={item.label}
@@ -54,7 +54,7 @@ function KpiStrip() {
 function CallQueueRow({ position, caller, intent, wait, score, aiCanResolve }: {
   position: number; caller: string; intent: string; wait: string; score: number; aiCanResolve: boolean;
 }) {
-  const scoreColor = score >= 80 ? '#e53935' : score >= 50 ? '#ff9800' : '#4caf50';
+  const scoreColor = score >= 80 ? 'var(--color-brand-red)' : score >= 50 ? 'var(--color-status-warning)' : 'var(--color-status-active)';
   return (
     <tr>
       <td className="py-2 pr-3 text-[10px] font-bold font-mono text-orange-dim">{position}</td>
@@ -83,7 +83,7 @@ function CallQueueRow({ position, caller, intent, wait, score, aiCanResolve }: {
 function ScriptNode({ label, type, children, indent = 0 }: {
   label: string; type: 'trigger' | 'condition' | 'action' | 'escalate'; children?: string[]; indent?: number;
 }) {
-  const typeColor = { trigger: '#ff6b1a', condition: '#29b6f6', action: '#4caf50', escalate: '#e53935' }[type];
+  const typeColor = { trigger: 'var(--color-brand-orange)', condition: 'var(--color-status-info)', action: 'var(--color-status-active)', escalate: 'var(--color-brand-red)' }[type];
   const typeBg = { trigger: 'rgba(255,107,26,0.1)', condition: 'rgba(41,182,246,0.1)', action: 'rgba(76,175,80,0.1)', escalate: 'rgba(229,57,53,0.1)' }[type];
   return (
     <div style={{ marginLeft: indent * 16 }} className="mb-1">
@@ -118,13 +118,13 @@ function ModuleCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const catColor = {
-    voice: '#22d3ee',
-    ai: '#a855f7',
-    security: '#e53935',
-    compliance: '#f59e0b',
-    analytics: '#4caf50',
+    voice: 'var(--color-status-info)',
+    ai: 'var(--color-system-compliance)',
+    security: 'var(--color-brand-red)',
+    compliance: 'var(--color-status-warning)',
+    analytics: 'var(--color-status-active)',
   }[category];
-  const statusColor = { active: '#4caf50', configured: '#29b6f6', pending: '#ff9800' }[status];
+  const statusColor = { active: 'var(--color-status-active)', configured: 'var(--color-status-info)', pending: 'var(--color-status-warning)' }[status];
   const statusLabel = { active: 'ACTIVE', configured: 'CONFIGURED', pending: 'PENDING' }[status];
   return (
     <div
@@ -419,7 +419,7 @@ export default function PhoneSystemPage() {
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
                   <span className="text-[11px] text-[rgba(255,255,255,0.55)]">{item.label}</span>
-                  <span className="text-[11px] font-semibold" style={{ color: item.ok ? '#4caf50' : '#e53935' }}>{item.value}</span>
+                  <span className="text-[11px] font-semibold" style={{ color: item.ok ? 'var(--color-status-active)' : 'var(--color-brand-red)' }}>{item.value}</span>
                 </div>
               ))}
             </div>
@@ -513,10 +513,10 @@ export default function PhoneSystemPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {[
-              { label: 'War Room Active', value: advDashboard ? (advDashboard.war_room_active ? 'YES' : 'OFF') : '—', color: (advDashboard?.war_room_active ? '#e53935' : '#4caf50') as string },
+              { label: 'War Room Active', value: advDashboard ? (advDashboard.war_room_active ? 'YES' : 'OFF') : '—', color: (advDashboard?.war_room_active ? 'var(--color-brand-red)' : 'var(--color-status-active)') as string },
               { label: 'Pending Reviews', value: String(advDashboard?.pending_human_reviews ?? '—'), color: 'var(--q-yellow)' },
               { label: 'Open Tickets', value: String(advDashboard?.open_improvement_tickets ?? '—'), color: 'var(--color-status-info)' },
-              { label: 'Callbacks Queued', value: String(advDashboard?.scheduled_callbacks ?? '—'), color: '#a855f7' },
+              { label: 'Callbacks Queued', value: String(advDashboard?.scheduled_callbacks ?? '—'), color: 'var(--color-system-compliance)' },
               { label: 'A/B Tests Running', value: String(advDashboard?.active_ab_tests ?? '—'), color: 'var(--color-system-billing)' },
               { label: 'Features 65–100', value: '36 / 36', color: 'var(--q-green)' },
             ].map((kpi) => (
@@ -555,7 +555,7 @@ export default function PhoneSystemPage() {
                   {improvementTickets.slice(0, 5).map((item, i) => (
                     <div key={i} className="py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm" style={{ color: item.severity === 'high' ? '#e53935' : '#ff9800', background: item.severity === 'high' ? 'rgba(229,57,53,0.1)' : 'rgba(255,152,0,0.1)' }}>{String(item.severity)}</span>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm" style={{ color: item.severity === 'high' ? 'var(--color-brand-red)' : 'var(--color-status-warning)', background: item.severity === 'high' ? 'rgba(229,57,53,0.1)' : 'rgba(255,152,0,0.1)' }}>{String(item.severity)}</span>
                         <span className="text-[11px] text-[rgba(255,255,255,0.75)] truncate">{String(item.what_went_wrong ?? '').slice(0, 60)}</span>
                       </div>
                       <div className="text-[10px] text-[rgba(255,255,255,0.35)]">Fix: {String(item.proposed_fix ?? '').slice(0, 60)}</div>
@@ -578,7 +578,7 @@ export default function PhoneSystemPage() {
                       <span className="text-[11px] text-text-secondary">{String(slot.caller_phone ?? '')}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-[rgba(255,255,255,0.4)]">{String(slot.scheduled_at ?? '').slice(0, 16)}</span>
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm" style={{ color: (slot.urgency_score as number) >= 80 ? '#e53935' : '#4caf50', background: (slot.urgency_score as number) >= 80 ? 'rgba(229,57,53,0.1)' : 'rgba(76,175,80,0.1)' }}>{String(slot.urgency_tier ?? 'std')}</span>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm" style={{ color: (slot.urgency_score as number) >= 80 ? 'var(--color-brand-red)' : 'var(--color-status-active)', background: (slot.urgency_score as number) >= 80 ? 'rgba(229,57,53,0.1)' : 'rgba(76,175,80,0.1)' }}>{String(slot.urgency_tier ?? 'std')}</span>
                       </div>
                     </div>
                   ))}
