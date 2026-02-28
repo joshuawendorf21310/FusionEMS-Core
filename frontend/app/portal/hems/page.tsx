@@ -42,7 +42,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
@@ -148,9 +148,9 @@ function ReadinessBadge({ state }: { state: ReadinessState }) {
 }
 
 function riskColor(score: number): string {
-  if (score < 20) return '#4caf50';
-  if (score < 45) return '#ff9800';
-  return '#e53935';
+  if (score < 20) return 'var(--color-status-active)';
+  if (score < 45) return 'var(--color-status-warning)';
+  return 'var(--color-brand-red)';
 }
 
 function fmtTs(ts: string): string {
@@ -444,7 +444,7 @@ export default function HemsPage() {
               onClick={submitReadiness}
               disabled={readinessBusy}
               className="px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40 transition-opacity"
-              style={{ background: '#ff6b1a', color: '#fff' }}
+              style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
             >
               {readinessBusy ? 'Saving...' : 'Set Readiness'}
             </button>
@@ -469,7 +469,7 @@ export default function HemsPage() {
                   onChange={(e) =>
                     setChecklistItems((prev) => ({ ...prev, [key]: e.target.checked }))
                   }
-                  className="w-3.5 h-3.5 accent-[#ff6b1a] cursor-pointer"
+                  className="w-3.5 h-3.5 accent-[var(--color-brand-orange)] cursor-pointer"
                 />
                 <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   {CHECKLIST_LABELS[key]}
@@ -490,7 +490,7 @@ export default function HemsPage() {
                   onChange={(e) =>
                     setRiskFactors((prev) => ({ ...prev, [key]: e.target.checked }))
                   }
-                  className="w-3.5 h-3.5 accent-[#ff6b1a] cursor-pointer"
+                  className="w-3.5 h-3.5 accent-[var(--color-brand-orange)] cursor-pointer"
                 />
                 <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   {RISK_FACTOR_LABELS[key]}
@@ -527,7 +527,7 @@ export default function HemsPage() {
             onClick={submitAcceptance}
             disabled={acceptanceBusy}
             className="px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40 transition-opacity"
-            style={{ background: '#ff6b1a', color: '#fff' }}
+            style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
           >
             {acceptanceBusy ? 'Submitting...' : 'Submit Acceptance'}
           </button>
@@ -599,7 +599,7 @@ export default function HemsPage() {
                 type="checkbox"
                 checked={wx.precip}
                 onChange={(e) => setWx((prev) => ({ ...prev, precip: e.target.checked }))}
-                className="w-3.5 h-3.5 accent-[#ff6b1a] cursor-pointer"
+                className="w-3.5 h-3.5 accent-[var(--color-brand-orange)] cursor-pointer"
               />
               <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>Precipitation</span>
             </label>
@@ -608,7 +608,7 @@ export default function HemsPage() {
                 type="checkbox"
                 checked={wx.icing}
                 onChange={(e) => setWx((prev) => ({ ...prev, icing: e.target.checked }))}
-                className="w-3.5 h-3.5 accent-[#ff6b1a] cursor-pointer"
+                className="w-3.5 h-3.5 accent-[var(--color-brand-orange)] cursor-pointer"
               />
               <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>Icing</span>
             </label>
@@ -618,7 +618,7 @@ export default function HemsPage() {
             onClick={submitWeather}
             disabled={wxBusy}
             className="px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40 transition-opacity"
-            style={{ background: '#ff6b1a', color: '#fff' }}
+            style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
           >
             {wxBusy ? 'Submitting...' : 'Submit Weather Brief'}
           </button>
@@ -659,7 +659,7 @@ export default function HemsPage() {
                   <div key={i} className="relative">
                     <div
                       className="absolute -left-[13px] top-1 w-2 h-2 rounded-full"
-                      style={{ background: '#ff6b1a' }}
+                      style={{ background: 'var(--color-brand-orange)' }}
                     />
                     <p className="text-[10px] mb-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       {fmtTs(ev.timestamp)}

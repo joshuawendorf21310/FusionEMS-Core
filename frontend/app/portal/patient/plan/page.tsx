@@ -293,7 +293,7 @@ export default function PatientPlanPage() {
                 width: 18,
                 height: 18,
                 borderRadius: '50%',
-                background: '#fff',
+                background: 'var(--color-text-primary)',
                 transition: 'left 0.15s',
               }}
             />

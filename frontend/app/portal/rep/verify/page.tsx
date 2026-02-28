@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 
 const PANEL_STYLE = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: 'var(--color-bg-panel, #0f1720)',
+  background: 'var(--color-bg-panel, var(--color-bg-input))',
   border: '1px solid rgba(255,255,255,0.08)',
 };
 
 const BTN_PRIMARY: React.CSSProperties = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: '#ff6b1a',
-  color: '#fff',
+  background: 'var(--color-brand-orange)',
+  color: 'var(--color-text-primary)',
   fontWeight: 600,
   fontSize: '0.9375rem',
   padding: '11px 0',
@@ -176,15 +176,15 @@ export default function RepVerifyPage() {
   const digitBoxBase: React.CSSProperties = {
     width: '48px',
     height: '56px',
-    background: '#0e161f',
+    background: 'var(--color-bg-input)',
     border: `1px solid ${hasError ? 'rgba(220,38,38,0.7)' : 'rgba(255,255,255,0.12)'}`,
     clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-    color: '#fff',
+    color: 'var(--color-text-primary)',
     fontSize: '1.5rem',
     fontWeight: 700,
     textAlign: 'center',
     outline: 'none',
-    caretColor: '#ff6b1a',
+    caretColor: 'var(--color-brand-orange)',
   };
 
   return (
@@ -208,12 +208,12 @@ export default function RepVerifyPage() {
               marginBottom: '18px',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="5" y="11" width="14" height="10" rx="1" />
               <path d="M8 11V7a4 4 0 0 1 8 0v4" />
             </svg>
           </div>
-          <h1 style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
+          <h1 style={{ color: 'var(--color-text-primary)', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
             Enter Verification Code
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.875rem', margin: 0 }}>

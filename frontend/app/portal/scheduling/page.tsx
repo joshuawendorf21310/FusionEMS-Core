@@ -81,8 +81,8 @@ function CalendarTab() {
       <div className="grid grid-cols-4 gap-3 mb-5">
         <StatCard label="Shifts This Week" value="0" />
         <StatCard label="Crew Scheduled" value="0" />
-        <StatCard label="Open Slots" value="0" accent="#f59e0b" />
-        <StatCard label="Overtime Risk" value="0" accent="#e53935" sub="crew members" />
+        <StatCard label="Open Slots" value="0" accent="var(--color-status-warning)" />
+        <StatCard label="Overtime Risk" value="0" accent="var(--color-brand-red)" sub="crew members" />
       </div>
 
       <div className="flex items-center justify-between mb-4">
@@ -145,7 +145,7 @@ function RequestsTab() {
   return (
     <div>
       <div className="grid grid-cols-4 gap-3 mb-5">
-        <StatCard label="Pending Requests" value="0" accent="#f59e0b" />
+        <StatCard label="Pending Requests" value="0" accent="var(--color-status-warning)" />
         <StatCard label="Swap Requests" value="0" />
         <StatCard label="Time Off" value="0" />
         <StatCard label="Trade Requests" value="0" />
@@ -184,9 +184,9 @@ function CoverageTab() {
     <div>
       <div className="grid grid-cols-4 gap-3 mb-5">
         <StatCard label="Coverage %" value="—" sub="this week" />
-        <StatCard label="Uncovered Shifts" value="0" accent="#e53935" />
-        <StatCard label="On-Call Available" value="0" accent="#4caf50" />
-        <StatCard label="Fatigue Flags" value="0" accent="#f59e0b" />
+        <StatCard label="Uncovered Shifts" value="0" accent="var(--color-brand-red)" />
+        <StatCard label="On-Call Available" value="0" accent="var(--color-status-active)" />
+        <StatCard label="Fatigue Flags" value="0" accent="var(--color-status-warning)" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -230,8 +230,8 @@ function AiDraftsTab() {
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <StatCard label="Pending Review" value="0" accent="#f59e0b" />
-        <StatCard label="Approved This Week" value="0" accent="#4caf50" />
+        <StatCard label="Pending Review" value="0" accent="var(--color-status-warning)" />
+        <StatCard label="Approved This Week" value="0" accent="var(--color-status-active)" />
         <StatCard label="AI Draft Accuracy" value="—" />
       </div>
 

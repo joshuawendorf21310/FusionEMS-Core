@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 
 const PANEL_STYLE = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: 'var(--color-bg-panel, #0f1720)',
+  background: 'var(--color-bg-panel, var(--color-bg-input))',
   border: '1px solid rgba(255,255,255,0.08)',
 };
 
 const BTN_PRIMARY: React.CSSProperties = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: '#ff6b1a',
-  color: '#fff',
+  background: 'var(--color-brand-orange)',
+  color: 'var(--color-text-primary)',
   fontWeight: 600,
   fontSize: '0.9375rem',
   padding: '11px 24px',
@@ -163,13 +163,13 @@ export default function RepUploadPage() {
               marginBottom: '18px',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
           </div>
-          <h1 style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
+          <h1 style={{ color: 'var(--color-text-primary)', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
             Upload Authorization Documents
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.875rem', margin: 0 }}>
@@ -188,10 +188,10 @@ export default function RepUploadPage() {
               onChange={(e) => setDocType(e.target.value)}
               style={{
                 width: '100%',
-                background: '#0e161f',
+                background: 'var(--color-bg-input)',
                 border: '1px solid rgba(255,255,255,0.08)',
                 clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-                color: docType ? '#fff' : 'rgba(255,255,255,0.3)',
+                color: docType ? 'var(--color-text-primary)' : 'rgba(255,255,255,0.3)',
                 fontSize: '0.9375rem',
                 padding: '10px 12px',
                 outline: 'none',
@@ -259,12 +259,12 @@ export default function RepUploadPage() {
                 marginBottom: '20px',
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
               </svg>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: '#fff', fontSize: '0.875rem', margin: '0 0 2px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p style={{ color: 'var(--color-text-primary)', fontSize: '0.875rem', margin: '0 0 2px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {selectedFile.name}
                 </p>
                 <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', margin: 0 }}>
@@ -334,7 +334,7 @@ export default function RepUploadPage() {
                   style={{
                     width: '6px',
                     height: '6px',
-                    background: '#ff6b1a',
+                    background: 'var(--color-brand-orange)',
                     borderRadius: '50%',
                     marginTop: '6px',
                     flexShrink: 0,
