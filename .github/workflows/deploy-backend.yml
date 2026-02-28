@@ -1,4 +1,4 @@
-name: Deploy Backend (Elite)
+name: Deploy Backend (100%)
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: backend-${{ vars.CFN_ENV }}
+  group: backend-${{ vars.CFN_STACK_NAME }}
   cancel-in-progress: false
 
 jobs:
@@ -26,24 +26,28 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: |
+          set -euo pipefail
           cd backend
           pip install -r requirements.txt
           pytest -v --tb=short
 
-  build:
+  deploy:
     needs: test
     runs-on: ubuntu-latest
-
-    outputs:
-      image_tag: ${{ steps.meta.outputs.image_tag }}
+    timeout-minutes: 45
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+      CFN_ARTIFACTS_BUCKET: ${{ vars.CFN_ARTIFACTS_BUCKET }}
+      API_DOMAIN: ${{ vars.CFN_API_DOMAIN_NAME }}
 
     steps:
       - uses: actions/checkout@v4
 
+      # --------------------------------
+      # AWS AUTH
+      # --------------------------------
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -51,91 +55,189 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
-      - id: meta
+      # --------------------------------
+      # VALIDATE STACK STATE
+      # --------------------------------
+      - name: Validate stack
         run: |
-          echo "image_tag=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$CFN_STACK_NAME" \
+            --query 'Stacks[0].StackStatus' \
+            --output text)
 
+          case "$STATUS" in
+            CREATE_COMPLETE|UPDATE_COMPLETE) ;;
+            *)
+              echo "Stack not ready: $STATUS"
+              exit 1
+              ;;
+          esac
+
+      # --------------------------------
+      # RESOLVE ECR REPO
+      # --------------------------------
       - name: Resolve ECR repo
         id: repo
         run: |
+          set -euo pipefail
           REPO=$(aws cloudformation describe-stacks \
             --stack-name "$CFN_STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" \
             --output text)
+
+          [ -z "$REPO" ] && exit 1
           echo "repo=$REPO" >> $GITHUB_OUTPUT
 
+      # --------------------------------
+      # BUILD & PUSH IMAGE
+      # --------------------------------
       - name: Build & push
         run: |
+          set -euo pipefail
           IMAGE="${{ steps.repo.outputs.repo }}:${GITHUB_SHA}"
           docker build -f backend/Dockerfile -t "$IMAGE" backend/
           docker push "$IMAGE"
 
-  migrate:
-    needs: build
-    runs-on: ubuntu-latest
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
-
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-
+      # --------------------------------
+      # RUN MIGRATION TASK (DEDICATED)
+      # --------------------------------
       - name: Run migration task
         run: |
+          set -euo pipefail
+
           CLUSTER=$(aws cloudformation describe-stacks \
             --stack-name "$CFN_STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
             --output text)
 
-          TASK_DEF=$(aws cloudformation describe-stacks \
+          MIGRATION_TASK=$(aws cloudformation describe-stacks \
             --stack-name "$CFN_STACK_NAME" \
-            --query "Stacks[0].Outputs[?OutputKey=='BackendTaskDefinitionArn'].OutputValue" \
+            --query "Stacks[0].Outputs[?OutputKey=='MigrationTaskDefinitionArn'].OutputValue" \
             --output text)
 
-          aws ecs run-task \
-            --cluster "$CLUSTER" \
-            --task-definition "$TASK_DEF" \
-            --launch-type FARGATE \
-            --overrides '{"containerOverrides":[{"name":"backend","command":["python","-m","alembic","upgrade","head"]}]}'
-
-  deploy:
-    needs: migrate
-    runs-on: ubuntu-latest
-
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Deploy via CloudFormation parameter update
-        run: |
-          aws cloudformation deploy \
+          SUBNETS=$(aws cloudformation describe-stacks \
             --stack-name "$CFN_STACK_NAME" \
-            --template-file infra/cloudformation/root.yml \
-            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-            --parameter-overrides ImageTagBackend=${GITHUB_SHA}
+            --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnetIds'].OutputValue" \
+            --output text | tr ' ' ',')
 
-      - name: Wait for stack
+          SG=$(aws cloudformation describe-stacks \
+            --stack-name "$CFN_STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='EcsSecurityGroupId'].OutputValue" \
+            --output text)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$MIGRATION_TASK" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          aws ecs wait tasks-stopped \
+            --cluster "$CLUSTER" \
+            --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" --output table
+            exit 1
+          fi
+
+      # --------------------------------
+      # PACKAGE TEMPLATE
+      # --------------------------------
+      - name: Package template
         run: |
+          aws cloudformation package \
+            --template-file infra/cloudformation/root.yml \
+            --s3-bucket "$CFN_ARTIFACTS_BUCKET" \
+            --output-template-file packaged.yml
+
+      # --------------------------------
+      # CHANGE SET
+      # --------------------------------
+      - name: Create change set
+        id: cs
+        run: |
+          set -euo pipefail
+          CHANGE_SET="backend-${GITHUB_SHA:0:8}"
+
+          aws cloudformation create-change-set \
+            --stack-name "$CFN_STACK_NAME" \
+            --change-set-name "$CHANGE_SET" \
+            --template-body file://packaged.yml \
+            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --parameters ParameterKey=ImageTagBackend,ParameterValue=${GITHUB_SHA} \
+            || true
+
+          STATUS=$(aws cloudformation describe-change-set \
+            --stack-name "$CFN_STACK_NAME" \
+            --change-set-name "$CHANGE_SET" \
+            --query Status \
+            --output text)
+
+          if [ "$STATUS" = "FAILED" ]; then
+            REASON=$(aws cloudformation describe-change-set \
+              --stack-name "$CFN_STACK_NAME" \
+              --change-set-name "$CHANGE_SET" \
+              --query StatusReason \
+              --output text)
+
+            if [[ "$REASON" == *"didn't contain changes"* ]]; then
+              echo "No infra changes"
+              exit 0
+            else
+              exit 1
+            fi
+          fi
+
+          echo "name=$CHANGE_SET" >> $GITHUB_OUTPUT
+
+      - name: Execute change set
+        run: |
+          aws cloudformation execute-change-set \
+            --stack-name "$CFN_STACK_NAME" \
+            --change-set-name "${{ steps.cs.outputs.name }}"
+
           aws cloudformation wait stack-update-complete \
             --stack-name "$CFN_STACK_NAME"
 
+      # --------------------------------
+      # DRIFT DETECTION
+      # --------------------------------
+      - name: Detect drift
+        run: |
+          DETECT_ID=$(aws cloudformation detect-stack-drift \
+            --stack-name "$CFN_STACK_NAME" \
+            --query StackDriftDetectionId \
+            --output text)
+
+          aws cloudformation wait stack-drift-detection-complete \
+            --stack-drift-detection-id "$DETECT_ID"
+
+      # --------------------------------
+      # SMOKE TEST
+      # --------------------------------
       - name: Smoke test
         run: |
           for i in {1..40}; do
-            if curl -fsS https://${{ vars.CFN_API_DOMAIN_NAME }}/api/v1/health; then
+            if curl -fsS https://${API_DOMAIN}/api/v1/health; then
               exit 0
             fi
             sleep 10
           done
           exit 1
+
+      - name: Dump stack events
+        if: failure()
+        run: |
+          aws cloudformation describe-stack-events \
+            --stack-name "$CFN_STACK_NAME" \
+            --max-items 50 \
+            --output table
