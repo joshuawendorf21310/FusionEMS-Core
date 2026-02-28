@@ -24,10 +24,6 @@ Parameters:
     Description: Route53 Hosted Zone ID
     Default: Z0858801IZXAHSWCPH85
 
-  AcmCertificateArnRegional:
-    Type: String
-    Description: ACM certificate ARN in deployment region (for ALB)
-
   ImageTag:
     Type: String
     Default: latest
@@ -233,7 +229,7 @@ Resources:
         RedisPrimaryEndpoint: !GetAtt DataStack.Outputs.RedisPrimaryEndpoint
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
-        AcmCertificateArn: !Ref AcmCertificateArnRegional
+        AcmCertificateArn: !GetAtt AcmStack.Outputs.CertificateArn
         FaxClassifyQueueUrl: !GetAtt BillingStack.Outputs.FaxClassifyQueueUrl
         FaxMatchQueueUrl: !GetAtt BillingStack.Outputs.FaxMatchQueueUrl
         SupportAIQueueUrl: !GetAtt BillingStack.Outputs.SupportAIQueueUrl
