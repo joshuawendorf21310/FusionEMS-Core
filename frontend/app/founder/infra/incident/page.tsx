@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -37,7 +37,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -149,14 +149,14 @@ export default function IncidentControlCenterPage() {
         <Panel>
           <div
             className="flex items-center gap-4 p-4 rounded-sm"
-            style={{ background: '#4caf5014', border: '1px solid #4caf5030' }}
+            style={{ background: 'color-mix(in srgb, var(--color-status-active) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-status-active) 19%, transparent)' }}
           >
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: '#4caf5022', border: '1px solid #4caf5050' }}
+              style={{ background: 'color-mix(in srgb, var(--color-status-active) 13%, transparent)', border: '1px solid color-mix(in srgb, var(--color-status-active) 31%, transparent)' }}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8L6.5 11.5L13 5" stroke="#4caf50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 8L6.5 11.5L13 5" stroke="var(--color-status-active)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <div>
@@ -240,7 +240,7 @@ export default function IncidentControlCenterPage() {
             <button
               onClick={() => setIncidentMode(true)}
               className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest rounded-sm border border-red-ghost text-red hover:bg-red-ghost transition-colors"
-              style={{ background: '#e5393508' }}
+              style={{ background: 'color-mix(in srgb, var(--color-brand-red) 3%, transparent)' }}
             >
               ACTIVATE INCIDENT MODE
             </button>
@@ -248,11 +248,11 @@ export default function IncidentControlCenterPage() {
             <div className="space-y-3">
               <motion.div
                 className="flex items-center gap-3 p-3 rounded-sm"
-                style={{ background: '#e5393514', border: '1px solid #e5393540' }}
+                style={{ background: 'color-mix(in srgb, var(--color-brand-red) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-brand-red) 25%, transparent)' }}
                 animate={{ opacity: [1, 0.7, 1] }}
                 transition={{ duration: 1.4, repeat: Infinity }}
               >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#e53935' }} />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--color-brand-red)' }} />
                 <div>
                   <div className="text-xs font-bold text-red uppercase tracking-widest">INCIDENT MODE ACTIVE</div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.5)] mt-0.5">

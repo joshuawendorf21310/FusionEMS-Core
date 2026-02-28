@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 const LINKS = [
-  { href: '/founder/infra/ecs', label: 'ECS Health', desc: 'Fargate cluster, task health, ALB metrics, auto scaling', color: '#94a3b8' },
-  { href: '/founder/infra/rds', label: 'RDS Health', desc: 'PostgreSQL status, connection pools, backups, slow queries', color: '#94a3b8' },
-  { href: '/founder/infra/ai-gpu', label: 'AI GPU Monitor', desc: 'Model inference jobs, memory allocation, throughput', color: '#94a3b8' },
-  { href: '/founder/infra/cost', label: 'Cost Dashboard', desc: 'AWS spend by service, budget tracking, optimization tips', color: '#94a3b8' },
-  { href: '/founder/infra/incident', label: 'Incident Control', desc: 'System status, incident history, playbooks, on-call', color: '#94a3b8' },
+  { href: '/founder/infra/ecs', label: 'ECS Health', desc: 'Fargate cluster, task health, ALB metrics, auto scaling', color: 'var(--color-text-muted)' },
+  { href: '/founder/infra/rds', label: 'RDS Health', desc: 'PostgreSQL status, connection pools, backups, slow queries', color: 'var(--color-text-muted)' },
+  { href: '/founder/infra/ai-gpu', label: 'AI GPU Monitor', desc: 'Model inference jobs, memory allocation, throughput', color: 'var(--color-text-muted)' },
+  { href: '/founder/infra/cost', label: 'Cost Dashboard', desc: 'AWS spend by service, budget tracking, optimization tips', color: 'var(--color-text-muted)' },
+  { href: '/founder/infra/incident', label: 'Incident Control', desc: 'System status, incident history, playbooks, on-call', color: 'var(--color-text-muted)' },
 ];
 
 export default function InfraPage() {

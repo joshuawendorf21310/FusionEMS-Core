@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const colors = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const colors = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
       style={{ borderColor: `${colors[status]}40`, color: colors[status], background: `${colors[status]}12` }}>
@@ -32,7 +32,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -101,7 +101,7 @@ export default function RDSPostgresHealth() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: '#94a3b8' }}>
+            <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--color-text-muted)' }}>
               MODULE 10 · INFRASTRUCTURE
             </div>
             <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">RDS PostgreSQL Health</h1>
@@ -118,11 +118,11 @@ export default function RDSPostgresHealth() {
         <section>
           <SectionHeader number="1" title="Database Overview" sub="db.r6g.large · PostgreSQL 15" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <StatCard label="Status"           value="Available"    color="#4caf50" />
-            <StatCard label="Connections"      value="47 / 200"     color="#29b6f6" />
-            <StatCard label="CPU"              value="12%"          color="#4caf50" />
+            <StatCard label="Status"           value="Available"    color="var(--color-status-active)" />
+            <StatCard label="Connections"      value="47 / 200"     color="var(--color-status-info)" />
+            <StatCard label="CPU"              value="12%"          color="var(--color-status-active)" />
             <StatCard label="Storage"          value="42 GB"        sub="/ 500 GB" />
-            <StatCard label="Replication Lag"  value="0ms"          color="#4caf50" />
+            <StatCard label="Replication Lag"  value="0ms"          color="var(--color-status-active)" />
             <StatCard label="IOPS"             value={340}          />
           </div>
         </section>
@@ -169,7 +169,7 @@ export default function RDSPostgresHealth() {
                       <td className="py-2.5 px-4 text-right text-[rgba(255,255,255,0.6)]">{p.size}</td>
                       <td className="py-2.5 px-4 text-right" style={{ color: 'var(--q-green)' }}>{p.active}</td>
                       <td className="py-2.5 px-4 text-right text-[rgba(255,255,255,0.5)]">{p.idle}</td>
-                      <td className="py-2.5 pl-4 text-right" style={{ color: p.waiting > 0 ? '#ff9800' : '#4caf50' }}>{p.waiting}</td>
+                      <td className="py-2.5 pl-4 text-right" style={{ color: p.waiting > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>{p.waiting}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -197,7 +197,7 @@ export default function RDSPostgresHealth() {
                     <tr key={i} className={`border-b border-border-subtle ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
                       <td className="py-2.5 pr-4 text-text-secondary max-w-[280px] truncate">{q.query}</td>
                       <td className="py-2.5 px-4 text-right font-semibold"
-                        style={{ color: parseInt(q.avg) > 50 ? '#ff9800' : '#4caf50' }}>{q.avg}</td>
+                        style={{ color: parseInt(q.avg) > 50 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>{q.avg}</td>
                       <td className="py-2.5 px-4 text-right text-[rgba(255,255,255,0.5)]">{q.calls}</td>
                       <td className="py-2.5 pl-4 text-right text-system-cad font-semibold">{q.table}</td>
                     </tr>
@@ -314,7 +314,7 @@ export default function RDSPostgresHealth() {
                 className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border transition-all"
                 style={{
                   borderColor: 'rgba(255,107,26,0.4)',
-                  color: drillScheduled ? '#fff' : '#ff6b1a',
+                  color: drillScheduled ? 'var(--color-text-primary)' : 'var(--color-brand-orange)',
                   background: drillScheduled ? 'rgba(255,107,26,0.2)' : 'rgba(255,107,26,0.06)',
                 }}
               >

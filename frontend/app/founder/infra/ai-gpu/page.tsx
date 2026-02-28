@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -37,7 +37,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -77,14 +77,14 @@ const JOBS = [
 ];
 
 const MODELS = [
-  { name: 'STATFLOW-Narrative', latency: 420, max: 500, color: '#a855f7' },
+  { name: 'STATFLOW-Narrative', latency: 420, max: 500, color: 'var(--color-system-compliance)' },
   { name: 'DenialRisk-v2', latency: 85, max: 500, color: 'var(--q-green)' },
   { name: 'AppealDraft-v1', latency: 1200, max: 1500, color: 'var(--q-yellow)' },
   { name: 'Classifier-fast', latency: 22, max: 500, color: 'var(--q-green)' },
 ];
 
 const MEMORY_SEGMENTS = [
-  { label: 'Model Weights', gb: 8.2, color: '#a855f7' },
+  { label: 'Model Weights', gb: 8.2, color: 'var(--color-system-compliance)' },
   { label: 'KV Cache', gb: 4.1, color: 'var(--color-status-info)' },
   { label: 'Batch Buffer', gb: 2.8, color: 'var(--q-yellow)' },
   { label: 'Available', gb: 9.3, color: 'rgba(255,255,255,0.12)' },
@@ -94,9 +94,9 @@ const TOTAL_GB = MEMORY_SEGMENTS.reduce((a, s) => a + s.gb, 0);
 const TEMP_HISTORY = [65, 66, 67, 68, 68, 69, 68, 67, 68, 69, 68, 68];
 
 function tempColor(t: number) {
-  if (t <= 65) return '#4caf50';
-  if (t <= 68) return '#ff9800';
-  return '#e53935';
+  if (t <= 65) return 'var(--color-status-active)';
+  if (t <= 68) return 'var(--color-status-warning)';
+  return 'var(--color-brand-red)';
 }
 
 const MODEL_REGISTRY = [
@@ -127,12 +127,12 @@ export default function AIGPUMonitorPage() {
       <section>
         <SectionHeader number="1" title="GPU Overview" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <StatCard label="GPU Utilization" value="61%" color="#ff9800" />
-          <StatCard label="GPU Memory" value="18.4 / 24 GB" color="#ff9800" />
-          <StatCard label="Temperature" value="68°C" color="#ff9800" />
-          <StatCard label="Power Draw" value="210 / 250W" color="#4caf50" />
-          <StatCard label="Active Jobs" value={3} color="#29b6f6" />
-          <StatCard label="Queue Depth" value={2} color="#fff" />
+          <StatCard label="GPU Utilization" value="61%" color="var(--color-status-warning)" />
+          <StatCard label="GPU Memory" value="18.4 / 24 GB" color="var(--color-status-warning)" />
+          <StatCard label="Temperature" value="68°C" color="var(--color-status-warning)" />
+          <StatCard label="Power Draw" value="210 / 250W" color="var(--color-status-active)" />
+          <StatCard label="Active Jobs" value={3} color="var(--color-status-info)" />
+          <StatCard label="Queue Depth" value={2} color="var(--color-text-primary)" />
         </div>
       </section>
 
@@ -215,10 +215,10 @@ export default function AIGPUMonitorPage() {
       <section>
         <SectionHeader number="5" title="Throughput Metrics" />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Tokens/sec" value="4,200" color="#22d3ee" />
-          <StatCard label="Requests/min" value={142} color="#fff" />
-          <StatCard label="Avg Queue Wait" value="1.4s" color="#ff9800" />
-          <StatCard label="Batch Efficiency" value="87%" color="#4caf50" />
+          <StatCard label="Tokens/sec" value="4,200" color="var(--color-status-info)" />
+          <StatCard label="Requests/min" value={142} color="var(--color-text-primary)" />
+          <StatCard label="Avg Queue Wait" value="1.4s" color="var(--color-status-warning)" />
+          <StatCard label="Batch Efficiency" value="87%" color="var(--color-status-active)" />
         </div>
       </section>
 

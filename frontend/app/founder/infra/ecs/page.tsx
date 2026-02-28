@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const colors = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const colors = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
       style={{ borderColor: `${colors[status]}40`, color: colors[status], background: `${colors[status]}12` }}>
@@ -32,7 +32,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -97,7 +97,7 @@ export default function ECSClusterHealth() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: '#94a3b8' }}>
+            <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--color-text-muted)' }}>
               MODULE 10 · INFRASTRUCTURE
             </div>
             <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">ECS Cluster Health</h1>
@@ -112,7 +112,7 @@ export default function ECSClusterHealth() {
               className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border transition-all"
               style={{
                 borderColor: 'rgba(255,107,26,0.4)',
-                color: refreshed ? '#fff' : '#ff6b1a',
+                color: refreshed ? 'var(--color-text-primary)' : 'var(--color-brand-orange)',
                 background: refreshed ? 'rgba(255,107,26,0.2)' : 'rgba(255,107,26,0.06)',
               }}
             >
@@ -125,12 +125,12 @@ export default function ECSClusterHealth() {
         <section>
           <SectionHeader number="1" title="Cluster Overview" sub="ECS Fargate · us-east-1" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <StatCard label="Running Tasks"  value={8}        color="#4caf50" />
+            <StatCard label="Running Tasks"  value={8}        color="var(--color-status-active)" />
             <StatCard label="Desired Tasks"  value={8}        />
-            <StatCard label="Pending"        value={0}        color="#4caf50" />
-            <StatCard label="CPU Utilization" value="34%"     color="#ff9800" />
-            <StatCard label="Memory Util"    value="41%"      color="#ff9800" />
-            <StatCard label="Uptime 30d"     value="99.97%"   color="#4caf50" />
+            <StatCard label="Pending"        value={0}        color="var(--color-status-active)" />
+            <StatCard label="CPU Utilization" value="34%"     color="var(--color-status-warning)" />
+            <StatCard label="Memory Util"    value="41%"      color="var(--color-status-warning)" />
+            <StatCard label="Uptime 30d"     value="99.97%"   color="var(--color-status-active)" />
           </div>
         </section>
 
@@ -154,8 +154,8 @@ export default function ECSClusterHealth() {
                     <tr key={s.name} className={`border-b border-border-subtle ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
                       <td className="py-2.5 pr-4 font-semibold text-[rgba(255,255,255,0.8)]">{s.name}</td>
                       <td className="py-2.5 px-4 text-right text-[rgba(255,255,255,0.6)]">{s.tasks}</td>
-                      <td className="py-2.5 px-4 text-right" style={{ color: s.cpu > 60 ? '#ff9800' : '#4caf50' }}>{s.cpu}%</td>
-                      <td className="py-2.5 px-4 text-right" style={{ color: s.mem > 60 ? '#ff9800' : '#4caf50' }}>{s.mem}%</td>
+                      <td className="py-2.5 px-4 text-right" style={{ color: s.cpu > 60 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>{s.cpu}%</td>
+                      <td className="py-2.5 px-4 text-right" style={{ color: s.mem > 60 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>{s.mem}%</td>
                       <td className="py-2.5 pl-4 text-right"><Badge label={s.status} status={s.status} /></td>
                     </tr>
                   ))}
@@ -192,9 +192,9 @@ export default function ECSClusterHealth() {
           <SectionHeader number="4" title="ALB Metrics" sub="Application Load Balancer" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <StatCard label="Request Rate"       value="342 req/min" />
-            <StatCard label="P50 Latency"        value="48ms"        color="#4caf50" />
-            <StatCard label="P95 Latency"        value="210ms"       color="#ff9800" />
-            <StatCard label="5xx Rate"           value="0.01%"       color="#4caf50" />
+            <StatCard label="P50 Latency"        value="48ms"        color="var(--color-status-active)" />
+            <StatCard label="P95 Latency"        value="210ms"       color="var(--color-status-warning)" />
+            <StatCard label="5xx Rate"           value="0.01%"       color="var(--color-status-active)" />
             <StatCard label="Active Connections" value={87}          />
           </div>
         </section>
@@ -249,7 +249,7 @@ export default function ECSClusterHealth() {
                 <div key={day} className="flex flex-col items-center gap-2 p-3 bg-[rgba(255,255,255,0.02)] border border-border-subtle"
                   style={{ clipPath: 'polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,0 100%)' }}>
                   <span className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)]">{day}</span>
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#4caf50', boxShadow: '0 0 6px #4caf5088' }} />
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--color-status-active)', boxShadow: '0 0 6px color-mix(in srgb, var(--color-status-active) 53%, transparent)' }} />
                   <span className="text-[10px] font-bold" style={{ color: 'var(--q-green)' }}>8/8</span>
                 </div>
               ))}

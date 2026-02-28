@@ -14,7 +14,7 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
-      <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
+      <div className="text-2xl font-bold" style={{ color: color ?? "var(--color-text-primary)" }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.35)] mt-1">{sub}</div>}
     </motion.div>
   );
@@ -46,7 +46,7 @@ export default function BillingCommandPage() {
   const fmtNum = (v: unknown) => typeof v === "number" ? v.toLocaleString() : (v != null ? String(v) : "—");
 
   const healthStatus = String(health.status ?? "");
-  const healthColor = healthStatus === "excellent" ? "#4caf50" : healthStatus === "good" ? "#8bc34a" : healthStatus === "fair" ? "#ff9800" : "#e53935";
+  const healthColor = healthStatus === "excellent" ? "var(--color-status-active)" : healthStatus === "good" ? "var(--color-status-active)" : healthStatus === "fair" ? "var(--color-status-warning)" : "var(--color-brand-red)";
 
   const FEATURES = [
     "Global revenue dashboard","Clean claim monitor","Denial heatmap","AR aging analysis",
@@ -86,19 +86,19 @@ export default function BillingCommandPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         <KpiCard label="Total Claims" value={fmtNum(dashboard.total_claims)} />
-        <KpiCard label="Paid" value={fmtNum(dashboard.paid_claims)} color="#4caf50" />
-        <KpiCard label="Denied" value={fmtNum(dashboard.denied_claims)} color="#e53935" />
-        <KpiCard label="Clean Claim %" value={fmtPct(dashboard.clean_claim_rate_pct)} color="#22d3ee" />
-        <KpiCard label="Denial %" value={fmtPct(dashboard.denial_rate_pct)} color="#ff9800" />
-        <KpiCard label="Revenue" value={fmt$(dashboard.revenue_cents)} color="#4caf50" />
+        <KpiCard label="Paid" value={fmtNum(dashboard.paid_claims)} color="var(--color-status-active)" />
+        <KpiCard label="Denied" value={fmtNum(dashboard.denied_claims)} color="var(--color-brand-red)" />
+        <KpiCard label="Clean Claim %" value={fmtPct(dashboard.clean_claim_rate_pct)} color="var(--color-status-info)" />
+        <KpiCard label="Denial %" value={fmtPct(dashboard.denial_rate_pct)} color="var(--color-status-warning)" />
+        <KpiCard label="Revenue" value={fmt$(dashboard.revenue_cents)} color="var(--color-status-active)" />
         <KpiCard label="Health" value={healthStatus.toUpperCase() || "—"} color={healthColor} sub={`Score: ${health.health_score ?? "—"}`} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Claim Revenue" value={fmt$(exec.total_revenue_cents)} color="#22d3ee" />
-        <KpiCard label="MRR" value={fmt$(exec.mrr_cents)} color="#22d3ee" sub="Monthly Recurring" />
-        <KpiCard label="ARR" value={fmt$(exec.arr_cents)} color="#22d3ee" sub="Annual Run Rate" />
-        <KpiCard label="Revenue Leakage" value={fmt$(leakage.total_leakage_cents)} color="#e53935" sub={`${leakage.item_count ?? 0} items`} />
+        <KpiCard label="Claim Revenue" value={fmt$(exec.total_revenue_cents)} color="var(--color-status-info)" />
+        <KpiCard label="MRR" value={fmt$(exec.mrr_cents)} color="var(--color-status-info)" sub="Monthly Recurring" />
+        <KpiCard label="ARR" value={fmt$(exec.arr_cents)} color="var(--color-status-info)" sub="Annual Run Rate" />
+        <KpiCard label="Revenue Leakage" value={fmt$(leakage.total_leakage_cents)} color="var(--color-brand-red)" sub={`${leakage.item_count ?? 0} items`} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -114,7 +114,7 @@ export default function BillingCommandPage() {
                     <span className="font-semibold text-[rgba(255,255,255,0.8)] flex-shrink-0">{entry.count}</span>
                   </div>
                   <div className="h-2 bg-[rgba(255,255,255,0.06)] overflow-hidden">
-                    <motion.div className="h-full" style={{ background: entry.count / maxCount > 0.7 ? "#9c1b1b" : entry.count / maxCount > 0.4 ? "#b84a0f" : "#ff9800" }} initial={{ width: 0 }} animate={{ width: `${(entry.count / maxCount) * 100}%` }} transition={{ duration: 0.6 }} />
+                    <motion.div className="h-full" style={{ background: entry.count / maxCount > 0.7 ? "var(--color-brand-red)" : entry.count / maxCount > 0.4 ? "var(--color-brand-orange)" : "var(--color-status-warning)" }} initial={{ width: 0 }} animate={{ width: `${(entry.count / maxCount) * 100}%` }} transition={{ duration: 0.6 }} />
                   </div>
                 </div>
               );
@@ -126,7 +126,7 @@ export default function BillingCommandPage() {
         <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">AR Concentration Risk · Total AR: {fmt$(arConc.total_ar_cents)}</div>
           {arConc.concentration?.slice(0, 6).map(item => {
-            const rc = item.risk === "high" ? "#e53935" : item.risk === "medium" ? "#ff9800" : "#4caf50";
+            const rc = item.risk === "high" ? "var(--color-brand-red)" : item.risk === "medium" ? "var(--color-status-warning)" : "var(--color-status-active)";
             return (
               <div key={item.payer} className="mb-2">
                 <div className="flex justify-between text-[11px] mb-0.5">

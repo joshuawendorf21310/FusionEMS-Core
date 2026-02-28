@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -37,7 +37,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -70,14 +70,14 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 const SERVICES = [
-  { name: 'ECS Fargate', mtd: 380, pct: '30.5%', mom: '+2%', trend: 'up', trendColor: '#ff9800' },
+  { name: 'ECS Fargate', mtd: 380, pct: '30.5%', mom: '+2%', trend: 'up', trendColor: 'var(--color-status-warning)' },
   { name: 'RDS Multi-AZ', mtd: 210, pct: '16.8%', mom: '0%', trend: 'flat', trendColor: 'rgba(255,255,255,0.3)' },
   { name: 'ElastiCache', mtd: 85, pct: '6.8%', mom: '0%', trend: 'flat', trendColor: 'rgba(255,255,255,0.3)' },
-  { name: 'ALB', mtd: 42, pct: '3.4%', mom: '+1%', trend: 'up-small', trendColor: '#ff9800' },
-  { name: 'S3', mtd: 28, pct: '2.2%', mom: '+5%', trend: 'up', trendColor: '#ff9800' },
-  { name: 'CloudFront', mtd: 18, pct: '1.4%', mom: '-2%', trend: 'down', trendColor: '#4caf50' },
+  { name: 'ALB', mtd: 42, pct: '3.4%', mom: '+1%', trend: 'up-small', trendColor: 'var(--color-status-warning)' },
+  { name: 'S3', mtd: 28, pct: '2.2%', mom: '+5%', trend: 'up', trendColor: 'var(--color-status-warning)' },
+  { name: 'CloudFront', mtd: 18, pct: '1.4%', mom: '-2%', trend: 'down', trendColor: 'var(--color-status-active)' },
   { name: 'Route53', mtd: 5, pct: '0.4%', mom: '0%', trend: 'flat', trendColor: 'rgba(255,255,255,0.3)' },
-  { name: 'Other', mtd: 479, pct: '38.4%', mom: '+1%', trend: 'up-small', trendColor: '#ff9800' },
+  { name: 'Other', mtd: 479, pct: '38.4%', mom: '+1%', trend: 'up-small', trendColor: 'var(--color-status-warning)' },
 ];
 
 function TrendIcon({ trend, color }: { trend: string; color: string }) {
@@ -156,12 +156,12 @@ export default function InfraCostPage() {
       <section>
         <SectionHeader number="1" title="Cost Overview" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <StatCard label="MTD Total" value="$1,247" color="#fff" />
-          <StatCard label="Last Month" value="$1,184" color="#fff" />
-          <StatCard label="Projected" value="$1,310" color="#ff9800" />
-          <StatCard label="Budget" value="$1,500" color="#fff" />
-          <StatCard label="Budget Remaining" value="$253" color="#4caf50" />
-          <StatCard label="YTD Total" value="$8,420" color="#fff" />
+          <StatCard label="MTD Total" value="$1,247" color="var(--color-text-primary)" />
+          <StatCard label="Last Month" value="$1,184" color="var(--color-text-primary)" />
+          <StatCard label="Projected" value="$1,310" color="var(--color-status-warning)" />
+          <StatCard label="Budget" value="$1,500" color="var(--color-text-primary)" />
+          <StatCard label="Budget Remaining" value="$253" color="var(--color-status-active)" />
+          <StatCard label="YTD Total" value="$8,420" color="var(--color-text-primary)" />
         </div>
       </section>
 
@@ -205,7 +205,7 @@ export default function InfraCostPage() {
               <div key={m.label} className="flex items-center gap-3">
                 <span className="text-[11px] font-mono text-[rgba(255,255,255,0.4)] w-8 flex-shrink-0">{m.label}</span>
                 <div className="flex-1">
-                  <ProgressBar value={m.cost} max={1500} color="#94a3b8" />
+                  <ProgressBar value={m.cost} max={1500} color="var(--color-text-muted)" />
                 </div>
                 <span className="text-[11px] font-mono text-[rgba(255,255,255,0.6)] w-14 text-right flex-shrink-0">${m.cost.toLocaleString()}</span>
               </div>
