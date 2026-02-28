@@ -91,6 +91,14 @@ jobs:
         run: |
           set -euo pipefail
 
+          dump_delete_failed_events() {
+            aws cloudformation describe-stack-events \
+              --stack-name "${CFN_STACK_NAME}" \
+              --max-items 50 \
+              --query 'StackEvents[?ResourceStatus==`DELETE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' \
+              --output table 2>/dev/null || true
+          }
+
           delete_stack_hard() {
             echo "Deleting stack (normal)..."
             aws cloudformation delete-stack --stack-name "${CFN_STACK_NAME}" || true
@@ -103,7 +111,23 @@ jobs:
               echo "Delete wait failed. Current status: $STATUS2"
 
               if [[ "$STATUS2" == "DELETE_FAILED" ]]; then
-                echo "Stack is DELETE_FAILED — retrying with FORCE_DELETE_STACK..."
+                echo "DELETE_FAILED events:"
+                dump_delete_failed_events
+
+                # Hard gate: fail immediately if AccessDenied — permissions must be fixed first
+                ACCESS_DENIED=$(aws cloudformation describe-stack-events \
+                  --stack-name "${CFN_STACK_NAME}" \
+                  --max-items 50 \
+                  --query 'StackEvents[?ResourceStatus==`DELETE_FAILED`].ResourceStatusReason' \
+                  --output text 2>/dev/null || echo "")
+                if echo "$ACCESS_DENIED" | grep -qiE "AccessDenied|not authorized|is not authorized"; then
+                  echo "HARD GATE: AccessDenied during stack deletion."
+                  echo "Fix IAM permissions on the deploy role before retrying."
+                  echo "Run: aws cloudformation deploy --stack-name fusionems-bootstrap-iam --template-file infra/cloudformation/bootstrap-iam.yml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides RoleName=FusionEMSQuantum-GitHubDeployRole GitHubOrg=joshuawendorf21310"
+                  exit 1
+                fi
+
+                echo "Retrying with FORCE_DELETE_STACK..."
                 aws cloudformation delete-stack \
                   --stack-name "${CFN_STACK_NAME}" \
                   --deletion-mode FORCE_DELETE_STACK

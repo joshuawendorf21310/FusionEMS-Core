@@ -1,9 +1,18 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: FusionEMS Quantum - Bootstrap IAM Stack (GitHub OIDC + Deploy Role)
-# Deploy this stack ONCE manually before using GitHub Actions
-# aws cloudformation deploy --stack-name fusionems-bootstrap-iam --template-file infra/cloudformation/bootstrap-iam.yml \
-#   --capabilities CAPABILITY_NAMED_IAM \
-#   --parameter-overrides GitHubOrg=YOUR_ORG GitHubRepo=FusionEMS-Core
+# Deploy this stack ONCE (or update) manually before using GitHub Actions:
+#
+#   aws cloudformation deploy \
+#     --stack-name fusionems-bootstrap-iam \
+#     --template-file infra/cloudformation/bootstrap-iam.yml \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides \
+#       GitHubOrg=joshuawendorf21310 \
+#       GitHubRepo=FusionEMS-Core \
+#       RoleName=FusionEMSQuantum-GitHubDeployRole \
+#       ArtifactsBucket=fusionemsquantum-cfn-artifacts-prod
+#
+# This requires an IAM principal with AdministratorAccess or equivalent.
 
 Parameters:
   GitHubOrg:
@@ -13,10 +22,18 @@ Parameters:
     Type: String
     Default: FusionEMS-Core
     Description: GitHub repository name
+  RoleName:
+    Type: String
+    Default: FusionEMSQuantum-GitHubDeployRole
+    Description: Name of the IAM role assumed by GitHub Actions
   ArtifactsBucket:
     Type: String
-    Description: S3 bucket for CloudFormation artifacts (must exist or be created)
-    Default: fusionems-cfn-artifacts
+    Description: S3 bucket for CloudFormation artifacts (must exist)
+    Default: fusionemsquantum-cfn-artifacts-prod
+  AwsAccountId:
+    Type: String
+    Description: AWS account ID (used to scope IAM resource ARNs)
+    Default: '793439286972'
 
 Resources:
 
@@ -33,7 +50,7 @@ Resources:
   GitHubActionsDeployRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: fusionems-github-deploy-role
+      RoleName: !Ref RoleName
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -49,33 +66,75 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/PowerUserAccess
       Policies:
-        - PolicyName: IamPermissionsForDeploy
+        - PolicyName: IamPermissionsForStackManagedRoles
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Effect: Allow
+              - Sid: IamStackRoles
+                Effect: Allow
                 Action:
                   - iam:CreateRole
                   - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateRole
+                  - iam:UpdateAssumeRolePolicy
                   - iam:PutRolePolicy
                   - iam:DeleteRolePolicy
                   - iam:AttachRolePolicy
                   - iam:DetachRolePolicy
-                  - iam:GetRole
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRoleTags
                   - iam:PassRole
+                Resource:
+                  - !Sub 'arn:aws:iam::${AwsAccountId}:role/fusionems-quantum-*'
+                  - !Sub 'arn:aws:iam::${AwsAccountId}:role/FusionEMSQuantum-*'
+
+              - Sid: IamInstanceProfiles
+                Effect: Allow
+                Action:
                   - iam:CreateInstanceProfile
                   - iam:DeleteInstanceProfile
+                  - iam:GetInstanceProfile
                   - iam:AddRoleToInstanceProfile
                   - iam:RemoveRoleFromInstanceProfile
+                  - iam:TagInstanceProfile
+                Resource:
+                  - !Sub 'arn:aws:iam::${AwsAccountId}:instance-profile/fusionems-quantum-*'
+                  - !Sub 'arn:aws:iam::${AwsAccountId}:instance-profile/FusionEMSQuantum-*'
+
+              - Sid: IamOidcProvider
+                Effect: Allow
+                Action:
                   - iam:CreateOpenIDConnectProvider
                   - iam:GetOpenIDConnectProvider
-                  - iam:TagRole
-                  - iam:UntagRole
-                  - iam:UpdateRoleDescription
+                  - iam:DeleteOpenIDConnectProvider
+                  - iam:TagOpenIDConnectProvider
+                Resource: '*'
+
+              - Sid: ResourceGroupsTagging
+                Effect: Allow
+                Action:
+                  - tag:TagResources
+                  - tag:UntagResources
+                  - tag:GetResources
+                  - tag:GetTagKeys
+                  - tag:GetTagValues
+                Resource: '*'
+
+              - Sid: CloudFormationTagging
+                Effect: Allow
+                Action:
+                  - cloudformation:TagResource
+                  - cloudformation:UntagResource
                 Resource: '*'
 
   ArtifactsBucketResource:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Ref ArtifactsBucket
       BucketEncryption:
