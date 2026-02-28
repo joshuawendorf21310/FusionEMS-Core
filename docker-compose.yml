@@ -1,33 +1,138 @@
 version: "3.9"
+
+name: fusionems
+
+networks:
+  fusionems:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  prometheusdata:
+  grafanadata:
+
 services:
+
+  # ==========================================================
+  # POSTGRES + POSTGIS
+  # ==========================================================
   postgres:
     image: postgis/postgis:16-3.4
+    container_name: fusionems-postgres
+    restart: unless-stopped
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: fusionems
-    ports: ["5432:5432"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - fusionems
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================
+  # REDIS
+  # ==========================================================
   redis:
     image: redis:7
-    ports: ["6379:6379"]
+    container_name: fusionems-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - fusionems
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==========================================================
+  # OPA
+  # ==========================================================
   opa:
     image: openpolicyagent/opa:0.67.0
-    command: ["run","--server","--addr","0.0.0.0:8181","/policies"]
+    container_name: fusionems-opa
+    restart: unless-stopped
+    command:
+      [
+        "run",
+        "--server",
+        "--watch",
+        "--addr",
+        "0.0.0.0:8181",
+        "/policies"
+      ]
     volumes:
       - ./opa/policies:/policies:ro
-    ports: ["8181:8181"]
+    ports:
+      - "8181:8181"
+    networks:
+      - fusionems
+
+  # ==========================================================
+  # OTEL COLLECTOR
+  # ==========================================================
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.108.0
+    container_name: fusionems-otel
+    restart: unless-stopped
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./otel/config.yaml:/etc/otelcol/config.yaml:ro
-    ports: ["4318:4318","8889:8889"]
+    ports:
+      - "4318:4318"  # OTLP HTTP
+      - "8889:8889"  # Prom metrics
+    networks:
+      - fusionems
+
+  # ==========================================================
+  # PROMETHEUS
+  # ==========================================================
   prometheus:
     image: prom/prometheus:v2.53.0
+    container_name: fusionems-prometheus
+    restart: unless-stopped
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
+      - prometheusdata:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - fusionems
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  # ==========================================================
+  # GRAFANA
+  # ==========================================================
   grafana:
     image: grafana/grafana:11.1.0
-    ports: ["3001:3000"]
+    container_name: fusionems-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
     environment:
+      GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - fusionems
+    depends_on:
+      prometheus:
+        condition: service_started
