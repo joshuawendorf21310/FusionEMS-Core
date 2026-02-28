@@ -41,16 +41,22 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.infra == 'true'
     uses: ./.github/workflows/deploy-infra.yml
+    with:
+      env: dev
     secrets: inherit
 
   deploy-backend:
     needs: [detect-changes, deploy-infra]
     if: always() && needs.detect-changes.outputs.backend == 'true' && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     uses: ./.github/workflows/deploy-backend.yml
+    with:
+      env: dev
     secrets: inherit
 
   deploy-frontend:
     needs: [detect-changes, deploy-infra]
     if: always() && needs.detect-changes.outputs.frontend == 'true' && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      env: dev
     secrets: inherit
