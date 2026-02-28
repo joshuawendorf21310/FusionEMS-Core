@@ -4,18 +4,6 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { clsx } from 'clsx';
 
-/*
-  StatusChip — inline status indicator.
-  Uses the semantic status color tokens exclusively.
-  Never use orange for status — orange = action only.
-  Never use red except for CRITICAL / life-safety states.
-
-  Usage:
-    <StatusChip status="active">Available</StatusChip>
-    <StatusChip status="critical" pulse>Unit OOS</StatusChip>
-    <StatusChip status="warning" size="sm">Pending</StatusChip>
-*/
-
 const chipVariants = cva(
   [
     'inline-flex items-center gap-1.5',
@@ -27,20 +15,20 @@ const chipVariants = cva(
     variants: {
       status: {
         active: [
-          'bg-[rgba(76,175,80,0.12)] text-status-active',
-          'border border-[rgba(76,175,80,0.25)]',
+          'bg-[rgba(34,197,94,0.12)] text-status-active',
+          'border border-[rgba(34,197,94,0.25)]',
         ],
         warning: [
-          'bg-[rgba(255,152,0,0.12)] text-status-warning',
-          'border border-[rgba(255,152,0,0.25)]',
+          'bg-[rgba(245,158,11,0.12)] text-status-warning',
+          'border border-[rgba(245,158,11,0.25)]',
         ],
         critical: [
           'bg-red-ghost text-red',
-          'border border-[rgba(229,57,53,0.35)]',
+          'border border-[rgba(255,45,45,0.35)]',
         ],
         info: [
-          'bg-[rgba(41,182,246,0.12)] text-status-info',
-          'border border-[rgba(41,182,246,0.25)]',
+          'bg-[rgba(56,189,248,0.12)] text-status-info',
+          'border border-[rgba(56,189,248,0.25)]',
         ],
         neutral: [
           'bg-[rgba(255,255,255,0.04)] text-text-muted',
@@ -125,10 +113,6 @@ export const StatusChip = React.forwardRef<HTMLSpanElement, StatusChipProps>(
 
 StatusChip.displayName = 'StatusChip';
 
-/*
-  UnitStatusChip — shorthand for dispatch unit status.
-  Maps the 5 standard CAD unit dispositions to semantic colors.
-*/
 const UNIT_STATUS_MAP: Record<
   string,
   { status: StatusVariant; label: string }
@@ -163,9 +147,6 @@ export function UnitStatusChip({
   );
 }
 
-/*
-  ClaimStatusChip — shorthand for billing claim statuses.
-*/
 const CLAIM_STATUS_MAP: Record<
   string,
   { status: StatusVariant; label: string }

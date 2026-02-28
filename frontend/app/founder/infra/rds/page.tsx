@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -30,7 +30,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
-    <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}>
+    <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
       <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
@@ -40,7 +40,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+    <div className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}>
       {children}
     </div>
@@ -57,11 +57,11 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 const PERF_METRICS = [
-  { label: 'CPU Utilization',     value: 12,  max: 100, color: '#4caf50' },
-  { label: 'Memory Utilization',  value: 38,  max: 100, color: '#ff9800' },
-  { label: 'Storage Utilization', value: 8.4, max: 100, color: '#4caf50' },
-  { label: 'Read IOPS',           value: 180, max: 1000, color: '#29b6f6' },
-  { label: 'Write IOPS',          value: 160, max: 1000, color: '#29b6f6' },
+  { label: 'CPU Utilization',     value: 12,  max: 100, color: 'var(--q-green)' },
+  { label: 'Memory Utilization',  value: 38,  max: 100, color: 'var(--q-yellow)' },
+  { label: 'Storage Utilization', value: 8.4, max: 100, color: 'var(--q-green)' },
+  { label: 'Read IOPS',           value: 180, max: 1000, color: 'var(--color-status-info)' },
+  { label: 'Write IOPS',          value: 160, max: 1000, color: 'var(--color-status-info)' },
 ];
 
 const POOLS = [
@@ -95,7 +95,7 @@ export default function RDSPostgresHealth() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080e14] text-white px-6 py-8 font-mono">
+    <div className="min-h-screen bg-bg-void text-text-primary px-6 py-8 font-mono">
       <div className="max-w-6xl mx-auto space-y-8">
 
         {/* Header */}
@@ -104,7 +104,7 @@ export default function RDSPostgresHealth() {
             <div className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: '#94a3b8' }}>
               MODULE 10 · INFRASTRUCTURE
             </div>
-            <h1 className="text-2xl font-bold uppercase tracking-widest text-white">RDS PostgreSQL Health</h1>
+            <h1 className="text-2xl font-bold uppercase tracking-widest text-text-primary">RDS PostgreSQL Health</h1>
             <p className="text-[12px] text-[rgba(255,255,255,0.4)] mt-1">
               Multi-AZ · automated backups · connection pooling · performance insights
             </p>
@@ -154,7 +154,7 @@ export default function RDSPostgresHealth() {
             <div className="overflow-x-auto">
               <table className="w-full text-[11px]">
                 <thead>
-                  <tr className="text-[rgba(255,255,255,0.35)] uppercase tracking-widest border-b border-[rgba(255,255,255,0.06)]">
+                  <tr className="text-[rgba(255,255,255,0.35)] uppercase tracking-widest border-b border-border-subtle">
                     <th className="text-left py-2 pr-4 font-semibold">Pool</th>
                     <th className="text-right py-2 px-4 font-semibold">Size</th>
                     <th className="text-right py-2 px-4 font-semibold">Active</th>
@@ -164,10 +164,10 @@ export default function RDSPostgresHealth() {
                 </thead>
                 <tbody>
                   {POOLS.map((p, i) => (
-                    <tr key={p.name} className={`border-b border-[rgba(255,255,255,0.04)] ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
+                    <tr key={p.name} className={`border-b border-border-subtle ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
                       <td className="py-2.5 pr-4 font-semibold text-[rgba(255,255,255,0.8)]">{p.name}</td>
                       <td className="py-2.5 px-4 text-right text-[rgba(255,255,255,0.6)]">{p.size}</td>
-                      <td className="py-2.5 px-4 text-right" style={{ color: '#4caf50' }}>{p.active}</td>
+                      <td className="py-2.5 px-4 text-right" style={{ color: 'var(--q-green)' }}>{p.active}</td>
                       <td className="py-2.5 px-4 text-right text-[rgba(255,255,255,0.5)]">{p.idle}</td>
                       <td className="py-2.5 pl-4 text-right" style={{ color: p.waiting > 0 ? '#ff9800' : '#4caf50' }}>{p.waiting}</td>
                     </tr>
@@ -185,7 +185,7 @@ export default function RDSPostgresHealth() {
             <div className="overflow-x-auto">
               <table className="w-full text-[11px]">
                 <thead>
-                  <tr className="text-[rgba(255,255,255,0.35)] uppercase tracking-widest border-b border-[rgba(255,255,255,0.06)]">
+                  <tr className="text-[rgba(255,255,255,0.35)] uppercase tracking-widest border-b border-border-subtle">
                     <th className="text-left py-2 pr-4 font-semibold">Query (sanitized)</th>
                     <th className="text-right py-2 px-4 font-semibold">Avg Duration</th>
                     <th className="text-right py-2 px-4 font-semibold">Calls/hr</th>
@@ -194,12 +194,12 @@ export default function RDSPostgresHealth() {
                 </thead>
                 <tbody>
                   {SLOW_QUERIES.map((q, i) => (
-                    <tr key={i} className={`border-b border-[rgba(255,255,255,0.04)] ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
-                      <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.65)] max-w-[280px] truncate">{q.query}</td>
+                    <tr key={i} className={`border-b border-border-subtle ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
+                      <td className="py-2.5 pr-4 text-text-secondary max-w-[280px] truncate">{q.query}</td>
                       <td className="py-2.5 px-4 text-right font-semibold"
                         style={{ color: parseInt(q.avg) > 50 ? '#ff9800' : '#4caf50' }}>{q.avg}</td>
                       <td className="py-2.5 px-4 text-right text-[rgba(255,255,255,0.5)]">{q.calls}</td>
-                      <td className="py-2.5 pl-4 text-right text-[#94a3b8] font-semibold">{q.table}</td>
+                      <td className="py-2.5 pl-4 text-right text-system-cad font-semibold">{q.table}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -221,7 +221,7 @@ export default function RDSPostgresHealth() {
                 { k: 'Last Restore Test',  v: '30 days ago',     badge: { label: 'warn', status: 'warn' as const } },
                 { k: 'Backup Size',        v: '8.4 GB',          badge: null },
               ].map(({ k, v, badge }) => (
-                <div key={k} className="flex justify-between items-center border-b border-[rgba(255,255,255,0.04)] py-1.5">
+                <div key={k} className="flex justify-between items-center border-b border-border-subtle py-1.5">
                   <span className="text-[11px] text-[rgba(255,255,255,0.4)] uppercase tracking-wider">{k}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.8)]">{v}</span>
@@ -238,17 +238,17 @@ export default function RDSPostgresHealth() {
           <SectionHeader number="6" title="CloudWatch Alarms" sub="RDS alarm group" />
           <Panel>
             <div className="space-y-1">
-              <div className="grid grid-cols-4 text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.3)] border-b border-[rgba(255,255,255,0.06)] pb-2 mb-1">
+              <div className="grid grid-cols-4 text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.3)] border-b border-border-subtle pb-2 mb-1">
                 <span>Alarm</span>
                 <span className="text-center">Threshold</span>
                 <span className="text-center">Current</span>
                 <span className="text-right">Status</span>
               </div>
               {CW_ALARMS.map((a, i) => (
-                <div key={a.name} className={`grid grid-cols-4 items-center py-2 border-b border-[rgba(255,255,255,0.04)] ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
+                <div key={a.name} className={`grid grid-cols-4 items-center py-2 border-b border-border-subtle ${i % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
                   <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.8)]">{a.name}</span>
                   <span className="text-[11px] text-[rgba(255,255,255,0.45)] text-center">{a.threshold}</span>
-                  <span className="text-[11px] font-semibold text-center" style={{ color: '#4caf50' }}>{a.current}</span>
+                  <span className="text-[11px] font-semibold text-center" style={{ color: 'var(--q-green)' }}>{a.current}</span>
                   <span className="text-right"><Badge label={a.status} status={a.status} /></span>
                 </div>
               ))}
@@ -296,14 +296,14 @@ export default function RDSPostgresHealth() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] text-[rgba(255,255,255,0.4)] uppercase tracking-wider">Replication Lag</span>
-                    <span className="text-[11px] font-semibold" style={{ color: '#4caf50' }}>0ms</span>
+                    <span className="text-[11px] font-semibold" style={{ color: 'var(--q-green)' }}>0ms</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Failover drill row */}
-            <div className="flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-4">
+            <div className="flex items-center justify-between border-t border-border-subtle pt-4">
               <div className="flex items-center gap-3">
                 <span className="text-[11px] text-[rgba(255,255,255,0.45)] uppercase tracking-wider">Last failover drill:</span>
                 <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.7)]">30 days ago</span>
@@ -326,7 +326,7 @@ export default function RDSPostgresHealth() {
 
         {/* Back link */}
         <div className="pt-2 pb-8">
-          <Link href="/founder" className="text-[12px] font-semibold uppercase tracking-wider transition-opacity hover:opacity-70" style={{ color: '#ff6b1a' }}>
+          <Link href="/founder" className="text-[12px] font-semibold uppercase tracking-wider transition-opacity hover:opacity-70" style={{ color: 'var(--q-orange)' }}>
             ← Back to Founder Command OS
           </Link>
         </div>

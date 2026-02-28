@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface PackStatus {
@@ -198,21 +199,21 @@ export default function ComplianceStudioPage() {
   const warnCount = validationResult?.issues.filter((i) => i.severity === 'warning').length ?? 0;
 
   return (
-    <div className="p-5 space-y-6 min-h-screen bg-[#090e14]">
+    <div className="p-5 space-y-6 min-h-screen bg-bg-void">
       <div>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(34,211,238,0.6)] mb-1">
           ePCR · COMPLIANCE STUDIO
         </div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">Compliance Studio</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Compliance Studio</h1>
+        <p className="text-xs text-text-muted mt-0.5">
           Turn-key visual certification — resource packs, validation, AI fix list
         </p>
       </div>
 
-      <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 space-y-2">
+      <div className="bg-bg-panel border border-border-DEFAULT p-4 space-y-2">
         <div className="text-xs font-bold uppercase tracking-wider text-[rgba(255,255,255,0.5)] mb-3">Pack Status</div>
         {packLoading ? (
-          <div className="text-xs text-[rgba(255,255,255,0.3)]">Loading...</div>
+          <div className="p-6"><QuantumTableSkeleton rows={6} cols={4} /></div>
         ) : (
           <div className="flex flex-wrap gap-3">
             {[
@@ -222,11 +223,11 @@ export default function ComplianceStudioPage() {
             ].map(({ key, label }) => {
               const pack = packStatus?.[key as keyof PackStatus];
               return (
-                <div key={key} className="flex items-center gap-2 bg-[#0a1018] border border-[rgba(255,255,255,0.08)] px-3 py-2">
+                <div key={key} className="flex items-center gap-2 bg-bg-input border border-border-DEFAULT px-3 py-2">
                   <span
                     className={`inline-block w-2 h-2 rounded-full ${pack?.active ? 'bg-green-400' : 'bg-red-500'}`}
                   />
-                  <span className="text-xs text-white">{pack?.name || label}</span>
+                  <span className="text-xs text-text-primary">{pack?.name || label}</span>
                   <span className={`text-[10px] font-bold ${pack?.active ? 'text-green-400' : 'text-red-400'}`}>
                     {pack?.active ? 'Active' : 'Missing'}
                   </span>
@@ -238,7 +239,7 @@ export default function ComplianceStudioPage() {
       </div>
 
       <div
-        className={`border-2 border-dashed rounded transition-colors ${isDragging ? 'border-cyan-400 bg-[#0a1a24]' : 'border-[rgba(255,255,255,0.15)] bg-[#0f1720]'} p-8 text-center`}
+        className={`border-2 border-dashed rounded transition-colors ${isDragging ? 'border-cyan-400 bg-bg-input' : 'border-border-strong bg-bg-panel'} p-8 text-center`}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
@@ -256,7 +257,7 @@ export default function ComplianceStudioPage() {
         />
         <button
           onClick={() => dropFileInputRef.current?.click()}
-          className="bg-[#0a1018] border border-[rgba(34,211,238,0.3)] text-[#22d3ee] text-xs px-4 py-2 hover:bg-[rgba(34,211,238,0.08)] transition-colors"
+          className="bg-bg-input border border-[rgba(34,211,238,0.3)] text-system-billing text-xs px-4 py-2 hover:bg-[rgba(34,211,238,0.08)] transition-colors"
         >
           Browse Files
         </button>
@@ -265,7 +266,7 @@ export default function ComplianceStudioPage() {
         )}
       </div>
 
-      <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 space-y-3">
+      <div className="bg-bg-panel border border-border-DEFAULT p-4 space-y-3">
         <div className="text-xs font-bold uppercase tracking-wider text-[rgba(255,255,255,0.5)]">Validate XML File</div>
         <div className="flex items-center gap-3">
           <input
@@ -277,18 +278,18 @@ export default function ComplianceStudioPage() {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="bg-[#0a1018] border border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.6)] text-xs px-3 py-2 hover:border-[rgba(255,255,255,0.3)] transition-colors"
+            className="bg-bg-input border border-border-strong text-[rgba(255,255,255,0.6)] text-xs px-3 py-2 hover:border-[rgba(255,255,255,0.3)] transition-colors"
           >
             {validationFile ? validationFile.name : 'Choose XML file'}
           </button>
           <button
             onClick={runValidation}
             disabled={!validationFile || validationLoading}
-            className="bg-[#22d3ee] text-[#090e14] text-xs font-bold px-5 py-2 hover:bg-[#06b6d4] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="bg-system-billing text-text-inverse text-xs font-bold px-5 py-2 hover:bg-system-billing disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {validationLoading ? (
               <span className="flex items-center gap-2">
-                <span className="inline-block w-3 h-3 border-2 border-[#090e14] border-t-transparent rounded-full animate-spin" />
+                <span className="inline-block w-3 h-3 border-2 border-bg-void border-t-transparent rounded-full animate-spin" />
                 Running...
               </span>
             ) : (
@@ -312,7 +313,7 @@ export default function ComplianceStudioPage() {
             </div>
             <button
               onClick={sendAllToAgent}
-              className="text-xs bg-[#0f1720] border border-[rgba(34,211,238,0.3)] text-[#22d3ee] px-3 py-1.5 hover:bg-[rgba(34,211,238,0.08)] transition-colors"
+              className="text-xs bg-bg-panel border border-[rgba(34,211,238,0.3)] text-system-billing px-3 py-1.5 hover:bg-[rgba(34,211,238,0.08)] transition-colors"
             >
               Send All to Agent
             </button>
@@ -322,7 +323,7 @@ export default function ComplianceStudioPage() {
             {validationResult.issues.map((issue, idx) => (
               <div
                 key={idx}
-                className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 space-y-2"
+                className="bg-bg-panel border border-border-DEFAULT p-4 space-y-2"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span
@@ -330,13 +331,13 @@ export default function ComplianceStudioPage() {
                   >
                     {issue.severity}
                   </span>
-                  <span className="text-xs font-mono text-[#22d3ee]">{issue.element_id}</span>
+                  <span className="text-xs font-mono text-system-billing">{issue.element_id}</span>
                   {issue.ui_section && (
                     <span className="text-[10px] text-[rgba(255,255,255,0.4)]">{issue.ui_section}</span>
                   )}
                   {issue.rule_source && (
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 ${issue.rule_source.toLowerCase().includes('wisconsin') ? 'bg-blue-900 text-blue-300' : 'bg-gray-800 text-gray-300'}`}
+                      className={`text-[10px] font-bold px-2 py-0.5 ${issue.rule_source.toLowerCase().includes('wisconsin') ? 'bg-blue-900 text-blue-300' : 'bg-bg-raised text-text-secondary'}`}
                     >
                       {issue.rule_source}
                     </span>
@@ -350,15 +351,15 @@ export default function ComplianceStudioPage() {
                   <button
                     onClick={() => fetchAiExplain(idx)}
                     disabled={aiLoadingIdx === idx}
-                    className="text-[11px] text-[#22d3ee] hover:underline disabled:opacity-40"
+                    className="text-[11px] text-system-billing hover:underline disabled:opacity-40"
                   >
                     {aiLoadingIdx === idx ? 'Loading...' : 'AI Explain'}
                   </button>
                 </div>
                 {aiExplanations[idx] && (
-                  <div className="mt-2 bg-[#0a1018] border border-[rgba(34,211,238,0.15)] p-3 space-y-2">
+                  <div className="mt-2 bg-bg-input border border-[rgba(34,211,238,0.15)] p-3 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-[#22d3ee]">AI EXPLANATION</span>
+                      <span className="text-[10px] font-bold text-system-billing">AI EXPLANATION</span>
                       <span className="text-[10px] bg-purple-900 text-purple-300 px-2 py-0.5 font-bold">
                         {aiExplanations[idx]!.fix_type}
                       </span>
@@ -369,7 +370,7 @@ export default function ComplianceStudioPage() {
                         <div className="text-[10px] text-[rgba(255,255,255,0.4)] mb-1 uppercase tracking-wider">Steps</div>
                         <ol className="space-y-1 list-decimal list-inside">
                           {aiExplanations[idx]!.patch_task.steps.map((step, si) => (
-                            <li key={si} className="text-[11px] text-[rgba(255,255,255,0.65)]">{step}</li>
+                            <li key={si} className="text-[11px] text-text-secondary">{step}</li>
                           ))}
                         </ol>
                       </div>
@@ -382,12 +383,12 @@ export default function ComplianceStudioPage() {
         </div>
       )}
 
-      <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4">
+      <div className="bg-bg-panel border border-border-DEFAULT p-4">
         <div className="text-xs font-bold uppercase tracking-wider text-[rgba(255,255,255,0.5)] mb-3">
           Certification Checklist
         </div>
         {certLoading ? (
-          <div className="text-xs text-[rgba(255,255,255,0.3)]">Loading checklist...</div>
+          <div className="p-6"><QuantumTableSkeleton rows={6} cols={4} /></div>
         ) : certChecks.length === 0 ? (
           <div className="text-xs text-[rgba(255,255,255,0.3)]">No checklist data available</div>
         ) : (
@@ -397,7 +398,7 @@ export default function ComplianceStudioPage() {
                 <span className={`text-sm ${check.passed ? 'text-green-400' : 'text-red-400'}`}>
                   {check.passed ? '✓' : '✗'}
                 </span>
-                <span className="text-xs text-[rgba(255,255,255,0.65)]">{check.label}</span>
+                <span className="text-xs text-text-secondary">{check.label}</span>
               </div>
             ))}
           </div>
@@ -405,7 +406,7 @@ export default function ComplianceStudioPage() {
       </div>
 
       <div className="pt-2">
-        <a href="/founder/epcr" className="text-xs text-[rgba(34,211,238,0.6)] hover:text-[#22d3ee]">
+        <a href="/founder/epcr" className="text-xs text-[rgba(34,211,238,0.6)] hover:text-system-billing">
           ← Back to ePCR
         </a>
       </div>

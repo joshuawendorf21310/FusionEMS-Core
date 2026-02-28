@@ -12,7 +12,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
       <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: DOMAIN_COLOR }}>
         {number} · {title}
       </div>
-      {sub && <p className="text-[11px] text-[rgba(255,255,255,0.38)]">{sub}</p>}
+      {sub && <p className="text-[11px] text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -20,7 +20,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className}`}
       style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}
     >
       {children}
@@ -29,10 +29,10 @@ function Panel({ children, className = '' }: { children: React.ReactNode; classN
 }
 
 const badgeColors = {
-  ok: { bg: 'rgba(76,175,80,0.15)', color: '#4caf50' },
-  warn: { bg: 'rgba(255,152,0,0.15)', color: '#ff9800' },
-  error: { bg: 'rgba(229,57,53,0.15)', color: '#e53935' },
-  info: { bg: 'rgba(41,182,246,0.15)', color: '#29b6f6' },
+  ok: { bg: 'rgba(76,175,80,0.15)', color: 'var(--q-green)' },
+  warn: { bg: 'rgba(255,152,0,0.15)', color: 'var(--q-yellow)' },
+  error: { bg: 'rgba(229,57,53,0.15)', color: 'var(--q-red)' },
+  info: { bg: 'rgba(41,182,246,0.15)', color: 'var(--color-status-info)' },
 };
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
@@ -50,9 +50,9 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <Panel>
-      <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-1">{label}</div>
+      <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1">{label}</div>
       <div className="text-2xl font-black" style={{ color: color ?? '#fff' }}>{value}</div>
-      {sub && <div className="text-[11px] text-[rgba(255,255,255,0.38)] mt-0.5">{sub}</div>}
+      {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </Panel>
   );
 }
@@ -92,10 +92,10 @@ const schedStatusMap: Record<string, 'ok' | 'warn' | 'error' | 'info'> = {
 };
 
 const complianceBars = [
-  { label: 'Minimum Staffing', value: 100, max: 100, color: '#4caf50', display: '100%' },
+  { label: 'Minimum Staffing', value: 100, max: 100, color: 'var(--q-green)', display: '100%' },
   { label: 'Credential Compliance', value: 97, max: 100, color: DOMAIN_COLOR, display: '97%' },
-  { label: 'Fatigue Score Avg', value: 2.1, max: 10, color: '#ff9800', display: '2.1 / 10' },
-  { label: 'Coverage Rate', value: 93, max: 100, color: '#22d3ee', display: '93%' },
+  { label: 'Fatigue Score Avg', value: 2.1, max: 10, color: 'var(--q-yellow)', display: '2.1 / 10' },
+  { label: 'Coverage Rate', value: 93, max: 100, color: 'var(--color-system-billing)', display: '93%' },
 ];
 
 const openShifts = [
@@ -126,14 +126,14 @@ const appFeatures = [
 
 export default function SchedulingPage() {
   return (
-    <div className="p-5 min-h-screen bg-[#07090d]">
+    <div className="p-5 min-h-screen bg-bg-void">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 mb-6 border-b border-[rgba(255,255,255,0.08)]">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 mb-6 border-b border-border-DEFAULT">
         <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: DOMAIN_COLOR }}>
           9 · PWA &amp; MOBILE
         </div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">Mobile Scheduling Interface</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-1">Shift management · Coverage monitoring · Fatigue tracking</p>
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Mobile Scheduling Interface</h1>
+        <p className="text-xs text-text-muted mt-1">Shift management · Coverage monitoring · Fatigue tracking</p>
       </motion.div>
 
       {/* MODULE 1 — Shift Coverage Overview */}
@@ -155,7 +155,7 @@ export default function SchedulingPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-[rgba(255,255,255,0.38)] border-b border-[rgba(255,255,255,0.06)]">
+                <tr className="text-text-muted border-b border-border-subtle">
                   {['Unit', 'Crew Lead', 'Partner', 'Shift Start', 'Shift End', 'Status'].map(h => (
                     <th key={h} className="text-left pb-2 pr-4 font-bold uppercase tracking-widest text-[10px]">{h}</th>
                   ))}
@@ -163,8 +163,8 @@ export default function SchedulingPage() {
               </thead>
               <tbody>
                 {scheduleRows.map((row, i) => (
-                  <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] last:border-0">
-                    <td className="py-2.5 pr-4 text-white font-bold">{row.unit}</td>
+                  <tr key={i} className="border-b border-border-subtle last:border-0">
+                    <td className="py-2.5 pr-4 text-text-primary font-bold">{row.unit}</td>
                     <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.7)]">{row.lead}</td>
                     <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.55)]">{row.partner}</td>
                     <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.55)] font-mono">{row.start}</td>
@@ -185,7 +185,7 @@ export default function SchedulingPage() {
           {complianceBars.map((item, i) => (
             <Panel key={i}>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[11px] font-bold text-white uppercase tracking-widest">{item.label}</span>
+                <span className="text-[11px] font-bold text-text-primary uppercase tracking-widest">{item.label}</span>
                 <span className="text-[11px] font-bold" style={{ color: item.color }}>{item.display}</span>
               </div>
               <ProgressBar value={item.value} max={item.max} color={item.color} />
@@ -202,16 +202,16 @@ export default function SchedulingPage() {
             <Panel key={shift.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs font-bold text-white mb-1">{shift.station}</div>
+                  <div className="text-xs font-bold text-text-primary mb-1">{shift.station}</div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.55)] mb-1 font-mono">{shift.time}</div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-[rgba(255,255,255,0.38)] uppercase tracking-widest">Required:</span>
+                    <span className="text-[10px] text-text-muted uppercase tracking-widest">Required:</span>
                     <Badge label={shift.cert} status="info" />
                   </div>
                 </div>
                 <button
                   className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm border shrink-0 transition-colors"
-                  style={{ borderColor: '#4caf50', color: '#4caf50', background: 'rgba(76,175,80,0.08)' }}
+                  style={{ borderColor: '#4caf50', color: 'var(--q-green)', background: 'rgba(76,175,80,0.08)' }}
                   onClick={() => {}}
                 >
                   Fill Shift
@@ -229,14 +229,14 @@ export default function SchedulingPage() {
           {fatigueRoster.map((crew, i) => (
             <Panel key={i}>
               <div className="flex justify-between items-start mb-2">
-                <div className="text-xs font-bold text-white">{crew.name}</div>
+                <div className="text-xs font-bold text-text-primary">{crew.name}</div>
                 <Badge label={`KSS ${crew.kss}`} status={kssBadge(crew.kss)} />
               </div>
               <div className="mb-2">
                 <ProgressBar value={crew.kss} max={10} color={kssColor(crew.kss)} />
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="text-[rgba(255,255,255,0.38)]">Hours on duty</span>
+                <span className="text-text-muted">Hours on duty</span>
                 <span style={{ color: crew.hours >= 14 ? '#e53935' : 'rgba(255,255,255,0.55)' }} className="font-bold">{crew.hours}h</span>
               </div>
             </Panel>
@@ -257,7 +257,7 @@ export default function SchedulingPage() {
         </div>
       </motion.div>
 
-      <Link href="/founder" className="text-xs text-[rgba(255,107,26,0.6)] hover:text-[#ff6b1a] transition-colors">
+      <Link href="/founder" className="text-xs text-orange-dim hover:text-orange transition-colors">
         &larr; Back to Founder Command OS
       </Link>
     </div>

@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -44,7 +44,7 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -70,12 +70,12 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 const FUNNEL_STAGES = [
-  { stage: 'Awareness', leads: 48, pct: 100, color: '#29b6f6' },
-  { stage: 'Qualified', leads: 24, pct: 50, color: '#4caf50' },
+  { stage: 'Awareness', leads: 48, pct: 100, color: 'var(--color-status-info)' },
+  { stage: 'Qualified', leads: 24, pct: 50, color: 'var(--q-green)' },
   { stage: 'Demo Scheduled', leads: 12, pct: 25, color: '#a855f7' },
-  { stage: 'Proposal Sent', leads: 6, pct: 12.5, color: '#ff9800' },
-  { stage: 'Negotiation', leads: 3, pct: 6.25, color: '#e53935' },
-  { stage: 'Closed Won', leads: 2, pct: 4.2, color: '#4caf50' },
+  { stage: 'Proposal Sent', leads: 6, pct: 12.5, color: 'var(--q-yellow)' },
+  { stage: 'Negotiation', leads: 3, pct: 6.25, color: 'var(--q-red)' },
+  { stage: 'Closed Won', leads: 2, pct: 4.2, color: 'var(--q-green)' },
 ];
 
 const PIPELINE = [
@@ -88,10 +88,10 @@ const PIPELINE = [
 ];
 
 const CONVERSIONS = [
-  { label: 'Lead → Qualified', pct: 50, color: '#4caf50' },
-  { label: 'Qualified → Demo', pct: 50, color: '#4caf50' },
-  { label: 'Demo → Proposal', pct: 50, color: '#ff9800' },
-  { label: 'Proposal → Close', pct: 33, color: '#e53935' },
+  { label: 'Lead → Qualified', pct: 50, color: 'var(--q-green)' },
+  { label: 'Qualified → Demo', pct: 50, color: 'var(--q-green)' },
+  { label: 'Demo → Proposal', pct: 50, color: 'var(--q-yellow)' },
+  { label: 'Proposal → Close', pct: 33, color: 'var(--q-red)' },
 ];
 
 const VELOCITY = [
@@ -110,18 +110,18 @@ function stageBadgeStatus(stage: string): 'ok' | 'warn' | 'error' | 'info' {
 
 export default function SalesFunnelPage() {
   return (
-    <div className="min-h-screen bg-[#080e14] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Page Header */}
-      <div className="border-b border-[rgba(255,255,255,0.06)] pb-4">
+      <div className="border-b border-border-subtle pb-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold tracking-widest font-mono mb-1" style={{ color: 'rgba(255,152,0,0.6)' }}>
               MODULE 8 · ROI &amp; SALES
             </p>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#ff9800' }}>Sales Funnel Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--q-yellow)' }}>Sales Funnel Dashboard</h1>
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Lead pipeline · conversion rates · deal velocity · revenue forecast</p>
           </div>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#ff9800] transition-colors font-mono">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-warning transition-colors font-mono">
             ← Back to Founder OS
           </Link>
         </div>
@@ -175,7 +175,7 @@ export default function SalesFunnelPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {['Agency', 'Stage', 'Deal Value', 'Days in Stage', 'Next Action'].map((h) => (
                   <th key={h} className="text-left py-2 pr-4 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">{h}</th>
                 ))}
@@ -183,10 +183,10 @@ export default function SalesFunnelPage() {
             </thead>
             <tbody>
               {PIPELINE.map((p, i) => (
-                <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]">
+                <tr key={i} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 font-semibold text-[rgba(255,255,255,0.8)]">{p.agency}</td>
                   <td className="py-2 pr-4"><Badge label={p.stage} status={stageBadgeStatus(p.stage)} /></td>
-                  <td className="py-2 pr-4 font-mono text-[#ff9800]">{p.value}</td>
+                  <td className="py-2 pr-4 font-mono text-status-warning">{p.value}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{p.days} days</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{p.next}</td>
                 </tr>
@@ -221,13 +221,13 @@ export default function SalesFunnelPage() {
           <StatCard label="Conservative" value="$34,560/yr" sub="Confirmed only" color="#29b6f6" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-[#0a1219] border border-[rgba(255,255,255,0.06)] rounded-sm">
+          <div className="p-3 bg-bg-input border border-border-subtle rounded-sm">
             <span className="text-[10px] text-[rgba(255,255,255,0.35)] uppercase tracking-wider block mb-1">Current ARR</span>
             <span className="text-lg font-bold text-[rgba(255,255,255,0.8)]">$48,000</span>
           </div>
-          <div className="p-3 bg-[#0a1219] border border-[rgba(255,255,255,0.06)] rounded-sm">
+          <div className="p-3 bg-bg-input border border-border-subtle rounded-sm">
             <span className="text-[10px] text-[rgba(255,255,255,0.35)] uppercase tracking-wider block mb-1">Target ARR</span>
-            <span className="text-lg font-bold" style={{ color: '#ff9800' }}>$240,000</span>
+            <span className="text-lg font-bold" style={{ color: 'var(--q-yellow)' }}>$240,000</span>
           </div>
         </div>
         <div className="mt-3">
@@ -244,14 +244,14 @@ export default function SalesFunnelPage() {
         <SectionHeader number="6" title="Deal Velocity" sub="Average time per stage" />
         <div className="space-y-3">
           {VELOCITY.map((v, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0">
+            <div key={i} className="flex items-center justify-between py-2 border-b border-border-subtle last:border-0">
               <span className="text-[11px] text-[rgba(255,255,255,0.7)]">{v.stage}</span>
-              <span className="text-[11px] font-bold font-mono" style={{ color: '#ff9800' }}>{v.days} days</span>
+              <span className="text-[11px] font-bold font-mono" style={{ color: 'var(--q-yellow)' }}>{v.days} days</span>
             </div>
           ))}
-          <div className="flex items-center justify-between pt-2 border-t border-[rgba(255,255,255,0.08)]">
+          <div className="flex items-center justify-between pt-2 border-t border-border-DEFAULT">
             <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.85)]">Total Avg Deal Cycle</span>
-            <span className="text-[13px] font-bold" style={{ color: '#4caf50' }}>28.5 days</span>
+            <span className="text-[13px] font-bold" style={{ color: 'var(--q-green)' }}>28.5 days</span>
           </div>
         </div>
       </Panel>

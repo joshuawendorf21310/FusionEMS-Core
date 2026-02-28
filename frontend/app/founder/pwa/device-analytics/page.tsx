@@ -12,7 +12,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
       <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: DOMAIN_COLOR }}>
         {number} · {title}
       </div>
-      {sub && <p className="text-[11px] text-[rgba(255,255,255,0.38)]">{sub}</p>}
+      {sub && <p className="text-[11px] text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -20,7 +20,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className}`}
       style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}
     >
       {children}
@@ -29,10 +29,10 @@ function Panel({ children, className = '' }: { children: React.ReactNode; classN
 }
 
 const badgeColors = {
-  ok: { bg: 'rgba(76,175,80,0.15)', color: '#4caf50' },
-  warn: { bg: 'rgba(255,152,0,0.15)', color: '#ff9800' },
-  error: { bg: 'rgba(229,57,53,0.15)', color: '#e53935' },
-  info: { bg: 'rgba(41,182,246,0.15)', color: '#29b6f6' },
+  ok: { bg: 'rgba(76,175,80,0.15)', color: 'var(--q-green)' },
+  warn: { bg: 'rgba(255,152,0,0.15)', color: 'var(--q-yellow)' },
+  error: { bg: 'rgba(229,57,53,0.15)', color: 'var(--q-red)' },
+  info: { bg: 'rgba(41,182,246,0.15)', color: 'var(--color-status-info)' },
 };
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
@@ -50,9 +50,9 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <Panel>
-      <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-1">{label}</div>
+      <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1">{label}</div>
       <div className="text-2xl font-black" style={{ color: color ?? '#fff' }}>{value}</div>
-      {sub && <div className="text-[11px] text-[rgba(255,255,255,0.38)] mt-0.5">{sub}</div>}
+      {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </Panel>
   );
 }
@@ -75,8 +75,8 @@ const fadeUp = {
 };
 
 const osDistribution = [
-  { os: 'iOS 17', count: 12, pct: 25.5, color: '#29b6f6' },
-  { os: 'Android 13', count: 18, pct: 38.3, color: '#4caf50' },
+  { os: 'iOS 17', count: 12, pct: 25.5, color: 'var(--color-status-info)' },
+  { os: 'Android 13', count: 18, pct: 38.3, color: 'var(--q-green)' },
   { os: 'Android 14', count: 13, pct: 27.7, color: DOMAIN_COLOR },
   { os: 'Other', count: 4, pct: 8.5, color: 'rgba(255,255,255,0.3)' },
 ];
@@ -108,7 +108,7 @@ const healthStatusMap: Record<string, 'ok' | 'warn' | 'error'> = {
 const batteryColor = (b: number) => b > 50 ? '#4caf50' : b > 20 ? '#ff9800' : '#e53935';
 
 const connectivity = [
-  { type: 'WiFi', devices: 24, color: '#4caf50', total: 47 },
+  { type: 'WiFi', devices: 24, color: 'var(--q-green)', total: 47 },
   { type: '4G LTE', devices: 18, color: DOMAIN_COLOR, total: 47 },
   { type: '5G', devices: 5, color: '#a855f7', total: 47 },
 ];
@@ -137,14 +137,14 @@ const heatColor = (v: number, max: number) => {
 
 export default function DeviceAnalyticsPage() {
   return (
-    <div className="p-5 min-h-screen bg-[#07090d]">
+    <div className="p-5 min-h-screen bg-bg-void">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 mb-6 border-b border-[rgba(255,255,255,0.08)]">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 mb-6 border-b border-border-DEFAULT">
         <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: DOMAIN_COLOR }}>
           9 · PWA &amp; MOBILE
         </div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">Device Analytics</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-1">Fleet telemetry · OS distribution · Performance &amp; health monitoring</p>
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Device Analytics</h1>
+        <p className="text-xs text-text-muted mt-1">Fleet telemetry · OS distribution · Performance &amp; health monitoring</p>
       </motion.div>
 
       {/* MODULE 1 — Fleet Overview */}
@@ -170,7 +170,7 @@ export default function DeviceAnalyticsPage() {
                 <div className="flex justify-between items-center mb-1.5">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full" style={{ background: os.color }} />
-                    <span className="text-xs font-bold text-white">{os.os}</span>
+                    <span className="text-xs font-bold text-text-primary">{os.os}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] text-[rgba(255,255,255,0.55)]">{os.count} devices</span>
@@ -191,7 +191,7 @@ export default function DeviceAnalyticsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-[rgba(255,255,255,0.38)] border-b border-[rgba(255,255,255,0.06)]">
+                <tr className="text-text-muted border-b border-border-subtle">
                   {['Device Type', 'Avg Load (ms)', 'Crash Rate', 'Sessions Today', 'Rating'].map(h => (
                     <th key={h} className="text-left pb-2 pr-5 font-bold uppercase tracking-widest text-[10px]">{h}</th>
                   ))}
@@ -199,8 +199,8 @@ export default function DeviceAnalyticsPage() {
               </thead>
               <tbody>
                 {perfByType.map((row, i) => (
-                  <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] last:border-0">
-                    <td className="py-2.5 pr-5 text-white font-medium">{row.type}</td>
+                  <tr key={i} className="border-b border-border-subtle last:border-0">
+                    <td className="py-2.5 pr-5 text-text-primary font-medium">{row.type}</td>
                     <td className="py-2.5 pr-5 font-mono" style={{ color: row.avgLoad < 1000 ? '#4caf50' : row.avgLoad < 1200 ? '#ff9800' : '#e53935' }}>
                       {row.avgLoad}ms
                     </td>
@@ -221,9 +221,9 @@ export default function DeviceAnalyticsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {batteryEntries.map((d, i) => (
             <Panel key={i}>
-              <div className="text-[11px] font-bold text-white mb-2 leading-tight">{d.name}</div>
+              <div className="text-[11px] font-bold text-text-primary mb-2 leading-tight">{d.name}</div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-[10px] text-[rgba(255,255,255,0.38)]">{d.charge}</span>
+                <span className="text-[10px] text-text-muted">{d.charge}</span>
                 <span className="text-sm font-black" style={{ color: batteryColor(d.battery) }}>{d.battery}%</span>
               </div>
               <ProgressBar value={d.battery} max={100} color={batteryColor(d.battery)} />
@@ -243,10 +243,10 @@ export default function DeviceAnalyticsPage() {
             <Panel key={i}>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-3 h-3 rounded-full" style={{ background: conn.color }} />
-                <span className="text-xs font-bold text-white uppercase tracking-widest">{conn.type}</span>
+                <span className="text-xs font-bold text-text-primary uppercase tracking-widest">{conn.type}</span>
               </div>
               <div className="text-3xl font-black mb-1" style={{ color: conn.color }}>{conn.devices}</div>
-              <div className="text-[10px] text-[rgba(255,255,255,0.38)] mb-2">
+              <div className="text-[10px] text-text-muted mb-2">
                 devices ({Math.round((conn.devices / conn.total) * 100)}% of fleet)
               </div>
               <ProgressBar value={conn.devices} max={conn.total} color={conn.color} />
@@ -267,7 +267,7 @@ export default function DeviceAnalyticsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-[rgba(255,255,255,0.38)] border-b border-[rgba(255,255,255,0.06)]">
+                  <tr className="text-text-muted border-b border-border-subtle">
                     {['Timestamp', 'Device', 'Error Type', 'Version'].map(h => (
                       <th key={h} className="text-left pb-2 pr-5 font-bold uppercase tracking-widest text-[10px]">{h}</th>
                     ))}
@@ -275,10 +275,10 @@ export default function DeviceAnalyticsPage() {
                 </thead>
                 <tbody>
                   {crashLog.map((row, i) => (
-                    <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] last:border-0">
-                      <td className="py-2.5 pr-5 text-[rgba(255,255,255,0.38)] font-mono text-[10px]">{row.ts}</td>
+                    <tr key={i} className="border-b border-border-subtle last:border-0">
+                      <td className="py-2.5 pr-5 text-text-muted font-mono text-[10px]">{row.ts}</td>
                       <td className="py-2.5 pr-5 text-[rgba(255,255,255,0.7)]">{row.device}</td>
-                      <td className="py-2.5 pr-5"><span className="font-mono text-[#e53935]">{row.error}</span></td>
+                      <td className="py-2.5 pr-5"><span className="font-mono text-red">{row.error}</span></td>
                       <td className="py-2.5"><Badge label={row.version} status={row.version === 'v2.4.1' ? 'ok' : row.version === 'v2.4.0' ? 'warn' : 'error'} /></td>
                     </tr>
                   ))}
@@ -297,27 +297,27 @@ export default function DeviceAnalyticsPage() {
             {heatData.map((v, hour) => (
               <div key={hour} className="flex flex-col items-center gap-1">
                 <div
-                  className="w-full h-10 rounded-sm border border-[rgba(255,255,255,0.06)] flex items-center justify-center"
+                  className="w-full h-10 rounded-sm border border-border-subtle flex items-center justify-center"
                   style={{ background: heatColor(v, maxHeat) }}
                   title={`${hour}:00 — ${v} sessions`}
                 >
-                  <span className="text-[9px] font-bold text-white opacity-80">{v}</span>
+                  <span className="text-[9px] font-bold text-text-primary opacity-80">{v}</span>
                 </div>
                 <span className="text-[9px] text-[rgba(255,255,255,0.25)] font-mono leading-none">{String(hour).padStart(2, '0')}</span>
               </div>
             ))}
           </div>
           <div className="flex items-center gap-3 mt-4">
-            <span className="text-[10px] text-[rgba(255,255,255,0.38)]">Low</span>
+            <span className="text-[10px] text-text-muted">Low</span>
             {[0.08, 0.22, 0.42, 0.65, 0.90].map((op, i) => (
               <div key={i} className="w-6 h-3 rounded-sm" style={{ background: `rgba(59,130,246,${op})` }} />
             ))}
-            <span className="text-[10px] text-[rgba(255,255,255,0.38)]">High</span>
+            <span className="text-[10px] text-text-muted">High</span>
           </div>
         </Panel>
       </motion.div>
 
-      <Link href="/founder" className="text-xs text-[rgba(255,107,26,0.6)] hover:text-[#ff6b1a] transition-colors">
+      <Link href="/founder" className="text-xs text-orange-dim hover:text-orange transition-colors">
         &larr; Back to Founder Command OS
       </Link>
     </div>

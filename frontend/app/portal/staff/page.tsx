@@ -190,7 +190,7 @@ export default function StaffDashboardPage() {
                             background: 'rgba(255,107,26,0.1)',
                             border: '1px solid rgba(255,107,26,0.25)',
                             clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-                            color: '#ff6b1a',
+                            color: 'var(--q-orange)',
                             fontSize: '0.75rem',
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',

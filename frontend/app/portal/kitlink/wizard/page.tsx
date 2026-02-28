@@ -1,4 +1,5 @@
 "use client";
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -99,8 +100,8 @@ export default function WizardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Loading wizard state…</p>
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <p className="text-text-muted text-sm">Loading wizard state…</p>
       </div>
     );
   }
@@ -108,14 +109,14 @@ export default function WizardPage() {
   const goLiveComplete = completedSteps.length === STEPS.length;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <div className="border-b border-gray-800 px-6 py-4 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-200 text-sm">← Back</button>
+    <div className="min-h-screen bg-bg-base text-text-primary">
+      <div className="border-b border-border-subtle px-6 py-4 flex items-center gap-3">
+        <button onClick={() => router.back()} className="text-text-muted hover:text-text-primary text-sm">← Back</button>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-white">1-Day Go-Live Wizard</h1>
-          <p className="text-xs text-gray-400">KitLink AR · Trans 309 · Wisconsin</p>
+          <h1 className="text-lg font-bold text-text-primary">1-Day Go-Live Wizard</h1>
+          <p className="text-xs text-text-muted">KitLink AR · Trans 309 · Wisconsin</p>
         </div>
-        <div className="text-sm text-gray-400">
+        <div className="text-sm text-text-muted">
           {completedSteps.length}/{STEPS.length} steps
         </div>
       </div>
@@ -137,7 +138,7 @@ export default function WizardPage() {
       )}
 
       <div className="flex flex-col md:flex-row h-full">
-        <div className="w-full md:w-64 border-r border-gray-800 p-4">
+        <div className="w-full md:w-64 border-r border-border-subtle p-4">
           <nav className="space-y-1">
             {STEPS.map((step, idx) => {
               const done = completedSteps.includes(step.id);
@@ -147,10 +148,10 @@ export default function WizardPage() {
                   key={step.id}
                   onClick={() => setCurrentStep(idx)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
-                    active ? "bg-blue-900/40 text-blue-300" : done ? "text-emerald-400 hover:bg-gray-800" : "text-gray-400 hover:bg-gray-800"
+                    active ? "bg-blue-900/40 text-blue-300" : done ? "text-emerald-400 hover:bg-bg-raised" : "text-text-muted hover:bg-bg-raised"
                   }`}
                 >
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${done ? "bg-emerald-700 text-white" : active ? "bg-blue-700 text-white" : "bg-gray-700 text-gray-400"}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${done ? "bg-emerald-700 text-text-primary" : active ? "bg-blue-700 text-text-primary" : "bg-bg-overlay text-text-muted"}`}>
                     {done ? "✓" : idx + 1}
                   </span>
                   <span className="truncate">{step.title}</span>
@@ -194,8 +195,8 @@ function StepPanel({
           {completed ? "✓" : "→"}
         </div>
         <div>
-          <h2 className="text-lg font-bold text-white">{step.title}</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{step.description}</p>
+          <h2 className="text-lg font-bold text-text-primary">{step.title}</h2>
+          <p className="text-sm text-text-muted mt-0.5">{step.description}</p>
         </div>
       </div>
 
@@ -221,7 +222,7 @@ function StepPanel({
         className={`mt-5 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
           completed
             ? "bg-emerald-700/40 text-emerald-400 border border-emerald-700"
-            : "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-blue-600 hover:bg-blue-500 text-text-primary"
         } disabled:opacity-50`}
       >
         {submitting ? "Saving…" : completed ? "Step Completed — Continue" : "Mark Complete & Continue"}
@@ -260,12 +261,12 @@ function PackStep({ tenantId, stepData, setStepData }: { tenantId: string; stepD
   return (
     <div className="space-y-3">
       {packs.map((pack) => (
-        <div key={pack.pack_key} className={`rounded-lg border p-4 ${pack.active ? "border-emerald-700 bg-emerald-900/20" : "border-gray-800 bg-gray-900"}`}>
+        <div key={pack.pack_key} className={`rounded-lg border p-4 ${pack.active ? "border-emerald-700 bg-emerald-900/20" : "border-border-subtle bg-bg-panel"}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-gray-200">{pack.title}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{pack.state} · v{pack.version} · {pack.unit_profiles?.join(", ")}</p>
-              <p className="text-xs text-gray-500 mt-1">{pack.rules?.length ?? 0} rules</p>
+              <p className="text-sm font-medium text-text-primary">{pack.title}</p>
+              <p className="text-xs text-text-muted mt-0.5">{pack.state} · v{pack.version} · {pack.unit_profiles?.join(", ")}</p>
+              <p className="text-xs text-text-muted mt-1">{pack.rules?.length ?? 0} rules</p>
             </div>
             {pack.active ? (
               <span className="px-2 py-1 bg-emerald-800/50 text-emerald-400 text-xs rounded">Active</span>
@@ -289,18 +290,18 @@ function UnitSetupStep({ stepData, setStepData }: { stepData: any; setStepData: 
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-xs text-gray-400 block mb-1">Unit ID</label>
+        <label className="text-xs text-text-muted block mb-1">Unit ID</label>
         <input
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100 placeholder-gray-500"
+          className="w-full px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary placeholder-gray-500"
           placeholder="e.g. M12"
           value={stepData?.unit_id ?? ""}
           onChange={(e) => setStepData({ ...stepData, unit_id: e.target.value })}
         />
       </div>
       <div>
-        <label className="text-xs text-gray-400 block mb-1">Unit Profile</label>
+        <label className="text-xs text-text-muted block mb-1">Unit Profile</label>
         <select
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100"
+          className="w-full px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary"
           value={stepData?.unit_profile ?? "PARAMEDIC"}
           onChange={(e) => setStepData({ ...stepData, unit_profile: e.target.value })}
         >
@@ -335,20 +336,20 @@ function FormularyStep({ tenantId, stepData, setStepData }: { tenantId: string; 
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         <input
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100 placeholder-gray-500"
+          className="px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary placeholder-gray-500"
           placeholder="Drug/fluid name"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
         <input
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100 placeholder-gray-500"
+          className="px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary placeholder-gray-500"
           placeholder="Schedule (II, III, IV, V)"
           value={form.controlled_schedule}
           onChange={(e) => setForm({ ...form, controlled_schedule: e.target.value })}
         />
       </div>
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-sm text-gray-300">
+        <label className="flex items-center gap-2 text-sm text-text-secondary">
           <input type="checkbox" checked={form.is_fluid} onChange={(e) => setForm({ ...form, is_fluid: e.target.checked })} className="rounded" />
           IV Fluid
         </label>
@@ -361,11 +362,11 @@ function FormularyStep({ tenantId, stepData, setStepData }: { tenantId: string; 
         </button>
       </div>
       {added.length > 0 && (
-        <div className="p-3 bg-gray-900 rounded border border-gray-800">
-          <p className="text-xs text-gray-400 mb-1">Added:</p>
+        <div className="p-3 bg-bg-panel rounded border border-border-subtle">
+          <p className="text-xs text-text-muted mb-1">Added:</p>
           <div className="flex flex-wrap gap-2">
             {added.map((n) => (
-              <span key={n} className="px-2 py-0.5 bg-gray-700 text-gray-300 rounded text-xs">{n}</span>
+              <span key={n} className="px-2 py-0.5 bg-bg-overlay text-text-secondary rounded text-xs">{n}</span>
             ))}
           </div>
         </div>
@@ -398,10 +399,10 @@ function StarterTemplatesStep({ tenantId, stepData, setStepData }: { tenantId: s
   return (
     <div className="space-y-3">
       {starters.map((s) => (
-        <div key={s.key} className={`rounded-lg border p-3 flex items-center justify-between gap-3 ${cloned.includes(s.key) ? "border-emerald-800 bg-emerald-900/10" : "border-gray-800 bg-gray-900"}`}>
+        <div key={s.key} className={`rounded-lg border p-3 flex items-center justify-between gap-3 ${cloned.includes(s.key) ? "border-emerald-800 bg-emerald-900/10" : "border-border-subtle bg-bg-panel"}`}>
           <div>
-            <p className="text-sm font-medium text-gray-200">{s.label}</p>
-            <p className="text-xs text-gray-500">{s.desc}</p>
+            <p className="text-sm font-medium text-text-primary">{s.label}</p>
+            <p className="text-xs text-text-muted">{s.desc}</p>
           </div>
           {cloned.includes(s.key) ? (
             <span className="text-xs text-emerald-400">Loaded</span>
@@ -409,7 +410,7 @@ function StarterTemplatesStep({ tenantId, stepData, setStepData }: { tenantId: s
             <button
               onClick={() => clone(s.key)}
               disabled={loading === s.key}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs font-medium transition-colors"
+              className="px-3 py-1.5 bg-bg-overlay hover:bg-bg-overlay rounded text-xs font-medium transition-colors"
             >
               {loading === s.key ? "Loading…" : "Load"}
             </button>
@@ -429,7 +430,7 @@ function GenericStep({ step }: { step: typeof STEPS[number] }) {
     go_live: "All steps complete! Your KitLink setup is verified. Crew can now start scanning.",
   };
   return (
-    <div className="p-4 rounded-lg border border-gray-800 bg-gray-900/50 text-sm text-gray-300">
+    <div className="p-4 rounded-lg border border-border-subtle bg-bg-panel/50 text-sm text-text-secondary">
       {hints[step.id] ?? "Complete this step in the KitLink dashboard."}
     </div>
   );

@@ -12,7 +12,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
       <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: DOMAIN_COLOR }}>
         {number} · {title}
       </div>
-      {sub && <p className="text-[11px] text-[rgba(255,255,255,0.38)]">{sub}</p>}
+      {sub && <p className="text-[11px] text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -20,7 +20,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className}`}
       style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}
     >
       {children}
@@ -29,10 +29,10 @@ function Panel({ children, className = '' }: { children: React.ReactNode; classN
 }
 
 const badgeColors = {
-  ok: { bg: 'rgba(76,175,80,0.15)', color: '#4caf50', label: 'OK' },
-  warn: { bg: 'rgba(255,152,0,0.15)', color: '#ff9800', label: 'WARN' },
-  error: { bg: 'rgba(229,57,53,0.15)', color: '#e53935', label: 'ERROR' },
-  info: { bg: 'rgba(41,182,246,0.15)', color: '#29b6f6', label: 'INFO' },
+  ok: { bg: 'rgba(76,175,80,0.15)', color: 'var(--q-green)', label: 'OK' },
+  warn: { bg: 'rgba(255,152,0,0.15)', color: 'var(--q-yellow)', label: 'WARN' },
+  error: { bg: 'rgba(229,57,53,0.15)', color: 'var(--q-red)', label: 'ERROR' },
+  info: { bg: 'rgba(41,182,246,0.15)', color: 'var(--color-status-info)', label: 'INFO' },
 };
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
@@ -50,9 +50,9 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <Panel>
-      <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-1">{label}</div>
+      <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1">{label}</div>
       <div className="text-2xl font-black" style={{ color: color ?? '#fff' }}>{value}</div>
-      {sub && <div className="text-[11px] text-[rgba(255,255,255,0.38)] mt-0.5">{sub}</div>}
+      {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </Panel>
   );
 }
@@ -91,8 +91,8 @@ const statusMap: Record<string, 'ok' | 'warn' | 'error'> = {
 
 const syncCategories = [
   { label: 'ePCR Records', synced: 412, max: 420, unit: 'records', color: DOMAIN_COLOR },
-  { label: 'Vitals', synced: 1840, max: 1850, unit: 'entries', color: '#22d3ee' },
-  { label: 'Protocols', synced: 100, max: 100, unit: 'current', color: '#4caf50' },
+  { label: 'Vitals', synced: 1840, max: 1850, unit: 'entries', color: 'var(--color-system-billing)' },
+  { label: 'Protocols', synced: 100, max: 100, unit: 'current', color: 'var(--q-green)' },
   { label: 'Maps', synced: 95, max: 100, unit: 'cached', color: '#a855f7' },
 ];
 
@@ -129,17 +129,17 @@ const batteryColor = (b: number) => b > 50 ? '#4caf50' : b > 20 ? '#ff9800' : '#
 
 export default function CrewLinkPage() {
   return (
-    <div className="p-5 min-h-screen bg-[#07090d]">
+    <div className="p-5 min-h-screen bg-bg-void">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 mb-6 border-b border-[rgba(255,255,255,0.08)]">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 mb-6 border-b border-border-DEFAULT">
         <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: DOMAIN_COLOR }}>
           9 · PWA &amp; MOBILE
         </div>
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-black uppercase tracking-wider text-white">CrewLink · Mobile Field App</h1>
+          <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">CrewLink · Mobile Field App</h1>
           <Badge label="LIVE" status="ok" />
         </div>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-1">Field crew mobile platform · Device management · Real-time sync</p>
+        <p className="text-xs text-text-muted mt-1">Field crew mobile platform · Device management · Real-time sync</p>
       </motion.div>
 
       {/* MODULE 1 — Mobile Deployment Status */}
@@ -161,7 +161,7 @@ export default function CrewLinkPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-[rgba(255,255,255,0.38)] border-b border-[rgba(255,255,255,0.06)]">
+                <tr className="text-text-muted border-b border-border-subtle">
                   {['Crew Member', 'Unit', 'Last Activity', 'Status', 'Device'].map(h => (
                     <th key={h} className="text-left pb-2 pr-4 font-bold uppercase tracking-widest text-[10px]">{h}</th>
                   ))}
@@ -169,8 +169,8 @@ export default function CrewLinkPage() {
               </thead>
               <tbody>
                 {crewActivity.map((row, i) => (
-                  <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] last:border-0">
-                    <td className="py-2.5 pr-4 text-white font-medium">{row.name}</td>
+                  <tr key={i} className="border-b border-border-subtle last:border-0">
+                    <td className="py-2.5 pr-4 text-text-primary font-medium">{row.name}</td>
                     <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.55)]">{row.unit}</td>
                     <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.55)]">{row.activity}</td>
                     <td className="py-2.5 pr-4"><Badge label={row.status} status={statusMap[row.status]} /></td>
@@ -190,11 +190,11 @@ export default function CrewLinkPage() {
           {syncCategories.map((cat, i) => (
             <Panel key={i}>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[11px] font-bold text-white uppercase tracking-widest">{cat.label}</span>
+                <span className="text-[11px] font-bold text-text-primary uppercase tracking-widest">{cat.label}</span>
                 <span className="text-[11px] text-[rgba(255,255,255,0.55)]">{cat.synced.toLocaleString()} {cat.unit}</span>
               </div>
               <ProgressBar value={cat.synced} max={cat.max} color={cat.color} />
-              <div className="text-[10px] text-[rgba(255,255,255,0.38)] mt-1.5">{Math.round((cat.synced / cat.max) * 100)}% synced</div>
+              <div className="text-[10px] text-text-muted mt-1.5">{Math.round((cat.synced / cat.max) * 100)}% synced</div>
             </Panel>
           ))}
         </div>
@@ -207,7 +207,7 @@ export default function CrewLinkPage() {
           <div className="space-y-3 mb-4">
             {notifications.map((n) => (
               <div key={n.id} className="flex items-start gap-3 border-b border-[rgba(255,255,255,0.05)] pb-3 last:border-0 last:pb-0">
-                <span className="text-[10px] text-[rgba(255,255,255,0.38)] mt-0.5 w-10 shrink-0">{n.time}</span>
+                <span className="text-[10px] text-text-muted mt-0.5 w-10 shrink-0">{n.time}</span>
                 <Badge label={n.type} status={notifTypeMap[n.type]} />
                 <span className="text-xs text-[rgba(255,255,255,0.7)]">{n.text}</span>
               </div>
@@ -229,7 +229,7 @@ export default function CrewLinkPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {offlineTypes.map((type, i) => (
             <Panel key={i} className="flex flex-col gap-2">
-              <div className="text-xs font-bold text-white">{type}</div>
+              <div className="text-xs font-bold text-text-primary">{type}</div>
               <Badge label="Available Offline" status="ok" />
             </Panel>
           ))}
@@ -242,23 +242,23 @@ export default function CrewLinkPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {devices.map((d, i) => (
             <Panel key={i}>
-              <div className="text-xs font-bold text-white mb-2">{d.name}</div>
+              <div className="text-xs font-bold text-text-primary mb-2">{d.name}</div>
               <div className="space-y-1.5 text-[11px]">
                 <div className="flex justify-between">
-                  <span className="text-[rgba(255,255,255,0.38)]">Battery</span>
+                  <span className="text-text-muted">Battery</span>
                   <span style={{ color: batteryColor(d.battery) }} className="font-bold">{d.battery}%</span>
                 </div>
                 <ProgressBar value={d.battery} max={100} color={batteryColor(d.battery)} />
                 <div className="flex justify-between">
-                  <span className="text-[rgba(255,255,255,0.38)]">OS</span>
+                  <span className="text-text-muted">OS</span>
                   <span className="text-[rgba(255,255,255,0.7)]">{d.os}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[rgba(255,255,255,0.38)]">App</span>
+                  <span className="text-text-muted">App</span>
                   <span className="text-[rgba(255,255,255,0.7)]">{d.app}</span>
                 </div>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-[rgba(255,255,255,0.38)]">Status</span>
+                  <span className="text-text-muted">Status</span>
                   <Badge label={d.status === 'ok' ? 'Healthy' : d.status === 'warn' ? 'Degraded' : 'Critical'} status={d.status} />
                 </div>
               </div>
@@ -278,7 +278,7 @@ export default function CrewLinkPage() {
         </div>
       </motion.div>
 
-      <Link href="/founder" className="text-xs text-[rgba(255,107,26,0.6)] hover:text-[#ff6b1a] transition-colors">
+      <Link href="/founder" className="text-xs text-orange-dim hover:text-orange transition-colors">
         &larr; Back to Founder Command OS
       </Link>
     </div>

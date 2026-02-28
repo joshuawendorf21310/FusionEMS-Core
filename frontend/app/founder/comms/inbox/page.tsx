@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -89,8 +90,8 @@ function useToast() {
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: ThreadStatus }) {
   const map: Record<ThreadStatus, { label: string; color: string; bg: string }> = {
-    open: { label: 'OPEN', color: '#22d3ee', bg: 'rgba(34,211,238,0.12)' },
-    escalated: { label: 'ESCALATED', color: '#e53935', bg: 'rgba(229,57,53,0.12)' },
+    open: { label: 'OPEN', color: 'var(--color-system-billing)', bg: 'rgba(34,211,238,0.12)' },
+    escalated: { label: 'ESCALATED', color: 'var(--q-red)', bg: 'rgba(229,57,53,0.12)' },
     resolved: { label: 'RESOLVED', color: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.06)' },
   };
   const s = map[status];
@@ -254,29 +255,29 @@ export default function SupportInboxPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white flex flex-col">
+    <div className="min-h-screen bg-bg-void text-text-primary flex flex-col">
       <Toast items={toasts} />
 
       {/* Page header */}
-      <div className="px-5 pt-5 pb-4 border-b border-[rgba(255,255,255,0.06)]">
+      <div className="px-5 pt-5 pb-4 border-b border-border-subtle">
         <div className="flex items-center gap-3">
-          <h1 className="text-sm font-black uppercase tracking-[0.18em] text-white">
+          <h1 className="text-sm font-black uppercase tracking-[0.18em] text-text-primary">
             SUPPORT INBOX
           </h1>
           {unreadCount > 0 && (
             <span
               className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-              style={{ background: 'rgba(255,107,26,0.18)', color: '#ff6b1a' }}
+              style={{ background: 'rgba(255,107,26,0.18)', color: 'var(--q-orange)' }}
             >
               {unreadCount} unread
             </span>
           )}
           <div className="ml-auto flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#4caf50] animate-pulse" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#4caf50]">LIVE</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-status-active animate-pulse" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-status-active">LIVE</span>
           </div>
         </div>
-        <p className="text-[11px] text-[rgba(255,255,255,0.38)] mt-0.5">
+        <p className="text-[11px] text-text-muted mt-0.5">
           Agency support threads · real-time · AI assist
         </p>
       </div>
@@ -286,11 +287,11 @@ export default function SupportInboxPage() {
 
         {/* ── LEFT: Thread list (300px) ───────────────────────────────────── */}
         <div
-          className="flex flex-col border-r border-[rgba(255,255,255,0.08)]"
+          className="flex flex-col border-r border-border-DEFAULT"
           style={{ width: 300, minWidth: 300, flexShrink: 0 }}
         >
           {/* Filter tabs */}
-          <div className="flex border-b border-[rgba(255,255,255,0.06)] px-2 pt-2 pb-0 gap-0.5">
+          <div className="flex border-b border-border-subtle px-2 pt-2 pb-0 gap-0.5">
             {FILTER_TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -326,7 +327,7 @@ export default function SupportInboxPage() {
                   }}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-white truncate flex-1">
+                    <span className="text-xs font-semibold text-text-primary truncate flex-1">
                       {agencyName(thread)}
                     </span>
                     {thread.unread && (
@@ -335,7 +336,7 @@ export default function SupportInboxPage() {
                     {(thread.escalated || thread.status === 'escalated') && (
                       <span
                         className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-sm flex-shrink-0"
-                        style={{ background: 'rgba(229,57,53,0.15)', color: '#e53935' }}
+                        style={{ background: 'rgba(229,57,53,0.15)', color: 'var(--q-red)' }}
                       >
                         ESC
                       </span>
@@ -369,9 +370,9 @@ export default function SupportInboxPage() {
           ) : (
             <>
               {/* Thread header */}
-              <div className="px-4 py-3 border-b border-[rgba(255,255,255,0.08)] flex items-center gap-3 flex-wrap">
+              <div className="px-4 py-3 border-b border-border-DEFAULT flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-sm font-bold text-white truncate">
+                  <span className="text-sm font-bold text-text-primary truncate">
                     {agencyName(activeThread)}
                   </span>
                   <StatusBadge status={activeThread.status} />
@@ -384,7 +385,7 @@ export default function SupportInboxPage() {
                     style={{
                       background: 'rgba(34,211,238,0.10)',
                       border: '1px solid rgba(34,211,238,0.25)',
-                      color: '#22d3ee',
+                      color: 'var(--color-system-billing)',
                       opacity: summarizing ? 0.6 : 1,
                     }}
                   >
@@ -398,7 +399,7 @@ export default function SupportInboxPage() {
                       style={{
                         background: 'rgba(76,175,80,0.10)',
                         border: '1px solid rgba(76,175,80,0.25)',
-                        color: '#4caf50',
+                        color: 'var(--q-green)',
                         opacity: resolvingId === activeThread.id ? 0.6 : 1,
                       }}
                     >
@@ -418,7 +419,7 @@ export default function SupportInboxPage() {
                     className="w-full flex items-center justify-between px-4 py-2 text-left"
                     onClick={() => setSummaryOpen((v) => !v)}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#22d3ee]">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-system-billing">
                       AI Summary
                     </span>
                     <span className="text-[10px] text-[rgba(255,255,255,0.35)]">
@@ -468,7 +469,7 @@ export default function SupportInboxPage() {
                         <span className="text-[10px] text-[rgba(255,255,255,0.3)] uppercase tracking-wider">
                           {msg.sender_role}
                         </span>
-                        <span className="text-[10px] text-[rgba(255,255,255,0.22)]">
+                        <span className="text-[10px] text-text-disabled">
                           {relativeTime(msg.created_at)}
                         </span>
                       </div>
@@ -479,7 +480,7 @@ export default function SupportInboxPage() {
               </div>
 
               {/* Reply box */}
-              <div className="border-t border-[rgba(255,255,255,0.08)] px-4 py-3">
+              <div className="border-t border-border-DEFAULT px-4 py-3">
                 <div className="flex gap-2 items-end">
                   <textarea
                     value={replyText}
@@ -489,7 +490,7 @@ export default function SupportInboxPage() {
                     }}
                     placeholder="Type a reply… (Ctrl+Enter to send)"
                     rows={3}
-                    className="flex-1 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none resize-none placeholder:text-[rgba(255,255,255,0.22)] focus:border-[rgba(255,107,26,0.4)]"
+                    className="flex-1 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none resize-none placeholder:text-text-disabled focus:border-[rgba(255,107,26,0.4)]"
                   />
                   <button
                     onClick={sendReply}

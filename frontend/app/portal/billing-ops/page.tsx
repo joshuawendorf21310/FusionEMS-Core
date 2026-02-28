@@ -5,20 +5,20 @@ import React, { useState } from 'react';
 type TabId = 'statements' | 'payments' | 'disputes' | 'placement' | 'trip_candidates' | 'trip_rejects' | 'trip_postings';
 
 const TABS: { id: TabId; label: string; color: string }[] = [
-  { id: 'statements', label: 'Statements Due', color: '#ff6b1a' },
-  { id: 'payments', label: 'Payments Posted', color: '#4caf50' },
-  { id: 'disputes', label: 'Disputes', color: '#f59e0b' },
-  { id: 'placement', label: 'Placement Eligible', color: '#e53935' },
-  { id: 'trip_candidates', label: 'TRIP Candidates', color: '#22d3ee' },
-  { id: 'trip_rejects', label: 'TRIP Rejects', color: '#f59e0b' },
-  { id: 'trip_postings', label: 'TRIP Postings', color: '#4caf50' },
+  { id: 'statements', label: 'Statements Due', color: 'var(--q-orange)' },
+  { id: 'payments', label: 'Payments Posted', color: 'var(--q-green)' },
+  { id: 'disputes', label: 'Disputes', color: 'var(--q-yellow)' },
+  { id: 'placement', label: 'Placement Eligible', color: 'var(--q-red)' },
+  { id: 'trip_candidates', label: 'TRIP Candidates', color: 'var(--color-system-billing)' },
+  { id: 'trip_rejects', label: 'TRIP Rejects', color: 'var(--q-yellow)' },
+  { id: 'trip_postings', label: 'TRIP Postings', color: 'var(--q-green)' },
 ];
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm px-4 py-3">
+    <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm px-4 py-3">
       <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold text-white">{value}</div>
+      <div className="text-xl font-bold text-text-primary">{value}</div>
       {sub && <div className="text-[10px] text-[rgba(255,255,255,0.35)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -35,10 +35,10 @@ function EmptyState({ label }: { label: string }) {
 function ActionBtn({ label, variant = 'default' }: { label: string; variant?: 'default' | 'danger' | 'success' }) {
   const cls =
     variant === 'danger'
-      ? 'bg-[rgba(229,57,53,0.12)] border-[rgba(229,57,53,0.3)] text-[#e53935] hover:bg-[rgba(229,57,53,0.2)]'
+      ? 'bg-[rgba(229,57,53,0.12)] border-red-ghost text-red hover:bg-[rgba(229,57,53,0.2)]'
       : variant === 'success'
-      ? 'bg-[rgba(76,175,80,0.12)] border-[rgba(76,175,80,0.3)] text-[#4caf50] hover:bg-[rgba(76,175,80,0.2)]'
-      : 'bg-[rgba(255,107,26,0.1)] border-[rgba(255,107,26,0.25)] text-[#ff6b1a] hover:bg-[rgba(255,107,26,0.18)]';
+      ? 'bg-[rgba(76,175,80,0.12)] border-[rgba(76,175,80,0.3)] text-status-active hover:bg-[rgba(76,175,80,0.2)]'
+      : 'bg-[rgba(255,107,26,0.1)] border-[rgba(255,107,26,0.25)] text-orange hover:bg-[rgba(255,107,26,0.18)]';
   return (
     <button className={`h-6 px-3 border text-[10px] font-semibold uppercase tracking-wider rounded-sm transition-colors ${cls}`}>
       {label}
@@ -55,8 +55,8 @@ function StatementsTab() {
         <StatCard label="Sent This Month" value="0" />
         <StatCard label="Failed Delivery" value="0" />
       </div>
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Account</span><span>Patient</span><span>Balance</span><span>Day</span><span>Channel</span><span>Action</span>
         </div>
         <EmptyState label="statements due" />
@@ -74,8 +74,8 @@ function PaymentsTab() {
         <StatCard label="Failed" value="0" />
         <StatCard label="MTD Collected" value="$0.00" />
       </div>
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Account</span><span>Amount</span><span>Source</span><span>Ref</span><span>Posted At</span><span>Status</span>
         </div>
         <EmptyState label="payments" />
@@ -93,8 +93,8 @@ function DisputesTab() {
         <StatCard label="Paused Dunning" value="0" sub="accounts" />
         <StatCard label="Avg Resolution" value="—" sub="days" />
       </div>
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Account</span><span>Reason</span><span>Amount</span><span>Opened</span><span>Status</span><span>Action</span>
         </div>
         <EmptyState label="disputes" />
@@ -115,8 +115,8 @@ function PlacementTab() {
       <div className="flex justify-end mb-3">
         <ActionBtn label="Generate Export ZIP" />
       </div>
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Account</span><span>Patient</span><span>Balance</span><span>Days Out</span><span>Vendor</span><span>Action</span>
         </div>
         <EmptyState label="placement-eligible accounts" />
@@ -129,7 +129,7 @@ function TripCandidatesTab() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-[rgba(34,211,238,0.06)] border border-[rgba(34,211,238,0.2)] rounded-sm">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee] flex-shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-system-billing flex-shrink-0" />
         <span className="text-xs text-[rgba(34,211,238,0.9)]">Wisconsin TRIP — available to enrolled government agencies only</span>
       </div>
       <div className="grid grid-cols-4 gap-3 mb-6">
@@ -141,8 +141,8 @@ function TripCandidatesTab() {
       <div className="flex justify-end mb-3">
         <ActionBtn label="Build Candidate Queue" />
       </div>
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Account</span><span>Debtor</span><span>ID Type</span><span>Balance</span><span>Status</span><span>Action</span>
         </div>
         <EmptyState label="TRIP candidates" />
@@ -155,7 +155,7 @@ function TripRejectsTab() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-[rgba(245,158,11,0.06)] border border-[rgba(245,158,11,0.2)] rounded-sm">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] flex-shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-status-warning flex-shrink-0" />
         <span className="text-xs text-[rgba(245,158,11,0.9)]">Rejected debts require correction before re-submission to DOR</span>
       </div>
       <div className="grid grid-cols-3 gap-3 mb-6">
@@ -163,8 +163,8 @@ function TripRejectsTab() {
         <StatCard label="Fixed This Month" value="0" />
         <StatCard label="Re-submitted" value="0" />
       </div>
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-5 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-5 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Account</span><span>Reject Code</span><span>Reason</span><span>Rejected At</span><span>Action</span>
         </div>
         <EmptyState label="TRIP rejects" />
@@ -185,8 +185,8 @@ function TripPostingsTab() {
       <div className="flex justify-end mb-3">
         <ActionBtn label="Import Posting File" />
       </div>
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Account</span><span>Amount</span><span>Tax Year</span><span>Matched</span><span>Posted At</span><span>Status</span>
         </div>
         <EmptyState label="TRIP postings" />
@@ -212,17 +212,17 @@ export default function BillingOpsPage() {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-6">
         <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Agency Portal</div>
-        <h1 className="text-xl font-bold text-white">Billing Ops Today</h1>
+        <h1 className="text-xl font-bold text-text-primary">Billing Ops Today</h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">AR queue, dunning schedule, collections placement, and Wisconsin TRIP</p>
       </div>
 
-      <div className="flex gap-0 mb-6 border-b border-[rgba(255,255,255,0.08)]">
+      <div className="flex gap-0 mb-6 border-b border-border-DEFAULT">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`relative px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
-              activeTab === tab.id ? 'text-white' : 'text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.7)]'
+              activeTab === tab.id ? 'text-text-primary' : 'text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.7)]'
             }`}
           >
             {tab.label}

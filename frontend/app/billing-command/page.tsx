@@ -10,10 +10,10 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-2">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
       <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.35)] mt-1">{sub}</div>}
     </motion.div>
@@ -94,9 +94,9 @@ export default function BillingCommandPage() {
   return (
     <div className="p-5 space-y-6 min-h-screen">
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">CATEGORY 7</div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">Billing Command Center</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">100-Feature Revenue Intelligence · AR Aging · Denial Analytics · Payer Performance</p>
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">CATEGORY 7</div>
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Billing Command Center</h1>
+        <p className="text-xs text-text-muted mt-0.5">100-Feature Revenue Intelligence · AR Aging · Denial Analytics · Payer Performance</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -117,8 +117,8 @@ export default function BillingCommandPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Denial Heatmap — By Payer × Month</div>
+        <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Denial Heatmap — By Payer × Month</div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[360px] text-xs">
               <thead>
@@ -139,14 +139,14 @@ export default function BillingCommandPage() {
           </div>
         </div>
 
-        <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">AR Concentration Risk · Total AR: {fmt$(arConc.total_ar_cents)}</div>
+        <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">AR Concentration Risk · Total AR: {fmt$(arConc.total_ar_cents)}</div>
           {arConc.concentration?.slice(0, 6).map(item => {
             const rc = item.risk === "high" ? "#e53935" : item.risk === "medium" ? "#ff9800" : "#4caf50";
             return (
               <div key={item.payer} className="mb-2">
                 <div className="flex justify-between text-[11px] mb-0.5">
-                  <span className="text-[rgba(255,255,255,0.65)]">{item.payer}</span>
+                  <span className="text-text-secondary">{item.payer}</span>
                   <span className="font-semibold" style={{ color: rc }}>{item.pct}% <span className="uppercase text-[9px]">{item.risk}</span></span>
                 </div>
                 <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
@@ -159,12 +159,12 @@ export default function BillingCommandPage() {
         </div>
       </div>
 
-      <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Payer Performance Ranking</div>
+      <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Payer Performance Ranking</div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[600px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {["Payer","Total","Paid","Denied","Revenue","Clean %","Avg Days"].map(h => (
                   <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.3)] pb-2 pr-4 font-semibold">{h}</th>
                 ))}
@@ -172,14 +172,14 @@ export default function BillingCommandPage() {
             </thead>
             <tbody>
               {payers.payers?.map((p, i) => (
-                <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]">
+                <tr key={i} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.8)] font-semibold">{String(p.payer)}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.55)]">{fmtNum(p.total_claims)}</td>
-                  <td className="py-2 pr-4 text-[#4caf50]">{fmtNum(p.paid)}</td>
-                  <td className="py-2 pr-4 text-[#e53935]">{fmtNum(p.denied)}</td>
-                  <td className="py-2 pr-4 text-[#22d3ee]">{fmt$(p.revenue_cents)}</td>
+                  <td className="py-2 pr-4 text-status-active">{fmtNum(p.paid)}</td>
+                  <td className="py-2 pr-4 text-red">{fmtNum(p.denied)}</td>
+                  <td className="py-2 pr-4 text-system-billing">{fmt$(p.revenue_cents)}</td>
                   <td className="py-2 pr-4">
-                    <span className={(p.clean_claim_rate_pct as number) >= 90 ? "text-[#4caf50]" : (p.clean_claim_rate_pct as number) >= 75 ? "text-[#ff9800]" : "text-[#e53935]"}>
+                    <span className={(p.clean_claim_rate_pct as number) >= 90 ? "text-status-active" : (p.clean_claim_rate_pct as number) >= 75 ? "text-status-warning" : "text-red"}>
                       {fmtPct(p.clean_claim_rate_pct)}
                     </span>
                   </td>
@@ -192,12 +192,12 @@ export default function BillingCommandPage() {
         </div>
       </div>
 
-      <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">100 Active Command Features</div>
+      <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">100 Active Command Features</div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
           {FEATURES.map(f => (
             <div key={f} className="flex items-center gap-1.5 text-[10px] text-[rgba(255,255,255,0.5)]">
-              <span className="w-1 h-1 rounded-full bg-[#22d3ee] flex-shrink-0" />
+              <span className="w-1 h-1 rounded-full bg-system-billing flex-shrink-0" />
               <span className="truncate">{f}</span>
             </div>
           ))}

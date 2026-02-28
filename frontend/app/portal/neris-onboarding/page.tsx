@@ -124,12 +124,12 @@ function Sidebar({
 }) {
   return (
     <div
-      className="bg-[#0b0f14] border-r border-[rgba(255,255,255,0.08)] flex-shrink-0 overflow-y-auto"
+      className="bg-bg-base border-r border-border-DEFAULT flex-shrink-0 overflow-y-auto"
       style={{ width: 200 }}
     >
-      <div className="p-4 border-b border-[rgba(255,255,255,0.08)]">
-        <p className="text-[9px] uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)]">NERIS Onboarding</p>
-        <p className="text-xs font-bold text-white mt-0.5">Wisconsin</p>
+      <div className="p-4 border-b border-border-DEFAULT">
+        <p className="text-[9px] uppercase tracking-[0.2em] text-orange-dim">NERIS Onboarding</p>
+        <p className="text-xs font-bold text-text-primary mt-0.5">Wisconsin</p>
       </div>
       <div className="py-2">
         {steps.map((step, index) => {
@@ -144,7 +144,7 @@ function Sidebar({
               <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                 {step.status === 'complete' && (
                   <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(76,175,80,0.2)', border: '1px solid rgba(76,175,80,0.4)' }}>
-                    <span className="text-[8px] text-[#4caf50] font-bold">✓</span>
+                    <span className="text-[8px] text-status-active font-bold">✓</span>
                   </div>
                 )}
                 {step.status === 'in_progress' && (
@@ -179,7 +179,7 @@ function Sidebar({
 
 // ─── Field helper ─────────────────────────────────────────────────────────────
 
-const inputClass = "w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)] placeholder:text-[rgba(255,255,255,0.2)]";
+const inputClass = "w-full bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)] placeholder:text-[rgba(255,255,255,0.2)]";
 const labelClass = "block text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.4)] mb-1";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -197,7 +197,7 @@ function PrimaryBtn({ onClick, disabled, children }: { onClick: () => void; disa
       onClick={onClick}
       disabled={disabled}
       className="h-9 px-5 text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all hover:brightness-110 disabled:opacity-40"
-      style={{ background: 'rgba(255,107,26,0.2)', border: '1px solid rgba(255,107,26,0.4)', color: '#ff6b1a' }}
+      style={{ background: 'rgba(255,107,26,0.2)', border: '1px solid rgba(255,107,26,0.4)', color: 'var(--q-orange)' }}
     >
       {children}
     </button>
@@ -272,7 +272,7 @@ function Step2({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
   return (
     <div className="space-y-4 max-w-lg">
       <div className="p-4 rounded-sm" style={{ background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.2)' }}>
-        <p className="text-[10px] uppercase tracking-[0.15em] text-[#22d3ee] font-semibold mb-2">RMS Reporting (No CAD Integration)</p>
+        <p className="text-[10px] uppercase tracking-[0.15em] text-system-billing font-semibold mb-2">RMS Reporting (No CAD Integration)</p>
         <p className="text-xs text-[rgba(255,255,255,0.6)] leading-relaxed">
           Your department reports incidents directly through the Records Management System (RMS) without a Computer-Aided Dispatch (CAD) or 911 system integration.
           Incidents are manually entered by authorized personnel. This is the standard reporting mode for most Wisconsin fire departments using FusionEMS NERIS.
@@ -293,7 +293,7 @@ function Step2({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
               border: `1px solid ${confirmed ? 'rgba(255,107,26,0.5)' : 'rgba(255,255,255,0.15)'}`,
             }}
           >
-            {confirmed && <span className="text-[#ff6b1a] text-[10px] font-bold">✓</span>}
+            {confirmed && <span className="text-orange text-[10px] font-bold">✓</span>}
           </div>
         </div>
         <span className="text-xs text-[rgba(255,255,255,0.7)] leading-relaxed">
@@ -350,13 +350,13 @@ function Step3({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
     <div className="space-y-4 max-w-2xl">
       <p className="text-xs text-[rgba(255,255,255,0.45)]">Add all active fire stations for your department.</p>
       {stations.map((station, i) => (
-        <div key={i} className="bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.06)] rounded-sm p-4 space-y-3">
+        <div key={i} className="bg-[rgba(255,255,255,0.02)] border border-border-subtle rounded-sm p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider text-[rgba(255,107,26,0.7)] font-semibold">Station {i + 1}</span>
             {stations.length > 1 && (
               <button
                 onClick={() => removeStation(i)}
-                className="text-[10px] text-[rgba(229,57,53,0.7)] hover:text-[#e53935] transition-colors"
+                className="text-[10px] text-[rgba(229,57,53,0.7)] hover:text-red transition-colors"
               >
                 Remove
               </button>
@@ -384,7 +384,7 @@ function Step3({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
       <button
         onClick={addStation}
         className="h-8 px-4 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-        style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: '#22d3ee' }}
+        style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: 'var(--color-system-billing)' }}
       >
         + Add Station
       </button>
@@ -431,11 +431,11 @@ function Step4({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
     <div className="space-y-4 max-w-2xl">
       <p className="text-xs text-[rgba(255,255,255,0.45)]">Enter all apparatus (fire vehicles/units) operated by your department.</p>
       {apparatus.map((row, i) => (
-        <div key={i} className="bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.06)] rounded-sm p-4">
+        <div key={i} className="bg-[rgba(255,255,255,0.02)] border border-border-subtle rounded-sm p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] uppercase tracking-wider text-[rgba(255,107,26,0.7)] font-semibold">Unit {i + 1}</span>
             {apparatus.length > 1 && (
-              <button onClick={() => removeRow(i)} className="text-[10px] text-[rgba(229,57,53,0.7)] hover:text-[#e53935] transition-colors">Remove</button>
+              <button onClick={() => removeRow(i)} className="text-[10px] text-[rgba(229,57,53,0.7)] hover:text-red transition-colors">Remove</button>
             )}
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -450,7 +450,7 @@ function Step4({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
                 style={{ background: '#0b0f14' }}
               >
                 {UNIT_TYPES.map((t) => (
-                  <option key={t} value={t} className="bg-[#0b0f14]">{t}</option>
+                  <option key={t} value={t} className="bg-bg-base">{t}</option>
                 ))}
               </select>
             </Field>
@@ -463,7 +463,7 @@ function Step4({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
       <button
         onClick={addRow}
         className="h-8 px-4 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-        style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: '#22d3ee' }}
+        style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: 'var(--color-system-billing)' }}
       >
         + Add Unit
       </button>
@@ -520,14 +520,14 @@ function Step5({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
             </Field>
           </div>
           {personnel.length > 1 && (
-            <button onClick={() => removeRow(i)} className="mt-5 text-[10px] text-[rgba(229,57,53,0.7)] hover:text-[#e53935] transition-colors">✕</button>
+            <button onClick={() => removeRow(i)} className="mt-5 text-[10px] text-[rgba(229,57,53,0.7)] hover:text-red transition-colors">✕</button>
           )}
         </div>
       ))}
       <button
         onClick={addRow}
         className="h-8 px-4 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-        style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: '#22d3ee' }}
+        style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: 'var(--color-system-billing)' }}
       >
         + Add Person
       </button>
@@ -590,14 +590,14 @@ function Step6({
       )}
       {error && (
         <div className="p-4 rounded-sm" style={{ background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.25)' }}>
-          <p className="text-xs font-semibold" style={{ color: '#ff9800' }}>Warning</p>
+          <p className="text-xs font-semibold" style={{ color: 'var(--q-yellow)' }}>Warning</p>
           <p className="text-xs text-[rgba(255,255,255,0.6)] mt-1">{error}</p>
         </div>
       )}
       {(done || assignedPackName) && packName && (
         <div className="p-4 rounded-sm" style={{ background: 'rgba(76,175,80,0.08)', border: '1px solid rgba(76,175,80,0.25)' }}>
-          <p className="text-xs font-semibold text-[#4caf50]">Pack Assigned Successfully</p>
-          <p className="text-xs text-[rgba(255,255,255,0.65)] mt-1 font-mono">{packName}</p>
+          <p className="text-xs font-semibold text-status-active">Pack Assigned Successfully</p>
+          <p className="text-xs text-text-secondary mt-1 font-mono">{packName}</p>
         </div>
       )}
       {(done || error) && (
@@ -717,7 +717,7 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
       <Field label="Incident Type">
         <select value={form.incident_type_code} onChange={(e) => update('incident_type_code', e.target.value)} className={inputClass} style={{ background: '#0b0f14' }}>
           {INCIDENT_TYPE_VALUES.map((v) => (
-            <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
+            <option key={v.code} value={v.code} className="bg-bg-base">{v.label}</option>
           ))}
         </select>
       </Field>
@@ -735,13 +735,13 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
           <input type="text" value={form.zip} onChange={(e) => update('zip', e.target.value)} className={inputClass} placeholder="53703" />
         </Field>
       </div>
-      {error && <p className="text-xs text-[#e53935]">{error}</p>}
+      {error && <p className="text-xs text-red">{error}</p>}
       <div className="pt-1">
         <button
           onClick={handleCreateAndValidate}
           disabled={loading || !form.incident_number.trim() || !form.start_datetime}
           className="h-9 px-5 text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all hover:brightness-110 disabled:opacity-40"
-          style={{ background: 'rgba(34,211,238,0.14)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}
+          style={{ background: 'rgba(34,211,238,0.14)', border: '1px solid rgba(34,211,238,0.3)', color: 'var(--color-system-billing)' }}
         >
           {loading ? 'Working…' : 'Create & Validate'}
         </button>
@@ -750,14 +750,14 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
         <div className="space-y-3">
           {errorCount === 0 ? (
             <div className="p-3 rounded-sm" style={{ background: 'rgba(76,175,80,0.08)', border: '1px solid rgba(76,175,80,0.25)' }}>
-              <p className="text-xs font-semibold text-[#4caf50]">Validation Passed — 0 errors</p>
+              <p className="text-xs font-semibold text-status-active">Validation Passed — 0 errors</p>
               {issues.length > 0 && (
                 <p className="text-[11px] text-[rgba(255,255,255,0.5)] mt-0.5">{issues.filter((i) => i.severity === 'warning').length} warning(s)</p>
               )}
             </div>
           ) : (
             <div className="p-3 rounded-sm" style={{ background: 'rgba(229,57,53,0.07)', border: '1px solid rgba(229,57,53,0.2)' }}>
-              <p className="text-xs font-semibold text-[#e53935]">{errorCount} validation error{errorCount !== 1 ? 's' : ''}</p>
+              <p className="text-xs font-semibold text-red">{errorCount} validation error{errorCount !== 1 ? 's' : ''}</p>
               <p className="text-[11px] text-[rgba(255,255,255,0.45)] mt-1">Fix the errors below and re-validate.</p>
             </div>
           )}
@@ -831,7 +831,7 @@ function Step8({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
                   border: `1px solid ${checked[item.id] ? 'rgba(76,175,80,0.5)' : 'rgba(255,255,255,0.15)'}`,
                 }}
               >
-                {checked[item.id] && <span className="text-[#4caf50] text-[10px] font-bold">✓</span>}
+                {checked[item.id] && <span className="text-status-active text-[10px] font-bold">✓</span>}
               </div>
             </div>
             <span className="text-xs text-[rgba(255,255,255,0.75)] leading-relaxed">{item.label}</span>
@@ -864,8 +864,8 @@ function CompleteBanner({ departmentName }: { departmentName?: string }) {
     <div className="p-8 rounded-sm text-center space-y-4" style={{ background: 'rgba(76,175,80,0.07)', border: '1px solid rgba(76,175,80,0.3)' }}>
       <div className="text-4xl">🏆</div>
       <div>
-        <p className="text-[10px] uppercase tracking-[0.25em] text-[#4caf50] font-bold mb-1">NERIS Onboarding Complete</p>
-        <h2 className="text-xl font-black uppercase tracking-wider text-white">READY FOR PRODUCTION</h2>
+        <p className="text-[10px] uppercase tracking-[0.25em] text-status-active font-bold mb-1">NERIS Onboarding Complete</p>
+        <h2 className="text-xl font-black uppercase tracking-wider text-text-primary">READY FOR PRODUCTION</h2>
         {departmentName && (
           <p className="text-sm text-[rgba(255,255,255,0.55)] mt-1">{departmentName}</p>
         )}
@@ -876,7 +876,7 @@ function CompleteBanner({ departmentName }: { departmentName?: string }) {
       <button
         onClick={() => window.print()}
         className="h-9 px-5 text-[11px] font-bold uppercase tracking-wider rounded-sm"
-        style={{ background: 'rgba(76,175,80,0.2)', border: '1px solid rgba(76,175,80,0.4)', color: '#4caf50' }}
+        style={{ background: 'rgba(76,175,80,0.2)', border: '1px solid rgba(76,175,80,0.4)', color: 'var(--q-green)' }}
       >
         Print Summary
       </button>
@@ -992,7 +992,7 @@ export default function NerisOnboardingPage() {
 
   if (loadingStatus) {
     return (
-      <div className="min-h-screen bg-[#07090d] flex items-center justify-center">
+      <div className="min-h-screen bg-bg-void flex items-center justify-center">
         <div className="text-[rgba(255,255,255,0.3)] text-sm">Loading onboarding status…</div>
       </div>
     );
@@ -1000,13 +1000,13 @@ export default function NerisOnboardingPage() {
 
   if (notStarted) {
     return (
-      <div className="min-h-screen bg-[#07090d] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-bg-void flex items-center justify-center p-6">
         <Toast items={toasts} />
-        <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.08)] rounded-sm p-8 w-full max-w-md space-y-5">
+        <div className="bg-bg-base border border-border-DEFAULT rounded-sm p-8 w-full max-w-md space-y-5">
           <div>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">Portal · NERIS</p>
-            <h1 className="text-lg font-black uppercase tracking-wider text-white">Start NERIS Onboarding</h1>
-            <p className="text-xs text-[rgba(255,255,255,0.38)] mt-1">Wisconsin RMS-Only · DSPS Fire Prevention</p>
+            <p className="text-[9px] uppercase tracking-[0.2em] text-orange-dim mb-1">Portal · NERIS</p>
+            <h1 className="text-lg font-black uppercase tracking-wider text-text-primary">Start NERIS Onboarding</h1>
+            <p className="text-xs text-text-muted mt-1">Wisconsin RMS-Only · DSPS Fire Prevention</p>
           </div>
           <Field label="Department Name">
             <input
@@ -1026,13 +1026,13 @@ export default function NerisOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white flex flex-col">
+    <div className="min-h-screen bg-bg-void text-text-primary flex flex-col">
       <Toast items={toasts} />
       {/* Header */}
-      <div className="bg-[#0b0f14] border-b border-[rgba(255,255,255,0.08)] px-5 py-3 flex items-center gap-4 flex-shrink-0">
+      <div className="bg-bg-base border-b border-border-DEFAULT px-5 py-3 flex items-center gap-4 flex-shrink-0">
         <div>
-          <p className="text-[9px] uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)]">Portal · NERIS Onboarding</p>
-          <h1 className="text-sm font-black uppercase tracking-wider text-white">
+          <p className="text-[9px] uppercase tracking-[0.2em] text-orange-dim">Portal · NERIS Onboarding</p>
+          <h1 className="text-sm font-black uppercase tracking-wider text-text-primary">
             {onboardingStatus?.department?.data?.name ?? 'NERIS Onboarding Wizard'}
           </h1>
         </div>
@@ -1052,10 +1052,10 @@ export default function NerisOnboardingPage() {
             <div>
               {/* Step header */}
               <div className="mb-5">
-                <div className="text-[9px] uppercase tracking-[0.18em] text-[rgba(255,107,26,0.6)] mb-0.5">
+                <div className="text-[9px] uppercase tracking-[0.18em] text-orange-dim mb-0.5">
                   Step {STEP_DEFS.findIndex((d) => d.id === currentStepId) + 1} of {STEP_DEFS.length}
                 </div>
-                <h2 className="text-base font-bold uppercase tracking-wider text-white">
+                <h2 className="text-base font-bold uppercase tracking-wider text-text-primary">
                   {STEP_DEFS.find((d) => d.id === currentStepId)?.label}
                 </h2>
               </div>

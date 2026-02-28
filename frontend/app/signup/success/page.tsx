@@ -104,7 +104,7 @@ function ProvisioningSteps({ status }: { status: ProvisioningStatus }) {
                 style={{
                   backgroundColor: 'rgba(255,107,26,0.12)',
                   border: '1px solid rgba(255,107,26,0.25)',
-                  color: '#ff6b1a',
+                  color: 'var(--q-orange)',
                 }}
               >
                 In progress
@@ -180,7 +180,7 @@ export default function SuccessPage() {
   return (
     <div
       className="rounded-sm border p-6 md:p-8"
-      style={{ backgroundColor: '#0b0f14', borderColor: 'rgba(255,255,255,0.08)' }}
+      style={{ backgroundColor: 'var(--q-bg)', borderColor: 'rgba(255,255,255,0.08)' }}
     >
       {/* Top success banner */}
       <div
@@ -210,7 +210,7 @@ export default function SuccessPage() {
         </div>
         <div>
           <h1
-            className="text-base font-bold text-white uppercase tracking-wider"
+            className="text-base font-bold text-text-primary uppercase tracking-wider"
             style={{ fontFamily: "'Barlow Condensed', 'Barlow', sans-serif" }}
           >
             {isComplete ? 'Agency Provisioned!' : 'Your Agency is Being Provisioned'}
@@ -377,7 +377,7 @@ export default function SuccessPage() {
               <div className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
                 Agency
               </div>
-              <div className="text-sm font-semibold text-white mt-0.5">{agencyName}</div>
+              <div className="text-sm font-semibold text-text-primary mt-0.5">{agencyName}</div>
             </div>
           )}
 
@@ -425,7 +425,7 @@ export default function SuccessPage() {
         {isComplete ? (
           <button
             onClick={() => router.push('/login')}
-            className="bg-[#ff6b1a] text-black font-bold px-6 py-2.5 text-sm uppercase tracking-wider hover:bg-[#ff8c42] transition-colors rounded-sm"
+            className="bg-orange text-text-inverse font-bold px-6 py-2.5 text-sm uppercase tracking-wider hover:bg-orange-bright transition-colors rounded-sm"
           >
             Login Now →
           </button>
@@ -435,7 +435,7 @@ export default function SuccessPage() {
               className="w-2 h-2 rounded-full animate-pulse"
               style={{ backgroundColor: '#ff6b1a' }}
             />
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#ff6b1a' }}>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--q-orange)' }}>
               Provisioning…
             </span>
           </div>

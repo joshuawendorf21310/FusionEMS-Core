@@ -159,19 +159,19 @@ export default function FounderCompliancePacksPage() {
   const activePacks = new Set(tenantStatus?.active_pack_ids ?? []);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <div className="border-b border-gray-800 px-6 py-4">
-        <h1 className="text-xl font-bold text-white">Compliance Pack Index</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Apply compliance packs to tenants with one click — DEA, CAAS, CAMTS, Trans 309, Hospital</p>
+    <div className="min-h-screen bg-bg-base text-text-primary">
+      <div className="border-b border-border-subtle px-6 py-4">
+        <h1 className="text-xl font-bold text-text-primary">Compliance Pack Index</h1>
+        <p className="text-sm text-text-muted mt-0.5">Apply compliance packs to tenants with one click — DEA, CAAS, CAMTS, Trans 309, Hospital</p>
       </div>
 
       <div className="p-6 space-y-8 max-w-6xl">
         {/* Tenant Selector */}
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
-          <h2 className="text-sm font-semibold text-gray-200 mb-3">Tenant Selector</h2>
+        <div className="rounded-xl border border-border-subtle bg-bg-panel p-4">
+          <h2 className="text-sm font-semibold text-text-primary mb-3">Tenant Selector</h2>
           <div className="flex gap-3">
             <input
-              className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100 placeholder-gray-500 font-mono"
+              className="flex-1 px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary placeholder-gray-500 font-mono"
               placeholder="Tenant UUID"
               value={tenantId}
               onChange={(e) => setTenantId(e.target.value)}
@@ -188,20 +188,20 @@ export default function FounderCompliancePacksPage() {
 
           {tenantStatus && (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-lg bg-gray-800 p-3">
-                <p className="text-xs text-gray-400">Active Packs</p>
-                <p className="text-xl font-bold text-white">{tenantStatus.active_pack_ids.length}</p>
+              <div className="rounded-lg bg-bg-raised p-3">
+                <p className="text-xs text-text-muted">Active Packs</p>
+                <p className="text-xl font-bold text-text-primary">{tenantStatus.active_pack_ids.length}</p>
               </div>
-              <div className="rounded-lg bg-gray-800 p-3">
-                <p className="text-xs text-gray-400">Fleet Score</p>
-                <p className="text-xl font-bold text-white">{tenantStatus.fleet_score !== null ? `${tenantStatus.fleet_score}%` : "—"}</p>
+              <div className="rounded-lg bg-bg-raised p-3">
+                <p className="text-xs text-text-muted">Fleet Score</p>
+                <p className="text-xl font-bold text-text-primary">{tenantStatus.fleet_score !== null ? `${tenantStatus.fleet_score}%` : "—"}</p>
               </div>
-              <div className="rounded-lg bg-gray-800 p-3">
-                <p className="text-xs text-gray-400">Inspections</p>
-                <p className="text-xl font-bold text-white">{tenantStatus.inspections_total}</p>
+              <div className="rounded-lg bg-bg-raised p-3">
+                <p className="text-xs text-text-muted">Inspections</p>
+                <p className="text-xl font-bold text-text-primary">{tenantStatus.inspections_total}</p>
               </div>
-              <div className="rounded-lg bg-gray-800 p-3">
-                <p className="text-xs text-gray-400">Active Set</p>
+              <div className="rounded-lg bg-bg-raised p-3">
+                <p className="text-xs text-text-muted">Active Set</p>
                 <p className="text-sm font-semibold text-emerald-400 truncate">{tenantStatus.active_set_id ?? "—"}</p>
               </div>
             </div>
@@ -210,7 +210,7 @@ export default function FounderCompliancePacksPage() {
 
         {/* Recommended Sets */}
         <div>
-          <h2 className="text-base font-semibold text-gray-200 mb-3">Recommended Sets</h2>
+          <h2 className="text-base font-semibold text-text-primary mb-3">Recommended Sets</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {index?.recommended_sets.map((set) => {
               const isActive = tenantStatus?.active_set_id === set.set_id;
@@ -219,17 +219,17 @@ export default function FounderCompliancePacksPage() {
                 <div
                   key={set.set_id}
                   className={`rounded-xl border p-5 transition-colors ${
-                    isActive ? "border-emerald-700 bg-emerald-900/10" : "border-gray-800 bg-gray-900"
+                    isActive ? "border-emerald-700 bg-emerald-900/10" : "border-border-subtle bg-bg-panel"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">
+                      <div className="w-10 h-10 rounded-lg bg-bg-overlay flex items-center justify-center text-xs font-bold text-text-secondary">
                         {SET_ICONS[set.set_id] ?? "SET"}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">{set.label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{set.description}</p>
+                        <p className="text-sm font-semibold text-text-primary">{set.label}</p>
+                        <p className="text-xs text-text-muted mt-0.5">{set.description}</p>
                       </div>
                     </div>
                     {isActive ? (
@@ -249,7 +249,7 @@ export default function FounderCompliancePacksPage() {
                       <span
                         key={pid}
                         className={`px-2 py-0.5 rounded text-xs border ${
-                          activePacks.has(pid) ? "bg-emerald-900/30 text-emerald-400 border-emerald-800" : "bg-gray-800 text-gray-400 border-gray-700"
+                          activePacks.has(pid) ? "bg-emerald-900/30 text-emerald-400 border-emerald-800" : "bg-bg-raised text-text-muted border-border-DEFAULT"
                         }`}
                       >
                         {pid}
@@ -264,10 +264,10 @@ export default function FounderCompliancePacksPage() {
 
         {/* All Packs Table */}
         <div>
-          <h2 className="text-base font-semibold text-gray-200 mb-3">All Packs</h2>
-          <div className="rounded-xl border border-gray-800 overflow-hidden">
+          <h2 className="text-base font-semibold text-text-primary mb-3">All Packs</h2>
+          <div className="rounded-xl border border-border-subtle overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-800 text-gray-400 text-xs">
+              <thead className="bg-bg-raised text-text-muted text-xs">
                 <tr>
                   <th className="px-4 py-2.5 text-left">Pack</th>
                   <th className="px-4 py-2.5 text-left">Jurisdiction</th>
@@ -275,19 +275,19 @@ export default function FounderCompliancePacksPage() {
                   <th className="px-4 py-2.5 text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-border-subtle">
                 {index?.packs.map((pack) => {
                   const isActive = activePacks.has(pack.pack_id);
                   const isEnabling = enablingPack === pack.pack_id;
                   const isDisabling = disablingPack === pack.pack_id;
                   return (
-                    <tr key={pack.pack_id} className="hover:bg-gray-800/50">
+                    <tr key={pack.pack_id} className="hover:bg-bg-raised/50">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-gray-200">{pack.name}</p>
-                        <p className="text-xs text-gray-500 font-mono mt-0.5">{pack.pack_id}</p>
+                        <p className="font-medium text-text-primary">{pack.name}</p>
+                        <p className="text-xs text-text-muted font-mono mt-0.5">{pack.pack_id}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs border ${JURISDICTION_COLORS[pack.jurisdiction] ?? "bg-gray-700 text-gray-400 border-gray-600"}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs border ${JURISDICTION_COLORS[pack.jurisdiction] ?? "bg-bg-overlay text-text-muted border-border-strong"}`}>
                           {pack.jurisdiction}
                         </span>
                       </td>
@@ -295,9 +295,9 @@ export default function FounderCompliancePacksPage() {
                         {isActive ? (
                           <span className="px-2 py-0.5 bg-emerald-900/40 text-emerald-400 rounded text-xs">Active</span>
                         ) : tenantStatus ? (
-                          <span className="px-2 py-0.5 bg-gray-700 text-gray-400 rounded text-xs">Inactive</span>
+                          <span className="px-2 py-0.5 bg-bg-overlay text-text-muted rounded text-xs">Inactive</span>
                         ) : (
-                          <span className="text-gray-600 text-xs">—</span>
+                          <span className="text-text-disabled text-xs">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -315,7 +315,7 @@ export default function FounderCompliancePacksPage() {
                               <button
                                 onClick={() => disablePack(pack.pack_id)}
                                 disabled={isDisabling || !!applying}
-                                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 rounded text-xs transition-colors"
+                                className="px-3 py-1 bg-bg-overlay hover:bg-bg-overlay disabled:opacity-40 rounded text-xs transition-colors"
                               >
                                 {isDisabling ? "Disabling…" : "Disable"}
                               </button>
@@ -328,7 +328,7 @@ export default function FounderCompliancePacksPage() {
                 })}
                 {!index?.packs.length && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500 text-sm">
+                    <td colSpan={4} className="px-4 py-8 text-center text-text-muted text-sm">
                       Loading pack index…
                     </td>
                   </tr>
@@ -341,12 +341,12 @@ export default function FounderCompliancePacksPage() {
         {/* Active Packs Detail */}
         {tenantStatus?.active_packs && tenantStatus.active_packs.length > 0 && (
           <div>
-            <h2 className="text-base font-semibold text-gray-200 mb-3">Tenant Active Packs</h2>
+            <h2 className="text-base font-semibold text-text-primary mb-3">Tenant Active Packs</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {tenantStatus.active_packs.map((p) => (
                 <div key={p.pack_id} className="rounded-lg border border-emerald-800 bg-emerald-900/10 p-3">
                   <p className="text-sm font-medium text-emerald-300">{p.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{p.jurisdiction} · {p.status}</p>
+                  <p className="text-xs text-text-muted mt-0.5">{p.jurisdiction} · {p.status}</p>
                 </div>
               ))}
             </div>
@@ -355,16 +355,16 @@ export default function FounderCompliancePacksPage() {
 
         {/* Progress Log */}
         {progressLog.length > 0 && (
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+          <div className="rounded-xl border border-border-subtle bg-bg-panel p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-200">Activity Log</h3>
+              <h3 className="text-sm font-semibold text-text-primary">Activity Log</h3>
               {!applying && (
-                <button onClick={() => setProgressLog([])} className="text-xs text-gray-500 hover:text-gray-300">Clear</button>
+                <button onClick={() => setProgressLog([])} className="text-xs text-text-muted hover:text-text-secondary">Clear</button>
               )}
             </div>
             <div className="font-mono text-xs space-y-1 max-h-40 overflow-y-auto">
               {progressLog.map((line, i) => (
-                <p key={i} className={line.includes("Done") || line.includes("enabled") || line.includes("applied") ? "text-emerald-400" : line.includes("Ingesting") || line.includes("Activating") || line.includes("Enabling") ? "text-blue-400" : "text-gray-400"}>
+                <p key={i} className={line.includes("Done") || line.includes("enabled") || line.includes("applied") ? "text-emerald-400" : line.includes("Ingesting") || line.includes("Activating") || line.includes("Enabling") ? "text-blue-400" : "text-text-muted"}>
                   {line}
                 </p>
               ))}
@@ -377,19 +377,19 @@ export default function FounderCompliancePacksPage() {
       {/* Confirm Modal */}
       {confirmSet && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-2">Apply Pack Set</h3>
-            <p className="text-sm text-gray-300 mb-4">
+          <div className="bg-bg-panel border border-border-DEFAULT rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-text-primary mb-2">Apply Pack Set</h3>
+            <p className="text-sm text-text-secondary mb-4">
               Apply <span className="text-blue-400 font-semibold">{confirmSet.label}</span> to tenant{" "}
-              <span className="font-mono text-gray-200">{tenantId}</span>?
+              <span className="font-mono text-text-primary">{tenantId}</span>?
             </p>
             <div className="mb-4">
-              <p className="text-xs text-gray-400 mb-2">Packs included:</p>
+              <p className="text-xs text-text-muted mb-2">Packs included:</p>
               <div className="space-y-1">
                 {confirmSet.pack_ids.map((pid) => (
                   <div key={pid} className="flex items-center gap-2 text-xs">
                     <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-                    <span className="text-gray-200">{pid}</span>
+                    <span className="text-text-primary">{pid}</span>
                     {activePacks.has(pid) && <span className="text-emerald-400">(already active)</span>}
                   </div>
                 ))}
@@ -399,7 +399,7 @@ export default function FounderCompliancePacksPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmSet(null)}
-                className="flex-1 py-2 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+                className="flex-1 py-2 border border-border-DEFAULT rounded-lg text-sm text-text-secondary hover:bg-bg-raised transition-colors"
               >
                 Cancel
               </button>

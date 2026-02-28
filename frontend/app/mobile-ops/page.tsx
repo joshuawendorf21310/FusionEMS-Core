@@ -8,9 +8,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 function KpiCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-2">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
       <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.35)] mt-1">{sub}</div>}
     </motion.div>
@@ -82,9 +82,9 @@ export default function MobileOpsPage() {
   return (
     <div className="p-5 space-y-6 min-h-screen">
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">CATEGORY 9</div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">PWA Deployment & Mobile Ops</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">100-Feature Mobile Command · CrewLink · Scheduling · OCR · Push Notifications · Compliance</p>
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">CATEGORY 9</div>
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">PWA Deployment & Mobile Ops</h1>
+        <p className="text-xs text-text-muted mt-0.5">100-Feature Mobile Command · CrewLink · Scheduling · OCR · Push Notifications · Compliance</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
@@ -100,8 +100,8 @@ export default function MobileOpsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Deployments */}
-        <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">PWA Deployments</div>
+        <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">PWA Deployments</div>
           {deployments.deployments?.slice(0, 6).map((d, i) => (
             <div key={i} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
               <div className="flex items-center gap-2">
@@ -115,16 +115,16 @@ export default function MobileOpsPage() {
         </div>
 
         {/* Version Adoption */}
-        <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Version Adoption · {fmtN(versionAdoption.total_devices)} Devices</div>
+        <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Version Adoption · {fmtN(versionAdoption.total_devices)} Devices</div>
           {versionAdoption.version_adoption?.map(v => (
             <div key={v.version} className="mb-2">
               <div className="flex justify-between text-[11px] mb-0.5">
                 <span className="text-[rgba(255,255,255,0.6)]">{v.version}</span>
-                <span className="font-semibold text-white">{v.pct}%</span>
+                <span className="font-semibold text-text-primary">{v.pct}%</span>
               </div>
               <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-                <motion.div className="h-full rounded-full bg-[#3b82f6]" initial={{ width: 0 }} animate={{ width: `${v.pct}%` }} transition={{ duration: 0.8 }} />
+                <motion.div className="h-full rounded-full bg-system-fleet" initial={{ width: 0 }} animate={{ width: `${v.pct}%` }} transition={{ duration: 0.8 }} />
               </div>
             </div>
           ))}
@@ -132,8 +132,8 @@ export default function MobileOpsPage() {
         </div>
 
         {/* Compliance */}
-        <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Credential Compliance</div>
+        <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Credential Compliance</div>
           {[
             { label: "Total Credentials", value: fmtN(credCompliance.total_credentials), color: "#fff" },
             { label: "Compliant", value: fmtN(credCompliance.compliant), color: "#4caf50" },
@@ -146,7 +146,7 @@ export default function MobileOpsPage() {
             </div>
           ))}
           <div className="mt-3">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-2">Sync Health</div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">Sync Health</div>
             {[
               { label: "Pending Jobs", value: fmtN(syncHealth.pending), color: "#ff9800" },
               { label: "Failed Jobs", value: fmtN(syncHealth.failed), color: "#e53935" },
@@ -163,8 +163,8 @@ export default function MobileOpsPage() {
 
       {/* OCR + Field Mapping */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Mobile OCR Capture Engine</div>
+        <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Mobile OCR Capture Engine</div>
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: "Facesheet Scan", icon: "📋", status: "active" },
@@ -178,15 +178,15 @@ export default function MobileOpsPage() {
             ].map(item => (
               <div key={item.label} className="flex items-center gap-2 p-2 bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.15)] rounded-sm">
                 <span className="text-sm">{item.icon}</span>
-                <span className="text-[10px] text-[rgba(255,255,255,0.65)]">{item.label}</span>
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#4caf50]" />
+                <span className="text-[10px] text-text-secondary">{item.label}</span>
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-status-active" />
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Push Notification Analytics</div>
+        <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Push Notification Analytics</div>
           {[
             { label: "Total Notifications", value: fmtN(pushAnalytics.total), color: "#fff" },
             { label: "Sent", value: fmtN(pushAnalytics.sent), color: "#3b82f6" },
@@ -199,21 +199,21 @@ export default function MobileOpsPage() {
               <span className="font-bold" style={{ color: item.color }}>{item.value}</span>
             </div>
           ))}
-          <div className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-2">Staffing Shortage Predictor</div>
-          <div className="flex items-center gap-3 p-2 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] rounded-sm">
+          <div className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">Staffing Shortage Predictor</div>
+          <div className="flex items-center gap-3 p-2 bg-[rgba(255,255,255,0.03)] border border-border-subtle rounded-sm">
             <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: shortageColor }} />
-            <span className="text-xs text-[rgba(255,255,255,0.65)]">Shortage Risk: <strong style={{ color: shortageColor }}>{shortageRisk.toUpperCase() || "N/A"}</strong></span>
+            <span className="text-xs text-text-secondary">Shortage Risk: <strong style={{ color: shortageColor }}>{shortageRisk.toUpperCase() || "N/A"}</strong></span>
             <span className="ml-auto text-[10px] text-[rgba(255,255,255,0.35)]">{fmtN(shortage.unfilled_shifts)} unfilled</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">100 Active Mobile Features</div>
+      <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">100 Active Mobile Features</div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
           {FEATURES.map(f => (
             <div key={f} className="flex items-center gap-1.5 text-[10px] text-[rgba(255,255,255,0.5)]">
-              <span className="w-1 h-1 rounded-full bg-[#3b82f6] flex-shrink-0" />
+              <span className="w-1 h-1 rounded-full bg-system-fleet flex-shrink-0" />
               <span className="truncate">{f}</span>
             </div>
           ))}

@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -46,7 +46,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -109,14 +109,14 @@ export default function IncidentControlCenterPage() {
   const [incidentMode, setIncidentMode] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#060d14] text-white p-6 space-y-8">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <div className="text-[10px] font-bold font-mono text-[rgba(255,107,26,0.6)] uppercase tracking-widest mb-1">
+          <div className="text-[10px] font-bold font-mono text-orange-dim uppercase tracking-widest mb-1">
             MODULE 10 · INFRASTRUCTURE
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Incident Control Center</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary">Incident Control Center</h1>
           <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">
             System status · incident history · response playbooks · on-call
           </p>
@@ -130,7 +130,7 @@ export default function IncidentControlCenterPage() {
           {SERVICES_STATUS.map((svc) => (
             <div
               key={svc.name}
-              className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+              className="bg-bg-panel border border-border-DEFAULT p-4"
               style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
             >
               <div className="text-xs font-semibold text-[rgba(255,255,255,0.75)] mb-2">{svc.name}</div>
@@ -160,7 +160,7 @@ export default function IncidentControlCenterPage() {
               </svg>
             </div>
             <div>
-              <div className="text-sm font-bold text-[#4caf50] tracking-wide uppercase">ALL SYSTEMS OPERATIONAL</div>
+              <div className="text-sm font-bold text-status-active tracking-wide uppercase">ALL SYSTEMS OPERATIONAL</div>
               <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">No active incidents · Last checked moments ago</div>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function IncidentControlCenterPage() {
               </thead>
               <tbody>
                 {INCIDENT_HISTORY.map((inc, i) => (
-                  <tr key={i} className="border-t border-[rgba(255,255,255,0.04)]">
+                  <tr key={i} className="border-t border-border-subtle">
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.4)]">{inc.date}</td>
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.75)]">{inc.title}</td>
                     <td className="py-2 pr-4"><Badge label={inc.severity} status={severityBadge(inc.severity)} /></td>
@@ -208,7 +208,7 @@ export default function IncidentControlCenterPage() {
             {PLAYBOOKS.map((pb, i) => (
               <div
                 key={pb.id}
-                className="flex items-center justify-between gap-4 py-3 border-b border-[rgba(255,255,255,0.04)] last:border-0"
+                className="flex items-center justify-between gap-4 py-3 border-b border-border-subtle last:border-0"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-[10px] font-mono text-[rgba(255,107,26,0.5)] flex-shrink-0">{pb.id}</span>
@@ -218,7 +218,7 @@ export default function IncidentControlCenterPage() {
                   </div>
                 </div>
                 <button
-                  className="flex-shrink-0 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-sm border border-[rgba(148,163,184,0.25)] text-[#94a3b8] hover:bg-[rgba(148,163,184,0.08)] transition-colors"
+                  className="flex-shrink-0 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-sm border border-border-DEFAULT text-system-cad hover:bg-bg-overlay transition-colors"
                 >
                   View Playbook
                 </button>
@@ -239,7 +239,7 @@ export default function IncidentControlCenterPage() {
           {!incidentMode ? (
             <button
               onClick={() => setIncidentMode(true)}
-              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest rounded-sm border border-[#e5393540] text-[#e53935] hover:bg-[#e5393514] transition-colors"
+              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest rounded-sm border border-red-ghost text-red hover:bg-red-ghost transition-colors"
               style={{ background: '#e5393508' }}
             >
               ACTIVATE INCIDENT MODE
@@ -254,7 +254,7 @@ export default function IncidentControlCenterPage() {
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#e53935' }} />
                 <div>
-                  <div className="text-xs font-bold text-[#e53935] uppercase tracking-widest">INCIDENT MODE ACTIVE</div>
+                  <div className="text-xs font-bold text-red uppercase tracking-widest">INCIDENT MODE ACTIVE</div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.5)] mt-0.5">
                     Non-critical comms suspended · War room routing engaged · Founder alerted
                   </div>
@@ -278,23 +278,23 @@ export default function IncidentControlCenterPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Status Page URL</div>
-              <div className="text-[11px] font-mono text-[#22d3ee]">status.fusionemsquantum.com</div>
+              <div className="text-[11px] font-mono text-system-billing">status.fusionemsquantum.com</div>
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Last Published</div>
-              <div className="text-[11px] text-[rgba(255,255,255,0.65)]">2 minutes ago</div>
+              <div className="text-[11px] text-text-secondary">2 minutes ago</div>
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Agency Subscribers</div>
-              <div className="text-[11px] font-bold text-white">12</div>
+              <div className="text-[11px] font-bold text-text-primary">12</div>
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">30d Uptime</div>
-              <div className="text-[11px] font-bold text-[#4caf50]">99.97%</div>
+              <div className="text-[11px] font-bold text-status-active">99.97%</div>
             </div>
           </div>
           <button
-            className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-sm border border-[rgba(148,163,184,0.25)] text-[#94a3b8] hover:bg-[rgba(148,163,184,0.08)] transition-colors"
+            className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-sm border border-border-DEFAULT text-system-cad hover:bg-bg-overlay transition-colors"
           >
             Publish Update
           </button>
@@ -316,7 +316,7 @@ export default function IncidentControlCenterPage() {
               {CONTACT_METHODS_FOUNDER.map((m) => (
                 <span
                   key={m}
-                  className="px-2 py-0.5 text-[10px] font-semibold rounded-sm border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)]"
+                  className="px-2 py-0.5 text-[10px] font-semibold rounded-sm border border-border-DEFAULT text-[rgba(255,255,255,0.5)]"
                   style={{ background: 'rgba(255,255,255,0.04)' }}
                 >
                   {m}
@@ -336,7 +336,7 @@ export default function IncidentControlCenterPage() {
               {CONTACT_METHODS_TL.map((m) => (
                 <span
                   key={m}
-                  className="px-2 py-0.5 text-[10px] font-semibold rounded-sm border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)]"
+                  className="px-2 py-0.5 text-[10px] font-semibold rounded-sm border border-border-DEFAULT text-[rgba(255,255,255,0.5)]"
                   style={{ background: 'rgba(255,255,255,0.04)' }}
                 >
                   {m}
@@ -353,7 +353,7 @@ export default function IncidentControlCenterPage() {
 
       {/* Back */}
       <div>
-        <Link href="/founder" className="text-xs text-[#94a3b8] hover:text-white transition-colors">
+        <Link href="/founder" className="text-xs text-system-cad hover:text-text-primary transition-colors">
           ← Back to Founder OS
         </Link>
       </div>

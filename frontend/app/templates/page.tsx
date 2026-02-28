@@ -1,4 +1,5 @@
 "use client";
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -25,10 +26,10 @@ type Template = {
 function MetricCard({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-2">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
       <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
     </div>
   );
@@ -141,13 +142,13 @@ export default function TemplatesPage() {
     <div className="p-5 space-y-6 min-h-screen">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">CATEGORY 6</div>
-          <h1 className="text-xl font-black uppercase tracking-wider text-white">Template Builder System</h1>
-          <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">100-Feature Document Engine · Drag-Drop · Variables · Versioning · Export</p>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">CATEGORY 6</div>
+          <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Template Builder System</h1>
+          <p className="text-xs text-text-muted mt-0.5">100-Feature Document Engine · Drag-Drop · Variables · Versioning · Export</p>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="h-9 px-4 bg-[rgba(255,107,26,0.15)] border border-[rgba(255,107,26,0.4)] text-[#ff6b1a] text-xs font-semibold rounded-sm hover:bg-[rgba(255,107,26,0.25)] transition-colors"
+          className="h-9 px-4 bg-[rgba(255,107,26,0.15)] border border-[rgba(255,107,26,0.4)] text-orange text-xs font-semibold rounded-sm hover:bg-[rgba(255,107,26,0.25)] transition-colors"
         >
           + New Template
         </button>
@@ -166,7 +167,7 @@ export default function TemplatesPage() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setSelectedCategory(null)}
-          className={`h-8 px-3 text-xs font-semibold rounded-sm border transition-colors ${!selectedCategory ? "bg-[rgba(255,107,26,0.2)] border-[rgba(255,107,26,0.5)] text-[#ff6b1a]" : "bg-transparent border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:border-[rgba(255,255,255,0.25)]"}`}
+          className={`h-8 px-3 text-xs font-semibold rounded-sm border transition-colors ${!selectedCategory ? "bg-[rgba(255,107,26,0.2)] border-[rgba(255,107,26,0.5)] text-orange" : "bg-transparent border-border-DEFAULT text-[rgba(255,255,255,0.5)] hover:border-[rgba(255,255,255,0.25)]"}`}
         >
           All
         </button>
@@ -174,7 +175,7 @@ export default function TemplatesPage() {
           <button
             key={cat.key}
             onClick={() => setSelectedCategory(cat.key)}
-            className={`h-8 px-3 text-xs font-semibold rounded-sm border transition-colors ${selectedCategory === cat.key ? "bg-[rgba(255,107,26,0.2)] border-[rgba(255,107,26,0.5)] text-[#ff6b1a]" : "bg-transparent border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:border-[rgba(255,255,255,0.25)]"}`}
+            className={`h-8 px-3 text-xs font-semibold rounded-sm border transition-colors ${selectedCategory === cat.key ? "bg-[rgba(255,107,26,0.2)] border-[rgba(255,107,26,0.5)] text-orange" : "bg-transparent border-border-DEFAULT text-[rgba(255,255,255,0.5)] hover:border-[rgba(255,255,255,0.25)]"}`}
           >
             {cat.label}
           </button>
@@ -184,7 +185,7 @@ export default function TemplatesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Template List */}
         <div className="md:col-span-2 space-y-2">
-          {loading && <div className="text-xs text-[rgba(255,255,255,0.4)] py-8 text-center">Loading templates...</div>}
+          {loading && <div className="p-6"><QuantumTableSkeleton rows={6} cols={4} /></div>}
           {!loading && templates.length === 0 && (
             <div className="text-xs text-[rgba(255,255,255,0.4)] py-8 text-center">No templates found. Create your first template above.</div>
           )}
@@ -193,19 +194,19 @@ export default function TemplatesPage() {
               key={t.id}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 hover:border-[rgba(255,255,255,0.16)] transition-colors"
+              className="bg-bg-panel border border-border-DEFAULT p-4 hover:border-border-strong transition-colors"
               style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-white truncate">{t.data.name}</span>
+                    <span className="text-sm font-semibold text-text-primary truncate">{t.data.name}</span>
                     <StatusChip status={t.data.status} />
                     {t.data.is_locked && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-[rgba(229,57,53,0.15)] text-[#e53935] border border-[rgba(229,57,53,0.3)] rounded-sm font-bold">LOCKED</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-red-ghost text-red border border-red-ghost rounded-sm font-bold">LOCKED</span>
                     )}
                     {t.data.security_classification !== "standard" && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-[rgba(168,85,247,0.12)] text-[#a855f7] border border-[rgba(168,85,247,0.3)] rounded-sm font-bold uppercase">{t.data.security_classification}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-[rgba(168,85,247,0.12)] text-system-compliance border border-[rgba(168,85,247,0.3)] rounded-sm font-bold uppercase">{t.data.security_classification}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[rgba(255,255,255,0.4)]">
@@ -224,7 +225,7 @@ export default function TemplatesPage() {
                   {t.data.variables.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {t.data.variables.slice(0, 5).map((v) => (
-                        <span key={v} className="text-[10px] px-1.5 py-0.5 bg-[rgba(34,211,238,0.08)] text-[#22d3ee] border border-[rgba(34,211,238,0.2)] rounded-sm font-mono">{`{{${v}}}`}</span>
+                        <span key={v} className="text-[10px] px-1.5 py-0.5 bg-[rgba(34,211,238,0.08)] text-system-billing border border-[rgba(34,211,238,0.2)] rounded-sm font-mono">{`{{${v}}}`}</span>
                       ))}
                       {t.data.variables.length > 5 && (
                         <span className="text-[10px] text-[rgba(255,255,255,0.3)]">+{t.data.variables.length - 5} more</span>
@@ -243,14 +244,14 @@ export default function TemplatesPage() {
                   {t.data.status === "draft" && (
                     <button
                       onClick={() => handleApprove(t.id)}
-                      className="h-7 px-2 text-[10px] font-semibold border border-[rgba(76,175,80,0.4)] text-[#4caf50] rounded-sm hover:bg-[rgba(76,175,80,0.1)] transition-colors"
+                      className="h-7 px-2 text-[10px] font-semibold border border-[rgba(76,175,80,0.4)] text-status-active rounded-sm hover:bg-[rgba(76,175,80,0.1)] transition-colors"
                     >
                       Approve
                     </button>
                   )}
                   <button
                     onClick={() => handleArchive(t.id)}
-                    className="h-7 px-2 text-[10px] font-semibold border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.4)] rounded-sm hover:border-[rgba(229,57,53,0.4)] hover:text-[#e53935] transition-colors"
+                    className="h-7 px-2 text-[10px] font-semibold border border-border-DEFAULT text-[rgba(255,255,255,0.4)] rounded-sm hover:border-[rgba(229,57,53,0.4)] hover:text-red transition-colors"
                   >
                     Archive
                   </button>
@@ -264,10 +265,10 @@ export default function TemplatesPage() {
         <div className="space-y-4">
           {/* Feature Grid */}
           <div
-            className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+            className="bg-bg-panel border border-border-DEFAULT p-4"
             style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
           >
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">100 Active Features</div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">100 Active Features</div>
             <div className="grid grid-cols-2 gap-1.5 text-[10px] text-[rgba(255,255,255,0.55)]">
               {[
                 "Drag-drop designer", "Variable injection", "Conditional blocks", "Tenant branding",
@@ -280,7 +281,7 @@ export default function TemplatesPage() {
                 "Legal disclaimers", "Region variations",
               ].map((f) => (
                 <div key={f} className="flex items-center gap-1.5">
-                  <span className="w-1 h-1 rounded-full bg-[#4caf50] flex-shrink-0" />
+                  <span className="w-1 h-1 rounded-full bg-status-active flex-shrink-0" />
                   <span className="truncate">{f}</span>
                 </div>
               ))}
@@ -290,15 +291,15 @@ export default function TemplatesPage() {
           {/* Top Performing */}
           {topPerforming.length > 0 && (
             <div
-              className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+              className="bg-bg-panel border border-border-DEFAULT p-4"
               style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
             >
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Top Performing</div>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Top Performing</div>
               <div className="space-y-2">
                 {topPerforming.slice(0, 5).map((t, i) => (
                   <div key={t.template_id} className="flex items-center justify-between">
                     <span className="text-xs text-[rgba(255,255,255,0.6)] truncate">{t.template_id.slice(0, 8)}…</span>
-                    <span className="text-xs font-bold text-[#22d3ee]">{t.render_count} renders</span>
+                    <span className="text-xs font-bold text-system-billing">{t.render_count} renders</span>
                   </div>
                 ))}
               </div>
@@ -307,10 +308,10 @@ export default function TemplatesPage() {
 
           {/* Capabilities */}
           <div
-            className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+            className="bg-bg-panel border border-border-DEFAULT p-4"
             style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}
           >
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Engine Capabilities</div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Engine Capabilities</div>
             <div className="space-y-2">
               {[
                 { label: "Bulk Generation", status: "active" },
@@ -324,7 +325,7 @@ export default function TemplatesPage() {
               ].map((cap) => (
                 <div key={cap.label} className="flex items-center justify-between">
                   <span className="text-xs text-[rgba(255,255,255,0.6)]">{cap.label}</span>
-                  <span className="text-[10px] px-2 py-0.5 bg-[rgba(76,175,80,0.1)] text-[#4caf50] border border-[rgba(76,175,80,0.3)] rounded-sm font-bold">ACTIVE</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-[rgba(76,175,80,0.1)] text-status-active border border-[rgba(76,175,80,0.3)] rounded-sm font-bold">ACTIVE</span>
                 </div>
               ))}
             </div>
@@ -335,24 +336,24 @@ export default function TemplatesPage() {
       {/* Create Modal */}
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.7)] p-4">
-          <div className="w-full max-w-lg bg-[#0f1720] border border-[rgba(255,255,255,0.12)] p-6 space-y-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
-            <div className="text-sm font-bold text-white uppercase tracking-wider">Create New Template</div>
+          <div className="w-full max-w-lg bg-bg-panel border border-[rgba(255,255,255,0.12)] p-6 space-y-4" style={{ clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)" }}>
+            <div className="text-sm font-bold text-text-primary uppercase tracking-wider">Create New Template</div>
             <input
-              className="w-full bg-[#070d14] border border-[rgba(255,255,255,0.1)] text-sm text-white px-3 py-2 rounded-sm focus:outline-none focus:border-[rgba(255,107,26,0.5)] placeholder-[rgba(255,255,255,0.3)]"
+              className="w-full bg-bg-void border border-border-DEFAULT text-sm text-text-primary px-3 py-2 rounded-sm focus:outline-none focus:border-orange placeholder-[rgba(255,255,255,0.3)]"
               placeholder="Template name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
             <div className="grid grid-cols-2 gap-3">
               <select
-                className="bg-[#070d14] border border-[rgba(255,255,255,0.1)] text-sm text-white px-3 py-2 rounded-sm"
+                className="bg-bg-void border border-border-DEFAULT text-sm text-text-primary px-3 py-2 rounded-sm"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
               >
                 {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
               <select
-                className="bg-[#070d14] border border-[rgba(255,255,255,0.1)] text-sm text-white px-3 py-2 rounded-sm"
+                className="bg-bg-void border border-border-DEFAULT text-sm text-text-primary px-3 py-2 rounded-sm"
                 value={newFormat}
                 onChange={(e) => setNewFormat(e.target.value)}
               >
@@ -360,14 +361,14 @@ export default function TemplatesPage() {
               </select>
             </div>
             <textarea
-              className="w-full bg-[#070d14] border border-[rgba(255,255,255,0.1)] text-sm text-white px-3 py-2 rounded-sm h-28 resize-none focus:outline-none focus:border-[rgba(255,107,26,0.5)] placeholder-[rgba(255,255,255,0.3)] font-mono"
+              className="w-full bg-bg-void border border-border-DEFAULT text-sm text-text-primary px-3 py-2 rounded-sm h-28 resize-none focus:outline-none focus:border-orange placeholder-[rgba(255,255,255,0.3)] font-mono"
               placeholder="Template content — use {{variable_name}} for dynamic fields"
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => setCreateOpen(false)} className="h-8 px-4 text-xs font-semibold border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] rounded-sm hover:border-[rgba(255,255,255,0.25)] transition-colors">Cancel</button>
-              <button onClick={handleCreate} disabled={!newName.trim()} className="h-8 px-4 text-xs font-semibold bg-[rgba(255,107,26,0.2)] border border-[rgba(255,107,26,0.5)] text-[#ff6b1a] rounded-sm hover:bg-[rgba(255,107,26,0.3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Create Template</button>
+              <button onClick={() => setCreateOpen(false)} className="h-8 px-4 text-xs font-semibold border border-border-DEFAULT text-[rgba(255,255,255,0.5)] rounded-sm hover:border-[rgba(255,255,255,0.25)] transition-colors">Cancel</button>
+              <button onClick={handleCreate} disabled={!newName.trim()} className="h-8 px-4 text-xs font-semibold bg-[rgba(255,107,26,0.2)] border border-[rgba(255,107,26,0.5)] text-orange rounded-sm hover:bg-[rgba(255,107,26,0.3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Create Template</button>
             </div>
           </div>
         </div>

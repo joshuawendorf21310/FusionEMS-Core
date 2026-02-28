@@ -68,12 +68,12 @@ export default function CheckoutPage() {
   return (
     <div
       className="rounded-sm border p-6 md:p-8"
-      style={{ backgroundColor: '#0b0f14', borderColor: 'rgba(255,255,255,0.08)' }}
+      style={{ backgroundColor: 'var(--q-bg)', borderColor: 'rgba(255,255,255,0.08)' }}
     >
       {/* Header */}
       <div className="mb-6 border-b pb-5" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         <h1
-          className="text-xl font-bold uppercase tracking-wider text-white"
+          className="text-xl font-bold uppercase tracking-wider text-text-primary"
           style={{ fontFamily: "'Barlow Condensed', 'Barlow', sans-serif" }}
         >
           Checkout
@@ -98,7 +98,7 @@ export default function CheckoutPage() {
         >
           <span
             className="text-xs font-bold uppercase tracking-wider"
-            style={{ color: '#ff6b1a' }}
+            style={{ color: 'var(--q-orange)' }}
           >
             Order Summary
           </span>
@@ -116,7 +116,7 @@ export default function CheckoutPage() {
                 <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" fill="#ff6b1a" />
                 <text x="18" y="23" textAnchor="middle" fill="black" fontSize="11" fontWeight="900" fontFamily="'Barlow Condensed', sans-serif">FQ</text>
               </svg>
-              <span className="text-sm font-bold text-white tracking-wide">
+              <span className="text-sm font-bold text-text-primary tracking-wide">
                 FusionEMS Quantum
               </span>
             </div>
@@ -189,7 +189,7 @@ export default function CheckoutPage() {
               <circle className="opacity-20" cx="12" cy="12" r="10" stroke="#22d3ee" strokeWidth="3" />
               <path className="opacity-80" fill="#22d3ee" d="M4 12a8 8 0 018-8v8z" />
             </svg>
-            <p className="text-sm font-semibold" style={{ color: '#22d3ee' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--color-system-billing)' }}>
               Redirecting to Stripe Checkout…
             </p>
           </div>
@@ -209,7 +209,7 @@ export default function CheckoutPage() {
               color: 'rgba(255,255,255,0.65)',
             }}
           >
-            <p className="font-semibold mb-1" style={{ color: '#22d3ee' }}>
+            <p className="font-semibold mb-1" style={{ color: 'var(--color-system-billing)' }}>
               Redirect did not complete automatically.
             </p>
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
@@ -220,7 +220,7 @@ export default function CheckoutPage() {
             href={checkoutUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-[#ff6b1a] text-black font-bold px-6 py-2.5 text-sm uppercase tracking-wider hover:bg-[#ff8c42] transition-colors rounded-sm inline-block"
+            className="bg-orange text-text-inverse font-bold px-6 py-2.5 text-sm uppercase tracking-wider hover:bg-orange-bright transition-colors rounded-sm inline-block"
           >
             Continue to Stripe Checkout →
           </a>
@@ -257,7 +257,7 @@ export default function CheckoutPage() {
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="bg-[#ff6b1a] text-black font-bold px-4 py-2 text-sm uppercase tracking-wider hover:bg-[#ff8c42] transition-colors rounded-sm"
+              className="bg-orange text-text-inverse font-bold px-4 py-2 text-sm uppercase tracking-wider hover:bg-orange-bright transition-colors rounded-sm"
             >
               Retry
             </button>

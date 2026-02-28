@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -119,15 +120,15 @@ function fmtTs(ts: string): string {
 }
 
 const ALERT_STYLE: Record<AlertSeverity, { color: string; bg: string; label: string }> = {
-  critical: { color: '#e53935', bg: 'rgba(229,57,53,0.12)', label: 'CRITICAL' },
-  warning:  { color: '#ff9800', bg: 'rgba(255,152,0,0.12)',  label: 'WARNING'  },
+  critical: { color: 'var(--q-red)', bg: 'rgba(229,57,53,0.12)', label: 'CRITICAL' },
+  warning:  { color: 'var(--q-yellow)', bg: 'rgba(255,152,0,0.12)',  label: 'WARNING'  },
   info:     { color: '#42a5f5', bg: 'rgba(66,165,245,0.12)', label: 'INFO'     },
 };
 
 const WO_STATUS_STYLE: Record<WOStatus, { color: string; bg: string; label: string }> = {
-  open:        { color: '#ff9800', bg: 'rgba(255,152,0,0.12)',   label: 'OPEN'        },
+  open:        { color: 'var(--q-yellow)', bg: 'rgba(255,152,0,0.12)',   label: 'OPEN'        },
   in_progress: { color: '#42a5f5', bg: 'rgba(66,165,245,0.12)', label: 'IN PROGRESS' },
-  completed:   { color: '#4caf50', bg: 'rgba(76,175,80,0.12)',   label: 'COMPLETED'   },
+  completed:   { color: 'var(--q-green)', bg: 'rgba(76,175,80,0.12)',   label: 'COMPLETED'   },
 };
 
 function Badge({
@@ -390,7 +391,7 @@ export default function FleetPage() {
   const units: UnitScore[] = fleet?.units ?? [];
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white">
+    <div className="min-h-screen bg-bg-void text-text-primary">
       <Toast items={toasts} />
 
       {/* Header */}
@@ -424,7 +425,7 @@ export default function FleetPage() {
         {activeTab === 'overview' && (
           <div className="space-y-4">
             {fleetBusy && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading...</p>
+              <div className="p-6"><QuantumCardSkeleton /></div>
             )}
 
             {fleet && (
@@ -435,9 +436,9 @@ export default function FleetPage() {
                     [
                       { label: 'Fleet Count',   value: fleet.fleet_count ?? units.length, color: 'rgba(255,255,255,0.8)' },
                       { label: 'Avg Readiness', value: fleet.avg_readiness != null ? fleet.avg_readiness : (units.length ? Math.round(units.reduce((s,u)=>s+u.readiness_score,0)/units.length) : 0), color: readinessColor(fleet.avg_readiness ?? 0) },
-                      { label: 'Units Ready',   value: fleet.units_ready   ?? units.filter((u) => u.readiness_score >= 80).length, color: '#4caf50' },
-                      { label: 'Units Limited', value: fleet.units_limited ?? units.filter((u) => u.readiness_score >= 40 && u.readiness_score < 80).length, color: '#ff9800' },
-                      { label: 'Units No-Go',   value: fleet.units_no_go   ?? units.filter((u) => u.readiness_score < 40).length, color: '#e53935' },
+                      { label: 'Units Ready',   value: fleet.units_ready   ?? units.filter((u) => u.readiness_score >= 80).length, color: 'var(--q-green)' },
+                      { label: 'Units Limited', value: fleet.units_limited ?? units.filter((u) => u.readiness_score >= 40 && u.readiness_score < 80).length, color: 'var(--q-yellow)' },
+                      { label: 'Units No-Go',   value: fleet.units_no_go   ?? units.filter((u) => u.readiness_score < 40).length, color: 'var(--q-red)' },
                     ] as { label: string; value: number; color: string }[]
                   ).map(({ label, value, color }) => (
                     <div
@@ -482,7 +483,7 @@ export default function FleetPage() {
                               background: selectedUnit === u.unit_id ? 'rgba(255,107,26,0.06)' : 'transparent',
                             }}
                           >
-                            <td className="px-3 py-2 font-semibold" style={{ color: '#ff6b1a' }}>{u.unit_id}</td>
+                            <td className="px-3 py-2 font-semibold" style={{ color: 'var(--q-orange)' }}>{u.unit_id}</td>
                             <td className="px-3 py-2"><ReadinessBar score={u.readiness_score} /></td>
                             <td className="px-3 py-2 tabular-nums" style={{ color: u.alert_count > 0 ? '#e53935' : 'rgba(255,255,255,0.6)' }}>
                               {u.alert_count}
@@ -509,11 +510,11 @@ export default function FleetPage() {
                     className="p-4 rounded-sm"
                     style={{ background: '#0b0f14', border: '1px solid rgba(255,107,26,0.2)' }}
                   >
-                    <p className="text-xs font-semibold mb-2" style={{ color: '#ff6b1a' }}>
+                    <p className="text-xs font-semibold mb-2" style={{ color: 'var(--q-orange)' }}>
                       Unit Detail — {selectedUnit}
                     </p>
                     {unitDetailBusy ? (
-                      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading...</p>
+                      <div className="p-6"><QuantumCardSkeleton /></div>
                     ) : unitDetail ? (
                       <pre
                         className="text-xs whitespace-pre-wrap"
@@ -533,7 +534,7 @@ export default function FleetPage() {
         {activeTab === 'alerts' && (
           <div className="space-y-3">
             {alertsBusy && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading...</p>
+              <div className="p-6"><QuantumCardSkeleton /></div>
             )}
             {!alertsBusy && alerts.length === 0 && (
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>No unresolved alerts.</p>
@@ -558,7 +559,7 @@ export default function FleetPage() {
                   <p className="text-xs mb-2" style={{ color: 'rgba(255,255,255,0.6)' }}>{alert.message}</p>
                   <div className="flex items-center gap-2">
                     <input
-                      className="flex-1 bg-[#07090d] rounded-sm px-2 py-1 text-xs text-white outline-none"
+                      className="flex-1 bg-bg-void rounded-sm px-2 py-1 text-xs text-text-primary outline-none"
                       style={{ border: '1px solid rgba(255,255,255,0.1)' }}
                       placeholder="Resolution note (optional)"
                       value={resolveNote[alert.alert_id] || ''}
@@ -570,7 +571,7 @@ export default function FleetPage() {
                       onClick={() => resolveAlert(alert.alert_id)}
                       disabled={resolvingId === alert.alert_id}
                       className="px-2.5 py-1 text-xs font-semibold rounded-sm disabled:opacity-40"
-                      style={{ background: 'rgba(76,175,80,0.15)', color: '#4caf50', border: '1px solid rgba(76,175,80,0.3)' }}
+                      style={{ background: 'rgba(76,175,80,0.15)', color: 'var(--q-green)', border: '1px solid rgba(76,175,80,0.3)' }}
                     >
                       {resolvingId === alert.alert_id ? 'Resolving...' : 'Resolve'}
                     </button>
@@ -605,7 +606,7 @@ export default function FleetPage() {
                     <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</label>
                     <input
                       type={type}
-                      className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                      className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                       style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                       value={woForm[key]}
                       onChange={(e) => setWoForm((p) => ({ ...p, [key]: e.target.value }))}
@@ -615,7 +616,7 @@ export default function FleetPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Priority</label>
                   <select
-                    className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                    className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                     style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                     value={woForm.priority}
                     onChange={(e) => setWoForm((p) => ({ ...p, priority: e.target.value }))}
@@ -638,7 +639,7 @@ export default function FleetPage() {
 
             {/* List */}
             {woBusy && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading...</p>
+              <div className="p-6"><QuantumCardSkeleton /></div>
             )}
             {workOrders.map((wo) => {
               const s = WO_STATUS_STYLE[wo.status] ?? WO_STATUS_STYLE.open;
@@ -709,7 +710,7 @@ export default function FleetPage() {
                 <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
                   <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Name</label>
                   <input
-                    className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                    className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                     style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                     value={inspForm.name}
                     onChange={(e) => setInspForm((p) => ({ ...p, name: e.target.value }))}
@@ -718,7 +719,7 @@ export default function FleetPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Vehicle Type</label>
                   <select
-                    className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                    className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                     style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                     value={inspForm.vehicle_type}
                     onChange={(e) => setInspForm((p) => ({ ...p, vehicle_type: e.target.value }))}
@@ -731,7 +732,7 @@ export default function FleetPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Frequency</label>
                   <select
-                    className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                    className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                     style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                     value={inspForm.frequency}
                     onChange={(e) => setInspForm((p) => ({ ...p, frequency: e.target.value }))}
@@ -754,7 +755,7 @@ export default function FleetPage() {
 
             {/* Template list */}
             {inspBusy && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading...</p>
+              <div className="p-6"><QuantumCardSkeleton /></div>
             )}
             {!inspBusy && templates.length === 0 && (
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>No templates found.</p>
@@ -774,7 +775,7 @@ export default function FleetPage() {
                 </span>
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded-sm"
-                  style={{ background: 'rgba(255,107,26,0.1)', color: '#ff6b1a' }}
+                  style={{ background: 'rgba(255,107,26,0.1)', color: 'var(--q-orange)' }}
                 >
                   {t.frequency}
                 </span>

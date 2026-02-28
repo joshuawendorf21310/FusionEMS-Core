@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -79,18 +79,18 @@ export default function InvoiceCreatorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080e16] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono tracking-widest uppercase">
+          <span className="text-[10px] font-bold text-orange-dim font-mono tracking-widest uppercase">
             MODULE 11 · FOUNDER TOOLS
           </span>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#ff6b1a] transition-colors">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-orange transition-colors">
             ← Back to Founder OS
           </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white" style={{ textShadow: '0 0 24px rgba(255,107,26,0.3)' }}>
+        <h1 className="text-2xl font-bold tracking-tight text-text-primary" style={{ textShadow: '0 0 24px rgba(255,107,26,0.3)' }}>
           Invoice Creator
         </h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Generate professional invoices · track payment status · revenue</p>
@@ -131,7 +131,7 @@ export default function InvoiceCreatorPage() {
                 value={invoiceForm.client}
                 onChange={(e) => setInvoiceForm({ ...invoiceForm, client: e.target.value })}
                 placeholder="Agency name"
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a] placeholder:text-[rgba(255,255,255,0.2)]"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange placeholder:text-[rgba(255,255,255,0.2)]"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -140,7 +140,7 @@ export default function InvoiceCreatorPage() {
                 type="date"
                 value={invoiceForm.invoiceDate}
                 onChange={(e) => setInvoiceForm({ ...invoiceForm, invoiceDate: e.target.value })}
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -149,7 +149,7 @@ export default function InvoiceCreatorPage() {
                 type="date"
                 value={invoiceForm.dueDate}
                 onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
               />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2 lg:col-span-3">
@@ -159,7 +159,7 @@ export default function InvoiceCreatorPage() {
                 onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })}
                 placeholder="Describe services rendered..."
                 rows={2}
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a] placeholder:text-[rgba(255,255,255,0.2)] resize-none"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange placeholder:text-[rgba(255,255,255,0.2)] resize-none"
               />
             </div>
           </div>
@@ -179,7 +179,7 @@ export default function InvoiceCreatorPage() {
                       setLineItems(updated);
                     }}
                     placeholder="Description"
-                    className="flex-1 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a] placeholder:text-[rgba(255,255,255,0.2)]"
+                    className="flex-1 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange placeholder:text-[rgba(255,255,255,0.2)]"
                   />
                   <input
                     type="number"
@@ -189,7 +189,7 @@ export default function InvoiceCreatorPage() {
                       updated[i].amount = Number(e.target.value);
                       setLineItems(updated);
                     }}
-                    className="w-28 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                    className="w-28 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
                   />
                 </div>
               ))}
@@ -197,14 +197,14 @@ export default function InvoiceCreatorPage() {
             <button
               onClick={addLineItem}
               className="mt-2 text-[10px] font-semibold px-3 py-1.5 rounded-sm transition-all hover:brightness-110"
-              style={{ background: 'rgba(41,182,246,0.1)', color: '#29b6f6', border: '1px solid rgba(41,182,246,0.25)' }}
+              style={{ background: 'rgba(41,182,246,0.1)', color: 'var(--color-status-info)', border: '1px solid rgba(41,182,246,0.25)' }}
             >
               + Add Line Item
             </button>
           </div>
 
           {/* Totals */}
-          <div className="border-t border-[rgba(255,255,255,0.06)] pt-3 flex flex-col items-end gap-1 mb-4">
+          <div className="border-t border-border-subtle pt-3 flex flex-col items-end gap-1 mb-4">
             <div className="flex gap-8 text-xs">
               <span className="text-[rgba(255,255,255,0.4)]">Subtotal</span>
               <span className="font-mono text-[rgba(255,255,255,0.7)]">${subtotal.toLocaleString()}</span>
@@ -213,9 +213,9 @@ export default function InvoiceCreatorPage() {
               <span className="text-[rgba(255,255,255,0.4)]">Tax (0%)</span>
               <span className="font-mono text-[rgba(255,255,255,0.7)]">$0</span>
             </div>
-            <div className="flex gap-8 text-sm font-bold border-t border-[rgba(255,255,255,0.08)] pt-1 mt-1">
+            <div className="flex gap-8 text-sm font-bold border-t border-border-DEFAULT pt-1 mt-1">
               <span className="text-[rgba(255,255,255,0.7)]">Total</span>
-              <span className="font-mono text-[#ff6b1a]">${subtotal.toLocaleString()}</span>
+              <span className="font-mono text-orange">${subtotal.toLocaleString()}</span>
             </div>
           </div>
 
@@ -235,7 +235,7 @@ export default function InvoiceCreatorPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                <tr className="border-b border-border-subtle">
                   {['Invoice #', 'Client', 'Amount', 'Date', 'Due', 'Status'].map((h) => (
                     <th key={h} className="text-left py-1.5 px-2 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">
                       {h}
@@ -278,14 +278,14 @@ export default function InvoiceCreatorPage() {
                     <span className="text-[10px] text-[rgba(255,255,255,0.45)]">{inv.client}</span>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
-                    <span className="font-mono text-sm font-bold text-[#ff9800]">{inv.amount}</span>
+                    <span className="font-mono text-sm font-bold text-status-warning">{inv.amount}</span>
                     <span className="text-[10px] text-[rgba(255,255,255,0.35)]">Due {inv.due}</span>
                     <Badge label="8 days overdue" status="warn" />
                   </div>
                 </div>
                 <button
                   className="text-[10px] font-bold px-3 py-1.5 rounded-sm uppercase tracking-wider transition-all hover:brightness-110"
-                  style={{ background: 'rgba(255,152,0,0.15)', color: '#ff9800', border: '1px solid rgba(255,152,0,0.35)' }}
+                  style={{ background: 'rgba(255,152,0,0.15)', color: 'var(--q-yellow)', border: '1px solid rgba(255,152,0,0.35)' }}
                 >
                   Send Reminder
                 </button>
@@ -312,7 +312,7 @@ export default function InvoiceCreatorPage() {
                   type="text"
                   value={settings[field.key]}
                   onChange={(e) => setSettings({ ...settings, [field.key]: e.target.value })}
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                  className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
                 />
               </div>
             ))}
@@ -329,7 +329,7 @@ export default function InvoiceCreatorPage() {
       </motion.div>
 
       <div className="pt-2">
-        <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[#ff6b1a] transition-colors">
+        <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.35)] hover:text-orange transition-colors">
           ← Back to Founder OS
         </Link>
       </div>

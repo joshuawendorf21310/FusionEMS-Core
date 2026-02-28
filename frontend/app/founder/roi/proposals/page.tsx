@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -44,7 +44,7 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -101,18 +101,18 @@ export default function ProposalTrackerPage() {
   const [newVolume, setNewVolume] = useState('');
 
   return (
-    <div className="min-h-screen bg-[#080e14] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Page Header */}
-      <div className="border-b border-[rgba(255,255,255,0.06)] pb-4">
+      <div className="border-b border-border-subtle pb-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold tracking-widest font-mono mb-1" style={{ color: 'rgba(255,152,0,0.6)' }}>
               MODULE 8 · ROI &amp; SALES
             </p>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#ff9800' }}>Proposal Tracker</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--q-yellow)' }}>Proposal Tracker</h1>
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Track sent proposals · follow up · conversion analytics</p>
           </div>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#ff9800] transition-colors font-mono">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-warning transition-colors font-mono">
             ← Back to Founder OS
           </Link>
         </div>
@@ -148,7 +148,7 @@ export default function ProposalTrackerPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {['Agency', 'Sent Date', 'Value/yr', 'Status', 'Days Open', 'Action'].map((h) => (
                   <th key={h} className="text-left py-2 pr-4 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">{h}</th>
                 ))}
@@ -163,10 +163,10 @@ export default function ProposalTrackerPage() {
                   filter === 'Declined' ? p.statusKey === 'error' : true
                 )
                 .map((p, i) => (
-                  <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]">
+                  <tr key={i} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                     <td className="py-2 pr-4 font-semibold text-[rgba(255,255,255,0.8)]">{p.agency}</td>
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{p.sent}</td>
-                    <td className="py-2 pr-4 font-mono text-[#ff9800]">{p.value}</td>
+                    <td className="py-2 pr-4 font-mono text-status-warning">{p.value}</td>
                     <td className="py-2 pr-4"><Badge label={p.statusLabel} status={p.statusKey} /></td>
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{p.days} days</td>
                     <td className="py-2 pr-4">
@@ -194,7 +194,7 @@ export default function ProposalTrackerPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {['Agency', 'Date', 'Value/yr', 'Closed', 'MRR'].map((h) => (
                   <th key={h} className="text-left py-2 pr-4 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">{h}</th>
                 ))}
@@ -202,12 +202,12 @@ export default function ProposalTrackerPage() {
             </thead>
             <tbody>
               {ACCEPTED_PROPOSALS.map((p, i) => (
-                <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]">
+                <tr key={i} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 font-semibold text-[rgba(255,255,255,0.8)]">{p.agency}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{p.date}</td>
                   <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.6)]">{p.value}</td>
                   <td className="py-2 pr-4"><Badge label={p.closed} status="ok" /></td>
-                  <td className="py-2 pr-4 font-mono font-bold text-[#4caf50]">{p.mrr}/mo</td>
+                  <td className="py-2 pr-4 font-mono font-bold text-status-active">{p.mrr}/mo</td>
                 </tr>
               ))}
             </tbody>
@@ -228,14 +228,14 @@ export default function ProposalTrackerPage() {
           <div>
             <div className="flex justify-between mb-1.5">
               <span className="text-[11px] text-[rgba(255,255,255,0.6)]">Accept Rate</span>
-              <span className="text-[11px] font-bold text-[#4caf50]">66.7%</span>
+              <span className="text-[11px] font-bold text-status-active">66.7%</span>
             </div>
             <ProgressBar value={66.7} max={100} color="#4caf50" />
           </div>
           <div>
             <div className="flex justify-between mb-1.5">
               <span className="text-[11px] text-[rgba(255,255,255,0.6)]">Pipeline Coverage (ARR target)</span>
-              <span className="text-[11px] font-bold text-[#ff9800]">43%</span>
+              <span className="text-[11px] font-bold text-status-warning">43%</span>
             </div>
             <ProgressBar value={43} max={100} color="#ff9800" />
           </div>
@@ -247,7 +247,7 @@ export default function ProposalTrackerPage() {
         <SectionHeader number="5" title="Follow-Up Queue" sub="3 proposals flagged" />
         <div className="space-y-2">
           {FOLLOW_UP_QUEUE.map((f, i) => (
-            <div key={i} className="flex items-center justify-between p-3 bg-[#0a1219] border border-[rgba(255,152,0,0.1)] rounded-sm">
+            <div key={i} className="flex items-center justify-between p-3 bg-bg-input border border-[rgba(255,152,0,0.1)] rounded-sm">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">{f.agency}</span>
@@ -257,12 +257,12 @@ export default function ProposalTrackerPage() {
                   <span className="text-[10px] text-[rgba(255,255,255,0.35)]">Sent {f.sent}</span>
                   <span className="text-[10px] text-[rgba(255,255,255,0.35)]">·</span>
                   <span className="text-[10px] text-[rgba(255,255,255,0.35)]">Last contact: {f.lastContact}</span>
-                  <span className="text-[10px] font-mono text-[#ff9800]">{f.value}/yr</span>
+                  <span className="text-[10px] font-mono text-status-warning">{f.value}/yr</span>
                 </div>
               </div>
               <button
                 className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-                style={{ background: '#ff980018', color: '#ff9800', border: '1px solid #ff980030' }}
+                style={{ background: '#ff980018', color: 'var(--q-yellow)', border: '1px solid #ff980030' }}
               >
                 Send Email
               </button>
@@ -281,7 +281,7 @@ export default function ProposalTrackerPage() {
               value={newAgency}
               onChange={(e) => setNewAgency(e.target.value)}
               placeholder="Agency H"
-              className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff980040]"
+              className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-warning"
             />
           </div>
           <div>
@@ -291,7 +291,7 @@ export default function ProposalTrackerPage() {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="contact@agencyh.com"
-              className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff980040]"
+              className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-warning"
             />
           </div>
           <div>
@@ -301,7 +301,7 @@ export default function ProposalTrackerPage() {
               value={newVolume}
               onChange={(e) => setNewVolume(e.target.value)}
               placeholder="200"
-              className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff980040]"
+              className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-warning"
             />
           </div>
         </div>

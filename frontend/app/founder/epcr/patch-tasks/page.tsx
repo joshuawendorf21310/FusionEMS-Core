@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 import { useState, useEffect, useCallback } from 'react';
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'rejected';
@@ -83,20 +84,20 @@ export default function PatchTasksPage() {
 
   if (loading) {
     return (
-      <div className="p-5 min-h-screen bg-[#090e14] flex items-center">
+      <div className="p-5 min-h-screen bg-bg-void flex items-center">
         <span className="text-xs text-[rgba(255,255,255,0.3)]">Loading patch tasks...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-5 space-y-6 min-h-screen bg-[#090e14]">
+    <div className="p-5 space-y-6 min-h-screen bg-bg-void">
       <div>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(34,211,238,0.6)] mb-1">
           ePCR · PATCH TASKS
         </div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">Patch Tasks</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Patch Tasks</h1>
+        <p className="text-xs text-text-muted mt-0.5">
           AI-generated fix tasks from validation issues
         </p>
       </div>
@@ -110,7 +111,7 @@ export default function PatchTasksPage() {
                 <span className="text-xs font-bold uppercase tracking-wider text-[rgba(255,255,255,0.5)]">
                   {col.label}
                 </span>
-                <span className="text-[10px] bg-[#0a1018] border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.4)] px-2 py-0.5">
+                <span className="text-[10px] bg-bg-input border border-border-DEFAULT text-[rgba(255,255,255,0.4)] px-2 py-0.5">
                   {colTasks.length}
                 </span>
               </div>
@@ -120,19 +121,19 @@ export default function PatchTasksPage() {
                 )}
                 {colTasks.map((task) => {
                   const d = task.data || {};
-                  const fixTypeClass = FIX_TYPE_COLORS[d.fix_type] ?? 'bg-gray-800 text-gray-300';
+                  const fixTypeClass = FIX_TYPE_COLORS[d.fix_type] ?? 'bg-bg-raised text-text-secondary';
                   const isUpdating = updatingId === task.id;
                   const nextStatuses = COLUMNS.filter((c) => c.key !== col.key).map((c) => c.key);
                   return (
                     <div
                       key={task.id}
-                      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-3 space-y-2"
+                      className="bg-bg-panel border border-border-DEFAULT p-3 space-y-2"
                       style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}
                     >
-                      <div className="text-xs font-bold text-white leading-tight">{d.title || 'Untitled Task'}</div>
+                      <div className="text-xs font-bold text-text-primary leading-tight">{d.title || 'Untitled Task'}</div>
                       <div className="flex flex-wrap items-center gap-1.5">
                         {d.element_id && (
-                          <span className="text-[10px] font-mono text-[#22d3ee]">{d.element_id}</span>
+                          <span className="text-[10px] font-mono text-system-billing">{d.element_id}</span>
                         )}
                         {d.fix_type && (
                           <span className={`text-[10px] font-bold px-2 py-0.5 ${fixTypeClass}`}>
@@ -156,7 +157,7 @@ export default function PatchTasksPage() {
                             key={ns}
                             onClick={() => updateStatus(task.id, ns)}
                             disabled={isUpdating}
-                            className="text-[10px] bg-[#0a1018] border border-[rgba(255,255,255,0.12)] text-[rgba(255,255,255,0.5)] px-2 py-0.5 hover:border-[rgba(34,211,238,0.3)] hover:text-[#22d3ee] disabled:opacity-40 transition-colors"
+                            className="text-[10px] bg-bg-input border border-[rgba(255,255,255,0.12)] text-[rgba(255,255,255,0.5)] px-2 py-0.5 hover:border-[rgba(34,211,238,0.3)] hover:text-system-billing disabled:opacity-40 transition-colors"
                           >
                             → {ns.replace('_', ' ')}
                           </button>
@@ -172,7 +173,7 @@ export default function PatchTasksPage() {
       </div>
 
       <div className="pt-2">
-        <a href="/founder/epcr" className="text-xs text-[rgba(34,211,238,0.6)] hover:text-[#22d3ee]">
+        <a href="/founder/epcr" className="text-xs text-[rgba(34,211,238,0.6)] hover:text-system-billing">
           ← Back to ePCR
         </a>
       </div>

@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -44,7 +44,7 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -149,18 +149,18 @@ export default function PricingSimulatorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080e14] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Page Header */}
-      <div className="border-b border-[rgba(255,255,255,0.06)] pb-4">
+      <div className="border-b border-border-subtle pb-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold tracking-widest font-mono mb-1" style={{ color: 'rgba(255,152,0,0.6)' }}>
               MODULE 8 · ROI &amp; SALES
             </p>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#ff9800' }}>Pricing Simulator</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--q-yellow)' }}>Pricing Simulator</h1>
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Model different pricing scenarios · compare vs competitor billing models</p>
           </div>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#ff9800] transition-colors font-mono">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-warning transition-colors font-mono">
             ← Back to Founder OS
           </Link>
         </div>
@@ -172,7 +172,7 @@ export default function PricingSimulatorPage() {
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="text-[10px] text-[rgba(255,255,255,0.4)] block mb-1">Monthly Call Volume: <span className="text-[#ff9800] font-bold">{calls}</span></label>
+              <label className="text-[10px] text-[rgba(255,255,255,0.4)] block mb-1">Monthly Call Volume: <span className="text-status-warning font-bold">{calls}</span></label>
               <input
                 type="range" min={50} max={1000} step={10} value={calls}
                 onChange={(e) => setCalls(Number(e.target.value))}
@@ -194,13 +194,13 @@ export default function PricingSimulatorPage() {
                   <input
                     type="number" value={val}
                     onChange={(e) => set(Number(e.target.value))}
-                    className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff980040]"
+                    className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-warning"
                   />
                 </div>
               ))}
             </div>
             <div>
-              <label className="text-[10px] text-[rgba(255,255,255,0.4)] block mb-1">Current Collection Rate (%): <span className="text-[#ff9800] font-bold">{collectionRate}%</span></label>
+              <label className="text-[10px] text-[rgba(255,255,255,0.4)] block mb-1">Current Collection Rate (%): <span className="text-status-warning font-bold">{collectionRate}%</span></label>
               <input
                 type="range" min={40} max={100} step={1} value={collectionRate}
                 onChange={(e) => setCollectionRate(Number(e.target.value))}
@@ -212,10 +212,10 @@ export default function PricingSimulatorPage() {
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-3">Payer Mix (%)</p>
             <div className="space-y-3">
               {[
-                { label: 'Medicare %', val: medicareP, set: setMedicareP, color: '#29b6f6' },
+                { label: 'Medicare %', val: medicareP, set: setMedicareP, color: 'var(--color-status-info)' },
                 { label: 'Medicaid %', val: medicaidP, set: setMedicaidP, color: '#a855f7' },
-                { label: 'Commercial %', val: commercialP, set: setCommercialP, color: '#4caf50' },
-                { label: 'Self-Pay %', val: selfPayP, set: setSelfPayP, color: '#ff9800' },
+                { label: 'Commercial %', val: commercialP, set: setCommercialP, color: 'var(--q-green)' },
+                { label: 'Self-Pay %', val: selfPayP, set: setSelfPayP, color: 'var(--q-yellow)' },
               ].map(({ label, val, set, color }) => (
                 <div key={label}>
                   <div className="flex justify-between mb-1">
@@ -230,9 +230,9 @@ export default function PricingSimulatorPage() {
                   />
                 </div>
               ))}
-              <div className="flex justify-between text-[10px] pt-1 border-t border-[rgba(255,255,255,0.06)]">
+              <div className="flex justify-between text-[10px] pt-1 border-t border-border-subtle">
                 <span className="text-[rgba(255,255,255,0.35)]">Total</span>
-                <span className={`font-bold ${medicareP + medicaidP + commercialP + selfPayP === 100 ? 'text-[#4caf50]' : 'text-[#e53935]'}`}>
+                <span className={`font-bold ${medicareP + medicaidP + commercialP + selfPayP === 100 ? 'text-status-active' : 'text-red'}`}>
                   {medicareP + medicaidP + commercialP + selfPayP}%
                 </span>
               </div>
@@ -264,30 +264,30 @@ export default function PricingSimulatorPage() {
       <Panel>
         <SectionHeader number="3" title="Revenue Comparison" sub="Current vs FusionEMS Quantum" />
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-[#0a1219] border border-[rgba(229,57,53,0.15)] rounded-sm">
+          <div className="p-4 bg-bg-input border border-red-ghost rounded-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[rgba(229,57,53,0.7)] mb-3">Current Model ({billingPct}% billing)</p>
             <div className="space-y-2">
               {[
                 { label: 'Gross Revenue', val: fmt(model.gross), color: 'rgba(255,255,255,0.7)' },
-                { label: `Billing Co. Fee (${billingPct}%)`, val: `-${fmt(model.currentFee)}`, color: '#e53935' },
+                { label: `Billing Co. Fee (${billingPct}%)`, val: `-${fmt(model.currentFee)}`, color: 'var(--q-red)' },
                 { label: 'Net to Agency', val: fmt(model.currentNet), color: '#fff' },
               ].map(({ label, val, color }) => (
-                <div key={label} className="flex justify-between py-1.5 border-b border-[rgba(255,255,255,0.04)] last:border-b-2 last:border-[rgba(255,255,255,0.12)]">
+                <div key={label} className="flex justify-between py-1.5 border-b border-border-subtle last:border-b-2 last:border-[rgba(255,255,255,0.12)]">
                   <span className="text-[11px] text-[rgba(255,255,255,0.4)]">{label}</span>
                   <span className="text-[11px] font-bold font-mono" style={{ color }}>{val}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="p-4 bg-[#0a1219] border border-[rgba(76,175,80,0.2)] rounded-sm">
+          <div className="p-4 bg-bg-input border border-[rgba(76,175,80,0.2)] rounded-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[rgba(76,175,80,0.7)] mb-3">FusionEMS Quantum</p>
             <div className="space-y-2">
               {[
                 { label: 'Gross Revenue', val: fmt(model.gross), color: 'rgba(255,255,255,0.7)' },
-                { label: `Platform Cost`, val: `-${fmt(platformCost)}`, color: '#ff9800' },
-                { label: 'Net to Agency', val: fmt(model.fusionNet), color: '#4caf50' },
+                { label: `Platform Cost`, val: `-${fmt(platformCost)}`, color: 'var(--q-yellow)' },
+                { label: 'Net to Agency', val: fmt(model.fusionNet), color: 'var(--q-green)' },
               ].map(({ label, val, color }) => (
-                <div key={label} className="flex justify-between py-1.5 border-b border-[rgba(255,255,255,0.04)] last:border-b-2 last:border-[rgba(76,175,80,0.2)]">
+                <div key={label} className="flex justify-between py-1.5 border-b border-border-subtle last:border-b-2 last:border-[rgba(76,175,80,0.2)]">
                   <span className="text-[11px] text-[rgba(255,255,255,0.4)]">{label}</span>
                   <span className="text-[11px] font-bold font-mono" style={{ color }}>{val}</span>
                 </div>
@@ -336,7 +336,7 @@ export default function PricingSimulatorPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {['Size', 'Calls/mo', 'Platform Cost', 'Gross Rev', 'Net (Current)', 'Net (Fusion)', 'Monthly Saving'].map((h) => (
                   <th key={h} className="text-left py-2 pr-4 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">{h}</th>
                 ))}
@@ -349,7 +349,7 @@ export default function PricingSimulatorPage() {
                 return (
                   <tr
                     key={s.label}
-                    className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]"
+                    className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]"
                     style={{ background: s.highlight ? 'rgba(255,152,0,0.04)' : undefined }}
                   >
                     <td className="py-2 pr-4">
@@ -359,7 +359,7 @@ export default function PricingSimulatorPage() {
                       </div>
                     </td>
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{s.calls}</td>
-                    <td className="py-2 pr-4 font-mono text-[#ff9800]">{fmt(pc)}/mo</td>
+                    <td className="py-2 pr-4 font-mono text-status-warning">{fmt(pc)}/mo</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.6)]">{fmt(m.gross)}/mo</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.5)]">{fmt(m.currentNet)}/mo</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.7)]">{fmt(m.fusionNet)}/mo</td>
@@ -385,7 +385,7 @@ export default function PricingSimulatorPage() {
               value={proposalEmail}
               onChange={(e) => setProposalEmail(e.target.value)}
               placeholder="agency@example.com"
-              className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff980040]"
+              className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-warning"
             />
           </div>
           <button
@@ -397,7 +397,7 @@ export default function PricingSimulatorPage() {
           <button
             disabled={!proposalEmail}
             className="text-[11px] font-bold px-5 py-2 rounded-sm transition-all disabled:opacity-30"
-            style={{ background: '#29b6f618', color: '#29b6f6', border: '1px solid #29b6f630' }}
+            style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
           >
             Send to Agency
           </button>

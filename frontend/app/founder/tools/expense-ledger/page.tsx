@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -79,18 +79,18 @@ export default function ExpenseLedgerPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#080e16] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono tracking-widest uppercase">
+          <span className="text-[10px] font-bold text-orange-dim font-mono tracking-widest uppercase">
             MODULE 11 · FOUNDER TOOLS
           </span>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#ff6b1a] transition-colors">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-orange transition-colors">
             ← Back to Founder OS
           </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white" style={{ textShadow: '0 0 24px rgba(255,107,26,0.3)' }}>
+        <h1 className="text-2xl font-bold tracking-tight text-text-primary" style={{ textShadow: '0 0 24px rgba(255,107,26,0.3)' }}>
           Expense Ledger
         </h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Track business expenses · categorize · export for accounting</p>
@@ -138,7 +138,7 @@ export default function ExpenseLedgerPage() {
                   type="date"
                   value={expenseForm.date}
                   onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                  className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -148,7 +148,7 @@ export default function ExpenseLedgerPage() {
                   value={expenseForm.amount}
                   onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
                   placeholder="0.00"
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a] placeholder:text-[rgba(255,255,255,0.2)]"
+                  className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange placeholder:text-[rgba(255,255,255,0.2)]"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -156,10 +156,10 @@ export default function ExpenseLedgerPage() {
                 <select
                   value={expenseForm.category}
                   onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                  className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
                 >
                   {['AWS', 'Software', 'Marketing', 'Legal', 'Travel', 'Other'].map((c) => (
-                    <option key={c} value={c} className="bg-[#0f1720]">{c}</option>
+                    <option key={c} value={c} className="bg-bg-panel">{c}</option>
                   ))}
                 </select>
               </div>
@@ -170,7 +170,7 @@ export default function ExpenseLedgerPage() {
                   value={expenseForm.vendor}
                   onChange={(e) => setExpenseForm({ ...expenseForm, vendor: e.target.value })}
                   placeholder="Vendor name"
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a] placeholder:text-[rgba(255,255,255,0.2)]"
+                  className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange placeholder:text-[rgba(255,255,255,0.2)]"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -180,7 +180,7 @@ export default function ExpenseLedgerPage() {
                   value={expenseForm.description}
                   onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
                   placeholder="Description"
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a] placeholder:text-[rgba(255,255,255,0.2)]"
+                  className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange placeholder:text-[rgba(255,255,255,0.2)]"
                 />
               </div>
               <div className="flex items-end">
@@ -207,7 +207,7 @@ export default function ExpenseLedgerPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                <tr className="border-b border-border-subtle">
                   {['Date', 'Vendor', 'Category', 'Amount', 'Description', 'Receipt'].map((h) => (
                     <th key={h} className="text-left py-1.5 px-2 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">
                       {h}
@@ -227,7 +227,7 @@ export default function ExpenseLedgerPage() {
                     <td className="py-1.5 px-2 text-[rgba(255,255,255,0.45)]">{exp.description}</td>
                     <td className="py-1.5 px-2 text-center">
                       {exp.receipt ? (
-                        <span className="text-[#4caf50] font-bold">&#10003;</span>
+                        <span className="text-status-active font-bold">&#10003;</span>
                       ) : (
                         <span className="text-[rgba(255,255,255,0.25)]">—</span>
                       )}
@@ -276,9 +276,9 @@ export default function ExpenseLedgerPage() {
           <SectionHeader number="5" title="Export Options" />
           <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Export CSV', style: { background: 'rgba(76,175,80,0.12)', color: '#4caf50', border: '1px solid rgba(76,175,80,0.3)' } },
-              { label: 'Export PDF', style: { background: 'rgba(255,107,26,0.12)', color: '#ff6b1a', border: '1px solid rgba(255,107,26,0.3)' } },
-              { label: 'Download Receipts ZIP', style: { background: 'rgba(41,182,246,0.1)', color: '#29b6f6', border: '1px solid rgba(41,182,246,0.25)' } },
+              { label: 'Export CSV', style: { background: 'rgba(76,175,80,0.12)', color: 'var(--q-green)', border: '1px solid rgba(76,175,80,0.3)' } },
+              { label: 'Export PDF', style: { background: 'rgba(255,107,26,0.12)', color: 'var(--q-orange)', border: '1px solid rgba(255,107,26,0.3)' } },
+              { label: 'Download Receipts ZIP', style: { background: 'rgba(41,182,246,0.1)', color: 'var(--color-status-info)', border: '1px solid rgba(41,182,246,0.25)' } },
             ].map((btn) => (
               <button
                 key={btn.label}
@@ -303,7 +303,7 @@ export default function ExpenseLedgerPage() {
       </motion.div>
 
       <div className="pt-2">
-        <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[#ff6b1a] transition-colors">
+        <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.35)] hover:text-orange transition-colors">
           ← Back to Founder OS
         </Link>
       </div>

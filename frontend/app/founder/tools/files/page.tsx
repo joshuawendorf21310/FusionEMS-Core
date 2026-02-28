@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -53,7 +54,7 @@ function isPdf(item: DriveItem) {
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -117,9 +118,9 @@ export default function FounderFilesPage() {
   return (
     <div className="p-5 space-y-5 min-h-screen">
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">FOUNDER TOOLS · MICROSOFT GRAPH</div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">OneDrive Files</h1>
-        <p className="text-[11px] text-[rgba(255,255,255,0.38)] mt-0.5">Application permissions · Founder drive only · All calls proxied through backend</p>
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">FOUNDER TOOLS · MICROSOFT GRAPH</div>
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">OneDrive Files</h1>
+        <p className="text-[11px] text-text-muted mt-0.5">Application permissions · Founder drive only · All calls proxied through backend</p>
       </div>
 
       <div className="flex items-center gap-1 text-[11px] text-[rgba(255,255,255,0.4)]">
@@ -128,7 +129,7 @@ export default function FounderFilesPage() {
             {idx > 0 && <span className="text-[rgba(255,255,255,0.2)]">/</span>}
             <button
               onClick={() => navigateBreadcrumb(crumb, idx)}
-              className={`hover:text-white transition-colors ${idx === breadcrumbs.length - 1 ? 'text-white font-semibold' : ''}`}
+              className={`hover:text-text-primary transition-colors ${idx === breadcrumbs.length - 1 ? 'text-text-primary font-semibold' : ''}`}
             >
               {crumb.name}
             </button>
@@ -138,11 +139,11 @@ export default function FounderFilesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <Panel className="lg:col-span-2">
-          <div className="p-3 border-b border-[rgba(255,255,255,0.06)] text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
+          <div className="p-3 border-b border-border-subtle text-[10px] font-semibold uppercase tracking-widest text-text-muted">
             Files {!loading && `· ${items.length} items`}
           </div>
           {loading ? (
-            <div className="p-6 text-center text-xs text-[rgba(255,255,255,0.3)]">Loading...</div>
+            <div className="p-6"><QuantumTableSkeleton rows={6} cols={4} /></div>
           ) : items.length === 0 ? (
             <div className="p-6 text-center text-xs text-[rgba(255,255,255,0.3)]">Empty folder</div>
           ) : (
@@ -153,7 +154,7 @@ export default function FounderFilesPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   onClick={() => navigate(item)}
-                  className={`w-full text-left px-3 py-3 hover:bg-[rgba(255,255,255,0.03)] transition-colors ${previewItem?.id === item.id ? 'bg-[rgba(255,107,26,0.06)] border-l-2 border-[#ff6b1a]' : ''}`}
+                  className={`w-full text-left px-3 py-3 hover:bg-[rgba(255,255,255,0.03)] transition-colors ${previewItem?.id === item.id ? 'bg-[rgba(255,107,26,0.06)] border-l-2 border-orange' : ''}`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-base leading-none">{fileIcon(item)}</span>
@@ -168,7 +169,7 @@ export default function FounderFilesPage() {
                     {!item.folder && (
                       <button
                         onClick={(e) => { e.stopPropagation(); downloadItem(item); }}
-                        className="text-[10px] text-[rgba(255,255,255,0.3)] hover:text-[#ff6b1a] transition-colors px-1"
+                        className="text-[10px] text-[rgba(255,255,255,0.3)] hover:text-orange transition-colors px-1"
                         title="Download"
                       >
                         ↓
@@ -185,9 +186,9 @@ export default function FounderFilesPage() {
           <AnimatePresence mode="wait">
             {previewItem ? (
               <motion.div key={previewItem.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full">
-                <div className="p-3 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between">
+                <div className="p-3 border-b border-border-subtle flex items-center justify-between">
                   <div>
-                    <div className="text-[11px] font-semibold text-white truncate max-w-[300px]">{previewItem.name}</div>
+                    <div className="text-[11px] font-semibold text-text-primary truncate max-w-[300px]">{previewItem.name}</div>
                     <div className="text-[10px] text-[rgba(255,255,255,0.35)]">
                       {previewItem.file?.mimeType ?? ''} · {formatSize(previewItem.size)}
                     </div>
@@ -198,25 +199,25 @@ export default function FounderFilesPage() {
                         href={previewItem.webUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-1.5 text-[10px] font-semibold uppercase border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
+                        className="px-3 py-1.5 text-[10px] font-semibold uppercase border border-border-DEFAULT text-[rgba(255,255,255,0.5)] hover:text-text-primary transition-colors"
                       >
                         Open
                       </a>
                     )}
                     <button
                       onClick={() => downloadItem(previewItem)}
-                      className="px-3 py-1.5 text-[10px] font-semibold uppercase border border-[rgba(255,107,26,0.3)] text-[#ff6b1a] hover:bg-[rgba(255,107,26,0.1)] transition-colors"
+                      className="px-3 py-1.5 text-[10px] font-semibold uppercase border border-[rgba(255,107,26,0.3)] text-orange hover:bg-[rgba(255,107,26,0.1)] transition-colors"
                     >
                       Download
                     </button>
-                    <button onClick={() => setPreviewItem(null)} className="text-[rgba(255,255,255,0.3)] hover:text-white px-2 transition-colors">
+                    <button onClick={() => setPreviewItem(null)} className="text-[rgba(255,255,255,0.3)] hover:text-text-primary px-2 transition-colors">
                       ✕
                     </button>
                   </div>
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
                   {previewLoading ? (
-                    <div className="flex items-center justify-center h-40 text-xs text-[rgba(255,255,255,0.3)]">Loading preview...</div>
+                    <div className="p-6"><QuantumTableSkeleton rows={6} cols={4} /></div>
                   ) : previewUrl && (isOfficeFile(previewItem) || isPdf(previewItem)) ? (
                     <iframe
                       src={previewUrl}
@@ -230,7 +231,7 @@ export default function FounderFilesPage() {
                       <div className="text-xs text-[rgba(255,255,255,0.5)]">{previewItem.name}</div>
                       <div className="text-[10px] text-[rgba(255,255,255,0.3)]">Preview not available for this file type</div>
                       {previewItem.webUrl && (
-                        <a href={previewItem.webUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#ff6b1a] hover:underline">
+                        <a href={previewItem.webUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-orange hover:underline">
                           Open in browser
                         </a>
                       )}

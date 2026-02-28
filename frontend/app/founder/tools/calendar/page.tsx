@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -95,18 +95,18 @@ export default function FounderCalendarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080e16] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono tracking-widest uppercase">
+          <span className="text-[10px] font-bold text-orange-dim font-mono tracking-widest uppercase">
             MODULE 11 · FOUNDER TOOLS
           </span>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#ff6b1a] transition-colors">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-orange transition-colors">
             ← Back to Founder OS
           </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white" style={{ textShadow: '0 0 24px rgba(255,107,26,0.3)' }}>
+        <h1 className="text-2xl font-bold tracking-tight text-text-primary" style={{ textShadow: '0 0 24px rgba(255,107,26,0.3)' }}>
           Founder Calendar
         </h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Meetings · deadlines · billing cycles · compliance events</p>
@@ -141,7 +141,7 @@ export default function FounderCalendarPage() {
                 <div className="mt-1 flex flex-col items-center gap-0.5 w-full">
                   {WEEK_EVENTS[i].length > 0 ? (
                     <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff6b1a]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange" />
                       <span className="text-[8px] text-[rgba(255,255,255,0.45)] text-center leading-tight mt-0.5 line-clamp-2">
                         {WEEK_EVENTS[i][0]}
                       </span>
@@ -155,7 +155,7 @@ export default function FounderCalendarPage() {
           </div>
           {WEEK_EVENTS[selectedDay].length > 0 && (
             <div className="mt-3 p-2 bg-[rgba(255,107,26,0.06)] border border-[rgba(255,107,26,0.15)] rounded-sm">
-              <span className="text-[10px] text-[#ff6b1a] font-semibold">{DAYS[selectedDay]} selected: </span>
+              <span className="text-[10px] text-orange font-semibold">{DAYS[selectedDay]} selected: </span>
               <span className="text-[11px] text-[rgba(255,255,255,0.7)]">{WEEK_EVENTS[selectedDay].join(', ')}</span>
             </div>
           )}
@@ -169,7 +169,7 @@ export default function FounderCalendarPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                <tr className="border-b border-border-subtle">
                   {['Date', 'Event', 'Category', 'Priority'].map((h) => (
                     <th key={h} className="text-left py-1.5 px-2 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">
                       {h}
@@ -209,7 +209,7 @@ export default function FounderCalendarPage() {
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Event title"
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a] placeholder:text-[rgba(255,255,255,0.2)]"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange placeholder:text-[rgba(255,255,255,0.2)]"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -218,7 +218,7 @@ export default function FounderCalendarPage() {
                 type="date"
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -226,10 +226,10 @@ export default function FounderCalendarPage() {
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
               >
                 {['Compliance', 'Sales', 'Billing', 'Executive', 'Infra'].map((c) => (
-                  <option key={c} value={c} className="bg-[#0f1720]">{c}</option>
+                  <option key={c} value={c} className="bg-bg-panel">{c}</option>
                 ))}
               </select>
             </div>
@@ -238,10 +238,10 @@ export default function FounderCalendarPage() {
               <select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[#ff6b1a]"
+                className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-orange"
               >
                 {['high', 'medium', 'low'].map((p) => (
-                  <option key={p} value={p} className="bg-[#0f1720]">{p}</option>
+                  <option key={p} value={p} className="bg-bg-panel">{p}</option>
                 ))}
               </select>
             </div>
@@ -264,11 +264,11 @@ export default function FounderCalendarPage() {
           <SectionHeader number="4" title="Recurring Events" />
           <div className="space-y-2">
             {RECURRING.map((r, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0">
+              <div key={i} className="flex items-center justify-between py-2 border-b border-border-subtle last:border-0">
                 <div className="flex items-center gap-3">
                   <span
                     className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm"
-                    style={{ background: 'rgba(255,107,26,0.12)', color: '#ff6b1a', border: '1px solid rgba(255,107,26,0.25)' }}
+                    style={{ background: 'rgba(255,107,26,0.12)', color: 'var(--q-orange)', border: '1px solid rgba(255,107,26,0.25)' }}
                   >
                     {r.freq}
                   </span>
@@ -303,7 +303,7 @@ export default function FounderCalendarPage() {
       </motion.div>
 
       <div className="pt-2">
-        <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[#ff6b1a] transition-colors">
+        <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.35)] hover:text-orange transition-colors">
           ← Back to Founder OS
         </Link>
       </div>

@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -44,7 +44,7 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -101,18 +101,18 @@ export default function ContractBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080e14] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Page Header */}
-      <div className="border-b border-[rgba(255,255,255,0.06)] pb-4">
+      <div className="border-b border-border-subtle pb-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold tracking-widest font-mono mb-1" style={{ color: 'rgba(41,182,246,0.6)' }}>
               MODULE 7 · TEMPLATES
             </p>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#29b6f6' }}>Contract Builder</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--color-status-info)' }}>Contract Builder</h1>
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Service agreements · BAAs · data processing · renewal contracts</p>
           </div>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#29b6f6] transition-colors font-mono">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-info transition-colors font-mono">
             ← Back to Founder OS
           </Link>
         </div>
@@ -125,7 +125,7 @@ export default function ContractBuilderPage() {
           {TEMPLATES.map((t) => (
             <div
               key={t.id}
-              className="border border-[rgba(255,255,255,0.08)] p-3 bg-[#0a1219] cursor-pointer transition-all"
+              className="border border-border-DEFAULT p-3 bg-bg-input cursor-pointer transition-all"
               style={{
                 clipPath: 'polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)',
                 borderColor: selectedTemplate === t.id ? '#29b6f620' : 'rgba(255,255,255,0.08)',
@@ -144,7 +144,7 @@ export default function ContractBuilderPage() {
               <p className="text-[11px] text-[rgba(255,255,255,0.4)] mb-3">{t.desc}</p>
               <button
                 className="text-[10px] font-semibold px-3 py-1 rounded-sm transition-colors"
-                style={{ background: '#29b6f618', color: '#29b6f6', border: '1px solid #29b6f630' }}
+                style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
                 onClick={(e) => { e.stopPropagation(); setSelectedTemplate(t.id); }}
               >
                 Use Template
@@ -160,7 +160,7 @@ export default function ContractBuilderPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {['Contract', 'Agency', 'Type', 'Status', 'Signed Date', 'Expiry'].map((h) => (
                   <th key={h} className="text-left py-2 pr-4 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">{h}</th>
                 ))}
@@ -168,8 +168,8 @@ export default function ContractBuilderPage() {
             </thead>
             <tbody>
               {ACTIVE_CONTRACTS.map((c, i) => (
-                <tr key={c.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]">
-                  <td className="py-2 pr-4 font-mono text-[#29b6f6]">{c.id}</td>
+                <tr key={c.id} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
+                  <td className="py-2 pr-4 font-mono text-status-info">{c.id}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.7)]">{c.agency}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{c.type}</td>
                   <td className="py-2 pr-4"><Badge label={c.status} status={c.statusKey} /></td>
@@ -186,7 +186,7 @@ export default function ContractBuilderPage() {
       <Panel>
         <SectionHeader number="3" title="Expiring Soon" sub="Within 90 days" />
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-[#0a1219] border border-[rgba(229,57,53,0.15)] rounded-sm">
+          <div className="flex items-center justify-between p-3 bg-bg-input border border-red-ghost rounded-sm">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">MSA-002 — Agency B</span>
@@ -196,12 +196,12 @@ export default function ContractBuilderPage() {
             </div>
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#e5393518', color: '#e53935', border: '1px solid #e5393530' }}
+              style={{ background: '#e5393518', color: 'var(--q-red)', border: '1px solid #e5393530' }}
             >
               Send Renewal
             </button>
           </div>
-          <div className="flex items-center justify-between p-3 bg-[#0a1219] border border-[rgba(255,152,0,0.15)] rounded-sm">
+          <div className="flex items-center justify-between p-3 bg-bg-input border border-status-warning/15 rounded-sm">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">NDA-001 — Agency D</span>
@@ -211,7 +211,7 @@ export default function ContractBuilderPage() {
             </div>
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#ff980018', color: '#ff9800', border: '1px solid #ff980030' }}
+              style={{ background: '#ff980018', color: 'var(--q-yellow)', border: '1px solid #ff980030' }}
             >
               Send Renewal
             </button>
@@ -225,13 +225,13 @@ export default function ContractBuilderPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div
-              className="border border-[rgba(255,255,255,0.08)] bg-[#0a1219] p-4 min-h-[140px] flex items-center justify-center mb-3"
+              className="border border-border-DEFAULT bg-bg-input p-4 min-h-[140px] flex items-center justify-center mb-3"
               style={{ clipPath: 'polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)' }}
             >
               {selectedTemplate ? (
                 <div className="w-full">
-                  <p className="text-[11px] text-[rgba(255,255,255,0.5)] mb-2">Editing: <span className="text-[#29b6f6]">{TEMPLATES.find(t => t.id === selectedTemplate)?.name}</span></p>
-                  <div className="h-16 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] rounded-sm flex items-center justify-center">
+                  <p className="text-[11px] text-[rgba(255,255,255,0.5)] mb-2">Editing: <span className="text-status-info">{TEMPLATES.find(t => t.id === selectedTemplate)?.name}</span></p>
+                  <div className="h-16 bg-[rgba(255,255,255,0.03)] border border-border-subtle rounded-sm flex items-center justify-center">
                     <span className="text-[10px] text-[rgba(255,255,255,0.2)]">Contract content area</span>
                   </div>
                 </div>
@@ -243,14 +243,14 @@ export default function ContractBuilderPage() {
               <button
                 disabled={!selectedTemplate}
                 className="flex-1 text-[10px] font-semibold py-2 rounded-sm transition-colors disabled:opacity-30"
-                style={{ background: '#29b6f618', color: '#29b6f6', border: '1px solid #29b6f630' }}
+                style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
               >
                 Download as PDF
               </button>
               <button
                 disabled={!selectedTemplate}
                 className="flex-1 text-[10px] font-semibold py-2 rounded-sm transition-colors disabled:opacity-30"
-                style={{ background: '#4caf5018', color: '#4caf50', border: '1px solid #4caf5030' }}
+                style={{ background: '#4caf5018', color: 'var(--q-green)', border: '1px solid #4caf5030' }}
               >
                 Send for Signature
               </button>
@@ -283,7 +283,7 @@ export default function ContractBuilderPage() {
       {/* MODULE 5 — Signature Status */}
       <Panel>
         <SectionHeader number="5" title="Signature Status" sub="Awaiting signatures" />
-        <div className="flex items-center justify-between p-3 bg-[#0a1219] border border-[rgba(255,152,0,0.12)] rounded-sm">
+        <div className="flex items-center justify-between p-3 bg-bg-input border border-status-warning/15 rounded-sm">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">Agency C — MSA-003</span>
@@ -294,13 +294,13 @@ export default function ContractBuilderPage() {
           <div className="flex gap-2">
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#ff980018', color: '#ff9800', border: '1px solid #ff980030' }}
+              style={{ background: '#ff980018', color: 'var(--q-yellow)', border: '1px solid #ff980030' }}
             >
               Resend
             </button>
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#29b6f618', color: '#29b6f6', border: '1px solid #29b6f630' }}
+              style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
             >
               View Doc
             </button>

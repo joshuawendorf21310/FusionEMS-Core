@@ -21,7 +21,7 @@ const CATALOG: { product: string; key: string; color: string; prices: PriceEntry
   {
     product: 'Scheduling Only',
     key: 'SCHEDULING_ONLY',
-    color: '#22d3ee',
+    color: 'var(--color-system-billing)',
     prices: [
       { tier: 'S1 — Starter', monthly: 199, description: 'Up to 10 crew, basic scheduling' },
       { tier: 'S2 — Growth', monthly: 399, description: 'Up to 30 crew, swap/trade/timeoff' },
@@ -31,7 +31,7 @@ const CATALOG: { product: string; key: string; color: string; prices: PriceEntry
   {
     product: 'Billing Automation',
     key: 'BILLING_AUTOMATION_BASE',
-    color: '#ff6b1a',
+    color: 'var(--q-orange)',
     prices: [
       { tier: 'B1 — Essentials', monthly: 399, perTransport: 6.00, description: '< 100 transports/mo' },
       { tier: 'B2 — Standard', monthly: 599, perTransport: 5.00, description: '100–300 transports/mo' },
@@ -50,7 +50,7 @@ const CATALOG: { product: string; key: string; color: string; prices: PriceEntry
   {
     product: 'HEMS Module',
     key: 'HEMS_ADDON',
-    color: '#f59e0b',
+    color: 'var(--q-yellow)',
     prices: [
       { tier: 'HEMS Add-on', monthly: 750, description: 'Helicopter/fixed-wing pilot portal + acceptance checklist + risk audit' },
     ],
@@ -58,7 +58,7 @@ const CATALOG: { product: string; key: string; color: string; prices: PriceEntry
   {
     product: 'TRIP Pack (WI)',
     key: 'TRIP_PACK_ADDON',
-    color: '#4caf50',
+    color: 'var(--q-green)',
     prices: [
       { tier: 'TRIP Add-on', monthly: 199, description: 'Wisconsin Tax Refund Intercept — government agencies only' },
     ],
@@ -67,9 +67,9 @@ const CATALOG: { product: string; key: string; color: string; prices: PriceEntry
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm px-4 py-3">
+    <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm px-4 py-3">
       <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">{label}</div>
-      <div className="text-lg font-bold text-white">{value}</div>
+      <div className="text-lg font-bold text-text-primary">{value}</div>
       {sub && <div className="text-[10px] text-[rgba(255,255,255,0.35)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -86,14 +86,14 @@ function CatalogTab() {
       </div>
 
       {CATALOG.map((product) => (
-        <div key={product.key} className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(255,255,255,0.06)]">
+        <div key={product.key} className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
             <div className="flex items-center gap-3">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: product.color }} />
-              <span className="text-sm font-semibold text-white">{product.product}</span>
+              <span className="text-sm font-semibold text-text-primary">{product.product}</span>
               <span className="text-[10px] text-[rgba(255,255,255,0.3)] font-mono">{product.key}</span>
             </div>
-            <button className="h-6 px-2.5 bg-[rgba(255,107,26,0.08)] border border-[rgba(255,107,26,0.2)] text-[10px] font-semibold uppercase tracking-wider text-[#ff6b1a] hover:bg-[rgba(255,107,26,0.14)] transition-colors rounded-sm">
+            <button className="h-6 px-2.5 bg-orange-ghost border border-[rgba(255,107,26,0.2)] text-[10px] font-semibold uppercase tracking-wider text-orange hover:bg-[rgba(255,107,26,0.14)] transition-colors rounded-sm">
               Edit
             </button>
           </div>
@@ -101,7 +101,7 @@ function CatalogTab() {
             {product.prices.map((price) => (
               <div key={price.tier} className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <div className="text-xs font-medium text-white">{price.tier}</div>
+                  <div className="text-xs font-medium text-text-primary">{price.tier}</div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{price.description}</div>
                 </div>
                 <div className="text-right">
@@ -126,24 +126,24 @@ function PricebooksTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div className="text-xs text-[rgba(255,255,255,0.5)]">Versioned pricebooks — draft → scheduled → active → archived</div>
-        <button className="h-7 px-3 bg-[rgba(255,107,26,0.1)] border border-[rgba(255,107,26,0.25)] text-[10px] font-semibold uppercase tracking-wider text-[#ff6b1a] hover:bg-[rgba(255,107,26,0.18)] transition-colors rounded-sm">
+        <button className="h-7 px-3 bg-[rgba(255,107,26,0.1)] border border-[rgba(255,107,26,0.25)] text-[10px] font-semibold uppercase tracking-wider text-orange hover:bg-[rgba(255,107,26,0.18)] transition-colors rounded-sm">
           New Draft
         </button>
       </div>
 
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Version</span><span>Label</span><span>Status</span><span>Effective Date</span><span>Created By</span><span>Actions</span>
         </div>
-        <div className="px-4 py-3 grid grid-cols-6 items-center border-b border-[rgba(255,255,255,0.04)]">
-          <span className="text-xs font-mono text-white">v1.0</span>
+        <div className="px-4 py-3 grid grid-cols-6 items-center border-b border-border-subtle">
+          <span className="text-xs font-mono text-text-primary">v1.0</span>
           <span className="text-xs text-[rgba(255,255,255,0.7)]">Initial Catalog</span>
-          <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-sm bg-[rgba(76,175,80,0.12)] text-[#4caf50] w-fit">Active</span>
+          <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-sm bg-[rgba(76,175,80,0.12)] text-status-active w-fit">Active</span>
           <span className="text-xs text-[rgba(255,255,255,0.5)]">2026-01-01</span>
           <span className="text-xs text-[rgba(255,255,255,0.5)]">System</span>
           <div className="flex gap-2">
-            <button className="h-6 px-2.5 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-[10px] text-[rgba(255,255,255,0.5)] hover:text-white transition-colors rounded-sm">View</button>
-            <button className="h-6 px-2.5 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-[10px] text-[rgba(255,255,255,0.5)] hover:text-white transition-colors rounded-sm">Clone</button>
+            <button className="h-6 px-2.5 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-[10px] text-[rgba(255,255,255,0.5)] hover:text-text-primary transition-colors rounded-sm">View</button>
+            <button className="h-6 px-2.5 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-[10px] text-[rgba(255,255,255,0.5)] hover:text-text-primary transition-colors rounded-sm">Clone</button>
           </div>
         </div>
         <div className="px-4 py-8 text-center text-xs text-[rgba(255,255,255,0.25)]">Draft a new pricebook to test pricing changes before activating</div>
@@ -182,7 +182,7 @@ function EstimatorTab() {
   return (
     <div className="grid grid-cols-2 gap-6">
       <div className="space-y-4">
-        <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
+        <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
           <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-3">Base Plan</div>
           <div className="flex gap-2 mb-3">
             {['SCHEDULING_ONLY', 'BILLING_AUTOMATION_BASE'].map((p) => (
@@ -191,8 +191,8 @@ function EstimatorTab() {
                 onClick={() => { setPlan(p); setTier(p === 'SCHEDULING_ONLY' ? 'S1' : 'B1'); }}
                 className={`flex-1 h-8 text-[11px] font-medium rounded-sm border transition-colors ${
                   plan === p
-                    ? 'bg-[rgba(255,107,26,0.15)] border-[rgba(255,107,26,0.4)] text-[#ff6b1a]'
-                    : 'bg-[rgba(255,255,255,0.03)] border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)] hover:text-white'
+                    ? 'bg-[rgba(255,107,26,0.15)] border-[rgba(255,107,26,0.4)] text-orange'
+                    : 'bg-[rgba(255,255,255,0.03)] border-border-DEFAULT text-[rgba(255,255,255,0.5)] hover:text-text-primary'
                 }`}
               >
                 {p === 'SCHEDULING_ONLY' ? 'Scheduling' : 'Billing Auto'}
@@ -206,8 +206,8 @@ function EstimatorTab() {
                 onClick={() => setTier(t)}
                 className={`flex-1 h-7 text-[11px] font-mono rounded-sm border transition-colors ${
                   tier === t
-                    ? 'bg-[rgba(34,211,238,0.12)] border-[rgba(34,211,238,0.3)] text-[#22d3ee]'
-                    : 'bg-[rgba(255,255,255,0.03)] border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.45)] hover:text-white'
+                    ? 'bg-[rgba(34,211,238,0.12)] border-[rgba(34,211,238,0.3)] text-system-billing'
+                    : 'bg-[rgba(255,255,255,0.03)] border-border-DEFAULT text-[rgba(255,255,255,0.45)] hover:text-text-primary'
                 }`}
               >
                 {t}
@@ -217,10 +217,10 @@ function EstimatorTab() {
         </div>
 
         {plan === 'BILLING_AUTOMATION_BASE' && (
-          <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
+          <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">Monthly Transports</div>
-              <span className="text-sm font-bold text-white">{transports}</span>
+              <span className="text-sm font-bold text-text-primary">{transports}</span>
             </div>
             <input
               type="range"
@@ -237,14 +237,14 @@ function EstimatorTab() {
           </div>
         )}
 
-        <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
+        <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
           <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-3">Add-ons</div>
           {[
             { key: 'CCT', label: 'CCT Transport Ops', price: 399 },
             { key: 'HEMS', label: 'HEMS Module', price: 750 },
             { key: 'TRIP', label: 'TRIP Pack (WI Gov)', price: 199 },
           ].map((addon) => (
-            <label key={addon.key} className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0 cursor-pointer">
+            <label key={addon.key} className="flex items-center justify-between py-2 border-b border-border-subtle last:border-0 cursor-pointer">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -260,32 +260,32 @@ function EstimatorTab() {
         </div>
       </div>
 
-      <div className="bg-[#0b0f14] border border-[rgba(255,107,26,0.2)] rounded-sm p-5 flex flex-col">
-        <div className="text-[10px] uppercase tracking-widest text-[rgba(255,107,26,0.6)] mb-4">Monthly Estimate</div>
+      <div className="bg-bg-base border border-[rgba(255,107,26,0.2)] rounded-sm p-5 flex flex-col">
+        <div className="text-[10px] uppercase tracking-widest text-orange-dim mb-4">Monthly Estimate</div>
         <div className="space-y-3 flex-1">
           <div className="flex justify-between text-xs">
             <span className="text-[rgba(255,255,255,0.5)]">
               Base ({plan === 'SCHEDULING_ONLY' ? `Scheduling ${tier}` : `Billing Auto ${tier}`})
             </span>
-            <span className="text-white font-medium">${baseMonthly.toLocaleString()}</span>
+            <span className="text-text-primary font-medium">${baseMonthly.toLocaleString()}</span>
           </div>
           {perTransportRate > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-[rgba(255,255,255,0.5)]">Usage ({transports} × ${perTransportRate.toFixed(2)})</span>
-              <span className="text-white font-medium">${(perTransportRate * transports).toFixed(2)}</span>
+              <span className="text-text-primary font-medium">${(perTransportRate * transports).toFixed(2)}</span>
             </div>
           )}
           {addons.map((a) => (
             <div key={a} className="flex justify-between text-xs">
               <span className="text-[rgba(255,255,255,0.5)]">{addonLabels[a]}</span>
-              <span className="text-white font-medium">${addonPrices[a].toLocaleString()}</span>
+              <span className="text-text-primary font-medium">${addonPrices[a].toLocaleString()}</span>
             </div>
           ))}
         </div>
-        <div className="border-t border-[rgba(255,255,255,0.08)] pt-4 mt-4">
+        <div className="border-t border-border-DEFAULT pt-4 mt-4">
           <div className="flex justify-between items-end">
             <span className="text-xs text-[rgba(255,255,255,0.5)]">Total / month</span>
-            <span className="text-2xl font-black text-[#ff6b1a]">
+            <span className="text-2xl font-black text-orange">
               ${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </span>
           </div>
@@ -311,22 +311,22 @@ export default function PricingStudioPage() {
     <div className="p-6 max-w-[1300px]">
       <div className="mb-6">
         <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Founder OS</div>
-        <h1 className="text-xl font-bold text-white">Pricing Studio</h1>
+        <h1 className="text-xl font-bold text-text-primary">Pricing Studio</h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Product catalog, versioned pricebooks, price estimator, and Stripe catalog management</p>
       </div>
 
-      <div className="flex gap-0 mb-6 border-b border-[rgba(255,255,255,0.08)]">
+      <div className="flex gap-0 mb-6 border-b border-border-DEFAULT">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`relative px-4 py-2.5 text-xs font-medium transition-colors ${
-              activeTab === tab.id ? 'text-white' : 'text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.7)]'
+              activeTab === tab.id ? 'text-text-primary' : 'text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.7)]'
             }`}
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff6b1a]" />
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-orange" />
             )}
           </button>
         ))}

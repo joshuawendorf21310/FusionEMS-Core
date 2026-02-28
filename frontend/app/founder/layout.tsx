@@ -9,7 +9,7 @@ const NAV_DOMAINS = [
     id: 'executive',
     label: '1 · Executive',
     icon: '◈',
-    color: '#ff6b1a',
+    color: 'var(--q-orange)',
     links: [
       { href: '/founder', label: 'Overview' },
       { href: '/founder/executive/daily-brief', label: 'Daily AI Brief' },
@@ -21,7 +21,7 @@ const NAV_DOMAINS = [
     id: 'revenue',
     label: '2 · Revenue',
     icon: '◈',
-    color: '#22d3ee',
+    color: 'var(--color-system-billing)',
     links: [
       { href: '/founder/revenue/billing-intelligence', label: 'Billing Intelligence' },
       { href: '/founder/revenue/stripe', label: 'Stripe Dashboard' },
@@ -45,7 +45,7 @@ const NAV_DOMAINS = [
     id: 'communications',
     label: '4 · Communications',
     icon: '◈',
-    color: '#4caf50',
+    color: 'var(--q-green)',
     links: [
       { href: '/founder/comms/inbox', label: 'Support Inbox' },
       { href: '/founder/comms/phone-system', label: 'Phone System' },
@@ -57,7 +57,7 @@ const NAV_DOMAINS = [
     id: 'compliance',
     label: '5 · Compliance',
     icon: '◈',
-    color: '#f59e0b',
+    color: 'var(--q-yellow)',
     links: [
       { href: '/founder/compliance/nemsis', label: 'NEMSIS Manager' },
       { href: '/founder/compliance/export-status', label: 'Export Status' },
@@ -73,7 +73,7 @@ const NAV_DOMAINS = [
     id: 'security',
     label: '6 · Visibility & Security',
     icon: '◈',
-    color: '#e53935',
+    color: 'var(--q-red)',
     links: [
       { href: '/founder/security/role-builder', label: 'Role Builder' },
       { href: '/founder/security/field-masking', label: 'Field Masking' },
@@ -85,7 +85,7 @@ const NAV_DOMAINS = [
     id: 'templates',
     label: '7 · Templates',
     icon: '◈',
-    color: '#29b6f6',
+    color: 'var(--color-status-info)',
     links: [
       { href: '/founder/templates/proposals', label: 'Proposal Templates' },
       { href: '/founder/templates/invoices', label: 'Invoice Templates' },
@@ -97,7 +97,7 @@ const NAV_DOMAINS = [
     id: 'roi-sales',
     label: '8 · ROI & Sales',
     icon: '◈',
-    color: '#ff9800',
+    color: 'var(--q-yellow)',
     links: [
       { href: '/founder/roi/analytics', label: 'ROI Analytics' },
       { href: '/founder/roi/funnel', label: 'Funnel Dashboard' },
@@ -134,7 +134,7 @@ const NAV_DOMAINS = [
     id: 'founder-tools',
     label: '11 · Founder Tools',
     icon: '◈',
-    color: '#ff6b1a',
+    color: 'var(--q-orange)',
     links: [
       { href: '/founder/tools/calendar', label: 'Calendar' },
       { href: '/founder/tools/documents', label: 'Documents' },
@@ -149,7 +149,7 @@ const NAV_DOMAINS = [
     id: 'operations',
     label: '12 · Operations',
     icon: '◈',
-    color: '#22d3ee',
+    color: 'var(--color-system-billing)',
     links: [
       { href: '/portal/cases', label: 'Cases (Cross-Portal)' },
       { href: '/founder/ops/fleet-intelligence', label: 'Fleet Intelligence' },
@@ -162,7 +162,7 @@ const NAV_DOMAINS = [
     id: 'pricing',
     label: '13 · Pricing',
     icon: '◈',
-    color: '#ff6b1a',
+    color: 'var(--q-orange)',
     links: [
       { href: '/founder/pricing/studio', label: 'Pricing Studio' },
       { href: '/founder/revenue/stripe', label: 'Stripe Dashboard' },
@@ -187,7 +187,7 @@ function SidebarSection({
       <button
         onClick={onToggle}
         className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-widest transition-colors ${
-          hasActive ? 'text-white' : 'text-[rgba(255,255,255,0.42)] hover:text-[rgba(255,255,255,0.72)]'
+          hasActive ? 'text-text-primary' : 'text-[rgba(255,255,255,0.42)] hover:text-[rgba(255,255,255,0.72)]'
         }`}
         style={{ letterSpacing: '0.1em' }}
       >
@@ -207,8 +207,8 @@ function SidebarSection({
                 href={link.href}
                 className={`block px-3 py-1.5 text-xs rounded transition-colors ${
                   active
-                    ? 'text-white bg-[rgba(255,107,26,0.15)] border-l-2 border-orange-DEFAULT pl-2'
-                    : 'text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.05)]'
+                    ? 'text-text-primary bg-[rgba(255,107,26,0.15)] border-l-2 border-orange-DEFAULT pl-2'
+                    : 'text-[rgba(255,255,255,0.5)] hover:text-text-primary hover:bg-[rgba(255,255,255,0.05)]'
                 }`}
                 style={active ? { borderLeftColor: domain.color } : {}}
               >
@@ -226,7 +226,7 @@ function TopBar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSide
   const [search, setSearch] = useState('');
   const [aiInput, setAiInput] = useState('');
   return (
-    <header className="sticky top-0 z-50 flex items-center gap-3 px-4 h-12 border-b border-[rgba(255,255,255,0.08)] bg-[rgba(7,9,13,0.96)] backdrop-blur-sm">
+    <header className="sticky top-0 z-50 flex items-center gap-3 px-4 h-12 border-b border-border-DEFAULT bg-[rgba(7,9,13,0.96)] backdrop-blur-sm">
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="flex flex-col gap-[4px] justify-center w-7 h-7 flex-shrink-0"
@@ -238,7 +238,7 @@ function TopBar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSide
       </button>
 
       <Link href="/founder" className="flex items-center gap-2 flex-shrink-0">
-        <div className="w-7 h-7 bg-[#ff6b1a] flex items-center justify-center text-[10px] font-black text-black" style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}>
+        <div className="w-7 h-7 bg-orange flex items-center justify-center text-[10px] font-black text-text-inverse" style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}>
           FQ
         </div>
         <span className="text-xs font-semibold text-[rgba(255,255,255,0.9)] hidden sm:block">FOUNDER OS</span>
@@ -249,33 +249,33 @@ function TopBar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSide
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Global search — claims, tenants, exports, invoices..."
-          className="flex-1 h-7 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] px-3 text-xs text-white placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-[#ff6b1a] rounded-sm"
+          className="flex-1 h-7 bg-[rgba(255,255,255,0.05)] border border-border-DEFAULT px-3 text-xs text-text-primary placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-orange rounded-sm"
         />
         <input
           value={aiInput}
           onChange={(e) => setAiInput(e.target.value)}
           placeholder="Ask Quantum..."
-          className="w-48 h-7 bg-[rgba(255,107,26,0.08)] border border-[rgba(255,107,26,0.25)] px-3 text-xs text-white placeholder-[rgba(255,107,26,0.45)] focus:outline-none focus:border-[#ff6b1a] rounded-sm"
+          className="w-48 h-7 bg-orange-ghost border border-[rgba(255,107,26,0.25)] px-3 text-xs text-text-primary placeholder-[rgba(255,107,26,0.45)] focus:outline-none focus:border-orange rounded-sm"
         />
       </div>
 
       <div className="flex items-center gap-3 ml-auto flex-shrink-0">
         <div className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#4caf50] animate-pulse" />
-          <span className="text-[10px] text-[#4caf50] font-semibold uppercase tracking-wider">LIVE</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-status-active animate-pulse" />
+          <span className="text-[10px] text-status-active font-semibold uppercase tracking-wider">LIVE</span>
         </div>
         <div className="text-xs text-[rgba(255,255,255,0.55)] hidden md:block">
           <span className="text-[rgba(255,255,255,0.3)]">REV TODAY</span>{' '}
-          <span className="text-white font-semibold">—</span>
+          <span className="text-text-primary font-semibold">—</span>
         </div>
-        <button className="relative w-7 h-7 flex items-center justify-center text-[rgba(255,255,255,0.5)] hover:text-white">
+        <button className="relative w-7 h-7 flex items-center justify-center text-[rgba(255,255,255,0.5)] hover:text-text-primary">
           <span className="text-sm">🔔</span>
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#ff6b1a]" />
+          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-orange" />
         </button>
-        <div className="w-7 h-7 rounded-full bg-[rgba(255,107,26,0.2)] border border-[rgba(255,107,26,0.4)] flex items-center justify-center text-[10px] font-bold text-[#ff6b1a]">
+        <div className="w-7 h-7 rounded-full bg-[rgba(255,107,26,0.2)] border border-[rgba(255,107,26,0.4)] flex items-center justify-center text-[10px] font-bold text-orange">
           FD
         </div>
-        <button className="h-6 px-2 bg-[#e53935] text-[10px] font-bold uppercase tracking-widest text-white rounded-sm hover:bg-[#ff5252] transition-colors">
+        <button className="h-6 px-2 bg-red text-[10px] font-bold uppercase tracking-widest text-text-primary rounded-sm hover:bg-red-bright transition-colors">
           INCIDENT
         </button>
       </div>
@@ -287,18 +287,18 @@ function AIContextPanel() {
   const [collapsed, setCollapsed] = useState(false);
   if (collapsed) {
     return (
-      <aside className="w-8 border-l border-[rgba(255,255,255,0.06)] bg-[#0b0f14] flex flex-col items-center pt-3">
-        <button onClick={() => setCollapsed(false)} className="text-[rgba(255,107,26,0.6)] hover:text-[#ff6b1a] text-xs">
+      <aside className="w-8 border-l border-border-subtle bg-bg-base flex flex-col items-center pt-3">
+        <button onClick={() => setCollapsed(false)} className="text-orange-dim hover:text-orange text-xs">
           ◁
         </button>
       </aside>
     );
   }
   return (
-    <aside className="w-64 flex-shrink-0 border-l border-[rgba(255,255,255,0.06)] bg-[#0b0f14] flex flex-col">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[rgba(255,255,255,0.06)]">
+    <aside className="w-64 flex-shrink-0 border-l border-border-subtle bg-bg-base flex flex-col">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,107,26,0.8)]">Quantum AI</span>
-        <button onClick={() => setCollapsed(true)} className="text-[rgba(255,255,255,0.3)] hover:text-white text-xs">▷</button>
+        <button onClick={() => setCollapsed(true)} className="text-[rgba(255,255,255,0.3)] hover:text-text-primary text-xs">▷</button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         <div>
@@ -309,11 +309,11 @@ function AIContextPanel() {
             { text: 'Check export failures (0 today)', urgency: 'ok' },
             { text: '2 credential expirations in 30d', urgency: 'warning' },
           ].map((item, i) => (
-            <div key={i} className={`flex items-start gap-2 py-1.5 border-b border-[rgba(255,255,255,0.04)] last:border-0`}>
+            <div key={i} className={`flex items-start gap-2 py-1.5 border-b border-border-subtle last:border-0`}>
               <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                item.urgency === 'warning' ? 'bg-[#ff9800]' : item.urgency === 'info' ? 'bg-[#29b6f6]' : 'bg-[#4caf50]'
+                item.urgency === 'warning' ? 'bg-status-warning' : item.urgency === 'info' ? 'bg-status-info' : 'bg-status-active'
               }`} />
-              <span className="text-xs text-[rgba(255,255,255,0.65)]">{item.text}</span>
+              <span className="text-xs text-text-secondary">{item.text}</span>
             </div>
           ))}
         </div>
@@ -324,8 +324,8 @@ function AIContextPanel() {
             { text: 'Revenue risk: AR aging stable', level: 'ok' },
             { text: 'Compliance: NEMSIS v3.5 current', level: 'ok' },
           ].map((item, i) => (
-            <div key={i} className="flex items-start gap-2 py-1.5 border-b border-[rgba(255,255,255,0.04)] last:border-0">
-              <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.level === 'ok' ? 'bg-[#4caf50]' : 'bg-[#e53935]'}`} />
+            <div key={i} className="flex items-start gap-2 py-1.5 border-b border-border-subtle last:border-0">
+              <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.level === 'ok' ? 'bg-status-active' : 'bg-red'}`} />
               <span className="text-xs text-[rgba(255,255,255,0.55)]">{item.text}</span>
             </div>
           ))}
@@ -337,14 +337,14 @@ function AIContextPanel() {
             'Escalated compliance question to queue',
             'Scheduled callback for Export issue',
           ].map((item, i) => (
-            <div key={i} className="py-1.5 border-b border-[rgba(255,255,255,0.04)] last:border-0">
+            <div key={i} className="py-1.5 border-b border-border-subtle last:border-0">
               <span className="text-xs text-[rgba(255,255,255,0.45)]">{item}</span>
             </div>
           ))}
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.3)] mb-1.5">Quick Fix</div>
-          <button className="w-full text-left px-2 py-1.5 bg-[rgba(255,107,26,0.08)] border border-[rgba(255,107,26,0.2)] text-xs text-[#ff6b1a] rounded-sm hover:bg-[rgba(255,107,26,0.14)] transition-colors">
+          <button className="w-full text-left px-2 py-1.5 bg-orange-ghost border border-[rgba(255,107,26,0.2)] text-xs text-orange rounded-sm hover:bg-[rgba(255,107,26,0.14)] transition-colors">
             View top denial fix recommendations →
           </button>
         </div>
@@ -370,11 +370,11 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#07090d] text-white overflow-hidden">
+    <div className="flex flex-col h-screen bg-bg-void text-text-primary overflow-hidden">
       <TopBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && (
-          <aside className="w-52 flex-shrink-0 border-r border-[rgba(255,255,255,0.06)] bg-[#07090d] overflow-y-auto">
+          <aside className="w-52 flex-shrink-0 border-r border-border-subtle bg-bg-void overflow-y-auto">
             <div className="px-2 py-3">
               {NAV_DOMAINS.map((domain) => (
                 <SidebarSection
@@ -388,7 +388,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
             </div>
           </aside>
         )}
-        <main className="flex-1 overflow-y-auto bg-[#0b0f14]">
+        <main className="flex-1 overflow-y-auto bg-bg-base">
           {children}
         </main>
         <AIContextPanel />

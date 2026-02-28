@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const inputClass =
-  'bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] px-3 py-2 text-sm text-white placeholder-[rgba(255,255,255,0.3)] focus:outline-none focus:border-[#ff6b1a] rounded-sm w-full';
+  'bg-[rgba(255,255,255,0.05)] border border-border-DEFAULT px-3 py-2 text-sm text-text-primary placeholder-[rgba(255,255,255,0.3)] focus:outline-none focus:border-orange rounded-sm w-full';
 
 const MSA_SUMMARY = `MASTER SERVICE AGREEMENT — KEY TERMS SUMMARY
 
@@ -65,7 +65,7 @@ Both parties agree to comply with all applicable requirements of HIPAA, the HITE
 
 function Highlight({ children }: { children: React.ReactNode }) {
   return (
-    <span style={{ color: '#22d3ee', fontWeight: 600 }}>{children}</span>
+    <span style={{ color: 'var(--color-system-billing)', fontWeight: 600 }}>{children}</span>
   );
 }
 
@@ -81,7 +81,7 @@ function processDocText(text: string): React.ReactNode[] {
   return text.split('\n').map((line, li) => {
     if (/^\d+\.\s+[A-Z]/.test(line)) {
       return (
-        <p key={li} className="mt-3 mb-1 text-xs font-bold uppercase tracking-wider" style={{ color: '#ff6b1a' }}>
+        <p key={li} className="mt-3 mb-1 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--q-orange)' }}>
           {line}
         </p>
       );
@@ -230,7 +230,7 @@ export default function LegalPage() {
     return (
       <div
         className="rounded-sm border p-8 flex flex-col items-center justify-center gap-4"
-        style={{ backgroundColor: '#0b0f14', borderColor: 'rgba(255,255,255,0.08)', minHeight: '300px' }}
+        style={{ backgroundColor: 'var(--q-bg)', borderColor: 'rgba(255,255,255,0.08)', minHeight: '300px' }}
       >
         <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#ff6b1a" strokeWidth="4" />
@@ -247,7 +247,7 @@ export default function LegalPage() {
     return (
       <div
         className="rounded-sm border p-8"
-        style={{ backgroundColor: '#0b0f14', borderColor: 'rgba(255,255,255,0.08)' }}
+        style={{ backgroundColor: 'var(--q-bg)', borderColor: 'rgba(255,255,255,0.08)' }}
       >
         <div
           className="rounded-sm border px-4 py-3 text-sm"
@@ -262,7 +262,7 @@ export default function LegalPage() {
         <button
           onClick={() => router.push('/signup')}
           className="mt-4 text-sm underline"
-          style={{ color: '#ff6b1a' }}
+          style={{ color: 'var(--q-orange)' }}
         >
           ← Restart signup
         </button>
@@ -273,12 +273,12 @@ export default function LegalPage() {
   return (
     <div
       className="rounded-sm border p-6 md:p-8"
-      style={{ backgroundColor: '#0b0f14', borderColor: 'rgba(255,255,255,0.08)' }}
+      style={{ backgroundColor: 'var(--q-bg)', borderColor: 'rgba(255,255,255,0.08)' }}
     >
       {/* Header */}
       <div className="mb-6 border-b pb-5" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         <h1
-          className="text-xl font-bold uppercase tracking-wider text-white"
+          className="text-xl font-bold uppercase tracking-wider text-text-primary"
           style={{ fontFamily: "'Barlow Condensed', 'Barlow', sans-serif" }}
         >
           Legal Agreements
@@ -295,7 +295,7 @@ export default function LegalPage() {
           style={{
             backgroundColor: 'rgba(34,211,238,0.1)',
             border: '1px solid rgba(34,211,238,0.25)',
-            color: '#22d3ee',
+            color: 'var(--color-system-billing)',
           }}
         >
           Packet Ready
@@ -428,7 +428,7 @@ export default function LegalPage() {
             className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
             style={{ color: 'rgba(255,255,255,0.55)' }}
           >
-            Electronic Signature <span style={{ color: '#ff6b1a' }}>*</span>
+            Electronic Signature <span style={{ color: 'var(--q-orange)' }}>*</span>
           </label>
           <p className="text-xs mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Type your full legal name exactly as it appears on your account to sign.
@@ -490,7 +490,7 @@ export default function LegalPage() {
           <button
             type="submit"
             disabled={signing}
-            className="bg-[#ff6b1a] text-black font-bold px-6 py-2.5 text-sm uppercase tracking-wider hover:bg-[#ff8c42] transition-colors rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-orange text-text-inverse font-bold px-6 py-2.5 text-sm uppercase tracking-wider hover:bg-orange-bright transition-colors rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {signing ? (
               <span className="flex items-center gap-2">

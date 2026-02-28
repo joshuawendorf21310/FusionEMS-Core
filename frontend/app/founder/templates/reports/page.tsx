@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -44,7 +44,7 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -113,18 +113,18 @@ export default function ReportTemplatesPage() {
   const [includeCharts, setIncludeCharts] = useState(true);
 
   return (
-    <div className="min-h-screen bg-[#080e14] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
       {/* Page Header */}
-      <div className="border-b border-[rgba(255,255,255,0.06)] pb-4">
+      <div className="border-b border-border-subtle pb-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold tracking-widest font-mono mb-1" style={{ color: 'rgba(41,182,246,0.6)' }}>
               MODULE 7 · TEMPLATES
             </p>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#29b6f6' }}>Report Templates</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--color-status-info)' }}>Report Templates</h1>
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Compliance reports · AR aging · export summaries · executive briefings</p>
           </div>
-          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-[#29b6f6] transition-colors font-mono">
+          <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-info transition-colors font-mono">
             ← Back to Founder OS
           </Link>
         </div>
@@ -137,7 +137,7 @@ export default function ReportTemplatesPage() {
           {REPORT_TEMPLATES.map((t) => (
             <div
               key={t.id}
-              className="border p-3 bg-[#0a1219] cursor-pointer transition-all"
+              className="border p-3 bg-bg-input cursor-pointer transition-all"
               style={{
                 clipPath: 'polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)',
                 borderColor: selectedType === t.id ? '#29b6f630' : 'rgba(255,255,255,0.08)',
@@ -155,7 +155,7 @@ export default function ReportTemplatesPage() {
               <p className="text-[11px] text-[rgba(255,255,255,0.4)] mb-3">{t.desc}</p>
               <button
                 className="text-[10px] font-semibold px-3 py-1 rounded-sm"
-                style={{ background: '#29b6f618', color: '#29b6f6', border: '1px solid #29b6f630' }}
+                style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
                 onClick={(e) => { e.stopPropagation(); setSelectedType(t.id); }}
               >
                 Generate
@@ -171,7 +171,7 @@ export default function ReportTemplatesPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {['Report', 'Generated', 'Period', 'Status', 'Download'].map((h) => (
                   <th key={h} className="text-left py-2 pr-4 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">{h}</th>
                 ))}
@@ -179,7 +179,7 @@ export default function ReportTemplatesPage() {
             </thead>
             <tbody>
               {RECENT_REPORTS.map((r, i) => (
-                <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]">
+                <tr key={i} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.75)]">{r.name}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{r.generated}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{r.period}</td>
@@ -187,7 +187,7 @@ export default function ReportTemplatesPage() {
                   <td className="py-2 pr-4">
                     <button
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
-                      style={{ background: '#29b6f610', color: '#29b6f6', border: '1px solid #29b6f625' }}
+                      style={{ background: '#29b6f610', color: 'var(--color-status-info)', border: '1px solid #29b6f625' }}
                     >
                       PDF
                     </button>
@@ -204,13 +204,13 @@ export default function ReportTemplatesPage() {
         <SectionHeader number="3" title="Scheduled Reports" sub="3 active schedules" />
         <div className="space-y-2">
           {SCHEDULED.map((s, i) => (
-            <div key={i} className="flex items-center justify-between p-3 bg-[#0a1219] border border-[rgba(255,255,255,0.06)] rounded-sm">
+            <div key={i} className="flex items-center justify-between p-3 bg-bg-input border border-border-subtle rounded-sm">
               <div>
                 <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">{s.name}</span>
                 <div className="flex items-center gap-3 mt-0.5">
                   <span className="text-[10px] text-[rgba(255,255,255,0.35)]">{s.schedule}</span>
                   <span className="text-[10px] text-[rgba(255,255,255,0.35)]">·</span>
-                  <span className="text-[10px] text-[#29b6f6]">Next: {s.next}</span>
+                  <span className="text-[10px] text-status-info">Next: {s.next}</span>
                 </div>
               </div>
               <div className="text-right">
@@ -234,7 +234,7 @@ export default function ReportTemplatesPage() {
                 <input
                   value={brandingLogo}
                   onChange={(e) => setBrandingLogo(e.target.value)}
-                  className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#29b6f640]"
+                  className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-info"
                 />
               </div>
               <div>
@@ -242,7 +242,7 @@ export default function ReportTemplatesPage() {
                 <input
                   value={brandingCompany}
                   onChange={(e) => setBrandingCompany(e.target.value)}
-                  className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#29b6f640]"
+                  className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-info"
                 />
               </div>
               <div>
@@ -252,7 +252,7 @@ export default function ReportTemplatesPage() {
                     type="color"
                     value={brandingColor}
                     onChange={(e) => setBrandingColor(e.target.value)}
-                    className="w-8 h-8 rounded-sm border border-[rgba(255,255,255,0.08)] bg-[#0a1219] cursor-pointer"
+                    className="w-8 h-8 rounded-sm border border-border-DEFAULT bg-bg-input cursor-pointer"
                   />
                   <span className="text-[11px] font-mono text-[rgba(255,255,255,0.5)]">{brandingColor}</span>
                 </div>
@@ -267,7 +267,7 @@ export default function ReportTemplatesPage() {
                 <input
                   value={deliveryEmail}
                   onChange={(e) => setDeliveryEmail(e.target.value)}
-                  className="w-full bg-[#0a1219] border border-[rgba(255,255,255,0.08)] text-[11px] text-white px-3 py-2 rounded-sm outline-none focus:border-[#29b6f640]"
+                  className="w-full bg-bg-input border border-border-DEFAULT text-[11px] text-text-primary px-3 py-2 rounded-sm outline-none focus:border-status-info"
                 />
               </div>
               <div>
@@ -320,7 +320,7 @@ export default function ReportTemplatesPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="border-b border-border-subtle">
                 {['Month', 'Reports', 'Download'].map((h) => (
                   <th key={h} className="text-left py-2 pr-4 text-[rgba(255,255,255,0.35)] font-semibold uppercase tracking-wider text-[10px]">{h}</th>
                 ))}
@@ -328,13 +328,13 @@ export default function ReportTemplatesPage() {
             </thead>
             <tbody>
               {ARCHIVE.map((a, i) => (
-                <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)]">
+                <tr key={i} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.7)]">{a.month}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{a.count} reports</td>
                   <td className="py-2 pr-4">
                     <button
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
-                      style={{ background: '#29b6f610', color: '#29b6f6', border: '1px solid #29b6f625' }}
+                      style={{ background: '#29b6f610', color: 'var(--color-status-info)', border: '1px solid #29b6f625' }}
                     >
                       Download All
                     </button>

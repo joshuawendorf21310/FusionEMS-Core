@@ -129,7 +129,7 @@ function Badge({ color, label }: { color: string; label: string }) {
     red: "bg-red-900/40 text-red-300 border-red-700",
     yellow: "bg-yellow-900/40 text-yellow-300 border-yellow-700",
     blue: "bg-blue-900/40 text-blue-300 border-blue-700",
-    gray: "bg-gray-800 text-gray-300 border-gray-600",
+    gray: "bg-bg-raised text-text-secondary border-border-strong",
   };
   return (
     <span
@@ -501,7 +501,7 @@ export default function NEMSISManagerPage() {
                     <div key={i} className="flex items-center gap-2 text-sm">
                       <span
                         className={`h-4 w-4 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                          check.passed ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                          check.passed ? "bg-green-500 text-text-primary" : "bg-red-500 text-text-primary"
                         }`}
                       >
                         {check.passed ? "✓" : "✗"}
@@ -690,7 +690,7 @@ export default function NEMSISManagerPage() {
                 <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={runLiveValidation}
-                    className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+                    className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-text-inverse hover:opacity-90"
                   >
                     Validate Live
                   </button>
@@ -787,7 +787,7 @@ export default function NEMSISManagerPage() {
               </div>
               <button
                 onClick={runFieldValidation}
-                className="mt-3 rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+                className="mt-3 rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-text-inverse hover:opacity-90"
               >
                 Validate Field
               </button>
@@ -857,7 +857,7 @@ export default function NEMSISManagerPage() {
               <div className="flex flex-wrap gap-2 mt-3">
                 <button
                   onClick={runNarrativeCheck}
-                  className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+                  className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-text-inverse hover:opacity-90"
                 >
                   Narrative Check
                 </button>
@@ -1116,7 +1116,7 @@ export default function NEMSISManagerPage() {
                     >
                       <span
                         className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                          check.passed ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                          check.passed ? "bg-green-500 text-text-primary" : "bg-red-500 text-text-primary"
                         }`}
                       >
                         {check.passed ? "✓" : "✗"}
@@ -1170,7 +1170,7 @@ export default function NEMSISManagerPage() {
                 </div>
                 <button
                   onClick={runAutoPopulate}
-                  className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+                  className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-text-inverse hover:opacity-90"
                 >
                   Run Auto-Populate
                 </button>
@@ -1198,7 +1198,7 @@ export default function NEMSISManagerPage() {
                 </div>
                 <button
                   onClick={runNormalize}
-                  className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+                  className="rounded-lg bg-billing px-4 py-2 text-sm font-semibold text-text-inverse hover:opacity-90"
                 >
                   Normalize Sample
                 </button>

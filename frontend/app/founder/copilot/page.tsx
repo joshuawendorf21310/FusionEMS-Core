@@ -85,7 +85,7 @@ function PlanPanel({ plan }: { plan: ActionPlan }) {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-[rgba(255,107,26,0.15)] text-[#ff6b1a] rounded">
+        <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-[rgba(255,107,26,0.15)] text-orange rounded">
           {plan.intent}
         </span>
         {plan.risk_level && (
@@ -105,9 +105,9 @@ function PlanPanel({ plan }: { plan: ActionPlan }) {
         </div>
         <div className="space-y-2">
           {plan.actions.map((a, i) => (
-            <div key={i} className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded p-3">
+            <div key={i} className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT rounded p-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-mono font-bold text-[#29b6f6]">{a.type}</span>
+                <span className="text-[10px] font-mono font-bold text-status-info">{a.type}</span>
               </div>
               <pre className="text-[10px] text-[rgba(255,255,255,0.55)] whitespace-pre-wrap break-all">
                 {JSON.stringify(a.payload, null, 2)}
@@ -124,7 +124,7 @@ function PlanPanel({ plan }: { plan: ActionPlan }) {
         <div className="space-y-1">
           {plan.acceptance_tests.map((t, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-[#4caf50] text-xs">✓</span>
+              <span className="text-status-active text-xs">✓</span>
               <code className="text-xs text-[rgba(255,255,255,0.7)] font-mono">{t}</code>
             </div>
           ))}
@@ -133,8 +133,8 @@ function PlanPanel({ plan }: { plan: ActionPlan }) {
 
       {plan.notes && (
         <div className="bg-[rgba(255,107,26,0.06)] border border-[rgba(255,107,26,0.15)] rounded p-3">
-          <div className="text-[10px] uppercase tracking-widest text-[rgba(255,107,26,0.6)] mb-1">Notes</div>
-          <p className="text-xs text-[rgba(255,255,255,0.65)]">{plan.notes}</p>
+          <div className="text-[10px] uppercase tracking-widest text-orange-dim mb-1">Notes</div>
+          <p className="text-xs text-text-secondary">{plan.notes}</p>
         </div>
       )}
     </div>
@@ -165,8 +165,8 @@ function GatePanel({ results }: { results: GateResult | null }) {
       </div>
       <div className="space-y-1">
         {entries.map(([gate, passed]) => (
-          <div key={gate} className="flex items-center gap-3 py-1.5 border-b border-[rgba(255,255,255,0.04)]">
-            <span className={`text-sm ${passed ? 'text-[#4caf50]' : 'text-[#e53935]'}`}>
+          <div key={gate} className="flex items-center gap-3 py-1.5 border-b border-border-subtle">
+            <span className={`text-sm ${passed ? 'text-status-active' : 'text-red'}`}>
               {passed ? '✓' : '✗'}
             </span>
             <span className="text-xs font-mono text-[rgba(255,255,255,0.7)]">{gate}</span>
@@ -209,21 +209,21 @@ function MessageBubble({ msg }: { msg: Message }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
       {!isUser && (
-        <div className="w-6 h-6 flex-shrink-0 rounded-full bg-[rgba(255,107,26,0.2)] border border-[rgba(255,107,26,0.4)] flex items-center justify-center text-[9px] font-bold text-[#ff6b1a] mr-2 mt-0.5">
+        <div className="w-6 h-6 flex-shrink-0 rounded-full bg-[rgba(255,107,26,0.2)] border border-[rgba(255,107,26,0.4)] flex items-center justify-center text-[9px] font-bold text-orange mr-2 mt-0.5">
           AI
         </div>
       )}
       <div
         className={`max-w-[80%] px-3 py-2 rounded text-sm leading-relaxed ${
           isUser
-            ? 'bg-[rgba(255,107,26,0.12)] border border-[rgba(255,107,26,0.2)] text-white'
-            : 'bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.85)]'
+            ? 'bg-orange-ghost border border-[rgba(255,107,26,0.2)] text-text-primary'
+            : 'bg-[rgba(255,255,255,0.05)] border border-border-DEFAULT text-[rgba(255,255,255,0.85)]'
         }`}
       >
         <p className="whitespace-pre-wrap">{msg.content_text}</p>
         {msg.content_json && (
-          <div className="mt-2 pt-2 border-t border-[rgba(255,255,255,0.1)]">
-            <span className="text-[10px] text-[#ff6b1a] font-semibold uppercase tracking-wider">
+          <div className="mt-2 pt-2 border-t border-border-DEFAULT">
+            <span className="text-[10px] text-orange font-semibold uppercase tracking-wider">
               ▣ Action plan attached — see right panel
             </span>
           </div>
@@ -427,16 +427,16 @@ export default function FounderCopilotPage() {
   ];
 
   return (
-    <div className="flex h-full bg-[#0b0f14] text-white overflow-hidden" style={{ minHeight: 0 }}>
+    <div className="flex h-full bg-bg-base text-text-primary overflow-hidden" style={{ minHeight: 0 }}>
       {/* Session list */}
-      <aside className="w-52 flex-shrink-0 border-r border-[rgba(255,255,255,0.06)] flex flex-col bg-[#07090d]">
-        <div className="flex items-center justify-between px-3 py-3 border-b border-[rgba(255,255,255,0.06)]">
+      <aside className="w-52 flex-shrink-0 border-r border-border-subtle flex flex-col bg-bg-void">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-border-subtle">
           <span className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,107,26,0.9)]">
             Copilot Sessions
           </span>
           <button
             onClick={newSession}
-            className="w-6 h-6 bg-[rgba(255,107,26,0.15)] border border-[rgba(255,107,26,0.3)] text-[#ff6b1a] text-xs rounded hover:bg-[rgba(255,107,26,0.25)] transition-colors flex items-center justify-center"
+            className="w-6 h-6 bg-[rgba(255,107,26,0.15)] border border-[rgba(255,107,26,0.3)] text-orange text-xs rounded hover:bg-[rgba(255,107,26,0.25)] transition-colors flex items-center justify-center"
             title="New session"
           >
             +
@@ -450,10 +450,10 @@ export default function FounderCopilotPage() {
             <button
               key={s.id}
               onClick={() => selectSession(s)}
-              className={`w-full text-left px-3 py-2 border-b border-[rgba(255,255,255,0.04)] transition-colors ${
+              className={`w-full text-left px-3 py-2 border-b border-border-subtle transition-colors ${
                 activeSession?.id === s.id
-                  ? 'bg-[rgba(255,107,26,0.12)] text-white border-l-2 border-l-[#ff6b1a]'
-                  : 'text-[rgba(255,255,255,0.55)] hover:bg-[rgba(255,255,255,0.04)] hover:text-white'
+                  ? 'bg-orange-ghost text-text-primary border-l-2 border-l-[#ff6b1a]'
+                  : 'text-[rgba(255,255,255,0.55)] hover:bg-[rgba(255,255,255,0.04)] hover:text-text-primary'
               }`}
             >
               <div className="text-xs truncate">{s.title}</div>
@@ -468,7 +468,7 @@ export default function FounderCopilotPage() {
       {/* Chat column */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Chat header */}
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[rgba(255,255,255,0.06)] bg-[#07090d] flex-shrink-0">
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle bg-bg-void flex-shrink-0">
           <div>
             <div className="text-sm font-semibold">Founder Copilot</div>
             <div className="text-[10px] text-[rgba(255,255,255,0.35)]">
@@ -493,7 +493,7 @@ export default function FounderCopilotPage() {
                   href={activeRun.gh_run_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] text-[#29b6f6] hover:underline"
+                  className="text-[10px] text-status-info hover:underline"
                 >
                   GH Actions ↗
                 </a>
@@ -515,7 +515,7 @@ export default function FounderCopilotPage() {
               </p>
               <button
                 onClick={newSession}
-                className="mt-4 px-4 py-2 bg-[rgba(255,107,26,0.15)] border border-[rgba(255,107,26,0.3)] text-[#ff6b1a] text-xs font-semibold rounded hover:bg-[rgba(255,107,26,0.25)] transition-colors"
+                className="mt-4 px-4 py-2 bg-[rgba(255,107,26,0.15)] border border-[rgba(255,107,26,0.3)] text-orange text-xs font-semibold rounded hover:bg-[rgba(255,107,26,0.25)] transition-colors"
               >
                 + New Session
               </button>
@@ -529,9 +529,9 @@ export default function FounderCopilotPage() {
 
         {/* Error */}
         {error && (
-          <div className="mx-4 mb-2 px-3 py-2 bg-[rgba(229,57,53,0.1)] border border-[rgba(229,57,53,0.3)] rounded text-xs text-[#ef9a9a] flex items-center justify-between">
+          <div className="mx-4 mb-2 px-3 py-2 bg-red-ghost border border-red-ghost rounded text-xs text-red-bright flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-2 text-[rgba(255,255,255,0.4)] hover:text-white">✕</button>
+            <button onClick={() => setError(null)} className="ml-2 text-[rgba(255,255,255,0.4)] hover:text-text-primary">✕</button>
           </div>
         )}
 
@@ -542,28 +542,28 @@ export default function FounderCopilotPage() {
               <button
                 onClick={proposeRun}
                 disabled={!messages.some((m) => m.content_json)}
-                className="px-3 py-1.5 text-xs font-semibold bg-[rgba(255,107,26,0.12)] border border-[rgba(255,107,26,0.3)] text-[#ff6b1a] rounded hover:bg-[rgba(255,107,26,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs font-semibold bg-orange-ghost border border-[rgba(255,107,26,0.3)] text-orange rounded hover:bg-[rgba(255,107,26,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Propose Changes
               </button>
               <button
                 onClick={executeRun}
                 disabled={!activeRun || !['proposed', 'blocked'].includes(activeRun.status) || executing}
-                className="px-3 py-1.5 text-xs font-semibold bg-[rgba(41,182,246,0.12)] border border-[rgba(41,182,246,0.3)] text-[#29b6f6] rounded hover:bg-[rgba(41,182,246,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs font-semibold bg-[rgba(41,182,246,0.12)] border border-[rgba(41,182,246,0.3)] text-status-info rounded hover:bg-[rgba(41,182,246,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {executing ? 'Executing…' : 'Execute in Sandbox'}
               </button>
               <button
                 onClick={approveRun}
                 disabled={!activeRun || activeRun.status !== 'passed'}
-                className="px-3 py-1.5 text-xs font-semibold bg-[rgba(168,85,247,0.12)] border border-[rgba(168,85,247,0.3)] text-[#a855f7] rounded hover:bg-[rgba(168,85,247,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs font-semibold bg-[rgba(168,85,247,0.12)] border border-[rgba(168,85,247,0.3)] text-system-compliance rounded hover:bg-[rgba(168,85,247,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Approve
               </button>
               <button
                 onClick={mergeRun}
                 disabled={!activeRun || activeRun.status !== 'approved'}
-                className="px-3 py-1.5 text-xs font-semibold bg-[rgba(255,107,26,0.12)] border border-[rgba(255,107,26,0.4)] text-[#ff6b1a] rounded hover:bg-[rgba(255,107,26,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs font-semibold bg-orange-ghost border border-[rgba(255,107,26,0.4)] text-orange rounded hover:bg-[rgba(255,107,26,0.2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Merge when Green
               </button>
@@ -588,12 +588,12 @@ export default function FounderCopilotPage() {
                 }}
                 placeholder="Ask Founder Copilot… (Shift+Enter for newline)"
                 rows={2}
-                className="flex-1 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.1)] px-3 py-2 text-sm text-white placeholder-[rgba(255,255,255,0.25)] rounded resize-none focus:outline-none focus:border-[#ff6b1a] transition-colors"
+                className="flex-1 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT px-3 py-2 text-sm text-text-primary placeholder-[rgba(255,255,255,0.25)] rounded resize-none focus:outline-none focus:border-orange transition-colors"
               />
               <button
                 onClick={sendMessage}
                 disabled={sending || !inputText.trim()}
-                className="px-4 bg-[#ff6b1a] text-black text-xs font-bold rounded hover:bg-[#ff8c4a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-stretch"
+                className="px-4 bg-orange text-text-inverse text-xs font-bold rounded hover:bg-orange-bright transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-stretch"
               >
                 {sending ? '…' : 'Send'}
               </button>
@@ -603,15 +603,15 @@ export default function FounderCopilotPage() {
       </div>
 
       {/* Right panel */}
-      <aside className="w-96 flex-shrink-0 border-l border-[rgba(255,255,255,0.06)] flex flex-col bg-[#07090d]">
-        <div className="flex border-b border-[rgba(255,255,255,0.06)] overflow-x-auto flex-shrink-0">
+      <aside className="w-96 flex-shrink-0 border-l border-border-subtle flex flex-col bg-bg-void">
+        <div className="flex border-b border-border-subtle overflow-x-auto flex-shrink-0">
           {RIGHT_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setRightTab(tab.id)}
               className={`px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-colors flex-shrink-0 ${
                 rightTab === tab.id
-                  ? 'text-[#ff6b1a] border-b-2 border-[#ff6b1a]'
+                  ? 'text-orange border-b-2 border-orange'
                   : 'text-[rgba(255,255,255,0.35)] hover:text-[rgba(255,255,255,0.7)]'
               }`}
             >
@@ -628,8 +628,8 @@ export default function FounderCopilotPage() {
             <div className="p-4 space-y-3">
               {currentPlan?.actions.filter((a) => a.type === 'GENERATE_MIGRATION').length ? (
                 currentPlan.actions.filter((a) => a.type === 'GENERATE_MIGRATION').map((a, i) => (
-                  <div key={i} className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded p-3">
-                    <div className="text-[10px] text-[#29b6f6] font-bold mb-1">GENERATE_MIGRATION</div>
+                  <div key={i} className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT rounded p-3">
+                    <div className="text-[10px] text-status-info font-bold mb-1">GENERATE_MIGRATION</div>
                     <pre className="text-[10px] text-[rgba(255,255,255,0.6)] whitespace-pre-wrap">{JSON.stringify(a.payload, null, 2)}</pre>
                   </div>
                 ))
@@ -642,8 +642,8 @@ export default function FounderCopilotPage() {
             <div className="p-4 space-y-3">
               {currentPlan?.actions.filter((a) => a.type === 'UPDATE_CLOUDFORMATION').length ? (
                 currentPlan.actions.filter((a) => a.type === 'UPDATE_CLOUDFORMATION').map((a, i) => (
-                  <div key={i} className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded p-3">
-                    <div className="text-[10px] text-[#ff9800] font-bold mb-1">UPDATE_CLOUDFORMATION</div>
+                  <div key={i} className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT rounded p-3">
+                    <div className="text-[10px] text-status-warning font-bold mb-1">UPDATE_CLOUDFORMATION</div>
                     <pre className="text-[10px] text-[rgba(255,255,255,0.6)] whitespace-pre-wrap">{String((a.payload as Record<string, unknown>).patch || JSON.stringify(a.payload, null, 2))}</pre>
                   </div>
                 ))
@@ -662,10 +662,10 @@ export default function FounderCopilotPage() {
                     <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.4)]">Run ID</span><code className="text-[rgba(255,255,255,0.7)] font-mono text-[10px]">{activeRun.id.slice(0, 12)}…</code></div>
                     <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.4)]">Status</span><span style={{ color: STATUS_COLORS[activeRun.status] || '#94a3b8' }} className="font-semibold">{activeRun.status}</span></div>
                     <div className="flex justify-between"><span className="text-[rgba(255,255,255,0.4)]">Created</span><span className="text-[rgba(255,255,255,0.7)]">{new Date(activeRun.created_at).toLocaleString()}</span></div>
-                    {activeRun.gh_run_url && <div className="pt-2"><a href={activeRun.gh_run_url} target="_blank" rel="noopener noreferrer" className="text-[#29b6f6] hover:underline text-xs">View GitHub Actions run ↗</a></div>}
+                    {activeRun.gh_run_url && <div className="pt-2"><a href={activeRun.gh_run_url} target="_blank" rel="noopener noreferrer" className="text-status-info hover:underline text-xs">View GitHub Actions run ↗</a></div>}
                   </div>
                   {currentPlan?.summary && (
-                    <div className="mt-4 p-3 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded">
+                    <div className="mt-4 p-3 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT rounded">
                       <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">Summary</div>
                       <p className="text-xs text-[rgba(255,255,255,0.7)]">{currentPlan.summary}</p>
                     </div>

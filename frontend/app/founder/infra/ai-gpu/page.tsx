@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -46,7 +46,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -78,15 +78,15 @@ const JOBS = [
 
 const MODELS = [
   { name: 'STATFLOW-Narrative', latency: 420, max: 500, color: '#a855f7' },
-  { name: 'DenialRisk-v2', latency: 85, max: 500, color: '#4caf50' },
-  { name: 'AppealDraft-v1', latency: 1200, max: 1500, color: '#ff9800' },
-  { name: 'Classifier-fast', latency: 22, max: 500, color: '#4caf50' },
+  { name: 'DenialRisk-v2', latency: 85, max: 500, color: 'var(--q-green)' },
+  { name: 'AppealDraft-v1', latency: 1200, max: 1500, color: 'var(--q-yellow)' },
+  { name: 'Classifier-fast', latency: 22, max: 500, color: 'var(--q-green)' },
 ];
 
 const MEMORY_SEGMENTS = [
   { label: 'Model Weights', gb: 8.2, color: '#a855f7' },
-  { label: 'KV Cache', gb: 4.1, color: '#29b6f6' },
-  { label: 'Batch Buffer', gb: 2.8, color: '#ff9800' },
+  { label: 'KV Cache', gb: 4.1, color: 'var(--color-status-info)' },
+  { label: 'Batch Buffer', gb: 2.8, color: 'var(--q-yellow)' },
   { label: 'Available', gb: 9.3, color: 'rgba(255,255,255,0.12)' },
 ];
 const TOTAL_GB = MEMORY_SEGMENTS.reduce((a, s) => a + s.gb, 0);
@@ -108,14 +108,14 @@ const MODEL_REGISTRY = [
 
 export default function AIGPUMonitorPage() {
   return (
-    <div className="min-h-screen bg-[#060d14] text-white p-6 space-y-8">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <div className="text-[10px] font-bold font-mono text-[rgba(255,107,26,0.6)] uppercase tracking-widest mb-1">
+          <div className="text-[10px] font-bold font-mono text-orange-dim uppercase tracking-widest mb-1">
             MODULE 10 · INFRASTRUCTURE
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">AI GPU Monitor</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary">AI GPU Monitor</h1>
           <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">
             Model inference · throughput · memory · temperature · job queue
           </p>
@@ -153,7 +153,7 @@ export default function AIGPUMonitorPage() {
               </thead>
               <tbody>
                 {JOBS.map((job) => (
-                  <tr key={job.id} className="border-t border-[rgba(255,255,255,0.04)]">
+                  <tr key={job.id} className="border-t border-border-subtle">
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.7)]">{job.id}</td>
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.55)]">{job.type}</td>
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.7)]">{job.model}</td>
@@ -260,7 +260,7 @@ export default function AIGPUMonitorPage() {
               </thead>
               <tbody>
                 {MODEL_REGISTRY.map((m) => (
-                  <tr key={m.name} className="border-t border-[rgba(255,255,255,0.04)]">
+                  <tr key={m.name} className="border-t border-border-subtle">
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.8)]">{m.name}</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.55)]">{m.version}</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.55)]">{m.size}</td>
@@ -276,7 +276,7 @@ export default function AIGPUMonitorPage() {
 
       {/* Back */}
       <div>
-        <Link href="/founder" className="text-xs text-[#94a3b8] hover:text-white transition-colors">
+        <Link href="/founder" className="text-xs text-system-cad hover:text-text-primary transition-colors">
           ← Back to Founder OS
         </Link>
       </div>

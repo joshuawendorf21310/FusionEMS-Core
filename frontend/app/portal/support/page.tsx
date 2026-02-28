@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import React, {
   useState,
@@ -66,13 +67,13 @@ function formatTime(iso: string): string {
 function StatusBadge({ status }: { status: ThreadStatus }) {
   if (status === 'open')
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded-sm border border-[rgba(34,211,238,0.3)] text-[#22d3ee] bg-[rgba(34,211,238,0.08)]">
+      <span className="text-[10px] px-1.5 py-0.5 rounded-sm border border-[rgba(34,211,238,0.3)] text-system-billing bg-[rgba(34,211,238,0.08)]">
         open
       </span>
     );
   if (status === 'escalated')
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded-sm border border-[rgba(229,57,53,0.3)] text-[#e53935] bg-[rgba(229,57,53,0.08)] animate-pulse">
+      <span className="text-[10px] px-1.5 py-0.5 rounded-sm border border-red-ghost text-red bg-[rgba(229,57,53,0.08)] animate-pulse">
         escalated
       </span>
     );
@@ -128,8 +129,8 @@ function NewThreadModal({ onClose, onCreate }: NewThreadModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.08)] rounded-sm w-full max-w-md mx-4 p-6">
-        <h2 className="text-sm font-semibold text-white tracking-widest uppercase mb-5">
+      <div className="bg-bg-base border border-border-DEFAULT rounded-sm w-full max-w-md mx-4 p-6">
+        <h2 className="text-sm font-semibold text-text-primary tracking-widest uppercase mb-5">
           New Conversation
         </h2>
 
@@ -142,7 +143,7 @@ function NewThreadModal({ onClose, onCreate }: NewThreadModalProps) {
             <select
               value={threadType}
               onChange={(e) => setThreadType(e.target.value as ThreadType)}
-              className="w-full bg-[#07090d] border border-[rgba(255,255,255,0.08)] rounded-sm text-sm text-white px-3 py-2 focus:outline-none focus:border-[rgba(255,107,26,0.4)]"
+              className="w-full bg-bg-void border border-border-DEFAULT rounded-sm text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-[rgba(255,107,26,0.4)]"
             >
               {THREAD_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -162,7 +163,7 @@ function NewThreadModal({ onClose, onCreate }: NewThreadModalProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Brief description of your issue"
-              className="w-full bg-[#07090d] border border-[rgba(255,255,255,0.08)] rounded-sm text-sm text-white px-3 py-2 placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[rgba(255,107,26,0.4)]"
+              className="w-full bg-bg-void border border-border-DEFAULT rounded-sm text-sm text-text-primary px-3 py-2 placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[rgba(255,107,26,0.4)]"
             />
           </div>
 
@@ -176,26 +177,26 @@ function NewThreadModal({ onClose, onCreate }: NewThreadModalProps) {
               value={initialMessage}
               onChange={(e) => setInitialMessage(e.target.value)}
               placeholder="Describe your issue in detail…"
-              className="w-full bg-[#07090d] border border-[rgba(255,255,255,0.08)] rounded-sm text-sm text-white px-3 py-2 placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[rgba(255,107,26,0.4)] resize-none"
+              className="w-full bg-bg-void border border-border-DEFAULT rounded-sm text-sm text-text-primary px-3 py-2 placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[rgba(255,107,26,0.4)] resize-none"
             />
           </div>
 
           {error && (
-            <p className="text-xs text-[#e53935]">{error}</p>
+            <p className="text-xs text-red">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end mt-1">
             <button
               type="button"
               onClick={onClose}
-              className="text-sm px-4 py-2 rounded-sm border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
+              className="text-sm px-4 py-2 rounded-sm border border-border-DEFAULT text-[rgba(255,255,255,0.5)] hover:text-text-primary transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="text-sm px-4 py-2 rounded-sm bg-[#ff6b1a] text-white font-medium hover:bg-[#e55e0e] transition-colors disabled:opacity-50"
+              className="text-sm px-4 py-2 rounded-sm bg-orange text-text-primary font-medium hover:bg-orange-dim transition-colors disabled:opacity-50"
             >
               {loading ? 'Creating…' : 'Start Conversation'}
             </button>
@@ -344,17 +345,17 @@ export default function AgencySupportPage() {
     >
       {/* ── Left sidebar ─────────────────────────────────────────────────── */}
       <aside
-        className="flex flex-col border-r border-[rgba(255,255,255,0.08)] shrink-0"
+        className="flex flex-col border-r border-border-DEFAULT shrink-0"
         style={{ width: 240 }}
       >
         {/* Header */}
-        <div className="px-4 pt-5 pb-3 border-b border-[rgba(255,255,255,0.08)]">
+        <div className="px-4 pt-5 pb-3 border-b border-border-DEFAULT">
           <p className="text-[11px] font-semibold tracking-widest text-[rgba(255,255,255,0.4)] uppercase mb-3">
             Support
           </p>
           <button
             onClick={() => setShowModal(true)}
-            className="w-full text-sm py-2 rounded-sm bg-[#ff6b1a] text-white font-medium hover:bg-[#e55e0e] transition-colors"
+            className="w-full text-sm py-2 rounded-sm bg-orange text-text-primary font-medium hover:bg-orange-dim transition-colors"
           >
             + New Conversation
           </button>
@@ -392,13 +393,13 @@ export default function AgencySupportPage() {
                 onClick={() => handleSelectThread(t)}
                 className={`w-full text-left px-4 py-3 border-b border-[rgba(255,255,255,0.05)] transition-colors ${
                   active
-                    ? 'bg-[rgba(255,107,26,0.08)]'
+                    ? 'bg-orange-ghost'
                     : 'hover:bg-[rgba(255,255,255,0.03)]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1 mb-0.5">
                   <span
-                    className="text-xs font-medium text-white truncate"
+                    className="text-xs font-medium text-text-primary truncate"
                     style={{ maxWidth: 140 }}
                   >
                     {t.title}
@@ -429,8 +430,8 @@ export default function AgencySupportPage() {
         ) : (
           <>
             {/* Thread header */}
-            <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.08)] flex items-center gap-3 shrink-0">
-              <span className="text-sm font-semibold text-white">
+            <div className="px-6 py-4 border-b border-border-DEFAULT flex items-center gap-3 shrink-0">
+              <span className="text-sm font-semibold text-text-primary">
                 {selectedThread.title}
               </span>
               <span className="text-[11px] text-[rgba(255,255,255,0.4)]">
@@ -443,7 +444,7 @@ export default function AgencySupportPage() {
 
             {/* Escalation banner */}
             {selectedThread.status === 'escalated' && (
-              <div className="mx-6 mt-3 px-4 py-2.5 rounded-sm border border-[rgba(255,152,0,0.3)] bg-[rgba(255,152,0,0.08)] text-xs text-[#ff9800] shrink-0">
+              <div className="mx-6 mt-3 px-4 py-2.5 rounded-sm border border-[rgba(255,152,0,0.3)] bg-[rgba(255,152,0,0.08)] text-xs text-status-warning shrink-0">
                 This thread has been escalated to the FusionEMS team. A team
                 member will respond shortly.
               </div>
@@ -481,17 +482,17 @@ export default function AgencySupportPage() {
                         {msg.sender_label}
                       </span>
                       {isAI && (
-                        <span className="text-[9px] px-1 py-0.5 rounded-sm bg-[rgba(34,211,238,0.12)] border border-[rgba(34,211,238,0.25)] text-[#22d3ee] font-medium">
+                        <span className="text-[9px] px-1 py-0.5 rounded-sm bg-[rgba(34,211,238,0.12)] border border-[rgba(34,211,238,0.25)] text-system-billing font-medium">
                           AI
                         </span>
                       )}
                     </div>
                     {/* Bubble */}
                     <div
-                      className={`px-3 py-2 rounded-sm text-sm text-white max-w-[70%] ${
+                      className={`px-3 py-2 rounded-sm text-sm text-text-primary max-w-[70%] ${
                         isAgency
                           ? 'bg-[rgba(255,107,26,0.15)] border border-[rgba(255,107,26,0.2)]'
-                          : 'bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)]'
+                          : 'bg-[rgba(255,255,255,0.05)] border border-border-DEFAULT'
                       }`}
                     >
                       {msg.content}
@@ -507,13 +508,13 @@ export default function AgencySupportPage() {
             </div>
 
             {/* Input area */}
-            <div className="px-6 pb-5 pt-3 border-t border-[rgba(255,255,255,0.08)] shrink-0">
+            <div className="px-6 pb-5 pt-3 border-t border-border-DEFAULT shrink-0">
               <div className="flex gap-2 items-end">
                 {/* File attachment button (UI only) */}
                 <button
                   type="button"
                   title="Attach file"
-                  className="shrink-0 mb-0.5 p-2 rounded-sm border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.3)] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+                  className="shrink-0 mb-0.5 p-2 rounded-sm border border-border-DEFAULT text-[rgba(255,255,255,0.3)] hover:text-text-primary hover:border-[rgba(255,255,255,0.2)] transition-colors"
                 >
                   <svg
                     width="16"
@@ -536,13 +537,13 @@ export default function AgencySupportPage() {
                   onKeyDown={handleKeyDown}
                   placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
                   disabled={selectedThread.status === 'resolved'}
-                  className="flex-1 bg-[#0b0f14] border border-[rgba(255,255,255,0.08)] rounded-sm text-sm text-white px-3 py-2 placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[rgba(255,107,26,0.4)] resize-none disabled:opacity-40"
+                  className="flex-1 bg-bg-base border border-border-DEFAULT rounded-sm text-sm text-text-primary px-3 py-2 placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[rgba(255,107,26,0.4)] resize-none disabled:opacity-40"
                 />
 
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || sending || selectedThread.status === 'resolved'}
-                  className="shrink-0 mb-0.5 px-4 py-2 rounded-sm bg-[#ff6b1a] text-white text-sm font-medium hover:bg-[#e55e0e] transition-colors disabled:opacity-40"
+                  className="shrink-0 mb-0.5 px-4 py-2 rounded-sm bg-orange text-text-primary text-sm font-medium hover:bg-orange-dim transition-colors disabled:opacity-40"
                 >
                   {sending ? '…' : 'Send'}
                 </button>

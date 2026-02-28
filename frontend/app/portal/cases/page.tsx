@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -110,7 +111,7 @@ function truncateId(id: string): string {
 
 const TRANSPORT_STYLE: Record<TransportMode, { label: string; color: string; bg: string }> = {
   ground:    { label: 'GROUND',     color: '#42a5f5', bg: 'rgba(66,165,245,0.12)'   },
-  rotor:     { label: 'ROTOR',      color: '#ff6b1a', bg: 'rgba(255,107,26,0.12)'   },
+  rotor:     { label: 'ROTOR',      color: 'var(--q-orange)', bg: 'rgba(255,107,26,0.12)'   },
   fixed_wing:{ label: 'FIXED WING', color: '#ce93d8', bg: 'rgba(206,147,216,0.12)'  },
 };
 
@@ -323,7 +324,7 @@ export default function CasesPage() {
               <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</label>
               <input
                 type={type}
-                className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                 style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                 value={cmsGate[key] as string}
                 onChange={(e) => setCmsGate((p) => ({ ...p, [key]: e.target.value }))}
@@ -333,7 +334,7 @@ export default function CasesPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Transport Level</label>
             <select
-              className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+              className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
               style={{ border: '1px solid rgba(255,255,255,0.12)' }}
               value={cmsGate.transport_level}
               onChange={(e) => setCmsGate((p) => ({ ...p, transport_level: e.target.value as TransportLevel }))}
@@ -373,7 +374,7 @@ export default function CasesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white">
+    <div className="min-h-screen bg-bg-void text-text-primary">
       <Toast items={toasts} />
 
       {/* Header */}
@@ -407,7 +408,7 @@ export default function CasesPage() {
         {activeTab === 'active' && (
           <div>
             {casesBusy && cases.length === 0 && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading...</p>
+              <div className="p-6"><QuantumCardSkeleton /></div>
             )}
             {!casesBusy && cases.length === 0 && (
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>No active cases.</p>
@@ -433,7 +434,7 @@ export default function CasesPage() {
                     >
                       <span
                         className="text-xs font-mono font-semibold"
-                        style={{ color: '#ff6b1a' }}
+                        style={{ color: 'var(--q-orange)' }}
                         title={c.case_id}
                       >
                         {truncateId(c.case_id)}
@@ -547,7 +548,7 @@ export default function CasesPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Transport Mode</label>
                   <select
-                    className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                    className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                     style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                     value={newCase.transport_mode}
                     onChange={(e) => setNewCase((p) => ({ ...p, transport_mode: e.target.value as TransportMode }))}
@@ -560,7 +561,7 @@ export default function CasesPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Priority</label>
                   <select
-                    className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                    className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                     style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                     value={newCase.priority}
                     onChange={(e) => setNewCase((p) => ({ ...p, priority: e.target.value as CasePriority }))}
@@ -583,7 +584,7 @@ export default function CasesPage() {
                     <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</label>
                     <input
                       type="text"
-                      className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                      className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                       style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                       value={newCase[key] as string}
                       onChange={(e) => setNewCase((p) => ({ ...p, [key]: e.target.value }))}
@@ -607,7 +608,7 @@ export default function CasesPage() {
                 className="p-4 rounded-sm"
                 style={{ background: '#0b0f14', border: '1px solid rgba(255,107,26,0.2)' }}
               >
-                <p className="text-xs font-semibold mb-1" style={{ color: '#ff6b1a' }}>
+                <p className="text-xs font-semibold mb-1" style={{ color: 'var(--q-orange)' }}>
                   CMS Gate — Case {createdCaseId}
                 </p>
                 <p className="text-[10px] mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -646,7 +647,7 @@ export default function CasesPage() {
                 <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Case ID</label>
                 <input
                   type="text"
-                  className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                  className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                   style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                   placeholder="Enter case ID"
                   value={cmsCaseId}
@@ -687,7 +688,7 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
           style={{
             background: 'rgba(229,57,53,0.1)',
             border: '1px solid rgba(229,57,53,0.35)',
-            color: '#e53935',
+            color: 'var(--q-red)',
           }}
         >
           Billing Sensitivity Flag — this case has been flagged for review.
@@ -701,7 +702,7 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
           style={{
             background: 'rgba(229,57,53,0.1)',
             border: '1px solid rgba(229,57,53,0.35)',
-            color: '#e53935',
+            color: 'var(--q-red)',
           }}
         >
           HARD BLOCK — submission is not permitted until blocking issues are resolved.
@@ -796,7 +797,7 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
             <ul className="space-y-1">
               {result.issues.map((issue, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="mt-0.5 text-[10px]" style={{ color: '#e53935' }}>&#x25CF;</span>
+                  <span className="mt-0.5 text-[10px]" style={{ color: 'var(--q-red)' }}>&#x25CF;</span>
                   <span className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>{issue}</span>
                 </li>
               ))}

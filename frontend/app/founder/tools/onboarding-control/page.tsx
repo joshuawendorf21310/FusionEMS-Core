@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -84,18 +85,18 @@ function useToast() {
 
 const STATUS_MAP: Record<AppStatus, { label: string; color: string; bg: string; pulse?: boolean }> = {
   pending:       { label: 'PENDING',       color: 'rgba(255,255,255,0.5)', bg: 'rgba(255,255,255,0.07)' },
-  legal_signed:  { label: 'LEGAL SIGNED',  color: '#22d3ee',               bg: 'rgba(34,211,238,0.12)' },
-  paid:          { label: 'PAID',          color: '#29b6f6',               bg: 'rgba(41,182,246,0.12)' },
-  provisioning:  { label: 'PROVISIONING',  color: '#ff9800',               bg: 'rgba(255,152,0,0.12)',  pulse: true },
-  active:        { label: 'ACTIVE',        color: '#4caf50',               bg: 'rgba(76,175,80,0.12)' },
-  failed:        { label: 'FAILED',        color: '#e53935',               bg: 'rgba(229,57,53,0.12)' },
+  legal_signed:  { label: 'LEGAL SIGNED',  color: 'var(--color-system-billing)',               bg: 'rgba(34,211,238,0.12)' },
+  paid:          { label: 'PAID',          color: 'var(--color-status-info)',               bg: 'rgba(41,182,246,0.12)' },
+  provisioning:  { label: 'PROVISIONING',  color: 'var(--q-yellow)',               bg: 'rgba(255,152,0,0.12)',  pulse: true },
+  active:        { label: 'ACTIVE',        color: 'var(--q-green)',               bg: 'rgba(76,175,80,0.12)' },
+  failed:        { label: 'FAILED',        color: 'var(--q-red)',               bg: 'rgba(229,57,53,0.12)' },
   revoked:       { label: 'REVOKED',       color: '#b71c1c',               bg: 'rgba(183,28,28,0.18)' },
 };
 
 const LEGAL_MAP: Record<string, { label: string; color: string; bg: string }> = {
   not_sent: { label: 'NOT SENT', color: 'rgba(255,255,255,0.35)', bg: 'rgba(255,255,255,0.05)' },
-  sent:     { label: 'SENT',     color: '#ff9800',                bg: 'rgba(255,152,0,0.12)' },
-  signed:   { label: 'SIGNED',   color: '#4caf50',               bg: 'rgba(76,175,80,0.12)' },
+  sent:     { label: 'SENT',     color: 'var(--q-yellow)',                bg: 'rgba(255,152,0,0.12)' },
+  signed:   { label: 'SIGNED',   color: 'var(--q-green)',               bg: 'rgba(76,175,80,0.12)' },
 };
 
 function StatusBadge({ status }: { status: AppStatus }) {
@@ -147,10 +148,10 @@ function ConfirmModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
       <div
-        className="bg-[#0b0f14] border border-[rgba(255,255,255,0.12)] rounded-sm p-5 w-full max-w-sm shadow-2xl"
+        className="bg-bg-base border border-[rgba(255,255,255,0.12)] rounded-sm p-5 w-full max-w-sm shadow-2xl"
         style={{ boxShadow: '0 0 40px rgba(0,0,0,0.7)' }}
       >
-        <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-2">{title}</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary mb-2">{title}</h3>
         <p className="text-[11px] text-[rgba(255,255,255,0.55)] mb-4 leading-relaxed">{message}</p>
         {children && <div className="mb-4">{children}</div>}
         {title.toLowerCase().includes('revoke') && (
@@ -162,7 +163,7 @@ function ConfirmModal({
               value={extra}
               onChange={(e) => setExtra(e.target.value)}
               placeholder="Enter revocation reason…"
-              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)] placeholder:text-[rgba(255,255,255,0.2)]"
+              className="w-full bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)] placeholder:text-[rgba(255,255,255,0.2)]"
             />
           </div>
         )}
@@ -224,19 +225,19 @@ function DetailDrawer({
       onClick={onClose}
     >
       <div
-        className="bg-[#0b0f14] border-l border-[rgba(255,255,255,0.1)] h-full overflow-y-auto flex flex-col"
+        className="bg-bg-base border-l border-border-DEFAULT h-full overflow-y-auto flex flex-col"
         style={{ width: 400 }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer header */}
-        <div className="px-5 py-4 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-border-DEFAULT flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Application Detail</h2>
-            <p className="text-[10px] text-[rgba(255,255,255,0.38)] mt-0.5">{app.agency_name}</p>
+            <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider">Application Detail</h2>
+            <p className="text-[10px] text-text-muted mt-0.5">{app.agency_name}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-[rgba(255,255,255,0.4)] hover:text-white transition-colors text-lg leading-none"
+            className="text-[rgba(255,255,255,0.4)] hover:text-text-primary transition-colors text-lg leading-none"
           >
             ✕
           </button>
@@ -245,7 +246,7 @@ function DetailDrawer({
         <div className="flex-1 px-5 py-4 space-y-5">
           {/* Fields */}
           <div>
-            <p className="text-[9px] uppercase tracking-[0.18em] text-[rgba(255,107,26,0.6)] mb-3">
+            <p className="text-[9px] uppercase tracking-[0.18em] text-orange-dim mb-3">
               Application Data
             </p>
             <div className="space-y-2.5">
@@ -263,7 +264,7 @@ function DetailDrawer({
           </div>
 
           {/* Status */}
-          <div className="flex items-center justify-between py-3 border-y border-[rgba(255,255,255,0.06)]">
+          <div className="flex items-center justify-between py-3 border-y border-border-subtle">
             <div className="flex flex-col gap-1.5">
               <span className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)]">Status</span>
               <StatusBadge status={app.status} />
@@ -276,7 +277,7 @@ function DetailDrawer({
 
           {/* Sign Events Timeline */}
           <div>
-            <p className="text-[9px] uppercase tracking-[0.18em] text-[rgba(255,107,26,0.6)] mb-3">
+            <p className="text-[9px] uppercase tracking-[0.18em] text-orange-dim mb-3">
               Legal Packet Sign Events
             </p>
             {loadingEvents ? (
@@ -323,7 +324,7 @@ function DetailDrawer({
 
           {/* Action buttons repeated */}
           <div>
-            <p className="text-[9px] uppercase tracking-[0.18em] text-[rgba(255,107,26,0.6)] mb-3">
+            <p className="text-[9px] uppercase tracking-[0.18em] text-orange-dim mb-3">
               Actions
             </p>
             <div className="flex flex-wrap gap-2">
@@ -331,7 +332,7 @@ function DetailDrawer({
                 <button
                   onClick={() => onResendLegal(app)}
                   className="h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-                  style={{ background: 'rgba(255,152,0,0.12)', border: '1px solid rgba(255,152,0,0.3)', color: '#ff9800' }}
+                  style={{ background: 'rgba(255,152,0,0.12)', border: '1px solid rgba(255,152,0,0.3)', color: 'var(--q-yellow)' }}
                 >
                   Send Legal
                 </button>
@@ -340,7 +341,7 @@ function DetailDrawer({
                 <button
                   onClick={() => onResendCheckout(app)}
                   className="h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-                  style={{ background: 'rgba(41,182,246,0.1)', border: '1px solid rgba(41,182,246,0.25)', color: '#29b6f6' }}
+                  style={{ background: 'rgba(41,182,246,0.1)', border: '1px solid rgba(41,182,246,0.25)', color: 'var(--color-status-info)' }}
                 >
                   Resend Checkout
                 </button>
@@ -349,7 +350,7 @@ function DetailDrawer({
                 <button
                   onClick={() => onManualProvision(app)}
                   className="h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-                  style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.3)', color: '#ff6b1a' }}
+                  style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.3)', color: 'var(--q-orange)' }}
                 >
                   Manual Provision
                 </button>
@@ -358,7 +359,7 @@ function DetailDrawer({
                 <button
                   onClick={() => onRevoke(app)}
                   className="h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-                  style={{ background: 'rgba(229,57,53,0.12)', border: '1px solid rgba(229,57,53,0.3)', color: '#e53935' }}
+                  style={{ background: 'rgba(229,57,53,0.12)', border: '1px solid rgba(229,57,53,0.3)', color: 'var(--q-red)' }}
                 >
                   Revoke
                 </button>
@@ -532,7 +533,7 @@ export default function OnboardingControlPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white p-5">
+    <div className="min-h-screen bg-bg-void text-text-primary p-5">
       <Toast items={toasts} />
 
       {/* Confirm modal */}
@@ -569,13 +570,13 @@ export default function OnboardingControlPage() {
 
       {/* Page header */}
       <div className="mb-5">
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">
           FOUNDER TOOLS · ONBOARDING
         </div>
-        <h1 className="text-lg font-black uppercase tracking-wider text-white">
+        <h1 className="text-lg font-black uppercase tracking-wider text-text-primary">
           ONBOARDING CONTROL
         </h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">
+        <p className="text-xs text-text-muted mt-0.5">
           Application management · provisioning · legal · status control
         </p>
       </div>
@@ -584,13 +585,13 @@ export default function OnboardingControlPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total Applications', value: stats.total, color: 'rgba(255,255,255,0.85)' },
-          { label: 'Pending Payment', value: stats.pendingPayment, color: '#ff9800' },
-          { label: 'Provisioned', value: stats.provisioned, color: '#4caf50' },
-          { label: 'Revoked', value: stats.revoked, color: '#e53935' },
+          { label: 'Pending Payment', value: stats.pendingPayment, color: 'var(--q-yellow)' },
+          { label: 'Provisioned', value: stats.provisioned, color: 'var(--q-green)' },
+          { label: 'Revoked', value: stats.revoked, color: 'var(--q-red)' },
         ].map((s) => (
           <div
             key={s.label}
-            className="bg-[#0b0f14] border border-[rgba(255,255,255,0.08)] rounded-sm p-3"
+            className="bg-bg-base border border-border-DEFAULT rounded-sm p-3"
           >
             <div className="text-[9px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">
               {s.label}
@@ -607,11 +608,11 @@ export default function OnboardingControlPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)]"
+          className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)]"
           style={{ minWidth: 150 }}
         >
           {STATUS_OPTS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-[#0b0f14]">
+            <option key={o.value} value={o.value} className="bg-bg-base">
               {o.label}
             </option>
           ))}
@@ -620,7 +621,7 @@ export default function OnboardingControlPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by email or agency…"
-          className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)] placeholder:text-[rgba(255,255,255,0.22)]"
+          className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)] placeholder:text-text-disabled"
           style={{ minWidth: 220 }}
         />
         <span className="text-[10px] text-[rgba(255,255,255,0.3)] ml-auto">
@@ -629,7 +630,7 @@ export default function OnboardingControlPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.08)] rounded-sm overflow-x-auto">
+      <div className="bg-bg-base border border-border-DEFAULT rounded-sm overflow-x-auto">
         <table className="w-full text-xs min-w-[860px]">
           <thead>
             <tr className="border-b border-[rgba(255,255,255,0.07)]">
@@ -671,7 +672,7 @@ export default function OnboardingControlPage() {
               apps.map((app) => (
                 <tr
                   key={app.id}
-                  className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+                  className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)] transition-colors"
                 >
                   <td className="py-2.5 px-3 font-medium text-[rgba(255,255,255,0.85)] whitespace-nowrap">
                     {app.agency_name}
@@ -691,7 +692,7 @@ export default function OnboardingControlPage() {
                   <td className="py-2.5 px-3">
                     <LegalBadge legalStatus={app.legal_status} />
                   </td>
-                  <td className="py-2.5 px-3 font-mono text-[rgba(255,255,255,0.38)] whitespace-nowrap">
+                  <td className="py-2.5 px-3 font-mono text-text-muted whitespace-nowrap">
                     {new Date(app.created_at).toLocaleDateString()}
                   </td>
                   <td className="py-2.5 px-3">

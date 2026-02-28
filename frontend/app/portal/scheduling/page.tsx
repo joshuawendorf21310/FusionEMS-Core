@@ -18,7 +18,7 @@ type ViewMode = 'day' | 'week' | 'month';
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
-    <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm px-4 py-3">
+    <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm px-4 py-3">
       <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
       <div className="text-lg font-bold" style={{ color: accent ?? 'white' }}>{value}</div>
       {sub && <div className="text-[10px] text-[rgba(255,255,255,0.35)] mt-0.5">{sub}</div>}
@@ -32,8 +32,8 @@ function WeekView({ weekOffset }: { weekOffset: number }) {
   startOfWeek.setDate(today.getDate() - today.getDay() + weekOffset * 7);
 
   return (
-    <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-      <div className="grid grid-cols-8 border-b border-[rgba(255,255,255,0.06)]">
+    <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+      <div className="grid grid-cols-8 border-b border-border-subtle">
         <div className="px-3 py-2 text-[10px] text-[rgba(255,255,255,0.3)]">Time</div>
         {DAYS.map((day, i) => {
           const d = new Date(startOfWeek);
@@ -41,8 +41,8 @@ function WeekView({ weekOffset }: { weekOffset: number }) {
           const isToday = d.toDateString() === today.toDateString();
           return (
             <div key={day} className={`px-3 py-2 text-center border-l border-[rgba(255,255,255,0.05)] ${isToday ? 'bg-[rgba(255,107,26,0.06)]' : ''}`}>
-              <div className={`text-[10px] uppercase tracking-wider ${isToday ? 'text-[#ff6b1a]' : 'text-[rgba(255,255,255,0.35)]'}`}>{day}</div>
-              <div className={`text-sm font-bold mt-0.5 ${isToday ? 'text-[#ff6b1a]' : 'text-[rgba(255,255,255,0.7)]'}`}>{d.getDate()}</div>
+              <div className={`text-[10px] uppercase tracking-wider ${isToday ? 'text-orange' : 'text-[rgba(255,255,255,0.35)]'}`}>{day}</div>
+              <div className={`text-sm font-bold mt-0.5 ${isToday ? 'text-orange' : 'text-[rgba(255,255,255,0.7)]'}`}>{d.getDate()}</div>
             </div>
           );
         })}
@@ -89,22 +89,22 @@ function CalendarTab() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setWeekOffset((w) => w - 1)}
-            className="h-7 w-7 flex items-center justify-center bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.6)] hover:text-white rounded-sm transition-colors"
+            className="h-7 w-7 flex items-center justify-center bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-[rgba(255,255,255,0.6)] hover:text-text-primary rounded-sm transition-colors"
           >
             ‹
           </button>
-          <span className="text-xs font-medium text-white min-w-[140px] text-center">
+          <span className="text-xs font-medium text-text-primary min-w-[140px] text-center">
             {fmt(startOfWeek)} — {fmt(endOfWeek)}
           </span>
           <button
             onClick={() => setWeekOffset((w) => w + 1)}
-            className="h-7 w-7 flex items-center justify-center bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.6)] hover:text-white rounded-sm transition-colors"
+            className="h-7 w-7 flex items-center justify-center bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-[rgba(255,255,255,0.6)] hover:text-text-primary rounded-sm transition-colors"
           >
             ›
           </button>
           <button
             onClick={() => setWeekOffset(0)}
-            className="h-7 px-3 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-[10px] text-[rgba(255,255,255,0.5)] hover:text-white rounded-sm transition-colors"
+            className="h-7 px-3 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-[10px] text-[rgba(255,255,255,0.5)] hover:text-text-primary rounded-sm transition-colors"
           >
             Today
           </button>
@@ -116,14 +116,14 @@ function CalendarTab() {
               onClick={() => setView(v)}
               className={`h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm border transition-colors ${
                 view === v
-                  ? 'bg-[rgba(255,107,26,0.15)] border-[rgba(255,107,26,0.35)] text-[#ff6b1a]'
-                  : 'bg-[rgba(255,255,255,0.03)] border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.4)] hover:text-white'
+                  ? 'bg-[rgba(255,107,26,0.15)] border-[rgba(255,107,26,0.35)] text-orange'
+                  : 'bg-[rgba(255,255,255,0.03)] border-border-DEFAULT text-[rgba(255,255,255,0.4)] hover:text-text-primary'
               }`}
             >
               {v}
             </button>
           ))}
-          <button className="h-7 px-3 bg-[rgba(255,107,26,0.1)] border border-[rgba(255,107,26,0.25)] text-[10px] font-semibold uppercase tracking-wider text-[#ff6b1a] hover:bg-[rgba(255,107,26,0.18)] transition-colors rounded-sm">
+          <button className="h-7 px-3 bg-[rgba(255,107,26,0.1)] border border-[rgba(255,107,26,0.25)] text-[10px] font-semibold uppercase tracking-wider text-orange hover:bg-[rgba(255,107,26,0.18)] transition-colors rounded-sm">
             + Add Shift
           </button>
         </div>
@@ -131,7 +131,7 @@ function CalendarTab() {
 
       {view === 'week' && <WeekView weekOffset={weekOffset} />}
       {view !== 'week' && (
-        <div className="flex items-center justify-center h-64 bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm text-xs text-[rgba(255,255,255,0.3)]">
+        <div className="flex items-center justify-center h-64 bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm text-xs text-[rgba(255,255,255,0.3)]">
           {view.charAt(0).toUpperCase() + view.slice(1)} view
         </div>
       )}
@@ -158,8 +158,8 @@ function RequestsTab() {
             onClick={() => setFilter(f)}
             className={`h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm border transition-colors ${
               filter === f
-                ? 'bg-[rgba(255,107,26,0.15)] border-[rgba(255,107,26,0.35)] text-[#ff6b1a]'
-                : 'bg-[rgba(255,255,255,0.03)] border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.4)] hover:text-white'
+                ? 'bg-[rgba(255,107,26,0.15)] border-[rgba(255,107,26,0.35)] text-orange'
+                : 'bg-[rgba(255,255,255,0.03)] border-border-DEFAULT text-[rgba(255,255,255,0.4)] hover:text-text-primary'
             }`}
           >
             {f === 'all' ? 'All' : f === 'timeoff' ? 'Time Off' : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -167,8 +167,8 @@ function RequestsTab() {
         ))}
       </div>
 
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Crew Member</span><span>Type</span><span>Date / Shift</span><span>Reason</span><span>Submitted</span><span>Action</span>
         </div>
         <div className="flex flex-col items-center justify-center py-16">
@@ -190,7 +190,7 @@ function CoverageTab() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
+        <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
           <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-3">Coverage by Day</div>
           <div className="space-y-2">
             {DAYS.map((day) => (
@@ -205,7 +205,7 @@ function CoverageTab() {
           </div>
         </div>
 
-        <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
+        <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
           <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-3">Overtime & Fatigue Risk</div>
           <div className="flex flex-col items-center justify-center h-40 text-xs text-[rgba(255,255,255,0.3)]">
             No fatigue flags this week
@@ -224,7 +224,7 @@ function AiDraftsTab() {
           <div className="text-xs text-[rgba(255,255,255,0.6)] mb-0.5">AI-generated schedule drafts — review and approve before publishing</div>
           <div className="text-[10px] text-[rgba(255,255,255,0.3)]">Drafts generated by GPT-4o-mini require human approval. What-if simulation is CPU-only.</div>
         </div>
-        <button className="h-7 px-3 bg-[rgba(255,107,26,0.1)] border border-[rgba(255,107,26,0.25)] text-[10px] font-semibold uppercase tracking-wider text-[#ff6b1a] hover:bg-[rgba(255,107,26,0.18)] transition-colors rounded-sm">
+        <button className="h-7 px-3 bg-[rgba(255,107,26,0.1)] border border-[rgba(255,107,26,0.25)] text-[10px] font-semibold uppercase tracking-wider text-orange hover:bg-[rgba(255,107,26,0.18)] transition-colors rounded-sm">
           Generate Draft
         </button>
       </div>
@@ -235,8 +235,8 @@ function AiDraftsTab() {
         <StatCard label="AI Draft Accuracy" value="—" />
       </div>
 
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden mb-4">
-        <div className="grid grid-cols-6 px-4 py-2 border-b border-[rgba(255,255,255,0.06)] text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm overflow-hidden mb-4">
+        <div className="grid grid-cols-6 px-4 py-2 border-b border-border-subtle text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)]">
           <span>Draft ID</span><span>Horizon</span><span>Generated</span><span>Shifts</span><span>Status</span><span>Action</span>
         </div>
         <div className="flex flex-col items-center justify-center py-14">
@@ -244,7 +244,7 @@ function AiDraftsTab() {
         </div>
       </div>
 
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
+      <div className="bg-bg-base border border-[rgba(255,255,255,0.07)] rounded-sm p-4">
         <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-2">What-If Simulation</div>
         <div className="text-xs text-[rgba(255,255,255,0.5)] mb-3">CPU-only scenario simulation — predict coverage impact before committing changes.</div>
         <div className="grid grid-cols-3 gap-3">
@@ -255,7 +255,7 @@ function AiDraftsTab() {
           ].map((scenario) => (
             <button
               key={scenario.label}
-              className="text-left px-3 py-2.5 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] rounded-sm hover:border-[rgba(255,107,26,0.3)] transition-colors"
+              className="text-left px-3 py-2.5 bg-[rgba(255,255,255,0.03)] border border-border-DEFAULT rounded-sm hover:border-[rgba(255,107,26,0.3)] transition-colors"
             >
               <div className="text-[11px] font-medium text-[rgba(255,255,255,0.8)] mb-0.5">{scenario.label}</div>
               <div className="text-[10px] text-[rgba(255,255,255,0.4)]">{scenario.desc}</div>
@@ -281,22 +281,22 @@ export default function SchedulingPage() {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-6">
         <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Agency Portal</div>
-        <h1 className="text-xl font-bold text-white">Scheduling</h1>
+        <h1 className="text-xl font-bold text-text-primary">Scheduling</h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Shift calendar, swap/trade/time-off requests, coverage monitoring, and AI-assisted drafts</p>
       </div>
 
-      <div className="flex gap-0 mb-6 border-b border-[rgba(255,255,255,0.08)]">
+      <div className="flex gap-0 mb-6 border-b border-border-DEFAULT">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`relative px-4 py-2.5 text-xs font-medium transition-colors ${
-              activeTab === tab.id ? 'text-white' : 'text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.7)]'
+              activeTab === tab.id ? 'text-text-primary' : 'text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.7)]'
             }`}
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff6b1a]" />
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-orange" />
             )}
           </button>
         ))}

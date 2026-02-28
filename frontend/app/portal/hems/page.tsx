@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -67,9 +68,9 @@ function useToast() {
 const READINESS_STATES: ReadinessState[] = ['ready', 'limited', 'no_go', 'maintenance_hold'];
 
 const READINESS_STYLE: Record<ReadinessState, { label: string; color: string; bg: string }> = {
-  ready:            { label: 'READY',            color: '#4caf50', bg: 'rgba(76,175,80,0.12)' },
-  limited:          { label: 'LIMITED',          color: '#ff9800', bg: 'rgba(255,152,0,0.12)' },
-  no_go:            { label: 'NO-GO',            color: '#e53935', bg: 'rgba(229,57,53,0.12)' },
+  ready:            { label: 'READY',            color: 'var(--q-green)', bg: 'rgba(76,175,80,0.12)' },
+  limited:          { label: 'LIMITED',          color: 'var(--q-yellow)', bg: 'rgba(255,152,0,0.12)' },
+  no_go:            { label: 'NO-GO',            color: 'var(--q-red)', bg: 'rgba(229,57,53,0.12)' },
   maintenance_hold: { label: 'MAINTENANCE HOLD', color: '#9e9e9e', bg: 'rgba(158,158,158,0.12)' },
 };
 
@@ -356,12 +357,12 @@ export default function HemsPage() {
   const score = riskScore();
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white" style={{ fontFamily: 'inherit' }}>
+    <div className="min-h-screen bg-bg-void text-text-primary" style={{ fontFamily: 'inherit' }}>
       <Toast items={toasts} />
 
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-        <h1 className="text-sm font-semibold tracking-wide text-white">HEMS Pilot Portal</h1>
+        <h1 className="text-sm font-semibold tracking-wide text-text-primary">HEMS Pilot Portal</h1>
         <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
           Helicopter Emergency Medical Services — Mission Acceptance &amp; Safety
         </p>
@@ -379,7 +380,7 @@ export default function HemsPage() {
             <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
               <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Aircraft ID</label>
               <input
-                className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                 style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                 placeholder="e.g. N123HM"
                 value={aircraftId}
@@ -389,7 +390,7 @@ export default function HemsPage() {
             <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
               <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Mission ID</label>
               <input
-                className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                 style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                 placeholder="e.g. MSN-0001"
                 value={missionId}
@@ -419,7 +420,7 @@ export default function HemsPage() {
             <div className="flex flex-col gap-1">
               <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>New State</label>
               <select
-                className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                 style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                 value={newReadiness}
                 onChange={(e) => setNewReadiness(e.target.value as ReadinessState)}
@@ -432,7 +433,7 @@ export default function HemsPage() {
             <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
               <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Reason</label>
               <input
-                className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                 style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                 placeholder="Optional reason"
                 value={readinessReason}
@@ -555,7 +556,7 @@ export default function HemsPage() {
                 <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</label>
                 <input
                   type={type}
-                  className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                  className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                   style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                   value={wx[key] as string}
                   onChange={(e) => setWx((prev) => ({ ...prev, [key]: e.target.value }))}
@@ -566,7 +567,7 @@ export default function HemsPage() {
             <div className="flex flex-col gap-1">
               <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Turbulence</label>
               <select
-                className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                 style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                 value={wx.turbulence}
                 onChange={(e) => setWx((prev) => ({ ...prev, turbulence: e.target.value as TurbulenceLevel }))}
@@ -581,7 +582,7 @@ export default function HemsPage() {
             <div className="flex flex-col gap-1">
               <label className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Go / No-Go</label>
               <select
-                className="bg-[#07090d] rounded-sm px-2.5 py-1.5 text-xs text-white outline-none"
+                className="bg-bg-void rounded-sm px-2.5 py-1.5 text-xs text-text-primary outline-none"
                 style={{ border: '1px solid rgba(255,255,255,0.12)' }}
                 value={wx.go_no_go}
                 onChange={(e) => setWx((prev) => ({ ...prev, go_no_go: e.target.value as GoNoGo }))}
@@ -636,7 +637,7 @@ export default function HemsPage() {
               onClick={fetchTimeline}
               disabled={timelineBusy}
               className="px-3 py-1 text-xs font-semibold rounded-sm disabled:opacity-40 transition-opacity"
-              style={{ background: 'rgba(255,107,26,0.15)', color: '#ff6b1a', border: '1px solid rgba(255,107,26,0.3)' }}
+              style={{ background: 'rgba(255,107,26,0.15)', color: 'var(--q-orange)', border: '1px solid rgba(255,107,26,0.3)' }}
             >
               {timelineBusy ? 'Loading...' : 'Fetch Timeline'}
             </button>

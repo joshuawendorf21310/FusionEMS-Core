@@ -7,9 +7,9 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
-    <div className="border-b border-[rgba(255,255,255,0.06)] pb-2 mb-4">
+    <div className="border-b border-border-subtle pb-2 mb-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[10px] font-bold text-[rgba(255,107,26,0.6)] font-mono">MODULE {number}</span>
+        <span className="text-[10px] font-bold text-orange-dim font-mono">MODULE {number}</span>
         <h2 className="text-sm font-bold uppercase tracking-widest text-[rgba(255,255,255,0.85)]">{title}</h2>
         {sub && <span className="text-xs text-[rgba(255,255,255,0.35)]">{sub}</span>}
       </div>
@@ -33,7 +33,7 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4"
+      className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
@@ -46,7 +46,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 ${className ?? ''}`}
+      className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
@@ -137,14 +137,14 @@ const OPTIMIZATIONS = [
 
 export default function InfraCostPage() {
   return (
-    <div className="min-h-screen bg-[#060d14] text-white p-6 space-y-8">
+    <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <div className="text-[10px] font-bold font-mono text-[rgba(255,107,26,0.6)] uppercase tracking-widest mb-1">
+          <div className="text-[10px] font-bold font-mono text-orange-dim uppercase tracking-widest mb-1">
             MODULE 10 · INFRASTRUCTURE
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Infrastructure Cost Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary">Infrastructure Cost Dashboard</h1>
           <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">
             AWS spend · service breakdown · budget tracking · optimization
           </p>
@@ -182,7 +182,7 @@ export default function InfraCostPage() {
               </thead>
               <tbody>
                 {SERVICES.map((svc) => (
-                  <tr key={svc.name} className="border-t border-[rgba(255,255,255,0.04)]">
+                  <tr key={svc.name} className="border-t border-border-subtle">
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.8)]">{svc.name}</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.7)]">${svc.mtd}</td>
                     <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{svc.pct}</td>
@@ -226,7 +226,7 @@ export default function InfraCostPage() {
                   <div className="text-xs text-[rgba(255,255,255,0.75)]">RDS Reserved</div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">1-year reserved instance active</div>
                 </div>
-                <span className="text-sm font-bold text-[#4caf50]">-$85/mo</span>
+                <span className="text-sm font-bold text-status-active">-$85/mo</span>
               </div>
               <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 flex justify-between items-start">
                 <div>
@@ -245,14 +245,14 @@ export default function InfraCostPage() {
                   <div className="text-xs text-[rgba(255,255,255,0.75)]">Full RDS Reservation</div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">Reserve remaining on-demand instances</div>
                 </div>
-                <span className="text-sm font-bold text-[#ff9800]">+$42/mo</span>
+                <span className="text-sm font-bold text-status-warning">+$42/mo</span>
               </div>
               <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 flex justify-between items-start">
                 <div>
                   <div className="text-xs text-[rgba(255,255,255,0.75)]">Fargate Savings Plan</div>
                   <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">Commit to hourly compute spend</div>
                 </div>
-                <span className="text-sm font-bold text-[#ff9800]">+$100/mo</span>
+                <span className="text-sm font-bold text-status-warning">+$100/mo</span>
               </div>
             </div>
           </Panel>
@@ -265,9 +265,9 @@ export default function InfraCostPage() {
         <Panel>
           <div className="space-y-3">
             {ALERTS.map((alert, i) => (
-              <div key={i} className="flex items-center gap-3 py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0">
+              <div key={i} className="flex items-center gap-3 py-2 border-b border-border-subtle last:border-0">
                 <Badge label={alert.status} status={alert.status} />
-                <span className="text-xs text-[rgba(255,255,255,0.65)]">{alert.text}</span>
+                <span className="text-xs text-text-secondary">{alert.text}</span>
               </div>
             ))}
           </div>
@@ -290,7 +290,7 @@ export default function InfraCostPage() {
               </thead>
               <tbody>
                 {TENANTS.map((t) => (
-                  <tr key={t.name} className="border-t border-[rgba(255,255,255,0.04)]">
+                  <tr key={t.name} className="border-t border-border-subtle">
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.7)]">{t.name}</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.55)]">{t.exports}</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.55)]">{t.compute}</td>
@@ -313,7 +313,7 @@ export default function InfraCostPage() {
               <div className="text-[11px] text-[rgba(255,255,255,0.45)] mb-3 leading-relaxed">{opt.desc}</div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.3)]">Est. Saving</span>
-                <span className="text-xs font-bold text-[#4caf50]">{opt.saving}</span>
+                <span className="text-xs font-bold text-status-active">{opt.saving}</span>
               </div>
             </Panel>
           ))}
@@ -322,7 +322,7 @@ export default function InfraCostPage() {
 
       {/* Back */}
       <div>
-        <Link href="/founder" className="text-xs text-[#94a3b8] hover:text-white transition-colors">
+        <Link href="/founder" className="text-xs text-system-cad hover:text-text-primary transition-colors">
           ← Back to Founder OS
         </Link>
       </div>

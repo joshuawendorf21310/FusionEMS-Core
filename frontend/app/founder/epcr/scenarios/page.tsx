@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface Scenario {
@@ -88,13 +89,13 @@ export default function ScenariosPage() {
   };
 
   return (
-    <div className="p-5 space-y-6 min-h-screen bg-[#090e14]">
+    <div className="p-5 space-y-6 min-h-screen bg-bg-void">
       <div>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(34,211,238,0.6)] mb-1">
           ePCR · TEST SCENARIOS
         </div>
-        <h1 className="text-xl font-black uppercase tracking-wider text-white">Test Scenarios</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">C&amp;S vendor test case browser and runner</p>
+        <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Test Scenarios</h1>
+        <p className="text-xs text-text-muted mt-0.5">C&amp;S vendor test case browser and runner</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -107,7 +108,7 @@ export default function ScenariosPage() {
         />
         <button
           onClick={() => uploadRef.current?.click()}
-          className="bg-[#0f1720] border border-[rgba(34,211,238,0.3)] text-[#22d3ee] text-xs px-4 py-2 hover:bg-[rgba(34,211,238,0.08)] transition-colors"
+          className="bg-bg-panel border border-[rgba(34,211,238,0.3)] text-system-billing text-xs px-4 py-2 hover:bg-[rgba(34,211,238,0.08)] transition-colors"
         >
           Upload Scenario File
         </button>
@@ -115,7 +116,7 @@ export default function ScenariosPage() {
       </div>
 
       {loading ? (
-        <div className="text-xs text-[rgba(255,255,255,0.3)]">Loading scenarios...</div>
+        <div className="p-6"><QuantumTableSkeleton rows={6} cols={4} /></div>
       ) : scenarios.length === 0 ? (
         <div className="text-xs text-[rgba(255,255,255,0.3)]">No scenarios uploaded yet</div>
       ) : (
@@ -127,12 +128,12 @@ export default function ScenariosPage() {
             return (
               <div
                 key={scenario.id}
-                className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4 space-y-3"
+                className="bg-bg-panel border border-border-DEFAULT p-4 space-y-3"
                 style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="text-sm font-bold text-white">{d.name || 'Untitled Scenario'}</div>
+                    <div className="text-sm font-bold text-text-primary">{d.name || 'Untitled Scenario'}</div>
                     {d.summary && (
                       <div className="text-xs text-[rgba(255,255,255,0.45)] mt-0.5">{d.summary}</div>
                     )}
@@ -154,7 +155,7 @@ export default function ScenariosPage() {
                 {d.sections && d.sections.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {d.sections.map((s: string, i: number) => (
-                      <span key={i} className="text-[10px] bg-[#0a1018] border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] px-2 py-0.5">
+                      <span key={i} className="text-[10px] bg-bg-input border border-border-DEFAULT text-[rgba(255,255,255,0.5)] px-2 py-0.5">
                         {s}
                       </span>
                     ))}
@@ -165,11 +166,11 @@ export default function ScenariosPage() {
                   <button
                     onClick={() => runScenario(scenario.id)}
                     disabled={isRunning}
-                    className="text-xs bg-[#22d3ee] text-[#090e14] font-bold px-4 py-1.5 hover:bg-[#06b6d4] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="text-xs bg-system-billing text-text-inverse font-bold px-4 py-1.5 hover:bg-system-billing disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {isRunning ? (
                       <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-3 h-3 border-2 border-[#090e14] border-t-transparent rounded-full animate-spin" />
+                        <span className="inline-block w-3 h-3 border-2 border-bg-void border-t-transparent rounded-full animate-spin" />
                         Running...
                       </span>
                     ) : (
@@ -199,7 +200,7 @@ export default function ScenariosPage() {
       )}
 
       <div className="pt-2">
-        <a href="/founder/epcr" className="text-xs text-[rgba(34,211,238,0.6)] hover:text-[#22d3ee]">
+        <a href="/founder/epcr" className="text-xs text-[rgba(34,211,238,0.6)] hover:text-system-billing">
           ← Back to ePCR
         </a>
       </div>

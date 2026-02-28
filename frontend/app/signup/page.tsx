@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const PLANS = [
-  { code: 'SCHEDULING_ONLY', label: 'Scheduling Only', desc: 'Calendar, shifts, crew, bids, scheduling PWA', price: 'from $199/mo', color: '#29b6f6' },
-  { code: 'OPS_CORE', label: 'Ops Core', desc: 'TransportLink + CAD + CrewLink + Scheduling', price: 'Contact us', color: '#4caf50' },
+  { code: 'SCHEDULING_ONLY', label: 'Scheduling Only', desc: 'Calendar, shifts, crew, bids, scheduling PWA', price: 'from $199/mo', color: 'var(--color-status-info)' },
+  { code: 'OPS_CORE', label: 'Ops Core', desc: 'TransportLink + CAD + CrewLink + Scheduling', price: 'Contact us', color: 'var(--q-green)' },
   { code: 'CLINICAL_CORE', label: 'Clinical Core', desc: 'ePCR + NEMSIS/WI validation + Scheduling', price: 'Contact us', color: '#a855f7' },
-  { code: 'FULL_STACK', label: 'Full Stack', desc: 'Everything — Ops + Clinical + HEMS + NERIS', price: 'Contact us', color: '#ff6b1a' },
+  { code: 'FULL_STACK', label: 'Full Stack', desc: 'Everything — Ops + Clinical + HEMS + NERIS', price: 'Contact us', color: 'var(--q-orange)' },
 ];
 
 const SCHEDULING_TIERS = [
@@ -41,8 +41,8 @@ const COLLECTIONS_MODES = [
 const US_STATES = ['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
 const AGENCY_TYPES = ['EMS', 'Fire EMS', 'Fire Dept', 'Air Medical', 'Transport'];
 
-const inputCls = 'bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] px-3 py-2 text-sm text-white placeholder-[rgba(255,255,255,0.3)] focus:outline-none focus:border-[#ff6b1a] rounded-sm w-full';
-const selectCls = 'bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff6b1a] rounded-sm w-full appearance-none';
+const inputCls = 'bg-[rgba(255,255,255,0.05)] border border-border-DEFAULT px-3 py-2 text-sm text-text-primary placeholder-[rgba(255,255,255,0.3)] focus:outline-none focus:border-orange rounded-sm w-full';
+const selectCls = 'bg-[rgba(255,255,255,0.05)] border border-border-DEFAULT px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-orange rounded-sm w-full appearance-none';
 const labelCls = 'block text-xs font-semibold mb-1.5 uppercase tracking-wider text-[rgba(255,255,255,0.55)]';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -111,10 +111,10 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white flex flex-col items-center py-12 px-4">
+    <div className="min-h-screen bg-bg-void text-text-primary flex flex-col items-center py-12 px-4">
       <div className="w-full max-w-3xl">
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-9 h-9 bg-[#ff6b1a] flex items-center justify-center text-sm font-black text-black" style={{ clipPath: 'polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%)' }}>FQ</div>
+          <div className="w-9 h-9 bg-orange flex items-center justify-center text-sm font-black text-text-inverse" style={{ clipPath: 'polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%)' }}>FQ</div>
           <div>
             <div className="text-lg font-bold tracking-wide">QuantumEMS</div>
             <div className="text-xs text-[rgba(255,255,255,0.4)]">Agency Signup</div>
@@ -124,8 +124,8 @@ export default function SignupPage() {
         <div className="flex gap-2 mb-10">
           {(['Plan','Addons','Collections','Agency Info','Review'] as const).map((label, i) => (
             <div key={label} className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === i+1 ? 'bg-[#ff6b1a] text-black' : step > i+1 ? 'bg-[#4caf50] text-black' : 'bg-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.4)]'}`}>{i+1}</div>
-              <span className={`text-xs hidden sm:block ${step === i+1 ? 'text-white font-semibold' : 'text-[rgba(255,255,255,0.35)]'}`}>{label}</span>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === i+1 ? 'bg-orange text-text-inverse' : step > i+1 ? 'bg-status-active text-text-inverse' : 'bg-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.4)]'}`}>{i+1}</div>
+              <span className={`text-xs hidden sm:block ${step === i+1 ? 'text-text-primary font-semibold' : 'text-[rgba(255,255,255,0.35)]'}`}>{label}</span>
               {i < 4 && <span className="text-[rgba(255,255,255,0.15)] text-xs">›</span>}
             </div>
           ))}
@@ -138,7 +138,7 @@ export default function SignupPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
               {PLANS.map(p => (
                 <button key={p.code} onClick={() => { setPlan(p.code); setTier(''); }}
-                  className={`text-left p-4 rounded-sm border transition-all ${plan === p.code ? 'border-[#ff6b1a] bg-[rgba(255,107,26,0.08)]' : 'border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]'}`}>
+                  className={`text-left p-4 rounded-sm border transition-all ${plan === p.code ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT hover:border-[rgba(255,255,255,0.2)]'}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
                     <span className="font-semibold text-sm">{p.label}</span>
@@ -154,9 +154,9 @@ export default function SignupPage() {
                 <div className="grid grid-cols-3 gap-2">
                   {SCHEDULING_TIERS.map(t => (
                     <button key={t.code} onClick={() => setTier(t.code)}
-                      className={`p-3 rounded-sm border text-left transition-all ${tier === t.code ? 'border-[#ff6b1a] bg-[rgba(255,107,26,0.08)]' : 'border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]'}`}>
+                      className={`p-3 rounded-sm border text-left transition-all ${tier === t.code ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT hover:border-[rgba(255,255,255,0.2)]'}`}>
                       <div className="text-xs font-semibold">{t.label}</div>
-                      <div className="text-xs text-[#ff6b1a] font-bold mt-1">{t.price}</div>
+                      <div className="text-xs text-orange font-bold mt-1">{t.price}</div>
                     </button>
                   ))}
                 </div>
@@ -169,7 +169,7 @@ export default function SignupPage() {
               </label>
             </div>
             <button disabled={!canProceed1} onClick={() => setStep(2)}
-              className="w-full py-3 bg-[#ff6b1a] text-black text-sm font-bold rounded-sm disabled:opacity-40 hover:bg-[#ff8533] transition-colors">
+              className="w-full py-3 bg-orange text-text-inverse text-sm font-bold rounded-sm disabled:opacity-40 hover:bg-orange-bright transition-colors">
               Continue to Add-ons
             </button>
           </div>
@@ -181,37 +181,37 @@ export default function SignupPage() {
             <p className="text-sm text-[rgba(255,255,255,0.45)] mb-6">Add capabilities to your plan.</p>
             <div className="space-y-2 mb-6">
               {ADDONS.filter(a => !a.gov_only || isGovEntity).map(a => (
-                <label key={a.code} className={`flex items-center justify-between p-4 rounded-sm border cursor-pointer transition-all ${addons.includes(a.code) ? 'border-[#ff6b1a] bg-[rgba(255,107,26,0.08)]' : 'border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)]'}`}>
+                <label key={a.code} className={`flex items-center justify-between p-4 rounded-sm border cursor-pointer transition-all ${addons.includes(a.code) ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT hover:border-border-strong'}`}>
                   <div className="flex items-center gap-3">
                     <input type="checkbox" checked={addons.includes(a.code)} onChange={() => toggleAddon(a.code)} className="w-4 h-4 accent-[#ff6b1a]" />
                     <div>
                       <div className="text-sm font-semibold">{a.label}</div>
-                      {a.gov_only && <div className="text-xs text-[#f59e0b]">Government agencies only</div>}
+                      {a.gov_only && <div className="text-xs text-status-warning">Government agencies only</div>}
                     </div>
                   </div>
-                  <div className="text-xs text-[#ff6b1a] font-bold">{a.price}</div>
+                  <div className="text-xs text-orange font-bold">{a.price}</div>
                 </label>
               ))}
             </div>
             {addons.includes('BILLING_AUTOMATION') && (
-              <div className="mb-6 p-4 border border-[rgba(255,255,255,0.08)] rounded-sm">
+              <div className="mb-6 p-4 border border-border-DEFAULT rounded-sm">
                 <div className={labelCls}>Billing Automation tier</div>
                 <div className="space-y-2">
                   {BILLING_TIERS.map(t => (
-                    <label key={t.code} className={`flex items-center justify-between p-3 rounded-sm border cursor-pointer ${billingTier === t.code ? 'border-[#ff6b1a]' : 'border-[rgba(255,255,255,0.06)]'}`}>
+                    <label key={t.code} className={`flex items-center justify-between p-3 rounded-sm border cursor-pointer ${billingTier === t.code ? 'border-orange' : 'border-border-subtle'}`}>
                       <div className="flex items-center gap-2">
                         <input type="radio" checked={billingTier === t.code} onChange={() => setBillingTier(t.code)} className="accent-[#ff6b1a]" />
                         <span className="text-xs">{t.label}</span>
                       </div>
-                      <span className="text-xs text-[#ff6b1a] font-bold">{t.base} {t.per_claim}</span>
+                      <span className="text-xs text-orange font-bold">{t.base} {t.per_claim}</span>
                     </label>
                   ))}
                 </div>
               </div>
             )}
             <div className="flex gap-3">
-              <button onClick={() => setStep(1)} className="flex-1 py-3 border border-[rgba(255,255,255,0.15)] text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
-              <button onClick={() => setStep(3)} className="flex-1 py-3 bg-[#ff6b1a] text-black text-sm font-bold rounded-sm hover:bg-[#ff8533]">Continue</button>
+              <button onClick={() => setStep(1)} className="flex-1 py-3 border border-border-strong text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
+              <button onClick={() => setStep(3)} className="flex-1 py-3 bg-orange text-text-inverse text-sm font-bold rounded-sm hover:bg-orange-bright">Continue</button>
             </div>
           </div>
         )}
@@ -222,14 +222,14 @@ export default function SignupPage() {
             <p className="text-sm text-[rgba(255,255,255,0.45)] mb-6">How do you want to handle patient responsibility balances?</p>
             <div className="space-y-2 mb-6">
               {COLLECTIONS_MODES.map(m => (
-                <label key={m.code} className={`flex items-center gap-3 p-4 rounded-sm border cursor-pointer transition-all ${collectionsMode === m.code ? 'border-[#ff6b1a] bg-[rgba(255,107,26,0.08)]' : 'border-[rgba(255,255,255,0.08)]'}`}>
+                <label key={m.code} className={`flex items-center gap-3 p-4 rounded-sm border cursor-pointer transition-all ${collectionsMode === m.code ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT'}`}>
                   <input type="radio" checked={collectionsMode === m.code} onChange={() => setCollectionsMode(m.code)} className="accent-[#ff6b1a]" />
                   <span className="text-sm">{m.label}</span>
                 </label>
               ))}
             </div>
             {collectionsMode !== 'none' && (
-              <div className="mb-6 p-4 border border-[rgba(255,255,255,0.08)] rounded-sm space-y-4">
+              <div className="mb-6 p-4 border border-border-DEFAULT rounded-sm space-y-4">
                 <div>
                   <div className={labelCls}>Statement delivery channels</div>
                   <div className="flex gap-4">
@@ -260,8 +260,8 @@ export default function SignupPage() {
               </div>
             )}
             <div className="flex gap-3">
-              <button onClick={() => setStep(2)} className="flex-1 py-3 border border-[rgba(255,255,255,0.15)] text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
-              <button onClick={() => setStep(4)} className="flex-1 py-3 bg-[#ff6b1a] text-black text-sm font-bold rounded-sm hover:bg-[#ff8533]">Continue</button>
+              <button onClick={() => setStep(2)} className="flex-1 py-3 border border-border-strong text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
+              <button onClick={() => setStep(4)} className="flex-1 py-3 bg-orange text-text-inverse text-sm font-bold rounded-sm hover:bg-orange-bright">Continue</button>
             </div>
           </div>
         )}
@@ -306,8 +306,8 @@ export default function SignupPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep(3)} className="flex-1 py-3 border border-[rgba(255,255,255,0.15)] text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
-              <button disabled={!canProceed4} onClick={() => setStep(5)} className="flex-1 py-3 bg-[#ff6b1a] text-black text-sm font-bold rounded-sm disabled:opacity-40 hover:bg-[#ff8533]">Review & Continue</button>
+              <button onClick={() => setStep(3)} className="flex-1 py-3 border border-border-strong text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
+              <button disabled={!canProceed4} onClick={() => setStep(5)} className="flex-1 py-3 bg-orange text-text-inverse text-sm font-bold rounded-sm disabled:opacity-40 hover:bg-orange-bright">Review & Continue</button>
             </div>
           </div>
         )}
@@ -326,16 +326,16 @@ export default function SignupPage() {
                 { label: 'Agency', value: `${agencyName} (${agencyType}, ${state})` },
                 { label: 'Contact', value: `${firstName} ${lastName} · ${email}` },
               ].map(row => (
-                <div key={row.label} className="flex justify-between py-2 border-b border-[rgba(255,255,255,0.06)] text-sm">
+                <div key={row.label} className="flex justify-between py-2 border-b border-border-subtle text-sm">
                   <span className="text-[rgba(255,255,255,0.5)]">{row.label}</span>
                   <span className="font-semibold">{row.value}</span>
                 </div>
               ))}
             </div>
-            {error && <div className="mb-4 p-3 bg-[rgba(229,57,53,0.12)] border border-[rgba(229,57,53,0.3)] text-[#e53935] text-sm rounded-sm">{error}</div>}
+            {error && <div className="mb-4 p-3 bg-[rgba(229,57,53,0.12)] border border-red-ghost text-red text-sm rounded-sm">{error}</div>}
             <div className="flex gap-3">
-              <button onClick={() => setStep(4)} className="flex-1 py-3 border border-[rgba(255,255,255,0.15)] text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
-              <button disabled={loading} onClick={submit} className="flex-1 py-3 bg-[#ff6b1a] text-black text-sm font-bold rounded-sm disabled:opacity-50 hover:bg-[#ff8533]">
+              <button onClick={() => setStep(4)} className="flex-1 py-3 border border-border-strong text-sm font-bold rounded-sm hover:bg-[rgba(255,255,255,0.05)]">Back</button>
+              <button disabled={loading} onClick={submit} className="flex-1 py-3 bg-orange text-text-inverse text-sm font-bold rounded-sm disabled:opacity-50 hover:bg-orange-bright">
                 {loading ? 'Submitting...' : 'Continue to Legal Signing'}
               </button>
             </div>

@@ -1,23 +1,36 @@
 'use client';
 import Link from 'next/link';
+import { QuantumEmptyState } from '@/components/ui';
 
 export default function RoleBuilderPage() {
   return (
     <div className="p-5 min-h-screen">
       <div className="hud-rail pb-3 mb-6">
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">6 · VISIBILITY & SECURITY</div>
-        <h1 className="text-lg font-black uppercase tracking-wider text-white">Role-Based Access Rule Builder</h1>
-        <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">Permission matrix · Role definitions · JWT claim policy</p>
+        <div className="micro-caps mb-1">Security</div>
+        <h1 className="text-h2 font-bold text-text-primary">Role Builder</h1>
+        <p className="text-body text-text-muted mt-1">Create and manage custom roles with granular permission assignments.</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        {['Configuration', 'Analytics', 'Audit Log'].map((f) => (
-          <div key={f} className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}>
-            <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-2">{f}</div>
-            <div className="h-16 flex items-center justify-center text-[rgba(255,255,255,0.2)] text-xs">Module panel · coming next release</div>
-          </div>
-        ))}
+      <div className="bg-bg-panel border border-border-DEFAULT chamfer-8 shadow-elevation-1">
+        <QuantumEmptyState
+          title="Not Yet Configured"
+          description="This module is scheduled for an upcoming release. Contact your account manager for early access."
+          icon={
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="6" y="10" width="36" height="28" rx="2" />
+              <path d="M6 18h36M16 10V6M32 10V6" />
+              <circle cx="24" cy="30" r="4" />
+            </svg>
+          }
+          action={
+            <Link
+              href="/founder"
+              className="inline-flex items-center gap-2 px-4 py-2 text-label font-label uppercase tracking-[var(--tracking-label)] text-orange hover:text-orange-bright transition-colors duration-fast"
+            >
+              &larr; Back to Command Center
+            </Link>
+          }
+        />
       </div>
-      <Link href="/founder" className="text-xs text-[rgba(255,107,26,0.6)] hover:text-[#ff6b1a]">← Back to Founder Command OS</Link>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import React, {
   useState,
@@ -224,9 +225,9 @@ function ExpandedRow({
 }) {
   const json = JSON.stringify(event.payload, null, 2);
   return (
-    <tr className="bg-[#0b0f14]">
+    <tr className="bg-bg-base">
       <td colSpan={colSpan} className="px-6 py-4">
-        <pre className="text-xs text-[#22d3ee] bg-[#07090d] border border-[rgba(255,255,255,0.08)] rounded-sm p-4 overflow-x-auto whitespace-pre-wrap break-words">
+        <pre className="text-xs text-system-billing bg-bg-void border border-border-DEFAULT rounded-sm p-4 overflow-x-auto whitespace-pre-wrap break-words">
           {json}
         </pre>
       </td>
@@ -387,10 +388,10 @@ export default function EventsFeedPage() {
     >
       {/* ── Page header ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-4">
-        <h1 className="text-sm font-semibold tracking-widest uppercase text-white">
+        <h1 className="text-sm font-semibold tracking-widest uppercase text-text-primary">
           Platform Events Feed
           {unreadCount > 0 && (
-            <span className="ml-2 text-[#ff6b1a]">({unreadCount} unread)</span>
+            <span className="ml-2 text-orange">({unreadCount} unread)</span>
           )}
         </h1>
         <div className="ml-auto flex items-center gap-3 flex-wrap">
@@ -399,8 +400,8 @@ export default function EventsFeedPage() {
             onClick={() => setAutoRefresh((v) => !v)}
             className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${
               autoRefresh
-                ? 'border-[rgba(76,175,80,0.4)] text-[#4caf50] bg-[rgba(76,175,80,0.08)]'
-                : 'border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.4)]'
+                ? 'border-[rgba(76,175,80,0.4)] text-status-active bg-[rgba(76,175,80,0.08)]'
+                : 'border-border-DEFAULT text-[rgba(255,255,255,0.4)]'
             }`}
           >
             {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
@@ -408,7 +409,7 @@ export default function EventsFeedPage() {
           {/* Mark all read */}
           <button
             onClick={markAllRead}
-            className="text-xs px-3 py-1.5 rounded-sm border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+            className="text-xs px-3 py-1.5 rounded-sm border border-border-DEFAULT text-[rgba(255,255,255,0.5)] hover:text-text-primary hover:border-[rgba(255,255,255,0.2)] transition-colors"
           >
             Mark all read
           </button>
@@ -427,8 +428,8 @@ export default function EventsFeedPage() {
                 onClick={() => setFilter(pill.value)}
                 className={`text-xs px-3 py-1 rounded-sm border transition-colors font-mono ${
                   active
-                    ? 'border-[rgba(255,107,26,0.5)] text-[#ff6b1a] bg-[rgba(255,107,26,0.1)]'
-                    : 'border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.4)] hover:text-white hover:border-[rgba(255,255,255,0.2)]'
+                    ? 'border-[rgba(255,107,26,0.5)] text-orange bg-[rgba(255,107,26,0.1)]'
+                    : 'border-border-DEFAULT text-[rgba(255,255,255,0.4)] hover:text-text-primary hover:border-[rgba(255,255,255,0.2)]'
                 }`}
               >
                 {pill.label}
@@ -450,8 +451,8 @@ export default function EventsFeedPage() {
                 onClick={() => setDateRange(opt.value)}
                 className={`text-xs px-3 py-1 rounded-sm border transition-colors ${
                   active
-                    ? 'border-[rgba(34,211,238,0.4)] text-[#22d3ee] bg-[rgba(34,211,238,0.08)]'
-                    : 'border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.4)] hover:text-white hover:border-[rgba(255,255,255,0.2)]'
+                    ? 'border-[rgba(34,211,238,0.4)] text-system-billing bg-[rgba(34,211,238,0.08)]'
+                    : 'border-border-DEFAULT text-[rgba(255,255,255,0.4)] hover:text-text-primary hover:border-[rgba(255,255,255,0.2)]'
                 }`}
               >
                 {opt.label}
@@ -462,7 +463,7 @@ export default function EventsFeedPage() {
       </div>
 
       {/* ── Events table ──────────────────────────────────────────────────── */}
-      <div className="bg-[#0b0f14] border border-[rgba(255,255,255,0.08)] rounded-sm overflow-hidden flex-1">
+      <div className="bg-bg-base border border-border-DEFAULT rounded-sm overflow-hidden flex-1">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <span className="text-sm text-[rgba(255,255,255,0.3)]">Loading events…</span>
@@ -475,7 +476,7 @@ export default function EventsFeedPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-[rgba(255,255,255,0.08)]">
+                <tr className="border-b border-border-DEFAULT">
                   <th className="w-5 pl-4 pr-2 py-2" />
                   <th className="pr-4 py-2 text-left text-[10px] font-semibold tracking-widest uppercase text-[rgba(255,255,255,0.3)] whitespace-nowrap">
                     Time

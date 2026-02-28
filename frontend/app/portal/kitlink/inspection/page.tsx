@@ -87,28 +87,28 @@ export default function InspectionPage() {
 
   if (phase === "setup") {
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-bg-base text-text-primary flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="mb-6 text-center">
             <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-lg font-bold mx-auto mb-3">309</div>
-            <h1 className="text-xl font-bold text-white">Trans 309 Inspection</h1>
-            <p className="text-sm text-gray-400 mt-1">Wisconsin DOT Compliance Mode</p>
+            <h1 className="text-xl font-bold text-text-primary">Trans 309 Inspection</h1>
+            <p className="text-sm text-text-muted mt-1">Wisconsin DOT Compliance Mode</p>
           </div>
 
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 space-y-4">
+          <div className="rounded-xl border border-border-subtle bg-bg-panel p-5 space-y-4">
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Unit ID</label>
+              <label className="text-xs text-text-muted block mb-1">Unit ID</label>
               <input
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100 placeholder-gray-500"
+                className="w-full px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary placeholder-gray-500"
                 placeholder="e.g. M12"
                 value={unitId}
                 onChange={(e) => setUnitId(e.target.value)}
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Unit Profile</label>
+              <label className="text-xs text-text-muted block mb-1">Unit Profile</label>
               <select
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100"
+                className="w-full px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary"
                 value={unitProfile}
                 onChange={(e) => setUnitProfile(e.target.value)}
               >
@@ -118,9 +118,9 @@ export default function InspectionPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Compliance Pack</label>
+              <label className="text-xs text-text-muted block mb-1">Compliance Pack</label>
               <select
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-100"
+                className="w-full px-3 py-2 bg-bg-raised border border-border-DEFAULT rounded text-sm text-text-primary"
                 value={packKey}
                 onChange={(e) => setPackKey(e.target.value)}
               >
@@ -143,12 +143,12 @@ export default function InspectionPage() {
 
   if (phase === "checklist") {
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 p-4 max-w-lg mx-auto">
+      <div className="min-h-screen bg-bg-base text-text-primary p-4 max-w-lg mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setPhase("setup")} className="text-gray-400 hover:text-gray-200 text-sm">← Back</button>
+          <button onClick={() => setPhase("setup")} className="text-text-muted hover:text-text-primary text-sm">← Back</button>
           <div>
-            <h1 className="text-lg font-bold text-white">Unit {unitId} — {unitProfile}</h1>
-            <p className="text-xs text-gray-400">{packKey} · Inspection ID: {inspectionId?.slice(0, 8)}…</p>
+            <h1 className="text-lg font-bold text-text-primary">Unit {unitId} — {unitProfile}</h1>
+            <p className="text-xs text-text-muted">{packKey} · Inspection ID: {inspectionId?.slice(0, 8)}…</p>
           </div>
         </div>
 
@@ -171,7 +171,7 @@ export default function InspectionPage() {
           />
 
           <div className="pt-2 pb-1">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Mandatory Equipment (10 items)</p>
+            <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Mandatory Equipment (10 items)</p>
           </div>
 
           {MANDATORY_ITEMS.map((item) => (
@@ -201,27 +201,27 @@ export default function InspectionPage() {
   if (phase === "result" && result) {
     const passed = result.result_status === "pass" || result.result_status === "pass_with_warnings";
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-bg-base text-text-primary flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className={`rounded-xl border p-6 text-center ${passed ? "border-emerald-700 bg-emerald-900/20" : "border-red-700 bg-red-900/20"}`}>
             <div className={`text-5xl mb-3 ${passed ? "text-emerald-400" : "text-red-400"}`}>
               {passed ? "✓" : "✗"}
             </div>
-            <h2 className="text-xl font-bold text-white mb-1">
+            <h2 className="text-xl font-bold text-text-primary mb-1">
               {result.result_status === "pass" ? "PASS" : result.result_status === "pass_with_warnings" ? "PASS WITH WARNINGS" : "FAIL"}
             </h2>
             {result.hard_fail && (
               <p className="text-sm text-red-400 mb-3">HARD FAIL — Expired medications or fluids found</p>
             )}
-            <p className="text-sm text-gray-400">Unit {unitId} · {new Date().toLocaleDateString()}</p>
+            <p className="text-sm text-text-muted">Unit {unitId} · {new Date().toLocaleDateString()}</p>
 
             {result.findings?.length > 0 && (
               <div className="mt-4 text-left space-y-2">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Findings ({result.findings.length})</p>
+                <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Findings ({result.findings.length})</p>
                 {result.findings.map((f: any) => (
                   <div key={f.id} className="flex items-start gap-2 text-xs">
                     <span className="mt-0.5 text-red-400">●</span>
-                    <span className="text-gray-300">{f.rule_id}</span>
+                    <span className="text-text-secondary">{f.rule_id}</span>
                   </div>
                 ))}
               </div>
@@ -229,11 +229,11 @@ export default function InspectionPage() {
 
             {result.warnings?.length > 0 && (
               <div className="mt-3 text-left space-y-2">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Warnings ({result.warnings.length})</p>
+                <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Warnings ({result.warnings.length})</p>
                 {result.warnings.map((w: any) => (
                   <div key={w.id} className="flex items-start gap-2 text-xs">
                     <span className="mt-0.5 text-amber-400">●</span>
-                    <span className="text-gray-300">{w.rule_id}</span>
+                    <span className="text-text-secondary">{w.rule_id}</span>
                   </div>
                 ))}
               </div>
@@ -242,7 +242,7 @@ export default function InspectionPage() {
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 onClick={() => { setPhase("setup"); setResult(null); setInspectionId(null); }}
-                className="py-2 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+                className="py-2 border border-border-DEFAULT rounded-lg text-sm text-text-secondary hover:bg-bg-raised transition-colors"
               >
                 New Inspection
               </button>
@@ -273,25 +273,25 @@ function CheckRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className={`rounded-lg border p-3 ${value === null ? "border-gray-800 bg-gray-900" : value === true ? "border-emerald-800 bg-emerald-900/20" : "border-red-800 bg-red-900/20"}`}>
+    <div className={`rounded-lg border p-3 ${value === null ? "border-border-subtle bg-bg-panel" : value === true ? "border-emerald-800 bg-emerald-900/20" : "border-red-800 bg-red-900/20"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
-          <p className="text-sm text-gray-200 font-medium">
+          <p className="text-sm text-text-primary font-medium">
             {label}
             {hardFail && <span className="ml-2 text-xs text-red-400 font-normal">hard fail if NO</span>}
           </p>
-          {sublabel && <p className="text-xs text-gray-500 mt-0.5">{sublabel}</p>}
+          {sublabel && <p className="text-xs text-text-muted mt-0.5">{sublabel}</p>}
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={() => onChange(true)}
-            className={`w-12 py-1 rounded text-xs font-semibold transition-colors ${value === true ? "bg-emerald-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-emerald-900/40 hover:text-emerald-400"}`}
+            className={`w-12 py-1 rounded text-xs font-semibold transition-colors ${value === true ? "bg-emerald-600 text-text-primary" : "bg-bg-raised text-text-muted hover:bg-emerald-900/40 hover:text-emerald-400"}`}
           >
             YES
           </button>
           <button
             onClick={() => onChange(false)}
-            className={`w-12 py-1 rounded text-xs font-semibold transition-colors ${value === false ? "bg-red-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-red-900/40 hover:text-red-400"}`}
+            className={`w-12 py-1 rounded text-xs font-semibold transition-colors ${value === false ? "bg-red-600 text-text-primary" : "bg-bg-raised text-text-muted hover:bg-red-900/40 hover:text-red-400"}`}
           >
             NO
           </button>

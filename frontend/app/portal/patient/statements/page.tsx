@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -220,16 +221,7 @@ export default function PatientStatementsPage() {
 
         {/* Statements list */}
         {loading ? (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '60px 0',
-              fontSize: 'var(--text-body)',
-              color: 'var(--color-text-muted)',
-            }}
-          >
-            Loading statements...
-          </div>
+          <div className="p-6"><QuantumTableSkeleton rows={6} cols={4} /></div>
         ) : statements.length === 0 ? (
           <div
             style={{

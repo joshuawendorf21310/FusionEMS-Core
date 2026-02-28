@@ -120,7 +120,7 @@ export default function SignupLayout({ children }: { children: ReactNode }) {
   return (
     <div
       className="min-h-screen flex flex-col items-center px-4 py-10"
-      style={{ backgroundColor: '#07090d' }}
+      style={{ backgroundColor: 'var(--color-bg-void)' }}
     >
       {/* Logo */}
       <div className="flex flex-col items-center">
@@ -128,7 +128,7 @@ export default function SignupLayout({ children }: { children: ReactNode }) {
           <HexLogo />
           <div>
             <div
-              className="text-white font-bold tracking-wide"
+              className="text-text-primary font-bold tracking-wide"
               style={{
                 fontFamily: "'Barlow Condensed', 'Barlow', sans-serif",
                 fontSize: '20px',
@@ -137,7 +137,7 @@ export default function SignupLayout({ children }: { children: ReactNode }) {
               }}
             >
               FusionEMS{' '}
-              <span style={{ color: '#ff6b1a' }}>Quantum</span>
+              <span style={{ color: 'var(--q-orange)' }}>Quantum</span>
             </div>
             <div
               className="text-xs"
@@ -162,7 +162,7 @@ export default function SignupLayout({ children }: { children: ReactNode }) {
         &nbsp;|&nbsp;
         <a
           href="/privacy"
-          className="hover:text-white transition-colors"
+          className="hover:text-text-primary transition-colors"
           style={{ color: 'rgba(255,255,255,0.3)' }}
         >
           Privacy
@@ -170,7 +170,7 @@ export default function SignupLayout({ children }: { children: ReactNode }) {
         &nbsp;|&nbsp;
         <a
           href="/terms"
-          className="hover:text-white transition-colors"
+          className="hover:text-text-primary transition-colors"
           style={{ color: 'rgba(255,255,255,0.3)' }}
         >
           Terms

@@ -1,4 +1,5 @@
 'use client';
+import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -136,8 +137,8 @@ function useToast() {
 
 const STATUS_STYLE: Record<IncidentStatus, { label: string; color: string; bg: string }> = {
   draft:      { label: 'DRAFT',      color: 'rgba(255,255,255,0.5)', bg: 'rgba(255,255,255,0.07)' },
-  validated:  { label: 'VALIDATED',  color: '#4caf50',               bg: 'rgba(76,175,80,0.12)' },
-  exported:   { label: 'EXPORTED',   color: '#22d3ee',               bg: 'rgba(34,211,238,0.12)' },
+  validated:  { label: 'VALIDATED',  color: 'var(--q-green)',               bg: 'rgba(76,175,80,0.12)' },
+  exported:   { label: 'EXPORTED',   color: 'var(--color-system-billing)',               bg: 'rgba(34,211,238,0.12)' },
 };
 
 function IncidentStatusBadge({ status }: { status: IncidentStatus }) {
@@ -156,7 +157,7 @@ function IncidentTypeBadge({ code }: { code: string }) {
   return (
     <span
       className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-sm"
-      style={{ color: '#ff9800', background: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.2)' }}
+      style={{ color: 'var(--q-yellow)', background: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.2)' }}
     >
       {code.replace(/_/g, ' ')}
     </span>
@@ -165,8 +166,8 @@ function IncidentTypeBadge({ code }: { code: string }) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const inputClass = "w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.35)] placeholder:text-[rgba(255,255,255,0.2)]";
-const inputErrorClass = "w-full bg-[rgba(229,57,53,0.05)] border border-[rgba(229,57,53,0.4)] text-xs text-white px-3 py-2 rounded-sm outline-none focus:border-[rgba(229,57,53,0.6)] placeholder:text-[rgba(255,255,255,0.2)]";
+const inputClass = "w-full bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-[rgba(255,107,26,0.35)] placeholder:text-[rgba(255,255,255,0.2)]";
+const inputErrorClass = "w-full bg-[rgba(229,57,53,0.05)] border border-[rgba(229,57,53,0.4)] text-xs text-text-primary px-3 py-2 rounded-sm outline-none focus:border-[rgba(229,57,53,0.6)] placeholder:text-[rgba(255,255,255,0.2)]";
 const labelClass = "block text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.4)] mb-1";
 
 function makeEmptyForm(): IncidentForm {
@@ -219,30 +220,30 @@ function IncidentList({
   ];
 
   return (
-    <div className="flex flex-col h-full border-r border-[rgba(255,255,255,0.08)]" style={{ width: 300, flexShrink: 0 }}>
+    <div className="flex flex-col h-full border-r border-border-DEFAULT" style={{ width: 300, flexShrink: 0 }}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-border-DEFAULT flex items-center justify-between">
         <div>
-          <p className="text-[9px] uppercase tracking-[0.18em] text-[rgba(255,107,26,0.6)]">Portal</p>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-white">Fire Incidents</h2>
+          <p className="text-[9px] uppercase tracking-[0.18em] text-orange-dim">Portal</p>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary">Fire Incidents</h2>
         </div>
         <button
           onClick={onNew}
           className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider rounded-sm"
-          style={{ background: 'rgba(255,107,26,0.18)', border: '1px solid rgba(255,107,26,0.35)', color: '#ff6b1a' }}
+          style={{ background: 'rgba(255,107,26,0.18)', border: '1px solid rgba(255,107,26,0.35)', color: 'var(--q-orange)' }}
         >
           + New
         </button>
       </div>
       {/* Filter */}
-      <div className="px-3 py-2 border-b border-[rgba(255,255,255,0.06)] flex gap-1 flex-wrap">
+      <div className="px-3 py-2 border-b border-border-subtle flex gap-1 flex-wrap">
         {filters.map((f) => (
           <button
             key={f.value}
             onClick={() => onFilterChange(f.value)}
             className="h-6 px-2 text-[9px] font-semibold uppercase tracking-wider rounded-sm transition-colors"
             style={statusFilter === f.value
-              ? { background: 'rgba(255,107,26,0.2)', color: '#ff6b1a', border: '1px solid rgba(255,107,26,0.35)' }
+              ? { background: 'rgba(255,107,26,0.2)', color: 'var(--q-orange)', border: '1px solid rgba(255,107,26,0.35)' }
               : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }
             }
           >
@@ -262,7 +263,7 @@ function IncidentList({
           <button
             key={inc.id}
             onClick={() => onSelect(inc)}
-            className="w-full text-left px-4 py-3 border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+            className="w-full text-left px-4 py-3 border-b border-border-subtle hover:bg-[rgba(255,255,255,0.03)] transition-colors"
             style={selectedId === inc.id ? { background: 'rgba(255,107,26,0.07)' } : undefined}
           >
             <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -296,7 +297,7 @@ function FormSection({
   const [open, setOpen] = useState(true);
   return (
     <div
-      className="bg-[#0b0f14] border rounded-sm overflow-hidden"
+      className="bg-bg-base border rounded-sm overflow-hidden"
       style={{ borderColor: errorCount > 0 ? 'rgba(229,57,53,0.35)' : 'rgba(255,255,255,0.08)' }}
     >
       <button
@@ -306,7 +307,7 @@ function FormSection({
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-[rgba(255,255,255,0.85)]">{label}</span>
           {errorCount > 0 && (
-            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-sm" style={{ color: '#e53935', background: 'rgba(229,57,53,0.15)' }}>
+            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-sm" style={{ color: 'var(--q-red)', background: 'rgba(229,57,53,0.15)' }}>
               {errorCount} error{errorCount !== 1 ? 's' : ''}
             </span>
           )}
@@ -339,10 +340,10 @@ function FormField({
     <div>
       <label className={labelClass}>
         {label}
-        {required && <span className="ml-1" style={{ color: '#ff6b1a' }}>*</span>}
+        {required && <span className="ml-1" style={{ color: 'var(--q-orange)' }}>*</span>}
       </label>
       {children}
-      {error && <p className="text-[10px] text-[#e53935] mt-0.5">{error}</p>}
+      {error && <p className="text-[10px] text-red mt-0.5">{error}</p>}
     </div>
   );
 }
@@ -543,10 +544,10 @@ function IncidentForm({
   return (
     <div className="flex flex-col h-full">
       {/* Form header */}
-      <div className="px-5 py-3 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-between flex-shrink-0">
+      <div className="px-5 py-3 border-b border-border-DEFAULT flex items-center justify-between flex-shrink-0">
         <div>
-          <p className="text-[9px] uppercase tracking-[0.18em] text-[rgba(255,107,26,0.6)]">{currentId ? 'Edit Incident' : 'New Incident'}</p>
-          <h3 className="text-sm font-bold text-white">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-orange-dim">{currentId ? 'Edit Incident' : 'New Incident'}</p>
+          <h3 className="text-sm font-bold text-text-primary">
             {form.incident_number || (currentId ? 'Incident' : 'New Fire Incident')}
           </h3>
         </div>
@@ -555,8 +556,8 @@ function IncidentForm({
             <span
               className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-sm"
               style={validationResult.valid
-                ? { color: '#4caf50', background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)' }
-                : { color: '#e53935', background: 'rgba(229,57,53,0.12)', border: '1px solid rgba(229,57,53,0.25)' }}
+                ? { color: 'var(--q-green)', background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)' }
+                : { color: 'var(--q-red)', background: 'rgba(229,57,53,0.12)', border: '1px solid rgba(229,57,53,0.25)' }}
             >
               {validationResult.valid ? 'VALID' : `${totalErrors} ERROR${totalErrors !== 1 ? 'S' : ''}`}
             </span>
@@ -586,7 +587,7 @@ function IncidentForm({
                 className={getInputClass('incident_type_code')}
                 style={{ background: '#0b0f14' }}
               >
-                <option value="" className="bg-[#0b0f14]">— Select —</option>
+                <option value="" className="bg-bg-base">— Select —</option>
                 {(incidentTypeValues.length > 0
                   ? incidentTypeValues.map((v) => ({ code: v, label: v }))
                   : [
@@ -604,7 +605,7 @@ function IncidentForm({
                       { code: 'UNK', label: 'Unknown' },
                     ]
                 ).map((v) => (
-                  <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
+                  <option key={v.code} value={v.code} className="bg-bg-base">{v.label}</option>
                 ))}
               </select>
             </FormField>
@@ -661,7 +662,7 @@ function IncidentForm({
                 className={getInputClass('property_use_code')}
                 style={{ background: '#0b0f14' }}
               >
-                <option value="" className="bg-[#0b0f14]">— Select —</option>
+                <option value="" className="bg-bg-base">— Select —</option>
                 {(propertyUseValues.length > 0
                   ? propertyUseValues.map((v) => ({ code: v, label: v }))
                   : [
@@ -679,7 +680,7 @@ function IncidentForm({
                       { code: 'NNN', label: 'None/Not applicable' },
                     ]
                 ).map((v) => (
-                  <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
+                  <option key={v.code} value={v.code} className="bg-bg-base">{v.label}</option>
                 ))}
               </select>
             </FormField>
@@ -705,7 +706,7 @@ function IncidentForm({
                   {form.units.length > 1 && (
                     <button
                       onClick={() => update('units', form.units.filter((_, idx) => idx !== i))}
-                      className="text-[10px] text-[rgba(229,57,53,0.6)] hover:text-[#e53935]"
+                      className="text-[10px] text-[rgba(229,57,53,0.6)] hover:text-red"
                     >
                       Remove
                     </button>
@@ -723,9 +724,9 @@ function IncidentForm({
                       className={inputClass}
                       style={{ background: '#0b0f14' }}
                     >
-                      <option value="" className="bg-[#0b0f14]">— Select —</option>
+                      <option value="" className="bg-bg-base">— Select —</option>
                       {apparatus.map((a) => (
-                        <option key={a.id} value={a.id} className="bg-[#0b0f14]">{a.unit_id} ({a.unit_type_code})</option>
+                        <option key={a.id} value={a.id} className="bg-bg-base">{a.unit_id} ({a.unit_type_code})</option>
                       ))}
                     </select>
                   </FormField>
@@ -760,7 +761,7 @@ function IncidentForm({
           <button
             onClick={() => update('units', [...form.units, { apparatus_id: '', arrival_time: '', departure_time: '' }])}
             className="mt-3 h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-            style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: '#22d3ee' }}
+            style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: 'var(--color-system-billing)' }}
           >
             + Add Unit
           </button>
@@ -783,7 +784,7 @@ function IncidentForm({
                       className={inputClass}
                       style={{ background: '#0b0f14' }}
                     >
-                      <option value="" className="bg-[#0b0f14]">— Select —</option>
+                      <option value="" className="bg-bg-base">— Select —</option>
                       {(actionTakenValues.length > 0
                         ? actionTakenValues.map((v) => ({ code: v, label: v }))
                         : [
@@ -799,7 +800,7 @@ function IncidentForm({
                             { code: '93', label: 'Cancelled en route' },
                           ]
                       ).map((v) => (
-                        <option key={v.code} value={v.code} className="bg-[#0b0f14]">{v.label}</option>
+                        <option key={v.code} value={v.code} className="bg-bg-base">{v.label}</option>
                       ))}
                     </select>
                   </FormField>
@@ -821,7 +822,7 @@ function IncidentForm({
                 {form.actions.length > 1 && (
                   <button
                     onClick={() => update('actions', form.actions.filter((_, idx) => idx !== i))}
-                    className="h-9 px-2 text-[10px] text-[rgba(229,57,53,0.6)] hover:text-[#e53935] mb-0.5"
+                    className="h-9 px-2 text-[10px] text-[rgba(229,57,53,0.6)] hover:text-red mb-0.5"
                   >
                     ✕
                   </button>
@@ -832,7 +833,7 @@ function IncidentForm({
           <button
             onClick={() => update('actions', [...form.actions, { action_code: '', action_datetime: '' }])}
             className="mt-3 h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-            style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: '#22d3ee' }}
+            style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', color: 'var(--color-system-billing)' }}
           >
             + Add Action
           </button>
@@ -866,14 +867,14 @@ function IncidentForm({
 
       {/* ── Action Bar ── */}
       <div
-        className="flex-shrink-0 px-5 py-3 border-t border-[rgba(255,255,255,0.08)] flex items-center gap-3 flex-wrap"
+        className="flex-shrink-0 px-5 py-3 border-t border-border-DEFAULT flex items-center gap-3 flex-wrap"
         style={{ background: '#0b0f14' }}
       >
         <button
           onClick={saveDraft}
           disabled={savingDraft}
           className="h-9 px-5 text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all hover:brightness-110 disabled:opacity-40"
-          style={{ background: 'rgba(255,107,26,0.18)', border: '1px solid rgba(255,107,26,0.35)', color: '#ff6b1a' }}
+          style={{ background: 'rgba(255,107,26,0.18)', border: '1px solid rgba(255,107,26,0.35)', color: 'var(--q-orange)' }}
         >
           {savingDraft ? 'Saving…' : 'Save Draft'}
         </button>
@@ -881,7 +882,7 @@ function IncidentForm({
           onClick={validate}
           disabled={validating || !currentId}
           className="h-9 px-5 text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all hover:brightness-110 disabled:opacity-40"
-          style={{ background: 'rgba(34,211,238,0.12)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}
+          style={{ background: 'rgba(34,211,238,0.12)', border: '1px solid rgba(34,211,238,0.3)', color: 'var(--color-system-billing)' }}
         >
           {validating ? 'Validating…' : 'Validate'}
         </button>
@@ -890,7 +891,7 @@ function IncidentForm({
           disabled={incidentStatus !== 'validated' || exportingId !== null}
           title={incidentStatus !== 'validated' ? 'Validate incident before exporting' : undefined}
           className="h-9 px-5 text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: 'rgba(76,175,80,0.12)', border: '1px solid rgba(76,175,80,0.3)', color: '#4caf50' }}
+          style={{ background: 'rgba(76,175,80,0.12)', border: '1px solid rgba(76,175,80,0.3)', color: 'var(--q-green)' }}
         >
           {exportingId ? 'Exporting…' : 'Export'}
           {incidentStatus !== 'validated' && (
@@ -993,7 +994,7 @@ export default function FireIncidentsPage() {
   const showForm = isNew || selectedIncident !== null;
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white flex flex-col" style={{ height: '100vh' }}>
+    <div className="min-h-screen bg-bg-void text-text-primary flex flex-col" style={{ height: '100vh' }}>
       <Toast items={toasts} />
       <div className="flex flex-1 min-h-0">
         <IncidentList
@@ -1023,7 +1024,7 @@ export default function FireIncidentsPage() {
                 <button
                   onClick={handleNew}
                   className="h-8 px-4 text-[10px] font-bold uppercase tracking-wider rounded-sm"
-                  style={{ background: 'rgba(255,107,26,0.18)', border: '1px solid rgba(255,107,26,0.35)', color: '#ff6b1a' }}
+                  style={{ background: 'rgba(255,107,26,0.18)', border: '1px solid rgba(255,107,26,0.35)', color: 'var(--q-orange)' }}
                 >
                   + New Incident
                 </button>

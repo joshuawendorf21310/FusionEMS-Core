@@ -8,18 +8,18 @@ function PageHeader() {
     <div className="hud-rail pb-3 mb-6">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[rgba(255,107,26,0.6)] mb-1">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">
             CATEGORY 2 · MODULES C2.1–100
           </div>
-          <h1 className="text-lg font-black uppercase tracking-wider text-white">AI Voice, Phone Tree, Ringing & Alerting System</h1>
-          <p className="text-xs text-[rgba(255,255,255,0.38)] mt-0.5">
+          <h1 className="text-lg font-black uppercase tracking-wider text-text-primary">AI Voice, Phone Tree, Ringing & Alerting System</h1>
+          <p className="text-xs text-text-muted mt-0.5">
             100-item control surface — Natural Voice Engine · Visual Flow Builder · Escalation Ladder · Call Analytics · Alert Policies
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee] animate-pulse" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#22d3ee]">AI VOICE LIVE</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-system-billing animate-pulse" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-system-billing">AI VOICE LIVE</span>
           </div>
         </div>
       </div>
@@ -31,16 +31,16 @@ function KpiStrip() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-6">
       {[
-        { label: 'Active Modules', value: '82', color: '#4caf50' },
-        { label: 'Configured', value: '12', color: '#29b6f6' },
-        { label: 'Pending', value: '6', color: '#ff9800' },
-        { label: 'AI Resolution Rate', value: '79%', color: '#22d3ee' },
-        { label: 'Avg Call Latency', value: '210ms', color: '#4caf50' },
+        { label: 'Active Modules', value: '82', color: 'var(--q-green)' },
+        { label: 'Configured', value: '12', color: 'var(--color-status-info)' },
+        { label: 'Pending', value: '6', color: 'var(--q-yellow)' },
+        { label: 'AI Resolution Rate', value: '79%', color: 'var(--color-system-billing)' },
+        { label: 'Avg Call Latency', value: '210ms', color: 'var(--q-green)' },
         { label: 'Escalation Rate', value: '8.2%', color: '#a855f7' },
       ].map((item) => (
         <div
           key={item.label}
-          className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-3"
+          className="bg-bg-panel border border-border-DEFAULT p-3"
           style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}
         >
           <div className="text-[9px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{item.label}</div>
@@ -57,8 +57,8 @@ function CallQueueRow({ position, caller, intent, wait, score, aiCanResolve }: {
   const scoreColor = score >= 80 ? '#e53935' : score >= 50 ? '#ff9800' : '#4caf50';
   return (
     <tr>
-      <td className="py-2 pr-3 text-[10px] font-bold font-mono text-[rgba(255,107,26,0.6)]">{position}</td>
-      <td className="py-2 pr-3 text-xs text-white">{caller}</td>
+      <td className="py-2 pr-3 text-[10px] font-bold font-mono text-orange-dim">{position}</td>
+      <td className="py-2 pr-3 text-xs text-text-primary">{caller}</td>
       <td className="py-2 pr-3">
         <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.5)] rounded-sm">{intent}</span>
       </td>
@@ -72,7 +72,7 @@ function CallQueueRow({ position, caller, intent, wait, score, aiCanResolve }: {
         </div>
       </td>
       <td className="py-2">
-        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${aiCanResolve ? 'text-[#4caf50] bg-[rgba(76,175,80,0.12)]' : 'text-[#ff9800] bg-[rgba(255,152,0,0.12)]'}`}>
+        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${aiCanResolve ? 'text-status-active bg-[rgba(76,175,80,0.12)]' : 'text-status-warning bg-[rgba(255,152,0,0.12)]'}`}>
           {aiCanResolve ? 'AI CAN RESOLVE' : 'ESCALATE'}
         </span>
       </td>
@@ -128,7 +128,7 @@ function ModuleCard({
   const statusLabel = { active: 'ACTIVE', configured: 'CONFIGURED', pending: 'PENDING' }[status];
   return (
     <div
-      className="bg-[#0f1720] border border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] transition-colors"
+      className="bg-bg-panel border border-border-subtle hover:border-[rgba(255,255,255,0.12)] transition-colors"
       style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}
     >
       <button
@@ -307,7 +307,7 @@ export default function PhoneSystemPage() {
       <PageHeader />
       <KpiStrip />
 
-      <div className="flex gap-1 border-b border-[rgba(255,255,255,0.06)] pb-0">
+      <div className="flex gap-1 border-b border-border-subtle pb-0">
         {([
           { key: 'modules', label: 'All 100 Modules' },
           { key: 'queue', label: 'Call Queue' },
@@ -320,7 +320,7 @@ export default function PhoneSystemPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`h-8 px-4 text-[11px] font-semibold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
               activeTab === tab.key
-                ? 'text-[#ff6b1a] border-[#ff6b1a]'
+                ? 'text-orange border-orange'
                 : 'text-[rgba(255,255,255,0.4)] border-transparent hover:text-[rgba(255,255,255,0.7)]'
             }`}
           >
@@ -331,10 +331,10 @@ export default function PhoneSystemPage() {
 
       {activeTab === 'queue' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)' }}>
+          <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)' }}>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">MODULE 31 · Live Call Queue</span>
-              <span className="text-[9px] bg-[rgba(34,211,238,0.1)] text-[#22d3ee] px-2 py-0.5 uppercase tracking-wider font-bold">3 CALLERS</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">MODULE 31 · Live Call Queue</span>
+              <span className="text-[9px] bg-[rgba(34,211,238,0.1)] text-system-billing px-2 py-0.5 uppercase tracking-wider font-bold">3 CALLERS</span>
             </div>
             <table className="w-full">
               <thead>
@@ -356,10 +356,10 @@ export default function PhoneSystemPage() {
 
       {activeTab === 'flow' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)' }}>
+          <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)' }}>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">MODULE 3 · Billing Call Script Flow (Preview)</span>
-              <button className="h-6 px-2.5 bg-[rgba(255,107,26,0.12)] border border-[rgba(255,107,26,0.25)] text-[#ff6b1a] text-[10px] font-semibold rounded-sm hover:bg-[rgba(255,107,26,0.2)] transition-colors">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">MODULE 3 · Billing Call Script Flow (Preview)</span>
+              <button className="h-6 px-2.5 bg-orange-ghost border border-[rgba(255,107,26,0.25)] text-orange text-[10px] font-semibold rounded-sm hover:bg-[rgba(255,107,26,0.2)] transition-colors">
                 Open Flow Builder
               </button>
             </div>
@@ -387,8 +387,8 @@ export default function PhoneSystemPage() {
       {activeTab === 'analytics' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 16 · AI Deflection Rate</div>
+            <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">MODULE 16 · AI Deflection Rate</div>
               {[
                 { label: 'Billing inquiries', deflected: 91 },
                 { label: 'Export support', deflected: 78 },
@@ -399,17 +399,17 @@ export default function PhoneSystemPage() {
                 <div key={item.label} className="mb-2">
                   <div className="flex justify-between text-[11px] mb-0.5">
                     <span className="text-[rgba(255,255,255,0.55)]">{item.label}</span>
-                    <span className="font-semibold text-[#22d3ee]">{item.deflected}%</span>
+                    <span className="font-semibold text-system-billing">{item.deflected}%</span>
                   </div>
                   <div className="h-1 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-[#22d3ee]" style={{ width: `${item.deflected}%` }} />
+                    <div className="h-full rounded-full bg-system-billing" style={{ width: `${item.deflected}%` }} />
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 94 · Latency & Quality</div>
+            <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">MODULE 94 · Latency & Quality</div>
               {[
                 { label: 'Voice latency (p50)', value: '180ms', ok: true },
                 { label: 'Voice latency (p99)', value: '310ms', ok: true },
@@ -424,8 +424,8 @@ export default function PhoneSystemPage() {
               ))}
             </div>
 
-            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 56 · Cost per Tenant</div>
+            <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">MODULE 56 · Cost per Tenant</div>
               {[
                 { tenant: 'Metro EMS', cost: '$3.84', calls: 47 },
                 { tenant: 'Valley Amb.', cost: '$1.62', calls: 22 },
@@ -433,9 +433,9 @@ export default function PhoneSystemPage() {
                 { tenant: 'City Hosp.', cost: '$0.74', calls: 9 },
               ].map((item) => (
                 <div key={item.tenant} className="flex items-center gap-3 py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
-                  <span className="flex-1 text-[11px] text-[rgba(255,255,255,0.65)]">{item.tenant}</span>
+                  <span className="flex-1 text-[11px] text-text-secondary">{item.tenant}</span>
                   <span className="text-[10px] text-[rgba(255,255,255,0.35)]">{item.calls} calls</span>
-                  <span className="text-xs font-semibold text-[#22d3ee]">{item.cost}</span>
+                  <span className="text-xs font-semibold text-system-billing">{item.cost}</span>
                 </div>
               ))}
             </div>
@@ -453,7 +453,7 @@ export default function PhoneSystemPage() {
                   key={f}
                   onClick={() => setCatFilter(f)}
                   className={`h-6 px-2.5 text-[10px] uppercase tracking-wider font-semibold transition-colors rounded-sm ${
-                    catFilter === f ? 'bg-[#ff6b1a] text-black' : 'bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.45)] hover:text-white'
+                    catFilter === f ? 'bg-orange text-text-inverse' : 'bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.45)] hover:text-text-primary'
                   }`}
                 >
                   {f}
@@ -466,7 +466,7 @@ export default function PhoneSystemPage() {
                   key={f}
                   onClick={() => setStatusFilter(f)}
                   className={`h-6 px-2.5 text-[10px] uppercase tracking-wider font-semibold transition-colors rounded-sm ${
-                    statusFilter === f ? 'bg-[rgba(255,255,255,0.15)] text-white' : 'bg-[rgba(255,255,255,0.04)] text-[rgba(255,255,255,0.35)] hover:text-white'
+                    statusFilter === f ? 'bg-[rgba(255,255,255,0.15)] text-text-primary' : 'bg-[rgba(255,255,255,0.04)] text-[rgba(255,255,255,0.35)] hover:text-text-primary'
                   }`}
                 >
                   {f}
@@ -477,7 +477,7 @@ export default function PhoneSystemPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search modules..."
-              className="h-6 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] px-2 text-[11px] text-white placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-[rgba(255,107,26,0.4)] rounded-sm flex-1 min-w-[120px]"
+              className="h-6 bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT px-2 text-[11px] text-text-primary placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-[rgba(255,107,26,0.4)] rounded-sm flex-1 min-w-[120px]"
             />
             <span className="text-[10px] text-[rgba(255,255,255,0.3)] ml-auto">{filtered.length} / 100 modules</span>
           </div>
@@ -495,10 +495,10 @@ export default function PhoneSystemPage() {
                 <div className="space-y-2">
                   <div className="text-[11px] text-[rgba(255,255,255,0.5)] leading-relaxed">{m.desc}</div>
                   <div className="flex gap-2">
-                    <button className="h-6 px-2.5 bg-[rgba(255,107,26,0.12)] border border-[rgba(255,107,26,0.25)] text-[#ff6b1a] text-[10px] font-semibold rounded-sm hover:bg-[rgba(255,107,26,0.2)] transition-colors">
+                    <button className="h-6 px-2.5 bg-orange-ghost border border-[rgba(255,107,26,0.25)] text-orange text-[10px] font-semibold rounded-sm hover:bg-[rgba(255,107,26,0.2)] transition-colors">
                       Configure
                     </button>
-                    <button className="h-6 px-2.5 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)] text-[10px] rounded-sm hover:text-white transition-colors">
+                    <button className="h-6 px-2.5 bg-[rgba(255,255,255,0.05)] border border-border-DEFAULT text-[rgba(255,255,255,0.5)] text-[10px] rounded-sm hover:text-text-primary transition-colors">
                       View Logs
                     </button>
                   </div>
@@ -514,13 +514,13 @@ export default function PhoneSystemPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {[
               { label: 'War Room Active', value: advDashboard ? (advDashboard.war_room_active ? 'YES' : 'OFF') : '—', color: (advDashboard?.war_room_active ? '#e53935' : '#4caf50') as string },
-              { label: 'Pending Reviews', value: String(advDashboard?.pending_human_reviews ?? '—'), color: '#ff9800' },
-              { label: 'Open Tickets', value: String(advDashboard?.open_improvement_tickets ?? '—'), color: '#29b6f6' },
+              { label: 'Pending Reviews', value: String(advDashboard?.pending_human_reviews ?? '—'), color: 'var(--q-yellow)' },
+              { label: 'Open Tickets', value: String(advDashboard?.open_improvement_tickets ?? '—'), color: 'var(--color-status-info)' },
               { label: 'Callbacks Queued', value: String(advDashboard?.scheduled_callbacks ?? '—'), color: '#a855f7' },
-              { label: 'A/B Tests Running', value: String(advDashboard?.active_ab_tests ?? '—'), color: '#22d3ee' },
-              { label: 'Features 65–100', value: '36 / 36', color: '#4caf50' },
+              { label: 'A/B Tests Running', value: String(advDashboard?.active_ab_tests ?? '—'), color: 'var(--color-system-billing)' },
+              { label: 'Features 65–100', value: '36 / 36', color: 'var(--q-green)' },
             ].map((kpi) => (
-              <div key={kpi.label} className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-3" style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}>
+              <div key={kpi.label} className="bg-bg-panel border border-border-DEFAULT p-3" style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}>
                 <div className="text-[9px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{kpi.label}</div>
                 <div className="text-lg font-bold" style={{ color: kpi.color }}>{kpi.value}</div>
               </div>
@@ -528,15 +528,15 @@ export default function PhoneSystemPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 99 · Human Review Queue</div>
+            <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">MODULE 99 · Human Review Queue</div>
               {reviewQueue.length === 0 ? (
                 <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No pending reviews</div>
               ) : (
                 <div className="space-y-2">
                   {reviewQueue.slice(0, 5).map((item, i) => (
                     <div key={i} className="flex items-start gap-3 py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
-                      <span className="text-[9px] font-bold text-[#ff9800] bg-[rgba(255,152,0,0.1)] px-1.5 py-0.5 rounded-sm flex-shrink-0">
+                      <span className="text-[9px] font-bold text-status-warning bg-[rgba(255,152,0,0.1)] px-1.5 py-0.5 rounded-sm flex-shrink-0">
                         {String(Math.round((item.ai_confidence as number) * 100))}% CONF
                       </span>
                       <span className="text-[11px] text-[rgba(255,255,255,0.6)] truncate">{String(item.transcript ?? '').slice(0, 80)}…</span>
@@ -546,8 +546,8 @@ export default function PhoneSystemPage() {
               )}
             </div>
 
-            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 100 · Improvement Tickets</div>
+            <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">MODULE 100 · Improvement Tickets</div>
               {improvementTickets.length === 0 ? (
                 <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No open improvement tickets</div>
               ) : (
@@ -567,15 +567,15 @@ export default function PhoneSystemPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 91 · Scheduled Callbacks</div>
+            <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">MODULE 91 · Scheduled Callbacks</div>
               {callbackSlots.length === 0 ? (
                 <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No callbacks scheduled</div>
               ) : (
                 <div className="space-y-2">
                   {callbackSlots.slice(0, 5).map((slot, i) => (
                     <div key={i} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
-                      <span className="text-[11px] text-[rgba(255,255,255,0.65)]">{String(slot.caller_phone ?? '')}</span>
+                      <span className="text-[11px] text-text-secondary">{String(slot.caller_phone ?? '')}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-[rgba(255,255,255,0.4)]">{String(slot.scheduled_at ?? '').slice(0, 16)}</span>
                         <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm" style={{ color: (slot.urgency_score as number) >= 80 ? '#e53935' : '#4caf50', background: (slot.urgency_score as number) >= 80 ? 'rgba(229,57,53,0.1)' : 'rgba(76,175,80,0.1)' }}>{String(slot.urgency_tier ?? 'std')}</span>
@@ -586,8 +586,8 @@ export default function PhoneSystemPage() {
               )}
             </div>
 
-            <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">MODULE 93 · A/B Script Tests</div>
+            <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">MODULE 93 · A/B Script Tests</div>
               {abTests.length === 0 ? (
                 <div className="text-xs text-[rgba(255,255,255,0.3)] py-4 text-center">No active A/B tests</div>
               ) : (
@@ -595,7 +595,7 @@ export default function PhoneSystemPage() {
                   {abTests.slice(0, 5).map((test, i) => (
                     <div key={i} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
                       <span className="text-[11px] text-[rgba(255,255,255,0.75)]">{String(test.test_name ?? '')}</span>
-                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm text-[#22d3ee] bg-[rgba(34,211,238,0.1)]">{String(test.status ?? '')}</span>
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm text-system-billing bg-[rgba(34,211,238,0.1)]">{String(test.status ?? '')}</span>
                     </div>
                   ))}
                 </div>
@@ -603,8 +603,8 @@ export default function PhoneSystemPage() {
             </div>
           </div>
 
-          <div className="bg-[#0f1720] border border-[rgba(255,255,255,0.08)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.38)] mb-3">Features 65–100 Status Matrix</div>
+          <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">Features 65–100 Status Matrix</div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {([
                 [65, 'Caller Context Auto-Fetch'], [66, 'Ring + Screen Pop'], [67, 'Smart Alert Policies'],
@@ -621,7 +621,7 @@ export default function PhoneSystemPage() {
                 [98, 'Incident War Room'], [99, 'Human-in-Loop Queue'], [100, 'Continuous Improvement'],
               ] as [number, string][]).map(([n, label]) => (
                 <div key={n} className="flex items-center gap-1.5 py-1 px-2 bg-[rgba(76,175,80,0.06)] border border-[rgba(76,175,80,0.15)] rounded-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#4caf50] flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-active flex-shrink-0" />
                   <span className="text-[9px] font-bold text-[rgba(255,107,26,0.7)] w-7 flex-shrink-0">{n}</span>
                   <span className="text-[10px] text-[rgba(255,255,255,0.6)] truncate">{label}</span>
                 </div>

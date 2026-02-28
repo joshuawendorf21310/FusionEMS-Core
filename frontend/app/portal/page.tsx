@@ -16,7 +16,7 @@ export default function PortalDashboardPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-white">Agency Dashboard</h1>
+        <h1 className="text-lg font-semibold text-text-primary">Agency Dashboard</h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-0.5">data loads from API</p>
       </div>
 
@@ -25,12 +25,12 @@ export default function PortalDashboardPage() {
           <Link
             key={card.href}
             href={card.href}
-            className="group block bg-[#07090d] border border-[rgba(255,255,255,0.08)] rounded-sm p-5 hover:border-[rgba(255,107,26,0.35)] transition-colors"
+            className="group block bg-bg-void border border-border-DEFAULT rounded-sm p-5 hover:border-[rgba(255,107,26,0.35)] transition-colors"
           >
             <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.4)] mb-3 group-hover:text-[rgba(255,107,26,0.7)] transition-colors">
               {card.label}
             </div>
-            <div className="text-3xl font-bold text-white">{card.value}</div>
+            <div className="text-3xl font-bold text-text-primary">{card.value}</div>
           </Link>
         ))}
       </div>

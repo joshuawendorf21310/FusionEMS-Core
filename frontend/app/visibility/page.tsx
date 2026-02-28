@@ -138,7 +138,7 @@ function Badge({ color, label }: { color: string; label: string }) {
     red: "bg-red-900/40 text-red-300 border-red-700",
     yellow: "bg-yellow-900/40 text-yellow-300 border-yellow-700",
     blue: "bg-blue-900/40 text-blue-300 border-blue-700",
-    gray: "bg-gray-800 text-gray-300 border-gray-600",
+    gray: "bg-bg-raised text-text-secondary border-border-strong",
   };
   return (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs border font-medium ${colors[color] ?? colors.gray}`}>
@@ -503,7 +503,7 @@ export default function VisibilityRuleMakerPage() {
               <div className="flex items-center gap-4">
                 <div className="text-sm text-muted">Emergency visibility shutdown for all non-founder roles</div>
                 <div className="flex gap-2 ml-auto">
-                  <button onClick={() => triggerKillSwitch(true)} className="rounded-lg bg-red-700 px-4 py-2 text-xs font-semibold text-white hover:bg-red-600">
+                  <button onClick={() => triggerKillSwitch(true)} className="rounded-lg bg-red-700 px-4 py-2 text-xs font-semibold text-text-primary hover:bg-red-600">
                     Activate Kill Switch
                   </button>
                   <button onClick={() => triggerKillSwitch(false)} className="rounded-lg border border-border px-4 py-2 text-xs hover:bg-[rgba(255,255,255,0.05)]">
@@ -561,7 +561,7 @@ export default function VisibilityRuleMakerPage() {
               <button
                 onClick={createRule}
                 disabled={loading}
-                className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-50"
+                className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? "Creating..." : "Create Rule"}
               </button>
@@ -655,7 +655,7 @@ export default function VisibilityRuleMakerPage() {
               </div>
               <button
                 onClick={evaluateRules}
-                className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90"
+                className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90"
               >
                 Evaluate
               </button>
@@ -700,7 +700,7 @@ export default function VisibilityRuleMakerPage() {
                   />
                 </div>
               </div>
-              <button onClick={runMinimization} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90">
+              <button onClick={runMinimization} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90">
                 Check Minimization
               </button>
               {minimizeResult && (
@@ -756,7 +756,7 @@ export default function VisibilityRuleMakerPage() {
                   />
                 </div>
               </div>
-              <button onClick={runRedaction} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90">
+              <button onClick={runRedaction} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90">
                 Preview Redaction
               </button>
               {redactionResult && (
@@ -778,7 +778,7 @@ export default function VisibilityRuleMakerPage() {
                   onChange={(e) => setDeidentInput(e.target.value)}
                 />
               </div>
-              <button onClick={runDeidentify} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90">
+              <button onClick={runDeidentify} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90">
                 De-identify
               </button>
               {deidentResult && (
@@ -827,7 +827,7 @@ export default function VisibilityRuleMakerPage() {
                   ))}
                 </div>
               </div>
-              <button onClick={runZeroTrust} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90">
+              <button onClick={runZeroTrust} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90">
                 Check Zero-Trust
               </button>
               {zeroTrustResult && (
@@ -928,7 +928,7 @@ export default function VisibilityRuleMakerPage() {
                   />
                 </div>
               </div>
-              <button onClick={runSandbox} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90">
+              <button onClick={runSandbox} className="mt-3 rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90">
                 Test Rule
               </button>
               {sandboxResult && (
@@ -956,7 +956,7 @@ export default function VisibilityRuleMakerPage() {
                     {["billing", "ems", "compliance", "viewer", "agency_admin"].map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
-                <button onClick={runRoleSimulation} className="rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-black hover:opacity-90">
+                <button onClick={runRoleSimulation} className="rounded-lg bg-billing px-5 py-2 text-sm font-semibold text-text-inverse hover:opacity-90">
                   Simulate
                 </button>
               </div>
