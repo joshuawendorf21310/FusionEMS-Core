@@ -13,8 +13,8 @@ type SystemRow = {
 function accentFor(key: string): string {
   const m: Record<string,string> = {
     fusionbilling: "var(--color-status-info)",
-    fusionems: "#fb923c",
-    fusionfire: "#ef4444",
+    fusionems: "var(--color-brand-orange-bright)",
+    fusionfire: "var(--color-brand-red)",
     fusionhems: "var(--color-status-warning)",
     fusionfleet: "var(--color-system-fleet)",
     fusioncompliance: "var(--color-system-compliance)",
