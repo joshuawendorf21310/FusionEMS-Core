@@ -18,8 +18,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    dialect = bind.dialect.name
+    op.get_bind()
 
     op.create_table(
         "telnyx_webhook_receipts",

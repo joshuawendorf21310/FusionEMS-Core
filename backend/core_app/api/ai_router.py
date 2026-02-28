@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.schemas.auth import CurrentUser
 from core_app.ai.service import AiService, hash_input
 
@@ -21,6 +21,12 @@ def chat(payload: dict, db: Session = Depends(db_session_dependency), user: Curr
         raise HTTPException(status_code=400, detail="prompt required")
     svc = AiService()
     content, meta = svc.chat(system="You are FusionEMS Quantum assistant. Be concise and compliant.", user=prompt)
+    from core_app.ai.guardrails import validate_ai_output
+    try:
+        validated = validate_ai_output(content, task_type=str(payload.get("task_type", "general")))
+        content = validated.content
+    except ValueError as guard_err:
+        raise HTTPException(status_code=422, detail=f"AI guardrail: {guard_err}")
     # store ai run (best effort)
     try:
         db.execute(

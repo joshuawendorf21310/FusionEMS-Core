@@ -1,0 +1,255 @@
+/* ═══════════════════════════════════════════════════════════════════
+   FusionEMS Quantum — Design Tokens
+   Single source of truth for all CSS custom properties.
+   Never use raw hex values in component files — always reference a token.
+═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Color Tokens ─────────────────────────────────────────────── */
+:root {
+  /* Spec Aliases (canonical names from the Quantum style guide) */
+  --q-bg:        #0B0F14;
+  --q-surface:   #111827;
+  --q-surface-2: #0F172A;
+  --q-text:      #E5E7EB;
+  --q-muted:     #9CA3AF;
+  --q-border:    rgba(255, 255, 255, 0.08);
+  --q-orange:    #FF6A00;
+  --q-red:       #FF2D2D;
+  --q-green:     #22C55E;
+  --q-yellow:    #F59E0B;
+
+  /* Backgrounds */
+  --color-bg-void:         #07090d;
+  --color-bg-base:         var(--q-bg);
+  --color-bg-panel:        var(--q-surface);
+  --color-bg-panel-raised: var(--q-surface-2);
+  --color-bg-overlay:      #1a2535;
+  --color-bg-input:        #0e161f;
+
+  /* Borders */
+  --color-border-default: var(--q-border);
+  --color-border-subtle:  rgba(255, 255, 255, 0.04);
+  --color-border-strong:  rgba(255, 255, 255, 0.16);
+  --color-border-focus:   var(--q-orange);
+
+  /* Text */
+  --color-text-primary:   var(--q-text);
+  --color-text-secondary: #D1D5DB;
+  --color-text-muted:     var(--q-muted);
+  --color-text-disabled:  #4B5563;
+  --color-text-inverse:   #111827;
+
+  /* Brand — Orange */
+  --color-brand-orange:        var(--q-orange);
+  --color-brand-orange-bright: #FF8C33;
+  --color-brand-orange-dim:    #B85400;
+  --color-brand-orange-ghost:  rgba(255, 106, 0, 0.12);
+  --color-brand-orange-glow:   rgba(255, 106, 0, 0.35);
+
+  /* Brand — Red */
+  --color-brand-red:           var(--q-red);
+  --color-brand-red-bright:    #FF5C5C;
+  --color-brand-red-dim:       #B81E1E;
+  --color-brand-red-ghost:     rgba(255, 45, 45, 0.12);
+
+  /* Semantic Status */
+  --color-status-active:    var(--q-green);
+  --color-status-warning:   var(--q-yellow);
+  --color-status-critical:  var(--q-red);
+  --color-status-info:      #38BDF8;
+  --color-status-neutral:   var(--q-muted);
+
+  /* System line colors */
+  --color-system-billing:    #22d3ee;
+  --color-system-fire:       #ef4444;
+  --color-system-hems:       var(--q-yellow);
+  --color-system-fleet:      #3b82f6;
+  --color-system-compliance: #a855f7;
+  --color-system-cad:        #94a3b8;
+
+  /* ─── Typography ─────────────────────────────────────────────── */
+  --font-sans:   'Barlow', 'Barlow Condensed', system-ui, -apple-system, sans-serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-label:  'Barlow Condensed', 'Barlow', sans-serif;
+
+  --text-display:   clamp(2rem, 3vw, 2.75rem);
+  --text-h1:        clamp(1.5rem, 2.5vw, 2rem);
+  --text-h2:        clamp(1.25rem, 2vw, 1.5rem);
+  --text-h3:        1.125rem;
+  --text-body-lg:   1rem;
+  --text-body:      0.875rem;
+  --text-label:     0.75rem;
+  --text-micro:     0.6875rem;
+
+  --leading-tight:  1.2;
+  --leading-snug:   1.35;
+  --leading-base:   1.5;
+  --leading-loose:  1.7;
+
+  --tracking-label:  0.08em;
+  --tracking-micro:  0.12em;
+  --tracking-normal: 0em;
+
+  /* ─── Spacing Scale ──────────────────────────────────────────── */
+  --space-0:   0px;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-7:   32px;
+  --space-8:   40px;
+  --space-9:   48px;
+  --space-10:  64px;
+  --space-11:  80px;
+  --space-12:  96px;
+
+  /* ─── Density — Default (ADMIN mode) ────────────────────────── */
+  --density-row-height:     40px;
+  --density-cell-pad-x:     12px;
+  --density-cell-pad-y:     10px;
+  --density-icon-size:      20px;
+  --density-input-height:   40px;
+  --density-button-height:  36px;
+
+  /* ─── Chamfer / Clip-Path System ─────────────────────────────── */
+  --chamfer-4:  polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%);
+  --chamfer-8:  polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  --chamfer-12: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  --chamfer-16: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  --chamfer-24: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%);
+  --chamfer-asym-8:  polygon(0 0, 100% 0, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  --chamfer-asym-12: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  --chamfer-drawer:  polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+
+  /* ─── Elevation ──────────────────────────────────────────────── */
+  --elevation-0: none;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px var(--color-border-default);
+  --elevation-2: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 1px var(--color-border-default);
+  --elevation-3: 0 8px 24px rgba(0,0,0,0.6), 0 0 0 1px var(--color-border-strong);
+  --elevation-4: 0 16px 40px rgba(0,0,0,0.7), 0 0 0 1px var(--color-border-strong);
+  --elevation-critical: 0 0 0 2px var(--color-brand-red), 0 8px 24px rgba(255,45,45,0.25);
+
+  /* ─── Focus Ring ─────────────────────────────────────────────── */
+  --focus-ring: 0 0 0 2px var(--color-bg-base), 0 0 0 4px var(--color-brand-orange);
+
+  /* ─── Motion ─────────────────────────────────────────────────── */
+  --duration-instant:  80ms;
+  --duration-fast:     150ms;
+  --duration-base:     220ms;
+  --duration-slow:     350ms;
+  --ease-out:          cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:       cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-spring:       cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── HUD Tick Rail ──────────────────────────────────────────── */
+  --hud-rail-color:  rgba(255, 106, 0, 0.25);
+  --hud-rail-height: 2px;
+}
+
+/* ─── Density Override — DISPATCH mode ──────────────────────────── */
+[data-density="dispatch"] {
+  --density-row-height:    32px;
+  --density-cell-pad-x:    8px;
+  --density-cell-pad-y:    6px;
+  --density-icon-size:     16px;
+  --density-input-height:  32px;
+  --density-button-height: 28px;
+  --text-body:             0.8125rem;
+  --text-label:            0.6875rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Global Utility Classes
+═══════════════════════════════════════════════════════════════════ */
+
+/* HUD tick rail */
+.hud-rail {
+  position: relative;
+}
+.hud-rail::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--hud-rail-height);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--hud-rail-color) 0px,
+    var(--hud-rail-color) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+/* Powder-coat texture */
+.texture-powder {
+  position: relative;
+}
+.texture-powder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Hazard microtext rail */
+.hazard-rail {
+  position: relative;
+  overflow: hidden;
+}
+.hazard-rail::before {
+  content: 'CAUTION · AUTHORIZED · USE · ONLY · CAUTION · AUTHORIZED · USE · ONLY · ';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 100%;
+  font-size: 6px;
+  font-family: var(--font-label);
+  letter-spacing: 0.15em;
+  color: var(--color-brand-orange);
+  opacity: 0.18;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Chamfer utility classes */
+.chamfer-4       { clip-path: var(--chamfer-4);       }
+.chamfer-8       { clip-path: var(--chamfer-8);       }
+.chamfer-12      { clip-path: var(--chamfer-12);      }
+.chamfer-16      { clip-path: var(--chamfer-16);      }
+.chamfer-24      { clip-path: var(--chamfer-24);      }
+.chamfer-asym-8  { clip-path: var(--chamfer-asym-8);  }
+.chamfer-asym-12 { clip-path: var(--chamfer-asym-12); }
+
+/* Focus ring */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Type utilities */
+.label-caps {
+  font-family: var(--font-label);
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.micro-caps {
+  font-family: var(--font-label);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

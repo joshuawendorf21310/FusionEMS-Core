@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import hashlib
-import json
+import logging
+import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, HTTPException
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
@@ -13,6 +16,9 @@ from core_app.payments.stripe_service import StripeConfig, verify_webhook_signat
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.services.realtime_events import emit_payment_confirmed
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["Pricing"])
 
@@ -26,16 +32,73 @@ async def roi(payload: dict[str, Any], request: Request):
 
 @router.post("/public/signup/start", include_in_schema=True)
 async def signup(payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)):
-    # Provisioning workflow lives in founder/tenancy module; this endpoint returns
-    # an integration-ready response.
-    return {"status": "ok", "next": "stripe_checkout"}
+    import stripe as stripe_lib
+
+    settings = get_settings()
+    system_tenant = settings.system_tenant_id
+    try:
+        tenant_uuid = uuid.UUID(system_tenant) if system_tenant else uuid.uuid4()
+    except Exception:
+        tenant_uuid = uuid.uuid4()
+    svc = DominationService(db, get_event_publisher())
+    application = await svc.create(
+        table="onboarding_applications",
+        tenant_id=tenant_uuid,
+        actor_user_id=None,
+        data={
+            "agency_name": payload.get("agency_name", ""),
+            "contact_email": payload.get("email", ""),
+            "agency_type": payload.get("agency_type", ""),
+            "annual_call_volume": payload.get("annual_call_volume"),
+            "selected_modules": payload.get("modules", []),
+            "status": "pending_payment",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    application_id = application["id"]
+
+    if not settings.stripe_secret_key:
+        return {"status": "ok", "application_id": application_id, "checkout_url": None, "note": "stripe_not_configured"}
+
+    stripe_lib.api_key = settings.stripe_secret_key
+    selected_modules = payload.get("modules", [])
+    annual_call_volume = int(payload.get("annual_call_volume") or 0)
+
+    base_amount_cents = 50000
+    if annual_call_volume > 5000:
+        base_amount_cents = 150000
+    elif annual_call_volume > 2000:
+        base_amount_cents = 100000
+    module_amount_cents = len(selected_modules) * 5000
+
+    base_url = settings.api_base_url.rstrip("/")
+    session = stripe_lib.checkout.Session.create(
+        mode="subscription",
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": f"FusionEMS Quantum — {payload.get('agency_name', 'New Agency')}",
+                        "description": f"Platform subscription — {annual_call_volume} annual calls, {len(selected_modules)} modules",
+                    },
+                    "unit_amount": base_amount_cents + module_amount_cents,
+                    "recurring": {"interval": "month"},
+                },
+                "quantity": 1,
+            }
+        ],
+        metadata={"application_id": str(application_id), "source": "public_signup"},
+        success_url=f"{base_url}/onboarding/success?application_id={application_id}",
+        cancel_url=f"{base_url}/onboarding/cancel?application_id={application_id}",
+    )
+
+    return {"status": "ok", "application_id": application_id, "checkout_url": session.url}
 
 
 @router.post("/public/webhooks/stripe", include_in_schema=True)
 async def stripe_webhook(request: Request, db: Session = Depends(db_session_dependency)):
-    """
-    Stripe webhook endpoint. Idempotent by Stripe event id. Stores receipts in stripe_webhook_receipts.
-    """
     settings = get_settings()
     payload_bytes = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
@@ -51,28 +114,147 @@ async def stripe_webhook(request: Request, db: Session = Depends(db_session_depe
         raise HTTPException(status_code=400, detail="invalid_signature")
 
     event_id = event.get("id")
-    tenant_id = (event.get("data", {}).get("object", {}).get("metadata", {}) or {}).get("tenant_id")
-    if not tenant_id:
-        raise HTTPException(status_code=400, detail="missing_tenant_id_metadata")
+    metadata = (event.get("data", {}).get("object", {}).get("metadata", {}) or {})
+    application_id = metadata.get("application_id")
+    tenant_id_meta = metadata.get("tenant_id")
+
+    settings_system_tenant = settings.system_tenant_id
+    try:
+        system_uuid = uuid.UUID(settings_system_tenant) if settings_system_tenant else uuid.uuid4()
+    except Exception:
+        system_uuid = uuid.uuid4()
+
+    idempotency_tenant = system_uuid
+    if not application_id and tenant_id_meta:
+        try:
+            idempotency_tenant = uuid.UUID(tenant_id_meta)
+        except Exception:
+            pass
 
     svc = DominationService(db, get_event_publisher())
-    # idempotency check
-    existing = svc.repo("stripe_webhook_receipts").list(tenant_id, limit=2000)
+    existing = svc.repo("stripe_webhook_receipts").list(idempotency_tenant, limit=2000)
     if any(r["data"].get("event_id") == event_id for r in existing):
         return {"status": "duplicate", "event_id": event_id}
 
     payload_hash = hashlib.sha256(payload_bytes).hexdigest()
     row = await svc.create(
         table="stripe_webhook_receipts",
-        tenant_id=tenant_id,
+        tenant_id=idempotency_tenant,
         actor_user_id=None,
         data={"event_id": event_id, "payload_hash": payload_hash, "event": event},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
+
+    event_type = event.get("type") or event.get("event_type") or ""
+    if event_type in ("checkout.session.completed", "payment_intent.succeeded"):
+        if application_id:
+            await _handle_onboarding_payment(db, application_id, event, request)
+        elif tenant_id_meta:
+            await _handle_tenant_billing_event(db, tenant_id_meta, event, request)
+
     return {"status": "ok", "receipt_id": row["id"], "event_id": event_id}
 
 
+async def _handle_onboarding_payment(
+    db: Session,
+    application_id: str,
+    event: dict,
+    request: Request,
+) -> None:
+    from core_app.services.tenant_provisioning import provision_tenant_from_application
+
+    app_row = db.execute(
+        text(
+            "SELECT id, agency_name, contact_email, agency_type, annual_call_volume, "
+            "selected_modules, legal_status, status, stripe_customer_id, stripe_subscription_id "
+            "FROM onboarding_applications WHERE id = :app_id"
+        ),
+        {"app_id": application_id},
+    ).mappings().first()
+
+    if app_row is None:
+        logger.warning("Stripe webhook: application %s not found", application_id)
+        return
+
+    if app_row["legal_status"] != "signed":
+        logger.warning(
+            "Stripe webhook: application %s legal_status is '%s', not 'signed'. Skipping provisioning.",
+            application_id,
+            app_row["legal_status"],
+        )
+        return
+
+    if app_row["status"] == "provisioned":
+        logger.info("Stripe webhook: application %s already provisioned, skipping.", application_id)
+        return
+
+    try:
+        result = await provision_tenant_from_application(db, application_id, dict(app_row), event)
+    except Exception as exc:
+        logger.error("provision_tenant_from_application failed for application %s: %s", application_id, exc)
+        return
+
+    stripe_obj = event.get("data", {}).get("object", {})
+    stripe_customer_id = stripe_obj.get("customer")
+    stripe_subscription_id = stripe_obj.get("subscription")
+    now = datetime.now(timezone.utc).isoformat()
+
+    db.execute(
+        text(
+            "UPDATE onboarding_applications SET status = 'provisioned', "
+            "stripe_customer_id = :cust, stripe_subscription_id = :sub, "
+            "provisioned_at = :now, tenant_id = :tid WHERE id = :app_id"
+        ),
+        {
+            "cust": stripe_customer_id,
+            "sub": stripe_subscription_id,
+            "now": now,
+            "tid": result.get("tenant_id"),
+            "app_id": application_id,
+        },
+    )
+    db.commit()
+    logger.info("Onboarding provisioning complete for application %s, tenant %s", application_id, result.get("tenant_id"))
+
+
+async def _handle_tenant_billing_event(
+    db: Session,
+    tenant_id: str,
+    event: dict,
+    request: Request,
+) -> None:
+    event_type = event.get("type") or ""
+    if event_type == "payment_intent.succeeded":
+        pi_obj = event.get("data", {}).get("object", {})
+        amount_cents = pi_obj.get("amount_received") or pi_obj.get("amount") or 0
+        pi_id = pi_obj.get("id")
+        try:
+            tenant_uuid = uuid.UUID(str(tenant_id))
+        except Exception:
+            tenant_uuid = uuid.uuid4()
+        publisher = get_event_publisher()
+        await emit_payment_confirmed(
+            publisher=publisher,
+            tenant_id=tenant_uuid,
+            payment_id=uuid.uuid4(),
+            amount_cents=int(amount_cents),
+            stripe_payment_intent=pi_id,
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+
+
 @router.post("/billing/subscription/usage/push")
-async def usage_push(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def usage_push(
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
-    return await svc.create(table="usage_records", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=payload, correlation_id=getattr(request.state, "correlation_id", None))
+    return await svc.create(
+        table="usage_records",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=payload,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Edge Stack (CloudFront + Route53 + ALB HTTPS)
+Description: FusionEMS Quantum - Edge Stack (CloudFront + Route53)
 
 Parameters:
   Env:
@@ -14,10 +14,80 @@ Parameters:
     Type: String
   AcmCertificateArnUsEast1:
     Type: String
+    Description: ACM certificate ARN in us-east-1 (required for CloudFront)
   AlbDnsName:
     Type: String
+    Description: DNS name of the Application Load Balancer
 
 Resources:
+
+  ########################################
+  # CLOUDFRONT CACHE POLICIES
+  ########################################
+
+  NoCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${AppName}-${Env}-NoCache'
+        DefaultTTL: 0
+        MinTTL: 0
+        MaxTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          CookiesConfig:
+            CookieBehavior: none
+
+  AllForwardOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AppName}-${Env}-AllForward'
+        HeadersConfig:
+          HeaderBehavior: allViewer
+        QueryStringsConfig:
+          QueryStringBehavior: all
+        CookiesConfig:
+          CookieBehavior: all
+
+  FrontendCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${AppName}-${Env}-frontend-cache'
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+
+  FrontendOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AppName}-${Env}-frontend-origin'
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Origin
+            - Access-Control-Request-Method
+            - Access-Control-Request-Headers
+        QueryStringsConfig:
+          QueryStringBehavior: all
 
   ########################################
   # CLOUDFRONT DISTRIBUTION
@@ -28,6 +98,7 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
+        HttpVersion: http2and3
         Aliases:
           - !Ref RootDomainName
           - !Ref ApiDomainName
@@ -38,7 +109,12 @@ Resources:
             CustomOriginConfig:
               HTTPPort: 80
               HTTPSPort: 443
-              OriginProtocolPolicy: http-only
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 60
+
         DefaultCacheBehavior:
           TargetOriginId: AlbOrigin
           ViewerProtocolPolicy: redirect-to-https
@@ -46,27 +122,98 @@ Resources:
             - GET
             - HEAD
             - OPTIONS
-            - PUT
-            - POST
-            - PATCH
-            - DELETE
           CachedMethods:
             - GET
             - HEAD
-          ForwardedValues:
-            QueryString: true
-            Cookies:
-              Forward: all
+          Compress: true
+          CachePolicyId: !Ref FrontendCachePolicy
+          OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+
+        CacheBehaviors:
+          - PathPattern: /ws
+            TargetOriginId: AlbOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
+
+          - PathPattern: /ws/*
+            TargetOriginId: AlbOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
+
+          - PathPattern: /api/*
+            TargetOriginId: AlbOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
+
+          - PathPattern: /webhooks/*
+            TargetOriginId: AlbOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
+
+          - PathPattern: /track/*
+            TargetOriginId: AlbOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
+
+          - PathPattern: /healthz
+            TargetOriginId: AlbOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: !Ref AllForwardOriginRequestPolicy
+
         ViewerCertificate:
           AcmCertificateArn: !Ref AcmCertificateArnUsEast1
           SslSupportMethod: sni-only
           MinimumProtocolVersion: TLSv1.2_2021
 
   ########################################
-  # ROUTE53 RECORDS
+  # ROUTE53 RECORDS (A + AAAA for IPv4/IPv6)
   ########################################
 
-  RootDomainRecord:
+  RootDomainRecordA:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -76,7 +223,17 @@ Resources:
         DNSName: !GetAtt CloudFrontDistribution.DomainName
         HostedZoneId: Z2FDTNDATAQYW2
 
-  ApiDomainRecord:
+  RootDomainRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref RootDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  ApiDomainRecordA:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -86,7 +243,34 @@ Resources:
         DNSName: !GetAtt CloudFrontDistribution.DomainName
         HostedZoneId: Z2FDTNDATAQYW2
 
+  ApiDomainRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref ApiDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
 Outputs:
 
   CloudFrontDomain:
+    Description: CloudFront distribution domain name
     Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AppName}-${Env}-CloudFrontDomain'
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AppName}-${Env}-CloudFrontDistributionId'
+
+  RootDomainName:
+    Description: Frontend domain served by CloudFront
+    Value: !Ref RootDomainName
+
+  ApiDomainName:
+    Description: API domain served by CloudFront
+    Value: !Ref ApiDomainName

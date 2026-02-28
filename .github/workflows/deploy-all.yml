@@ -1,0 +1,70 @@
+name: Deploy All (Orchestrator)
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment (dev/prod)'
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
+      skip_infra:
+        description: 'Skip infrastructure deploy'
+        type: boolean
+        default: false
+      skip_bootstrap:
+        description: 'Skip bootstrap seeding'
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-infra:
+    if: ${{ !inputs.skip_infra }}
+    uses: ./.github/workflows/deploy-infra.yml
+    with:
+      env: ${{ inputs.env }}
+    secrets: inherit
+
+  deploy-backend:
+    needs: deploy-infra
+    if: always() && (needs.deploy-infra.result == 'success' || inputs.skip_infra)
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      env: ${{ inputs.env }}
+    secrets: inherit
+
+  deploy-frontend:
+    needs: deploy-infra
+    if: always() && (needs.deploy-infra.result == 'success' || inputs.skip_infra)
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      env: ${{ inputs.env }}
+    secrets: inherit
+
+  deploy-bootstrap:
+    needs: [deploy-backend, deploy-frontend]
+    if: ${{ !inputs.skip_bootstrap && always() && needs.deploy-backend.result == 'success' }}
+    uses: ./.github/workflows/deploy-bootstrap.yml
+    with:
+      env: ${{ inputs.env }}
+      seed_stripe: true
+      seed_nemsis: true
+    secrets: inherit
+
+  summary:
+    needs: [deploy-backend, deploy-frontend, deploy-bootstrap]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "=== Deploy All Summary ==="
+          echo "Environment: ${{ inputs.env }}"
+          echo "Backend: ${{ needs.deploy-backend.result }}"
+          echo "Frontend: ${{ needs.deploy-frontend.result }}"
+          echo "Bootstrap: ${{ needs.deploy-bootstrap.result }}"

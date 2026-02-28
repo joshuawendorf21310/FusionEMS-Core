@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as _dt
 import uuid
 from typing import Any
 
@@ -11,6 +12,7 @@ from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
 from core_app.scheduling.engine import SchedulingEngine
+from core_app.scheduling.ai_advisor import AISchedulingAdvisor
 
 router = APIRouter(prefix="/api/v1/scheduling", tags=['Scheduling'])
 
@@ -104,3 +106,97 @@ async def run_escalations(payload: dict[str, Any], request: Request, current: Cu
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return res
+
+
+@router.post("/ai/draft")
+async def ai_scheduling_draft(
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    advisor = AISchedulingAdvisor(db, get_event_publisher(), current.tenant_id, current.user_id)
+    correlation_id = getattr(request.state, "correlation_id", None)
+    return await advisor.generate_draft(
+        horizon_hours=payload.get("horizon_hours", 48),
+        correlation_id=correlation_id,
+    )
+
+
+@router.post("/ai/drafts/{draft_id}/approve")
+async def approve_ai_draft(
+    draft_id: uuid.UUID,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    advisor = AISchedulingAdvisor(db, get_event_publisher(), current.tenant_id, current.user_id)
+    correlation_id = getattr(request.state, "correlation_id", None)
+    try:
+        return await advisor.approve_draft(draft_id, correlation_id=correlation_id)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/ai/drafts")
+async def list_ai_drafts(
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    from core_app.services.domination_service import DominationService
+    svc = DominationService(db, get_event_publisher())
+    return svc.repo("ai_scheduling_drafts").list(tenant_id=current.tenant_id, limit=50)
+
+
+@router.post("/what-if")
+async def what_if_simulation(
+    payload: dict[str, Any],
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    advisor = AISchedulingAdvisor(db, get_event_publisher(), current.tenant_id, current.user_id)
+    return advisor.what_if_simulate(payload)
+
+
+@router.get("/fatigue/report")
+async def fatigue_report(
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    from core_app.services.domination_service import DominationService
+    svc = DominationService(db, get_event_publisher())
+    assignments = svc.repo("crew_assignments").list(tenant_id=current.tenant_id, limit=1000)
+    now = _dt.datetime.now(tz=_dt.timezone.utc)
+    crew_hours_7d: dict[str, float] = {}
+    crew_hours_24h: dict[str, float] = {}
+    for a in assignments:
+        d = a.get("data") or {}
+        crew_id = str(d.get("crew_member_id") or d.get("user_id") or "")
+        if not crew_id:
+            continue
+        hours = float(d.get("hours", 12))
+        shift_start_str = d.get("start_datetime") or a.get("created_at", "")
+        try:
+            shift_start = _dt.datetime.fromisoformat(shift_start_str.replace("Z", "+00:00"))
+            delta_hours = (now - shift_start).total_seconds() / 3600
+            if delta_hours <= 168:
+                crew_hours_7d[crew_id] = crew_hours_7d.get(crew_id, 0) + hours
+            if delta_hours <= 24:
+                crew_hours_24h[crew_id] = crew_hours_24h.get(crew_id, 0) + hours
+        except Exception:
+            pass
+    all_crew_ids = set(crew_hours_7d) | set(crew_hours_24h)
+    report = []
+    for cid in all_crew_ids:
+        h7 = crew_hours_7d.get(cid, 0)
+        h24 = crew_hours_24h.get(cid, 0)
+        report.append({
+            "crew_member_id": cid,
+            "hours_last_24h": round(h24, 1),
+            "hours_last_7d": round(h7, 1),
+            "fatigue_risk_24h": h24 > 12,
+            "fatigue_risk_7d": h7 > 48,
+            "overtime_risk_7d": h7 > 40,
+        })
+    return {"report": sorted(report, key=lambda x: x["hours_last_7d"], reverse=True)}

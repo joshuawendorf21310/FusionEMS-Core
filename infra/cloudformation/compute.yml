@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Compute Stack (ECS Fargate + ALB + ECR)
+Description: FusionEMS Quantum - Compute Stack (ECS Fargate multi-container + ALB + ECR)
 
 Parameters:
-  Env:
-    Type: String
   AppName:
+    Type: String
+  Env:
     Type: String
   VpcId:
     Type: String
@@ -18,56 +18,183 @@ Parameters:
     Type: String
   ImageTag:
     Type: String
+    Default: latest
   DesiredCount:
     Type: Number
+    Default: 2
   BackendContainerPort:
     Type: Number
+    Default: 8000
   FrontendContainerPort:
     Type: Number
+    Default: 3000
   DbSecretArn:
     Type: String
-  RedisEndpoint:
+  AppSecretsArn:
+    Type: String
+  RedisPrimaryEndpoint:
     Type: String
   CognitoUserPoolId:
     Type: String
   CognitoClientId:
     Type: String
+  AcmCertificateArn:
+    Type: String
+  IvrAudioBaseUrl:
+    Type: String
+    Default: ''
+    Description: S3 or CDN base URL for pre-generated IVR WAV prompts (no trailing slash)
+  FaxClassifyQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for fax classification worker
+  FaxMatchQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for fax-match worker
+  SupportAIQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for support AI worker
+  EdiGenerateQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for EDI generate worker
+  PdfDocKitQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for PDF doc kit worker
+  PdfClaimPacketQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for PDF claim packet worker
+  LegalPdfQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for legal PDF sealing worker
+  InternalWorkerSecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Shared secret for POST /internal/emit worker endpoint
+  NERISPackImportQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for NERIS pack import worker
+  NERISPackCompileQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for NERIS pack compile worker
+  NERISExportQueueUrl:
+    Type: String
+    Default: ''
+    Description: SQS queue URL for NERIS export worker
+  S3BucketDocs:
+    Type: String
+    Default: ''
+    Description: S3 bucket name for agency documents (docs bucket)
+  S3BucketExports:
+    Type: String
+    Default: ''
+    Description: S3 bucket name for exports
+  SystemTenantId:
+    Type: String
+    Default: ''
+    Description: UUID of the system/platform tenant for internal operations
+  GraphTenantId:
+    Type: String
+    Default: ''
+    Description: Azure AD tenant ID for Microsoft Graph
+  GraphClientId:
+    Type: String
+    Default: ''
+    Description: Entra app client ID
+  GraphClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Entra app client secret
+  GraphFounderEmail:
+    Type: String
+    Default: ''
+    Description: Founder mailbox UPN for Graph calls
 
 Resources:
-
-  ########################################
-  # ECR REPOSITORIES
-  ########################################
 
   BackendEcrRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub "${AppName}-${Env}-backend"
+      RepositoryName: !Sub '${AppName}-${Env}-backend'
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
 
   FrontendEcrRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub "${AppName}-${Env}-frontend"
-
-  ########################################
-  # ECS CLUSTER
-  ########################################
+      RepositoryName: !Sub '${AppName}-${Env}-frontend'
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
 
   EcsCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: !Sub "${AppName}-${Env}-cluster"
+      ClusterName: !Sub '${AppName}-${Env}-cluster'
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
 
-  ########################################
-  # IAM ROLES
-  ########################################
+  BackendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/${AppName}/${Env}/backend'
+      RetentionInDays: 30
+
+  FrontendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/${AppName}/${Env}/frontend'
+      RetentionInDays: 30
+
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/${AppName}/${Env}/worker'
+      RetentionInDays: 30
 
   TaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AppName}-${Env}-ecs-exec-role"
+      RoleName: !Sub '${AppName}-${Env}-ecs-exec-role'
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
@@ -78,147 +205,32 @@ Resources:
       Policies:
         - PolicyName: SecretsAccess
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: !Ref DbSecretArn
-
-  ########################################
-  # LOAD BALANCER
-  ########################################
-
-  ApplicationLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: !Sub "${AppName}-${Env}-alb"
-      Subnets: !Split [",", !Ref PublicSubnets]
-      SecurityGroups:
-        - !Ref AlbSecurityGroupId
-      Scheme: internet-facing
-      Type: application
-
-  BackendTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: !Sub "${AppName}-${Env}-tg"
-      Port: !Ref BackendContainerPort
-      Protocol: HTTP
-      TargetType: ip
-      VpcId: !Ref VpcId
-      HealthCheckPath: /health
-      Matcher:
-        HttpCode: 200
-
-  HttpListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
-      Protocol: HTTP
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref BackendTargetGroup
-
-  ########################################
-  # TASK DEFINITION
-  ########################################
-
-  BackendTaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Sub "${AppName}-${Env}-backend"
-      Cpu: 512
-      Memory: 1024
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
-      ContainerDefinitions:
-        - Name: backend
-          Image: !Sub "${BackendEcrRepository.RepositoryUri}:${ImageTag}"
-          PortMappings:
-            - ContainerPort: !Ref BackendContainerPort
-          Environment:
-            - Name: REDIS_ENDPOINT
-              Value: !Ref RedisEndpoint
-            - Name: COGNITO_USER_POOL_ID
-              Value: !Ref CognitoUserPoolId
-            - Name: COGNITO_CLIENT_ID
-              Value: !Ref CognitoClientId
-          Secrets:
-            - Name: DATABASE_URL
-              ValueFrom: !Ref DbSecretArn
-
-  ########################################
-  # ECS SERVICE
-  ########################################
-
-  BackendService:
-    Type: AWS::ECS::Service
-    DependsOn: HttpListener
-    Properties:
-      Cluster: !Ref EcsCluster
-      DesiredCount: !Ref DesiredCount
-      LaunchType: FARGATE
-      TaskDefinition: !Ref BackendTaskDefinition
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
-          Subnets: !Split [",", !Ref PrivateSubnets]
-          SecurityGroups:
-            - !Ref EcsServiceSecurityGroupId
-      LoadBalancers:
-        - ContainerName: backend
-          ContainerPort: !Ref BackendContainerPort
-          TargetGroupArn: !Ref BackendTargetGroup
-
-Outputs:
-
-  AlbDnsName:
-    Value: !GetAtt ApplicationLoadBalancer.DNSName
-
-  BackendEcrRepoUri:
-    Value: !GetAtt BackendEcrRepository.RepositoryUri
-
-  FrontendEcrRepoUri:
-    Value: !GetAtt FrontendEcrRepository.RepositoryUri
-
-  ClusterName:
-    Value: !Ref EcsClusterResources:
-  # ECR repositories
-  BackendEcrRepo:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub '${AppName}-${Env}-backend'
-
-  FrontendEcrRepo:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub '${AppName}-${Env}-frontend'
-
-  ECSCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: !Sub '${AppName}-${Env}-cluster'
-
-  ExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+                Resource:
+                  - !Ref DbSecretArn
+                  - !Ref AppSecretsArn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: '*'
 
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub '${AppName}-${Env}-ecs-task-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -227,72 +239,162 @@ Outputs:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: AppRuntimeSecrets
+        - PolicyName: AppRuntimePermissions
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: !Ref DbSecretArn
+                Resource:
+                  - !Ref DbSecretArn
+                  - !Ref AppSecretsArn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-docs'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-docs/*'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-exports'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-exports/*'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-proposals'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-proposals/*'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-audit'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-audit/*'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-audio'
+                  - !Sub 'arn:aws:s3:::${AppName}-${Env}-audio/*'
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                  - ses:SendTemplatedEmail
+                Resource: '*'
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ce:GetCostAndUsage
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminAddUserToGroup
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:ListUsers
+                Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}'
+              - Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-fax-classify'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-fax-match.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-support-ai.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-edi-generate.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-pdf-doc-kit.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-pdf-claim-packet.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-legal-pdf.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-neris-pack-import.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-neris-pack-compile.fifo'
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AppName}-${Env}-neris-export.fifo'
 
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/${AppName}/${Env}'
-      RetentionInDays: 30
-
-  # ALB (public) -> routes /api/* to backend, /* to frontend
-  Alb:
+  ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Name: !Sub '${AppName}-${Env}-alb'
+      Subnets: !Split [',', !Ref PublicSubnets]
+      SecurityGroups:
+        - !Ref AlbSecurityGroupId
       Scheme: internet-facing
-      Subnets: !Ref PublicSubnets
-      SecurityGroups: [!Ref AlbSecurityGroupId]
       Type: application
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '300'
+        - Key: routing.http2.enabled
+          Value: 'true'
+        - Key: access_logs.s3.enabled
+          Value: 'false'
 
   BackendTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !Ref VpcId
+      Name: !Sub '${AppName}-${Env}-backend-tg'
       Port: !Ref BackendContainerPort
       Protocol: HTTP
       TargetType: ip
+      VpcId: !Ref VpcId
       HealthCheckPath: /api/v1/health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
       Matcher:
         HttpCode: '200-399'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+        - Key: stickiness.enabled
+          Value: 'false'
 
   FrontendTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !Ref VpcId
+      Name: !Sub '${AppName}-${Env}-frontend-tg'
       Port: !Ref FrontendContainerPort
       Protocol: HTTP
       TargetType: ip
+      VpcId: !Ref VpcId
       HealthCheckPath: /healthz
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
       Matcher:
         HttpCode: '200-399'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
 
   HttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      LoadBalancerArn: !Ref Alb
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: 80
       Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+        - CertificateArn: !Ref AcmCertificateArn
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref FrontendTargetGroup
 
-  ApiRule:
+  ApiListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !Ref HttpListener
+      ListenerArn: !Ref HttpsListener
       Priority: 10
       Conditions:
         - Field: path-pattern
@@ -301,106 +403,400 @@ Outputs:
         - Type: forward
           TargetGroupArn: !Ref BackendTargetGroup
 
-  # ECS Task Definitions
+  WebSocketListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListener
+      Priority: 5
+      Conditions:
+        - Field: path-pattern
+          Values: ['/ws', '/ws/*']
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  WebhooksListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListener
+      Priority: 8
+      Conditions:
+        - Field: path-pattern
+          Values: ['/api/v1/webhooks/*', '/api/v1/public/*']
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  TelnyxWebhookListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListener
+      Priority: 7
+      Conditions:
+        - Field: path-pattern
+          Values: ['/webhooks/telnyx/*']
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
   BackendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Sub '${AppName}-${Env}-backend'
-      RequiresCompatibilities: [FARGATE]
-      Cpu: '512'
-      Memory: '1024'
+      Cpu: '1024'
+      Memory: '2048'
       NetworkMode: awsvpc
-      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: backend
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTag}'
           PortMappings:
             - ContainerPort: !Ref BackendContainerPort
+              Protocol: tcp
           Environment:
-            - Name: REDIS_HOST
-              Value: !Ref RedisEndpoint
-            - Name: ENV
+            - Name: ENVIRONMENT
               Value: !Ref Env
+            - Name: AUTH_MODE
+              Value: cognito
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref CognitoUserPoolId
+            - Name: COGNITO_APP_CLIENT_ID
+              Value: !Ref CognitoClientId
+            - Name: COGNITO_REGION
+              Value: !Ref AWS::Region
+            - Name: REDIS_URL
+              Value: !Sub 'rediss://${RedisPrimaryEndpoint}:6379/0'
+            - Name: OPA_URL
+              Value: 'http://localhost:8181'
+            - Name: OTEL_ENABLED
+              Value: 'true'
+            - Name: OTEL_SERVICE_NAME
+              Value: !Sub '${AppName}-backend'
+            - Name: OTEL_EXPORTER_OTLP_ENDPOINT
+              Value: 'http://localhost:4317'
+            - Name: S3_BUCKET_AUDIO
+              Value: !Sub '${AppName}-${Env}-audio'
+            - Name: IVR_AUDIO_BASE_URL
+              Value: !Ref IvrAudioBaseUrl
+            - Name: FAX_CLASSIFY_QUEUE_URL
+              Value: !Ref FaxClassifyQueueUrl
+            - Name: FAX_MATCH_QUEUE_URL
+              Value: !Ref FaxMatchQueueUrl
+            - Name: SUPPORT_AI_QUEUE_URL
+              Value: !Ref SupportAIQueueUrl
+            - Name: EDI_GENERATE_QUEUE_URL
+              Value: !Ref EdiGenerateQueueUrl
+            - Name: PDF_DOC_KIT_QUEUE_URL
+              Value: !Ref PdfDocKitQueueUrl
+            - Name: PDF_CLAIM_PACKET_QUEUE_URL
+              Value: !Ref PdfClaimPacketQueueUrl
+            - Name: LEGAL_PDF_QUEUE_URL
+              Value: !Ref LegalPdfQueueUrl
+            - Name: INTERNAL_WORKER_SECRET
+              Value: !Ref InternalWorkerSecret
+            - Name: NERIS_PACK_IMPORT_QUEUE_URL
+              Value: !Ref NERISPackImportQueueUrl
+            - Name: NERIS_PACK_COMPILE_QUEUE_URL
+              Value: !Ref NERISPackCompileQueueUrl
+            - Name: NERIS_EXPORT_QUEUE_URL
+              Value: !Ref NERISExportQueueUrl
+            - Name: S3_BUCKET_DOCS
+              Value: !Ref S3BucketDocs
+            - Name: SYSTEM_TENANT_ID
+              Value: !Ref SystemTenantId
+            - Name: GRAPH_TENANT_ID
+              Value: !Ref GraphTenantId
+            - Name: GRAPH_CLIENT_ID
+              Value: !Ref GraphClientId
+            - Name: GRAPH_CLIENT_SECRET
+              Value: !Ref GraphClientSecret
+            - Name: GRAPH_FOUNDER_EMAIL
+              Value: !Ref GraphFounderEmail
+            - Name: S3_BUCKET_EXPORTS
+              Value: !Ref S3BucketExports
           Secrets:
-            - Name: DB_SECRET_ARN
-              ValueFrom: !Ref DbSecretArn
+            - Name: DATABASE_URL
+              ValueFrom: !Sub '${DbSecretArn}'
+            - Name: APP_SECRETS_JSON
+              ValueFrom: !Sub '${AppSecretsArn}'
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref LogGroup
+              awslogs-group: !Ref BackendLogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: backend
+          HealthCheck:
+            Command: ['CMD-SHELL', 'curl -f http://localhost:8000/api/v1/health || exit 1']
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          Essential: true
+
+        - Name: opa
+          Image: openpolicyagent/opa:0.68.0-rootless
+          Command: ['run', '--server', '--addr', '0.0.0.0:8181', '--log-format', 'json']
+          PortMappings:
+            - ContainerPort: 8181
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref BackendLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: opa
+          Essential: false
+
+        - Name: otel-collector
+          Image: otel/opentelemetry-collector-contrib:0.103.0
+          Command: ['--config=/etc/otel/config.yaml']
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref BackendLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: otel
+          Essential: false
+
+  WorkerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${AppName}-${Env}-worker'
+      Cpu: '512'
+      Memory: '1024'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: worker
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTag}'
+          Command: ['python', '-m', 'core_app.worker']
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Env
+            - Name: AUTH_MODE
+              Value: cognito
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref CognitoUserPoolId
+            - Name: COGNITO_APP_CLIENT_ID
+              Value: !Ref CognitoClientId
+            - Name: COGNITO_REGION
+              Value: !Ref AWS::Region
+            - Name: REDIS_URL
+              Value: !Sub 'rediss://${RedisPrimaryEndpoint}:6379/0'
+            - Name: OPA_URL
+              Value: 'http://localhost:8181'
+            - Name: OTEL_ENABLED
+              Value: 'true'
+            - Name: OTEL_SERVICE_NAME
+              Value: !Sub '${AppName}-worker'
+            - Name: OTEL_EXPORTER_OTLP_ENDPOINT
+              Value: 'http://localhost:4317'
+            - Name: FAX_CLASSIFY_QUEUE_URL
+              Value: !Ref FaxClassifyQueueUrl
+            - Name: FAX_MATCH_QUEUE_URL
+              Value: !Ref FaxMatchQueueUrl
+            - Name: SUPPORT_AI_QUEUE_URL
+              Value: !Ref SupportAIQueueUrl
+            - Name: EDI_GENERATE_QUEUE_URL
+              Value: !Ref EdiGenerateQueueUrl
+            - Name: PDF_DOC_KIT_QUEUE_URL
+              Value: !Ref PdfDocKitQueueUrl
+            - Name: PDF_CLAIM_PACKET_QUEUE_URL
+              Value: !Ref PdfClaimPacketQueueUrl
+            - Name: LEGAL_PDF_QUEUE_URL
+              Value: !Ref LegalPdfQueueUrl
+            - Name: INTERNAL_WORKER_SECRET
+              Value: !Ref InternalWorkerSecret
+            - Name: NERIS_PACK_IMPORT_QUEUE_URL
+              Value: !Ref NERISPackImportQueueUrl
+            - Name: NERIS_PACK_COMPILE_QUEUE_URL
+              Value: !Ref NERISPackCompileQueueUrl
+            - Name: NERIS_EXPORT_QUEUE_URL
+              Value: !Ref NERISExportQueueUrl
+            - Name: S3_BUCKET_DOCS
+              Value: !Ref S3BucketDocs
+            - Name: S3_BUCKET_EXPORTS
+              Value: !Ref S3BucketExports
+            - Name: SYSTEM_TENANT_ID
+              Value: !Ref SystemTenantId
+            - Name: GRAPH_TENANT_ID
+              Value: !Ref GraphTenantId
+            - Name: GRAPH_CLIENT_ID
+              Value: !Ref GraphClientId
+            - Name: GRAPH_CLIENT_SECRET
+              Value: !Ref GraphClientSecret
+            - Name: GRAPH_FOUNDER_EMAIL
+              Value: !Ref GraphFounderEmail
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Sub '${DbSecretArn}'
+            - Name: APP_SECRETS_JSON
+              ValueFrom: !Sub '${AppSecretsArn}'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref WorkerLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: worker
+          Essential: true
 
   FrontendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Sub '${AppName}-${Env}-frontend'
-      RequiresCompatibilities: [FARGATE]
       Cpu: '512'
       Memory: '1024'
       NetworkMode: awsvpc
-      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: frontend
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-frontend:${ImageTag}'
           PortMappings:
             - ContainerPort: !Ref FrontendContainerPort
+              Protocol: tcp
           Environment:
             - Name: NEXT_PUBLIC_API_BASE
-              Value: ''  # use relative /api which CloudFront/ALB routes
+              Value: ''
+            - Name: NEXT_PUBLIC_WS_URL
+              Value: ''
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref LogGroup
+              awslogs-group: !Ref FrontendLogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: frontend
+          HealthCheck:
+            Command: ['CMD-SHELL', 'curl -f http://localhost:3000/healthz || exit 1']
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          Essential: true
 
   BackendService:
     Type: AWS::ECS::Service
-    DependsOn: HttpListener
+    DependsOn:
+      - HttpsListener
+      - ApiListenerRule
+      - WebSocketListenerRule
+      - TelnyxWebhookListenerRule
     Properties:
       ServiceName: !Sub '${AppName}-${Env}-backend'
-      Cluster: !Ref ECSCluster
+      Cluster: !Ref EcsCluster
       DesiredCount: !Ref DesiredCount
       LaunchType: FARGATE
       TaskDefinition: !Ref BackendTaskDefinition
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
-          SecurityGroups: [!Ref EcsServiceSecurityGroupId]
-          Subnets: !Ref PrivateSubnets
+          SecurityGroups:
+            - !Ref EcsServiceSecurityGroupId
+          Subnets: !Split [',', !Ref PrivateSubnets]
       LoadBalancers:
         - TargetGroupArn: !Ref BackendTargetGroup
           ContainerName: backend
           ContainerPort: !Ref BackendContainerPort
-      HealthCheckGracePeriodSeconds: 60
+      HealthCheckGracePeriodSeconds: 120
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 50
+        MaximumPercent: 200
 
   FrontendService:
     Type: AWS::ECS::Service
-    DependsOn: HttpListener
+    DependsOn:
+      - HttpsListener
     Properties:
       ServiceName: !Sub '${AppName}-${Env}-frontend'
-      Cluster: !Ref ECSCluster
+      Cluster: !Ref EcsCluster
       DesiredCount: !Ref DesiredCount
       LaunchType: FARGATE
       TaskDefinition: !Ref FrontendTaskDefinition
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
-          SecurityGroups: [!Ref EcsServiceSecurityGroupId]
-          Subnets: !Ref PrivateSubnets
+          SecurityGroups:
+            - !Ref EcsServiceSecurityGroupId
+          Subnets: !Split [',', !Ref PrivateSubnets]
       LoadBalancers:
         - TargetGroupArn: !Ref FrontendTargetGroup
           ContainerName: frontend
           ContainerPort: !Ref FrontendContainerPort
-      HealthCheckGracePeriodSeconds: 60
+      HealthCheckGracePeriodSeconds: 120
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 50
+        MaximumPercent: 200
+
+  BackendScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 10
+      MinCapacity: 2
+      ResourceId: !Sub 'service/${EcsCluster}/${BackendService.Name}'
+      RoleARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService'
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  BackendCpuScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${AppName}-${Env}-backend-cpu-scaling'
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref BackendScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70.0
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
 
 Outputs:
   AlbDnsName:
-    Value: !GetAtt Alb.DNSName
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${AppName}-${Env}-AlbDnsName'
+
+  AlbArn:
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Sub '${AppName}-${Env}-AlbArn'
+
+  AlbFullName:
+    Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
+    Export:
+      Name: !Sub '${AppName}-${Env}-AlbFullName'
+
+  BackendTargetGroupFullName:
+    Value: !GetAtt BackendTargetGroup.TargetGroupFullName
+    Export:
+      Name: !Sub '${AppName}-${Env}-BackendTgFullName'
+
   BackendEcrRepoUri:
-    Value: !GetAtt BackendEcrRepo.RepositoryUri
+    Value: !GetAtt BackendEcrRepository.RepositoryUri
+
   FrontendEcrRepoUri:
-    Value: !GetAtt FrontendEcrRepo.RepositoryUri
+    Value: !GetAtt FrontendEcrRepository.RepositoryUri
+
+  ClusterName:
+    Value: !Ref EcsCluster
+    Export:
+      Name: !Sub '${AppName}-${Env}-ClusterName'
+
+  BackendServiceName:
+    Value: !GetAtt BackendService.Name
+    Export:
+      Name: !Sub '${AppName}-${Env}-BackendServiceName'
+
+  FrontendServiceName:
+    Value: !GetAtt FrontendService.Name
+    Export:
+      Name: !Sub '${AppName}-${Env}-FrontendServiceName'

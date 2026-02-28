@@ -50,7 +50,7 @@ def upgrade() -> None:
         op.create_table(
             'tenants',
             sa.Column('tenant_key', sa.String(length=128), nullable=False),
-            sa.Column('name', sa.String(length=255), nullable=False), nullable=False),
+            sa.Column('name', sa.String(length=255), nullable=False),
             sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
             sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -75,7 +75,7 @@ def upgrade() -> None:
         op.create_index('ix_users_tenant_id', 'users', ['tenant_id'], unique=False)
 
     if not _has_table(conn, 'audit_logs'):
-    op.create_table(
+        op.create_table(
         'audit_logs',
         sa.Column('actor_user_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('action', sa.String(length=128), nullable=False),
@@ -153,7 +153,7 @@ def upgrade() -> None:
             op.create_index('ix_documents_tenant_type', 'documents', ['tenant_id', 'doc_type'], unique=False)
         else:
             op.create_table(name, *base_cols)
-            op.create_index(f'ix_builders_rulesets_tenant_id', name, ['tenant_id'], unique=False)
+            op.create_index('ix_builders_rulesets_tenant_id', name, ['tenant_id'], unique=False)
 
         # Enable RLS and tenant isolation policy
         _enable_rls(conn, name)

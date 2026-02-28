@@ -16,11 +16,12 @@ from core_app.billing.artifacts import store_edi_artifact
 from core_app.core.config import get_settings
 from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
 from core_app.integrations.officeally import OfficeAllySftpConfig, submit_837_via_sftp, OfficeAllyClientError
-from core_app.payments.stripe_service import StripeConfig, create_patient_checkout_session, verify_webhook_signature, StripeNotConfigured
+from core_app.payments.stripe_service import StripeConfig, create_patient_checkout_session, StripeNotConfigured
 from core_app.fax.telnyx_service import TelnyxConfig, send_sms, TelnyxNotConfigured
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
 
 router = APIRouter(prefix="/api/v1/billing", tags=["Billing"])
 
@@ -196,20 +197,20 @@ async def submit_officeally(
             await svc.update(
                 table="edi_artifacts",
                 tenant_id=current.tenant_id,
-                entity_id=edi_row["id"],
+                record_id=uuid.UUID(str(edi_row["id"])),
                 actor_user_id=current.user_id,
                 expected_version=edi_row["version"],
-                data_patch={"status": "uploaded", "officeally_remote_path": uploaded_path},
+                patch={"status": "uploaded", "officeally_remote_path": uploaded_path},
                 correlation_id=getattr(request.state, "correlation_id", None),
             )
         except OfficeAllyClientError as e:
             await svc.update(
                 table="edi_artifacts",
                 tenant_id=current.tenant_id,
-                entity_id=edi_row["id"],
+                record_id=uuid.UUID(str(edi_row["id"])),
                 actor_user_id=current.user_id,
                 expected_version=edi_row["version"],
-                data_patch={"status": "upload_failed", "error": str(e)},
+                patch={"status": "upload_failed", "error": str(e)},
                 correlation_id=getattr(request.state, "correlation_id", None),
             )
 
@@ -217,7 +218,7 @@ async def submit_officeally(
         topic=f"tenant.{current.tenant_id}.billing.edi.837.created",
         tenant_id=current.tenant_id,
         entity_type="edi_artifact",
-        entity_id=edi_row["id"],
+        record_id=uuid.UUID(str(edi_row["id"])),
         event_type="EDI_837_CREATED",
         payload={"billing_case_id": str(case_id), "edi_artifact_id": edi_row["id"], "uploaded_path": uploaded_path},
         correlation_id=getattr(request.state, "correlation_id", None),
@@ -390,10 +391,10 @@ async def create_payment_link(
         await svc.update(
             table="patient_payment_links",
             tenant_id=current.tenant_id,
-            entity_id=link_row["id"],
+            record_id=uuid.UUID(str(link_row["id"])),
             actor_user_id=current.user_id,
             expected_version=link_row["version"],
-            data_patch={"status": "sms_failed", "sms_error": str(e)},
+            patch={"status": "sms_failed", "sms_error": str(e)},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
 
@@ -401,7 +402,7 @@ async def create_payment_link(
         topic=f"tenant.{current.tenant_id}.billing.payment_link.created",
         tenant_id=current.tenant_id,
         entity_type="patient_payment_link",
-        entity_id=link_row["id"],
+        record_id=uuid.UUID(str(link_row["id"])),
         event_type="PAYMENT_LINK_CREATED",
         payload={"payment_link_id": link_row["id"], "stripe_session_id": sess["id"]},
         correlation_id=getattr(request.state, "correlation_id", None),
@@ -416,3 +417,33 @@ async def stripe_webhook(
     db: Session = Depends(db_session_dependency),
 ):
     raise HTTPException(status_code=400, detail="Use /api/v1/public/webhooks/stripe")
+
+
+@router.get("/ar-aging")
+async def get_ar_aging(
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    require_role(current, ["founder", "billing", "admin"])
+    report = compute_ar_aging(db, current.tenant_id)
+    return {
+        "as_of_date": report.as_of_date,
+        "total_ar_cents": report.total_ar_cents,
+        "total_claims": report.total_claims,
+        "avg_days_in_ar": report.avg_days_in_ar,
+        "buckets": [
+            {"label": b.label, "count": b.count, "total_cents": b.total_cents}
+            for b in report.buckets
+        ],
+        "payer_breakdown": report.payer_breakdown,
+    }
+
+
+@router.get("/revenue-forecast")
+async def get_revenue_forecast(
+    months: int = 3,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    require_role(current, ["founder", "billing", "admin"])
+    return compute_revenue_forecast(db, current.tenant_id, months=months)

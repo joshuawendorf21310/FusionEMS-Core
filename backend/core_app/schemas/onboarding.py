@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Any
 
 class OnboardingStartRequest(BaseModel):
     email: EmailStr

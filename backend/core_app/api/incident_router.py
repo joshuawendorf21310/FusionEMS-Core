@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core_app.api.dependencies import get_current_user, require_role
+from core_app.api.dependencies import require_role
 from core_app.db.session import get_async_db_session
 from core_app.schemas.auth import CurrentUser
 from core_app.schemas.incident import (
@@ -13,14 +13,14 @@ from core_app.schemas.incident import (
     IncidentTransitionRequest,
     IncidentUpdateRequest,
 )
-from core_app.services.event_publisher import NoOpEventPublisher
+from core_app.services.event_publisher import get_event_publisher
 from core_app.services.incident_service import IncidentService
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
 def incident_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -> IncidentService:
-    return IncidentService(db=db, publisher=NoOpEventPublisher())
+    return IncidentService(db=db, publisher=get_event_publisher())
 
 
 @router.post("", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED)

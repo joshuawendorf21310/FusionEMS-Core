@@ -9,6 +9,9 @@ Parameters:
     Type: String
   RootDomainName:
     Type: String
+  ApiDomainName:
+    Type: String
+    Default: api.fusionemsquantum.com
 
 Resources:
   UserPool:
@@ -38,12 +41,19 @@ Resources:
       AllowedOAuthScopes: [openid, email, profile]
       CallbackURLs:
         - !Sub 'https://${RootDomainName}/auth/callback'
+        - !Sub 'https://${ApiDomainName}/api/v1/auth/microsoft/callback'
+        - !Sub 'https://${RootDomainName}/api/v1/auth/microsoft/callback'
       LogoutURLs:
         - !Sub 'https://${RootDomainName}/'
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
-        - ALLOW_USER_PASSWORD_AUTH
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub '${AppName}-${Env}'
+      UserPoolId: !Ref UserPool
 
 Outputs:
   UserPoolId:
@@ -52,3 +62,6 @@ Outputs:
     Value: !Ref UserPoolClient
   UserPoolIssuer:
     Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
+  UserPoolDomainName:
+    Value: !Sub '${AppName}-${Env}'
+    Description: Cognito hosted UI domain prefix

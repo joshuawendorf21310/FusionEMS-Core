@@ -74,8 +74,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink href="/billing" label="Billing" />
             <NavLink href="/systems" label="Systems" />
             <NavLink href="/compliance" label="Compliance" />
+            <NavLink href="/visibility" label="Visibility" />
+            <NavLink href="/nemsis-manager" label="NEMSIS" />
             <NavLink href="/architecture" label="Architecture" />
             <NavLink href="/founder" label="Founder Command" />
+            <NavLink href="/templates" label="Templates" />
+            <NavLink href="/billing-command" label="Billing Command" />
+            <NavLink href="/roi-funnel" label="ROI Funnel" />
+            <NavLink href="/mobile-ops" label="Mobile Ops" />
+            <NavLink href="/system-health" label="System Health" />
           </nav>
 
           <div className="flex items-center gap-2">

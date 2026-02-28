@@ -1,15 +1,37 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Data Stack (RDS + Redis + Secrets Manager)
+Description: FusionEMS Quantum - Data Stack (RDS Postgres + Redis + Secrets Manager)
 
 Parameters:
-  Env:
-    Type: String
   AppName:
+    Type: String
+  Env:
     Type: String
   DbInstanceClass:
     Type: String
+    Default: db.t4g.medium
+  DbAllocatedStorage:
+    Type: Number
+    Default: 100
+  DbMaxAllocatedStorage:
+    Type: Number
+    Default: 1000
+  DbBackupRetentionDays:
+    Type: Number
+    Default: 7
+  DbEnablePerformanceInsights:
+    Type: String
+    AllowedValues: ['true', 'false']
+    Default: 'true'
+  DbMultiAZ:
+    Type: String
+    AllowedValues: ['true', 'false']
+    Default: 'false'
   RedisNodeType:
     Type: String
+    Default: cache.t4g.small
+  RedisNumNodes:
+    Type: Number
+    Default: 1
   VpcId:
     Type: String
   PrivateSubnets:
@@ -17,165 +39,107 @@ Parameters:
   EcsServiceSecurityGroupId:
     Type: String
 
-Resources:
-
-  ########################################
-  # DATABASE SUBNET GROUP
-  ########################################
-
-  DbSubnetGroup:
-    Type: AWS::RDS::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: Subnet group for RDS
-      SubnetIds: !Split [",", !Ref PrivateSubnets]
-      Tags:
-        - Key: Name
-          Value: !Sub "${AppName}-${Env}-db-subnet-group"
-
-  ########################################
-  # DATABASE SECURITY GROUP
-  ########################################
-
-  DbSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow Postgres access from ECS only
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
-
-  ########################################
-  # REDIS SECURITY GROUP
-  ########################################
-
-  RedisSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow Redis access from ECS only
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 6379
-          ToPort: 6379
-          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
-
-  ########################################
-  # DATABASE SECRET
-  ########################################
-
-  DbSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub "${AppName}/${Env}/db"
-      GenerateSecretString:
-        SecretStringTemplate: '{"username":"fusionems"}'
-        GenerateStringKey: "password"
-        PasswordLength: 32
-        ExcludeCharacters: '"@/\'
-
-  ########################################
-  # RDS INSTANCE
-  ########################################
-
-  PostgresDB:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBInstanceIdentifier: !Sub "${AppName}-${Env}-postgres"
-      Engine: postgres
-      EngineVersion: "15"
-      DBInstanceClass: !Ref DbInstanceClass
-      AllocatedStorage: 100
-      StorageType: gp3
-      MultiAZ: false
-      PubliclyAccessible: false
-      StorageEncrypted: true
-      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:username}}' ]]
-      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:password}}' ]]
-      VPCSecurityGroups:
-        - !Ref DbSecurityGroup
-      DBSubnetGroupName: !Ref DbSubnetGroup
-      BackupRetentionPeriod: 7
-      DeletionProtection: false
-      EnablePerformanceInsights: true
-
-  ########################################
-  # REDIS SUBNET GROUP
-  ########################################
-
-  RedisSubnetGroup:
-    Type: AWS::ElastiCache::SubnetGroup
-    Properties:
-      Description: Subnet group for Redis
-      SubnetIds: !Split [",", !Ref PrivateSubnets]
-
-  ########################################
-  # REDIS CLUSTER
-  ########################################
-
-  RedisCluster:
-    Type: AWS::ElastiCache::CacheCluster
-    Properties:
-      ClusterName: !Sub "${AppName}-${Env}-redis"
-      Engine: redis
-      CacheNodeType: !Ref RedisNodeType
-      NumCacheNodes: 1
-      VpcSecurityGroupIds:
-        - !Ref RedisSecurityGroup
-      CacheSubnetGroupName: !Ref RedisSubnetGroup
-
-Outputs:
-
-  DbSecretArn:
-    Value: !Ref DbSecret
-
-  RedisEndpoint:
-    Value: !GetAtt RedisCluster.RedisEndpoint.Address
-  DbEnablePerformanceInsights:
+  StripeSecretKey:
     Type: String
-    AllowedValues: ['true', 'false']
-    Default: 'true'
-
-  DbMultiAZ:
+    NoEcho: true
+    Default: ''
+    Description: Stripe secret key (sk_live_*)
+  StripeWebhookSecret:
     Type: String
-    AllowedValues: ['true', 'false']
-    Default: 'false'
-
-  RedisNodeType:
+    NoEcho: true
+    Default: ''
+    Description: Stripe webhook signing secret
+  StripePublishableKey:
     Type: String
-    Default: cache.t4g.small
-
-  RedisNumNodes:
-    Type: Number
-    Default: 1
-
-  RedisAuthToken:
+    NoEcho: true
+    Default: ''
+    Description: Stripe publishable key (pk_live_*)
+  TelnyxApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Telnyx API key
+  TelnyxWebhookPublicKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Telnyx webhook public key
+  TelnyxFromNumber:
     Type: String
     Default: ''
+    Description: Telnyx sending phone number (E.164)
+  TelnyxMessagingProfileId:
+    Type: String
+    Default: ''
+    Description: Telnyx messaging profile ID
+  LobApiKey:
+    Type: String
     NoEcho: true
-    Description: Optional Redis AUTH token (leave blank to disable)
+    Default: ''
+    Description: Lob API key
+  LobWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Lob webhook secret
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: OpenAI API key
+  OfficeAllySftpHost:
+    Type: String
+    Default: ''
+    Description: OfficeAlly SFTP host
+  OfficeAllySftpUsername:
+    Type: String
+    Default: ''
+    Description: OfficeAlly SFTP username
+  OfficeAllySftpPassword:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: OfficeAlly SFTP password
+  JwtSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: JWT signing secret (min 64 chars)
+  SesFromEmail:
+    Type: String
+    Default: 'noreply@fusionemsquantum.com'
+    Description: SES sender address
+  GraphTenantId:
+    Type: String
+    Default: ''
+    Description: Azure AD tenant ID for Microsoft Graph
+  GraphClientId:
+    Type: String
+    Default: ''
+    Description: Entra app client ID for Microsoft Graph
+  GraphClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Entra app client secret for Microsoft Graph
+  GraphFounderEmail:
+    Type: String
+    Default: ''
+    Description: Founder mailbox UPN (email) for Graph API calls
 
 Conditions:
   IsProd: !Equals [!Ref Env, 'prod']
   EnablePI: !Equals [!Ref DbEnablePerformanceInsights, 'true']
-  EnableMultiAZ: !Equals [!Ref DbMultiAZ, 'true']
-  HasRedisAuthToken: !Not [!Equals [!Ref RedisAuthToken, '']]
+  EnableMultiAZ: !Or [!Equals [!Ref DbMultiAZ, 'true'], !Equals [!Ref Env, prod]]
 
 Resources:
-  # ----------------------------
-  # RDS Subnet Group
-  # ----------------------------
+
   DbSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: !Sub '${AppName}-${Env} RDS subnet group'
-      SubnetIds: !Ref PrivateSubnets
+      SubnetIds: !Split [',', !Ref PrivateSubnets]
 
-  # ----------------------------
-  # RDS Security Group (only ECS can connect)
-  # ----------------------------
   DbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -187,12 +151,23 @@ Resources:
           ToPort: 5432
           SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
       SecurityGroupEgress:
-        - IpProtocol: -1
+        - IpProtocol: '-1'
           CidrIp: 0.0.0.0/0
 
-  # ----------------------------
-  # Secrets Manager: DB secret
-  # ----------------------------
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub '${AppName}-${Env} Redis SG'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+
   DbSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -203,9 +178,34 @@ Resources:
         GenerateStringKey: password
         ExcludePunctuation: true
 
-  # ----------------------------
-  # Optional: Enhanced Monitoring Role for RDS
-  # ----------------------------
+  AppSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AppName}/${Env}/App'
+      Description: !Sub '${AppName} ${Env} application secrets (Stripe, Telnyx, LOB, SES, OpenAI, OfficeAlly)'
+      SecretString: !Sub |
+        {
+          "stripe_secret_key": "${StripeSecretKey}",
+          "stripe_webhook_secret": "${StripeWebhookSecret}",
+          "stripe_publishable_key": "${StripePublishableKey}",
+          "telnyx_api_key": "${TelnyxApiKey}",
+          "telnyx_webhook_public_key": "${TelnyxWebhookPublicKey}",
+          "telnyx_from_number": "${TelnyxFromNumber}",
+          "telnyx_messaging_profile_id": "${TelnyxMessagingProfileId}",
+          "lob_api_key": "${LobApiKey}",
+          "lob_webhook_secret": "${LobWebhookSecret}",
+          "openai_api_key": "${OpenAIApiKey}",
+          "officeally_sftp_host": "${OfficeAllySftpHost}",
+          "officeally_sftp_username": "${OfficeAllySftpUsername}",
+          "officeally_sftp_password": "${OfficeAllySftpPassword}",
+          "jwt_secret_key": "${JwtSecretKey}",
+          "ses_from_email": "${SesFromEmail}",
+          "graph_tenant_id": "${GraphTenantId}",
+          "graph_client_id": "${GraphClientId}",
+          "graph_client_secret": "${GraphClientSecret}",
+          "graph_founder_email": "${GraphFounderEmail}"
+        }
+
   RdsMonitoringRole:
     Type: AWS::IAM::Role
     Properties:
@@ -220,87 +220,53 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
 
-  # ----------------------------
-  # RDS Parameter Group (baseline)
-  # ----------------------------
   DbParameterGroup:
     Type: AWS::RDS::DBParameterGroup
     Properties:
       Description: !Sub '${AppName}-${Env} postgres params'
       Family: postgres16
       Parameters:
-        log_min_duration_statement: '500'   # ms
+        log_min_duration_statement: '500'
         log_statement: 'none'
         log_connections: '1'
         log_disconnections: '1'
 
-  # ----------------------------
-  # RDS Instance (Postgres)
-  # ----------------------------
   DbInstance:
     Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
     Properties:
       Engine: postgres
-      EngineVersion: '16.3'
+      EngineVersion: '16.6'
       DBInstanceClass: !Ref DbInstanceClass
       AllocatedStorage: !Ref DbAllocatedStorage
       MaxAllocatedStorage: !Ref DbMaxAllocatedStorage
+      StorageType: gp3
       StorageEncrypted: true
       PubliclyAccessible: false
       MultiAZ: !If [EnableMultiAZ, true, false]
-
       BackupRetentionPeriod: !If [IsProd, !Ref DbBackupRetentionDays, 1]
       DeletionProtection: !If [IsProd, true, false]
-
       DBSubnetGroupName: !Ref DbSubnetGroup
-      VPCSecurityGroups: [!Ref DbSecurityGroup]
+      VPCSecurityGroups:
+        - !Ref DbSecurityGroup
       DBParameterGroupName: !Ref DbParameterGroup
-
       MonitoringInterval: !If [IsProd, 60, 0]
-      MonitoringRoleArn: !If [IsProd, !GetAtt RdsMonitoringRole.Arn, !Ref "AWS::NoValue"]
-
+      MonitoringRoleArn: !If [IsProd, !GetAtt RdsMonitoringRole.Arn, !Ref 'AWS::NoValue']
       EnablePerformanceInsights: !If [EnablePI, true, false]
-
-      # CloudWatch Logs exports
       EnableCloudwatchLogsExports:
         - postgresql
         - upgrade
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:password}}'
+      DBName: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:dbname}}'
 
-      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:username}}' ]]
-      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:password}}' ]]
-      DBName: !Join ['', ['{{resolve:secretsmanager:', !Ref DbSecret, ':SecretString:dbname}}' ]]
-
-  # ----------------------------
-  # Redis Subnet Group
-  # ----------------------------
   RedisSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
     Properties:
       Description: !Sub '${AppName}-${Env} Redis subnet group'
-      SubnetIds: !Ref PrivateSubnets
+      SubnetIds: !Split [',', !Ref PrivateSubnets]
 
-  # ----------------------------
-  # Redis Security Group (only ECS can connect)
-  # ----------------------------
-  RedisSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Sub '${AppName}-${Env} Redis SG'
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 6379
-          ToPort: 6379
-          SourceSecurityGroupId: !Ref EcsServiceSecurityGroupId
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-
-  # ----------------------------
-  # Redis Replication Group (enterprise baseline)
-  # - encryption at rest + in transit
-  # - optional AUTH token
-  # ----------------------------
   RedisReplicationGroup:
     Type: AWS::ElastiCache::ReplicationGroup
     Properties:
@@ -309,20 +275,29 @@ Resources:
       Engine: redis
       CacheNodeType: !Ref RedisNodeType
       NumCacheClusters: !Ref RedisNumNodes
-      AutomaticFailoverEnabled: !If [IsProd, true, false]
-      MultiAZEnabled: !If [IsProd, true, false]
+      AutomaticFailoverEnabled: false
+      MultiAZEnabled: false
       TransitEncryptionEnabled: true
       AtRestEncryptionEnabled: true
-      AuthToken: !If [HasRedisAuthToken, !Ref RedisAuthToken, !Ref "AWS::NoValue"]
       CacheSubnetGroupName: !Ref RedisSubnetGroup
-      SecurityGroupIds: [!Ref RedisSecurityGroup]
+      SecurityGroupIds:
+        - !Ref RedisSecurityGroup
 
 Outputs:
   DbSecretArn:
     Value: !Ref DbSecret
+    Export:
+      Name: !Sub '${AppName}-${Env}-DbSecretArn'
+
+  AppSecretsArn:
+    Value: !Ref AppSecrets
+    Export:
+      Name: !Sub '${AppName}-${Env}-AppSecretsArn'
 
   DbInstanceId:
     Value: !Ref DbInstance
+    Export:
+      Name: !Sub '${AppName}-${Env}-DbInstanceId'
 
   DbEndpoint:
     Value: !GetAtt DbInstance.Endpoint.Address
@@ -332,9 +307,13 @@ Outputs:
 
   RedisReplicationGroupId:
     Value: !Ref RedisReplicationGroup
+    Export:
+      Name: !Sub '${AppName}-${Env}-RedisClusterId'
 
   RedisPrimaryEndpoint:
     Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub '${AppName}-${Env}-RedisPrimaryEndpoint'
 
   RedisPort:
     Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Port

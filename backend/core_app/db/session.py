@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator, Generator
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -24,6 +25,15 @@ AsyncSessionLocal = async_sessionmaker(bind=async_engine, expire_on_commit=False
 
 
 def get_db_session() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_db_session_ctx() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db

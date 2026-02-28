@@ -4,13 +4,12 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
-from core_app.core.config import get_settings
 from core_app.documents.ocr import TextractOcrService
-from core_app.documents.s3_storage import default_docs_bucket, put_bytes, presign_get
+from core_app.documents.s3_storage import default_docs_bucket
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher

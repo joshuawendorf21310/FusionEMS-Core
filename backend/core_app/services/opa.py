@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import requests
-from dataclasses import dataclass
 from typing import Any
 
 from core_app.core.config import get_settings

@@ -122,3 +122,110 @@ async def inbound_fax(payload: dict[str, Any], request: Request, db: Session = D
     )
 
     return {"status": "ok", "fax_event_id": fax_event["id"], "document_id": doc_row["id"]}
+
+
+@router.get("/fax/inbox")
+async def fax_inbox(
+    request: Request,
+    status: str | None = None,
+    limit: int = 50,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    svc = DominationService(db, get_event_publisher())
+    rows = svc.repo("fax_jobs").list(tenant_id=current.tenant_id, limit=limit, offset=0)
+    if status and status != "all":
+        rows = [r for r in rows if (r.get("data") or {}).get("status") == status]
+    return rows
+
+
+@router.post("/fax/{fax_id}/match/trigger")
+async def trigger_fax_match(
+    fax_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    svc = DominationService(db, get_event_publisher())
+    row = await svc.create(
+        table="fax_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "fax_job_id": str(fax_id),
+            "event_type": "match_triggered",
+            "triggered_by": str(current.user_id),
+            "payload": payload,
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    get_event_publisher().publish(
+        topic=f"tenant.{current.tenant_id}.fax.match.trigger",
+        tenant_id=current.tenant_id,
+        entity_type="fax_job",
+        entity_id=str(fax_id),
+        event_type="FAX_MATCH_TRIGGERED",
+        payload={"fax_job_id": str(fax_id), "fax_event_id": row["id"]},
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return {"status": "triggered", "fax_event_id": row["id"]}
+
+
+@router.post("/fax/{fax_id}/match/detach")
+async def detach_fax_match(
+    fax_id: uuid.UUID,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    svc = DominationService(db, get_event_publisher())
+    row = await svc.create(
+        table="fax_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "fax_job_id": str(fax_id),
+            "event_type": "match_detached",
+            "detached_by": str(current.user_id),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return {"status": "detached", "fax_event_id": row["id"]}
+
+
+@router.post("/claims/{claim_id}/documents/attach-fax")
+async def attach_fax_to_claim(
+    claim_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    svc = DominationService(db, get_event_publisher())
+    fax_job_id = payload.get("fax_job_id")
+    document_id = payload.get("document_id")
+
+    row = await svc.create(
+        table="fax_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "claim_id": str(claim_id),
+            "fax_job_id": str(fax_job_id) if fax_job_id else None,
+            "document_id": str(document_id) if document_id else None,
+            "event_type": "attached_to_claim",
+            "attached_by": str(current.user_id),
+        },
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    get_event_publisher().publish(
+        topic=f"tenant.{current.tenant_id}.claims.fax.attached",
+        tenant_id=current.tenant_id,
+        entity_type="claim",
+        entity_id=str(claim_id),
+        event_type="FAX_ATTACHED_TO_CLAIM",
+        payload={"claim_id": str(claim_id), "fax_job_id": str(fax_job_id)},
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+    return {"status": "attached", "fax_event_id": row["id"]}

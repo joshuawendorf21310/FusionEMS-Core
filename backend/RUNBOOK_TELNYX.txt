@@ -1,0 +1,372 @@
+TELNYX VOICE / SMS / FAX RUNBOOK
+FusionEMS Quantum — Billing Communications
+Last updated: 2026-02-26
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1.  Architecture overview
+2.  Environment variables / secrets
+3.  Rotating Telnyx API keys and webhook public key
+4.  ALB / routing verification
+5.  IVR audio prompt management
+6.  Handling webhook retry storms
+7.  STOP/HELP compliance — manual opt-out management
+8.  Fax pipeline — monitoring and manual reprocessing
+9.  Monitoring: CloudWatch alarms and log queries
+10. Incident response quick-reference
+
+
+================================================================================
+1. ARCHITECTURE OVERVIEW
+================================================================================
+
+Inbound Telnyx events flow:
+
+  Telnyx platform
+    │
+    ├─ POST /webhooks/telnyx/voice  → IVR state machine (voice_webhook_router)
+    ├─ POST /webhooks/telnyx/sms   → STOP/HELP compliance (sms_webhook_router)
+    └─ POST /webhooks/telnyx/fax   → Fax ingest + classify queue (fax_webhook_router)
+
+All three endpoints:
+  - Verify Ed25519 signatures before processing (telnyx/signature.py)
+  - Deduplicate via telnyx_events(event_id) ON CONFLICT DO NOTHING
+  - Return HTTP 200 to Telnyx immediately (Telnyx retries on non-2xx)
+
+IVR payment flow:
+  call.initiated → answer → play menu
+  → DTMF "1" → collect statement ID (digits)
+  → valid statement → collect 10-digit phone (DTMF)
+  → Stripe Checkout Session created on connected account
+  → SMS payment link sent to collected phone
+  → caller hears confirmation; press 1 to transfer to billing team
+
+Fax classify worker:
+  fax_webhook_router enqueues to FAX_CLASSIFY_QUEUE_URL (SQS)
+  → fax_classify_worker.lambda_handler processes the message
+  → Phase 1: rule-based doc_type classification
+  → Phase 2 stub: Textract OCR + LLM classification (not yet live)
+  → Updates fax_documents(doc_type, case_id, status)
+
+PCI note: card numbers never enter the system. IVR collects only phone
+          number and statement ID. Payment is via Stripe-hosted Checkout.
+
+
+================================================================================
+2. ENVIRONMENT VARIABLES / SECRETS
+================================================================================
+
+All sensitive values are stored in AWS Secrets Manager under the ARN referenced
+by AppSecretsArn in compute.yml. The ECS task definition injects them as env
+vars from APP_SECRETS_JSON.
+
+Required env vars (prod/staging — validated at startup in config.py):
+
+  TELNYX_API_KEY                Telnyx V2 API key for placing API calls
+  TELNYX_PUBLIC_KEY             Base64-encoded DER Ed25519 public key from portal
+  TELNYX_FROM_NUMBER            E.164 outbound SMS number
+  TELNYX_MESSAGING_PROFILE_ID   Messaging profile UUID
+  IVR_AUDIO_BASE_URL            Base URL for WAV prompt files, no trailing slash
+                                Example: https://audio.fusionemsquantum.com
+  S3_BUCKET_AUDIO               S3 bucket name for audio assets
+                                Example: fusionems-prod-audio
+  FAX_CLASSIFY_QUEUE_URL        SQS queue URL for fax classification worker
+
+Optional / defaulted:
+  TELNYX_WEBHOOK_TOLERANCE_SECONDS  default 300 (5 min replay attack window)
+
+
+================================================================================
+3. ROTATING TELNYX API KEYS AND WEBHOOK PUBLIC KEY
+================================================================================
+
+--- Rotating the API key ---
+
+1. Log into portal.telnyx.com → Auth → API Keys
+2. Create a new V2 key. Copy the key value.
+3. Update the secret in AWS Secrets Manager:
+     aws secretsmanager put-secret-value \
+       --secret-id <AppSecretsArn> \
+       --secret-string "$(aws secretsmanager get-secret-value \
+           --secret-id <AppSecretsArn> --query SecretString --output text \
+           | python3 -c "import sys,json; d=json.load(sys.stdin); \
+             d['TELNYX_API_KEY']='<NEW_KEY>'; print(json.dumps(d))")"
+4. Force a new ECS task deployment to pick up the rotated secret:
+     aws ecs update-service \
+       --cluster <cluster-name> \
+       --service <AppName>-<Env>-backend \
+       --force-new-deployment
+5. Verify health check passes before deleting the old key from Telnyx portal.
+6. Delete the old key from the Telnyx portal once the new deployment is stable.
+
+--- Rotating the webhook public key ---
+
+The webhook public key changes when you rotate the webhook signing credential
+in the Telnyx portal.
+
+1. portal.telnyx.com → Webhooks → (your webhook) → Regenerate signing secret
+2. The portal shows the new Ed25519 public key in base64-DER format.
+3. Export the new public key value:
+     NEW_PUB_KEY="<paste base64 value here>"
+4. Update TELNYX_PUBLIC_KEY in Secrets Manager (same pattern as API key above).
+5. Force a new ECS deployment.
+6. IMPORTANT: there is a brief window between portal rotation and ECS restart
+   where incoming webhooks will fail sig verification. Telnyx will retry failed
+   webhooks (non-2xx responses) for up to 72 hours, so no events are lost.
+   Keep the old public key active in a rolling-window if zero-downtime is
+   required: temporarily set tolerance_seconds to a larger value.
+
+--- Zero-downtime rotation (optional) ---
+
+If downtime is unacceptable:
+1. Deploy a feature flag env var TELNYX_PUBLIC_KEY_PENDING=<new_key>.
+2. Modify signature.py to try the pending key on failure before returning False.
+3. After rotation is confirmed stable, promote PENDING to PRIMARY and redeploy.
+
+
+================================================================================
+4. ALB / ROUTING VERIFICATION
+================================================================================
+
+Confirm Telnyx webhook traffic reaches the backend:
+
+  # Verify listener rule exists
+  aws elbv2 describe-rules \
+    --listener-arn <HttpsListenerArn> \
+    --query 'Rules[?Conditions[?Values[?contains(@, `/webhooks/telnyx/`)]]].Priority'
+
+  # Expected: Priority 7 (TelnyxWebhookListenerRule)
+
+  # Smoke-test with a dummy POST (should return 400 — bad sig, not 502/503)
+  curl -s -o /dev/null -w "%{http_code}" \
+    -X POST https://api.fusionemsquantum.com/webhooks/telnyx/sms \
+    -H "Content-Type: application/json" \
+    -d '{"data":{"event_type":"message.received","id":"test","payload":{}}}'
+  # Expected: 400
+
+
+================================================================================
+5. IVR AUDIO PROMPT MANAGEMENT
+================================================================================
+
+Pre-generated WAV files (Piper TTS, 22050 Hz, 16-bit mono) live at:
+  s3://<S3_BUCKET_AUDIO>/ivr/<prompt>.wav
+
+These are served at IVR_AUDIO_BASE_URL/<prompt>.wav.
+
+Current prompts required:
+  menu.wav              — "Press 1 to pay your bill. Press 2 to speak with
+                           a billing specialist."
+  collect_statement.wav — "Please enter your statement number followed by
+                           the pound key."
+  collect_phone.wav     — "Please enter the 10-digit phone number where we
+                           should send your payment link, followed by the
+                           pound key."
+  invalid_statement.wav — "We could not find that statement number. Please
+                           try again."
+  sent_sms.wav          — "Your payment link has been sent. Press 1 to
+                           speak with a billing specialist, or hang up."
+  transfer.wav          — "Transferring you now. Please hold."
+  goodbye.wav           — "Thank you. Goodbye."
+
+To update a prompt:
+  1. Generate new WAV with Piper: piper --model en_US-amy-medium \
+       --output_file /tmp/menu.wav < menu.txt
+  2. Upload: aws s3 cp /tmp/menu.wav s3://<S3_BUCKET_AUDIO>/ivr/menu.wav \
+       --content-type audio/wav --cache-control "max-age=86400"
+  3. No deployment needed — Telnyx fetches the URL at call time.
+  4. Set a CloudFront cache invalidation if using a CDN:
+       aws cloudfront create-invalidation \
+         --distribution-id <dist-id> --paths "/ivr/menu.wav"
+
+
+================================================================================
+6. HANDLING WEBHOOK RETRY STORMS
+================================================================================
+
+Telnyx retries webhooks on non-2xx responses for up to 72 hours with
+exponential backoff. The telnyx_events idempotency table prevents duplicate
+processing, so retries are safe.
+
+Symptoms of a retry storm:
+  - CloudWatch metric: high POST /webhooks/telnyx/* request rate
+  - telnyx_events table growing rapidly
+  - High DB write load on INSERT ... ON CONFLICT
+
+Mitigation:
+  1. Check for a root cause (DB down, signature mismatch after key rotation,
+     missing env var causing 500s).
+  2. If the backend is healthy and events are being deduplicated, no action
+     needed — Telnyx will stop retrying once it receives 200s.
+  3. If the backend is returning 500s due to a bug:
+     a. Roll back the offending deploy.
+     b. Telnyx will retry during the rollback window.
+     c. All retried events with the same event_id will be deduplicated.
+  4. If you need to pause Telnyx retries (extreme case):
+     - portal.telnyx.com → Webhooks → Disable webhook endpoint temporarily.
+     - Fix root cause, re-enable, then manually replay any lost events from
+       Telnyx portal → Webhook Deliveries.
+
+Do NOT purge the telnyx_events table under load — it is the deduplication
+guard. If you need to reprocess a specific event, delete only that row:
+  DELETE FROM telnyx_events WHERE event_id = '<id>';
+
+
+================================================================================
+7. STOP/HELP COMPLIANCE — MANUAL OPT-OUT MANAGEMENT
+================================================================================
+
+TCPA-required keywords handled automatically:
+  STOP, UNSUBSCRIBE, CANCEL, END, QUIT → upsert telnyx_opt_outs + reply
+  HELP, INFO → send agency billing contact info
+
+--- Checking opt-out status for a phone number ---
+
+  SELECT opted_out_at, source
+  FROM telnyx_opt_outs
+  WHERE tenant_id = '<tenant_id>'
+    AND phone_e164 = '+12025550100';
+
+--- Manually opting out a phone (e.g. on patient request) ---
+
+  INSERT INTO telnyx_opt_outs (tenant_id, phone_e164, opted_out_at, source)
+  VALUES ('<tenant_id>', '+12025550100', NOW(), 'manual_admin')
+  ON CONFLICT (tenant_id, phone_e164) DO UPDATE
+    SET opted_out_at = NOW(), source = 'manual_admin';
+
+--- Removing an opt-out (patient re-consent) ---
+
+  DELETE FROM telnyx_opt_outs
+  WHERE tenant_id = '<tenant_id>'
+    AND phone_e164 = '+12025550100';
+
+Note: outbound SMS (payment links, confirmations) always checks telnyx_opt_outs
+before sending. A DELETE here immediately re-enables SMS for that number.
+
+--- Auditing all opt-outs for a tenant ---
+
+  SELECT phone_e164, opted_out_at, source
+  FROM telnyx_opt_outs
+  WHERE tenant_id = '<tenant_id>'
+  ORDER BY opted_out_at DESC;
+
+
+================================================================================
+8. FAX PIPELINE — MONITORING AND MANUAL REPROCESSING
+================================================================================
+
+--- Fax document lifecycle ---
+
+  fax.received webhook → download PDF → S3 (tenant/{id}/fax/{date}/{fax_id}/original.pdf)
+    → insert fax_documents (status='received')
+    → enqueue to FAX_CLASSIFY_QUEUE_URL
+    → fax_classify_worker processes → update fax_documents (doc_type, case_id, status)
+
+--- Checking status of a fax ---
+
+  SELECT fax_id, tenant_id, from_phone, s3_key_original, doc_type, case_id, status
+  FROM fax_documents
+  WHERE fax_id = '<fax_id>';
+
+--- Fax stuck in 'received' (classify worker not processing) ---
+
+  1. Check worker logs in CloudWatch:
+       /fusionems/<env>/worker  stream: worker
+  2. Check SQS queue depth:
+       aws sqs get-queue-attributes \
+         --queue-url <FAX_CLASSIFY_QUEUE_URL> \
+         --attribute-names ApproximateNumberOfMessages
+  3. If queue is empty but fax is stuck, manually re-enqueue:
+       aws sqs send-message \
+         --queue-url <FAX_CLASSIFY_QUEUE_URL> \
+         --message-body '{"fax_id":"<fax_id>","tenant_id":"<tid>","s3_key":"<key>"}'
+  4. If queue has messages but worker is not processing, check worker task health:
+       aws ecs list-tasks --cluster <cluster> --family <AppName>-<env>-worker
+
+--- Manually reprocessing a fax ---
+
+  1. Reset status:
+       UPDATE fax_documents
+       SET status = 'received', doc_type = NULL, case_id = NULL
+       WHERE fax_id = '<fax_id>';
+  2. Re-enqueue (see above).
+
+--- S3 fax key format ---
+
+  tenant/{tenant_id}/fax/{yyyy}/{mm}/{dd}/{fax_id}/original.pdf
+
+  Example: tenant/abc123/fax/2026/02/26/fax-xyz/original.pdf
+
+  To retrieve:
+    aws s3 cp s3://<S3_BUCKET_DOCS>/tenant/<tid>/fax/<date>/<fax_id>/original.pdf /tmp/
+
+
+================================================================================
+9. MONITORING: CLOUDWATCH ALARMS AND LOG QUERIES
+================================================================================
+
+--- Key log groups ---
+
+  /<AppName>/<Env>/backend   (stream prefixes: backend, opa, otel)
+  /<AppName>/<Env>/worker
+
+--- Log Insights: sig verification failures (potential replay attacks) ---
+
+  fields @timestamp, @message
+  | filter @message like "signature verification failed"
+  | sort @timestamp desc
+  | limit 50
+
+--- Log Insights: IVR call funnel ---
+
+  fields @timestamp, @message
+  | filter @message like "ivr_state"
+  | stats count() by state
+  | sort count desc
+
+--- Log Insights: SMS opt-outs per day ---
+
+  fields @timestamp, @message
+  | filter @message like "sms_opt_out"
+  | stats count() by datefloor(@timestamp, 1d)
+
+--- Recommended CloudWatch alarms ---
+
+  1. 5xx rate on /webhooks/telnyx/* > 1% over 5 min → page on-call
+  2. telnyx_events INSERT failure rate > 0 → investigate DB
+  3. FAX_CLASSIFY_QUEUE_URL ApproximateAgeOfOldestMessage > 300s → page on-call
+  4. IVR transfer failure count > 5 in 10 min → notify billing team
+
+
+================================================================================
+10. INCIDENT RESPONSE QUICK-REFERENCE
+================================================================================
+
+SCENARIO: Webhooks returning 400 (sig failure) after key rotation
+  → Verify TELNYX_PUBLIC_KEY matches the current portal value
+  → Force ECS redeploy to pick up new secret value
+  → Telnyx will retry; all events deduplicated on receipt
+
+SCENARIO: IVR callers hear silence / no menu
+  → Check IVR_AUDIO_BASE_URL is accessible: curl <base_url>/menu.wav -I
+  → Check S3 bucket permissions (GetObject on s3_bucket_audio)
+  → Check Telnyx call logs in portal for "audio URL fetch failed"
+
+SCENARIO: Payment SMS not received after IVR phone collection
+  → Check telnyx_sms_messages for the call's statement_id
+  → Verify caller's phone is not in telnyx_opt_outs
+  → Check Stripe Checkout Session was created: query billing_checkout_sessions
+  → Check Telnyx message delivery status in portal
+
+SCENARIO: Fax received but not appearing in system
+  → Check telnyx_events for the fax event_id
+  → If missing: Telnyx never reached us — check ALB rule priority 7
+  → If present but fax_documents missing: check backend logs for S3 write error
+  → If fax_documents present but status stuck: see Section 8
+
+SCENARIO: STOP opt-out not honoring (outbound SMS sent after STOP)
+  → Check telnyx_opt_outs for the phone number
+  → If missing: sms_webhook_router did not process the STOP — check logs
+  → Manually insert opt-out (Section 7) and investigate root cause
+  → TCPA violation risk: escalate to compliance immediately

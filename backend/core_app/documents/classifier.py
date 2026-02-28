@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
 
 
 DOC_TYPES = ["facesheet", "pcs", "insurance_card", "signature", "denial_letter", "appeal_response", "other"]

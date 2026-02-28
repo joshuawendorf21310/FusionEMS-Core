@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 
-import pytest
 
 from core_app.billing.validation import BillingValidator
 

@@ -52,7 +52,7 @@ export default async function Page() {
           Revenue. Operations. Compliance. Intelligence. Built as Infrastructure. Activated by Certification.
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/billing/dashboard" className="rounded-xl bg-billing px-5 py-3 text-sm font-semibold text-black">
+          <Link href="/billing/dashboard" className="rounded-xl bg-billing px-5 py-3 text-sm font-semibold text-text-inverse">
             Enter Billing Command
           </Link>
           <Link href="/architecture" className="rounded-xl border border-border px-5 py-3 text-sm text-muted hover:text-text">

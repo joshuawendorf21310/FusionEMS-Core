@@ -7,14 +7,14 @@ from core_app.api.dependencies import require_role
 from core_app.db.session import get_async_db_session
 from core_app.schemas.auth import CurrentUser
 from core_app.schemas.patient import PatientCreateRequest, PatientListResponse, PatientResponse, PatientUpdateRequest
-from core_app.services.event_publisher import NoOpEventPublisher
+from core_app.services.event_publisher import get_event_publisher
 from core_app.services.patient_service import PatientService
 
 router = APIRouter(prefix="/incidents/{incident_id}/patients", tags=["patients"])
 
 
 def patient_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -> PatientService:
-    return PatientService(db=db, publisher=NoOpEventPublisher())
+    return PatientService(db=db, publisher=get_event_publisher())
 
 
 @router.post("", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)

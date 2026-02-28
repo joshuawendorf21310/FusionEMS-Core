@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher

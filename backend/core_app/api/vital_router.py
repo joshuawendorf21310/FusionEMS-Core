@@ -13,14 +13,14 @@ from core_app.schemas.vital import (
     VitalResponse,
     VitalUpdateRequest,
 )
-from core_app.services.event_publisher import NoOpEventPublisher
+from core_app.services.event_publisher import get_event_publisher
 from core_app.services.vital_service import VitalService
 
 router = APIRouter(prefix="/incidents/{incident_id}/patients/{patient_id}/vitals", tags=["vitals"])
 
 
 def vital_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -> VitalService:
-    return VitalService(db=db, publisher=NoOpEventPublisher())
+    return VitalService(db=db, publisher=get_event_publisher())
 
 
 @router.post("", response_model=VitalResponse, status_code=status.HTTP_201_CREATED)
