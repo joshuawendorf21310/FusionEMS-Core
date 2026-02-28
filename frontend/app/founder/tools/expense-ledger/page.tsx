@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -109,7 +109,7 @@ export default function ExpenseLedgerPage() {
               <span className="text-[10px] text-[rgba(255,255,255,0.4)] uppercase tracking-wider">{s.label}</span>
               <span
                 className="text-xl font-bold"
-                style={{ color: s.status === 'error' ? '#e53935' : s.status === 'warn' ? '#ff9800' : 'rgba(255,255,255,0.9)' }}
+                style={{ color: s.status === 'error' ? 'var(--color-brand-red)' : s.status === 'warn' ? 'var(--color-status-warning)' : 'rgba(255,255,255,0.9)' }}
               >
                 {s.value}
               </span>
@@ -126,7 +126,7 @@ export default function ExpenseLedgerPage() {
           <button
             onClick={() => setShowForm((v) => !v)}
             className="px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-sm transition-all hover:brightness-110"
-            style={{ background: '#ff6b1a', color: '#000' }}
+            style={{ background: 'var(--color-brand-orange)', color: '#000' }}
           >
             {showForm ? 'Hide Form' : 'Add Expense'}
           </button>
@@ -186,7 +186,7 @@ export default function ExpenseLedgerPage() {
               <div className="flex items-end">
                 <button
                   className="px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-sm transition-all hover:brightness-110"
-                  style={{ background: '#ff6b1a', color: '#000' }}
+                  style={{ background: 'var(--color-brand-orange)', color: '#000' }}
                   onClick={() => {
                     setExpenseForm({ date: '', amount: '', category: 'AWS', description: '', vendor: '' });
                     setShowForm(false);
@@ -255,10 +255,10 @@ export default function ExpenseLedgerPage() {
                       width: `${cat.pct}%`,
                       background:
                         cat.status === 'error'
-                          ? '#e53935'
+                          ? 'var(--color-brand-red)'
                           : cat.status === 'warn'
-                          ? '#ff9800'
-                          : '#29b6f6',
+                          ? 'var(--color-status-warning)'
+                          : 'var(--color-status-info)',
                     }}
                   />
                 </div>

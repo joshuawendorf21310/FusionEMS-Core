@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -48,7 +48,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -72,7 +72,7 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 const FUNNEL_STAGES = [
   { stage: 'Awareness', leads: 48, pct: 100, color: 'var(--color-status-info)' },
   { stage: 'Qualified', leads: 24, pct: 50, color: 'var(--q-green)' },
-  { stage: 'Demo Scheduled', leads: 12, pct: 25, color: '#a855f7' },
+  { stage: 'Demo Scheduled', leads: 12, pct: 25, color: 'var(--color-system-compliance)' },
   { stage: 'Proposal Sent', leads: 6, pct: 12.5, color: 'var(--q-yellow)' },
   { stage: 'Negotiation', leads: 3, pct: 6.25, color: 'var(--q-red)' },
   { stage: 'Closed Won', leads: 2, pct: 4.2, color: 'var(--q-green)' },
@@ -129,11 +129,11 @@ export default function SalesFunnelPage() {
 
       {/* MODULE 1 — Funnel Overview */}
       <div className="grid grid-cols-5 gap-3">
-        <StatCard label="Leads (30d)" value={24} color="#fff" />
-        <StatCard label="Qualified" value={12} color="#ff9800" />
-        <StatCard label="Proposals Sent" value={6} color="#29b6f6" />
-        <StatCard label="Negotiations" value={3} color="#a855f7" />
-        <StatCard label="Closed Won (30d)" value={2} color="#4caf50" />
+        <StatCard label="Leads (30d)" value={24} color="var(--color-text-primary)" />
+        <StatCard label="Qualified" value={12} color="var(--color-status-warning)" />
+        <StatCard label="Proposals Sent" value={6} color="var(--color-status-info)" />
+        <StatCard label="Negotiations" value={3} color="var(--color-system-compliance)" />
+        <StatCard label="Closed Won (30d)" value={2} color="var(--color-status-active)" />
       </div>
 
       {/* MODULE 2 — Funnel Visualization */}
@@ -216,9 +216,9 @@ export default function SalesFunnelPage() {
       <Panel>
         <SectionHeader number="5" title="Revenue Forecast" sub="If all pipeline deals close" />
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <StatCard label="Best Case" value="$103,680/yr" sub="All deals close" color="#4caf50" />
-          <StatCard label="Likely (weighted)" value="$62,208/yr" sub="60% probability" color="#ff9800" />
-          <StatCard label="Conservative" value="$34,560/yr" sub="Confirmed only" color="#29b6f6" />
+          <StatCard label="Best Case" value="$103,680/yr" sub="All deals close" color="var(--color-status-active)" />
+          <StatCard label="Likely (weighted)" value="$62,208/yr" sub="60% probability" color="var(--color-status-warning)" />
+          <StatCard label="Conservative" value="$34,560/yr" sub="Confirmed only" color="var(--color-status-info)" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 bg-bg-input border border-border-subtle rounded-sm">
@@ -235,7 +235,7 @@ export default function SalesFunnelPage() {
             <span className="text-[10px] text-[rgba(255,255,255,0.35)]">ARR Progress to Target</span>
             <span className="text-[10px] text-[rgba(255,255,255,0.35)]">20%</span>
           </div>
-          <ProgressBar value={48000} max={240000} color="#ff9800" />
+          <ProgressBar value={48000} max={240000} color="var(--color-status-warning)" />
         </div>
       </Panel>
 

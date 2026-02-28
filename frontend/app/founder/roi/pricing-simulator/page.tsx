@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -48,7 +48,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -176,7 +176,7 @@ export default function PricingSimulatorPage() {
               <input
                 type="range" min={50} max={1000} step={10} value={calls}
                 onChange={(e) => setCalls(Number(e.target.value))}
-                className="w-full accent-[#ff9800]"
+                className="w-full accent-[var(--color-status-warning)]"
               />
               <div className="flex justify-between text-[9px] text-[rgba(255,255,255,0.25)] mt-0.5">
                 <span>50</span><span>1,000</span>
@@ -204,7 +204,7 @@ export default function PricingSimulatorPage() {
               <input
                 type="range" min={40} max={100} step={1} value={collectionRate}
                 onChange={(e) => setCollectionRate(Number(e.target.value))}
-                className="w-full accent-[#ff9800]"
+                className="w-full accent-[var(--color-status-warning)]"
               />
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function PricingSimulatorPage() {
             <div className="space-y-3">
               {[
                 { label: 'Medicare %', val: medicareP, set: setMedicareP, color: 'var(--color-status-info)' },
-                { label: 'Medicaid %', val: medicaidP, set: setMedicaidP, color: '#a855f7' },
+                { label: 'Medicaid %', val: medicaidP, set: setMedicaidP, color: 'var(--color-system-compliance)' },
                 { label: 'Commercial %', val: commercialP, set: setCommercialP, color: 'var(--q-green)' },
                 { label: 'Self-Pay %', val: selfPayP, set: setSelfPayP, color: 'var(--q-yellow)' },
               ].map(({ label, val, set, color }) => (
@@ -245,13 +245,13 @@ export default function PricingSimulatorPage() {
       <Panel>
         <SectionHeader number="2" title="FusionEMS Quantum Pricing" sub="Calculated from inputs" />
         <div className="grid grid-cols-4 gap-3">
-          <StatCard label="Base Platform" value="$1,200/mo" color="#ff9800" />
-          <StatCard label="Per-Transport" value="$6/call" color="#ff9800" />
-          <StatCard label={`Total Platform Cost (${calls} calls)`} value={fmt(platformCost) + '/mo'} color="#fff" />
+          <StatCard label="Base Platform" value="$1,200/mo" color="var(--color-status-warning)" />
+          <StatCard label="Per-Transport" value="$6/call" color="var(--color-status-warning)" />
+          <StatCard label={`Total Platform Cost (${calls} calls)`} value={fmt(platformCost) + '/mo'} color="var(--color-text-primary)" />
           <StatCard
             label="Platform as % of Revenue"
             value={model.gross > 0 ? `${model.platformPctOfRevenue.toFixed(1)}%` : '—'}
-            color={model.platformPctOfRevenue < 8 ? '#4caf50' : '#e53935'}
+            color={model.platformPctOfRevenue < 8 ? 'var(--color-status-active)' : 'var(--color-brand-red)'}
             sub={model.platformPctOfRevenue < 8 ? 'Better than 8% billing' : 'Higher than 8% billing'}
           />
         </div>
@@ -270,7 +270,7 @@ export default function PricingSimulatorPage() {
               {[
                 { label: 'Gross Revenue', val: fmt(model.gross), color: 'rgba(255,255,255,0.7)' },
                 { label: `Billing Co. Fee (${billingPct}%)`, val: `-${fmt(model.currentFee)}`, color: 'var(--q-red)' },
-                { label: 'Net to Agency', val: fmt(model.currentNet), color: '#fff' },
+                { label: 'Net to Agency', val: fmt(model.currentNet), color: 'var(--color-text-primary)' },
               ].map(({ label, val, color }) => (
                 <div key={label} className="flex justify-between py-1.5 border-b border-border-subtle last:border-b-2 last:border-[rgba(255,255,255,0.12)]">
                   <span className="text-[11px] text-[rgba(255,255,255,0.4)]">{label}</span>
@@ -296,7 +296,7 @@ export default function PricingSimulatorPage() {
             <div className="mt-3 pt-2 border-t border-[rgba(76,175,80,0.2)]">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.6)]">Monthly Saving</span>
-                <span className="text-[15px] font-bold" style={{ color: model.saving >= 0 ? '#4caf50' : '#e53935' }}>
+                <span className="text-[15px] font-bold" style={{ color: model.saving >= 0 ? 'var(--color-status-active)' : 'var(--color-brand-red)' }}>
                   {model.saving >= 0 ? '+' : ''}{fmt(model.saving)}/mo
                 </span>
               </div>
@@ -313,19 +313,19 @@ export default function PricingSimulatorPage() {
             label="1-Year Savings"
             value={fmt(model.saving * 12)}
             sub="Annual cumulative"
-            color="#4caf50"
+            color="var(--color-status-active)"
           />
           <StatCard
             label="5-Year Savings"
             value={fmt(model.saving * 60)}
             sub="5-year cumulative"
-            color="#4caf50"
+            color="var(--color-status-active)"
           />
           <StatCard
             label="10-Year Savings"
             value={fmt(model.saving * 120)}
             sub="10-year cumulative"
-            color="#4caf50"
+            color="var(--color-status-active)"
           />
         </div>
       </Panel>
@@ -363,7 +363,7 @@ export default function PricingSimulatorPage() {
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.6)]">{fmt(m.gross)}/mo</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.5)]">{fmt(m.currentNet)}/mo</td>
                     <td className="py-2 pr-4 font-mono text-[rgba(255,255,255,0.7)]">{fmt(m.fusionNet)}/mo</td>
-                    <td className="py-2 pr-4 font-mono font-bold" style={{ color: m.saving >= 0 ? '#4caf50' : '#e53935' }}>
+                    <td className="py-2 pr-4 font-mono font-bold" style={{ color: m.saving >= 0 ? 'var(--color-status-active)' : 'var(--color-brand-red)' }}>
                       {m.saving >= 0 ? '+' : ''}{fmt(m.saving)}/mo
                     </td>
                   </tr>
@@ -390,14 +390,14 @@ export default function PricingSimulatorPage() {
           </div>
           <button
             className="text-[11px] font-bold px-5 py-2 rounded-sm transition-all hover:opacity-90"
-            style={{ background: '#ff9800', color: '#000' }}
+            style={{ background: 'var(--color-status-warning)', color: '#000' }}
           >
             Generate PDF Proposal
           </button>
           <button
             disabled={!proposalEmail}
             className="text-[11px] font-bold px-5 py-2 rounded-sm transition-all disabled:opacity-30"
-            style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
+            style={{ background: 'color-mix(in srgb, var(--color-status-info) 9%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 19%, transparent)' }}
           >
             Send to Agency
           </button>

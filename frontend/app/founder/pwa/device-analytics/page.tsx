@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
-const DOMAIN_COLOR = '#3b82f6';
+const DOMAIN_COLOR = 'var(--color-system-fleet)';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -51,7 +51,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <Panel>
       <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1">{label}</div>
-      <div className="text-2xl font-black" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-2xl font-black" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </Panel>
   );
@@ -105,12 +105,12 @@ const healthStatusMap: Record<string, 'ok' | 'warn' | 'error'> = {
   poor: 'error',
 };
 
-const batteryColor = (b: number) => b > 50 ? '#4caf50' : b > 20 ? '#ff9800' : '#e53935';
+const batteryColor = (b: number) => b > 50 ? 'var(--color-status-active)' : b > 20 ? 'var(--color-status-warning)' : 'var(--color-brand-red)';
 
 const connectivity = [
   { type: 'WiFi', devices: 24, color: 'var(--q-green)', total: 47 },
   { type: '4G LTE', devices: 18, color: DOMAIN_COLOR, total: 47 },
-  { type: '5G', devices: 5, color: '#a855f7', total: 47 },
+  { type: '5G', devices: 5, color: 'var(--color-system-compliance)', total: 47 },
 ];
 
 const crashLog = [
@@ -152,11 +152,11 @@ export default function DeviceAnalyticsPage() {
         <SectionHeader number="MOD 1" title="Fleet Overview" sub="Complete device inventory snapshot" />
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <StatCard label="Total Devices" value={47} color={DOMAIN_COLOR} />
-          <StatCard label="iOS" value={12} color="#29b6f6" />
-          <StatCard label="Android" value={31} color="#4caf50" />
-          <StatCard label="Tablets" value={4} color="#a855f7" />
-          <StatCard label="Avg Battery" value="78%" color="#ff9800" />
-          <StatCard label="Active Sessions" value={31} color="#22d3ee" />
+          <StatCard label="iOS" value={12} color="var(--color-status-info)" />
+          <StatCard label="Android" value={31} color="var(--color-status-active)" />
+          <StatCard label="Tablets" value={4} color="var(--color-system-compliance)" />
+          <StatCard label="Avg Battery" value="78%" color="var(--color-status-warning)" />
+          <StatCard label="Active Sessions" value={31} color="var(--color-status-info)" />
         </div>
       </motion.div>
 
@@ -201,7 +201,7 @@ export default function DeviceAnalyticsPage() {
                 {perfByType.map((row, i) => (
                   <tr key={i} className="border-b border-border-subtle last:border-0">
                     <td className="py-2.5 pr-5 text-text-primary font-medium">{row.type}</td>
-                    <td className="py-2.5 pr-5 font-mono" style={{ color: row.avgLoad < 1000 ? '#4caf50' : row.avgLoad < 1200 ? '#ff9800' : '#e53935' }}>
+                    <td className="py-2.5 pr-5 font-mono" style={{ color: row.avgLoad < 1000 ? 'var(--color-status-active)' : row.avgLoad < 1200 ? 'var(--color-status-warning)' : 'var(--color-brand-red)' }}>
                       {row.avgLoad}ms
                     </td>
                     <td className="py-2.5 pr-5 text-[rgba(255,255,255,0.7)] font-mono">{row.crashRate}</td>
