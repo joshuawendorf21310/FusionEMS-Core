@@ -4,13 +4,13 @@ on:
   workflow_call:
     inputs:
       env:
-        description: 'Environment (dev/prod)'
+        description: "Environment (dev/prod)"
         required: true
         type: string
   workflow_dispatch:
     inputs:
       env:
-        description: 'Environment (dev/prod)'
+        description: "Environment (dev/prod)"
         required: true
         default: dev
         type: choice
@@ -18,7 +18,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'infra/**'
+      - "infra/**"
 
 permissions:
   id-token: write
@@ -50,6 +50,28 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Resolve and validate environment
+        id: resolve-env
+        run: |
+          set -euo pipefail
+          # If CFN_ENV is empty or mismatched, derive from stack name
+          if [[ "${CFN_STACK_NAME}" == *-prod* ]]; then
+            DERIVED_ENV=prod
+          else
+            DERIVED_ENV=dev
+          fi
+          EFFECTIVE_ENV="${CFN_ENV:-$DERIVED_ENV}"
+          # Enforce consistency: prod stack must use prod env
+          if [[ "${CFN_STACK_NAME}" == *-prod* && "$EFFECTIVE_ENV" != "prod" ]]; then
+            echo "Auto-correcting: stack name contains 'prod', overriding CFN_ENV from '$EFFECTIVE_ENV' to 'prod'"
+            EFFECTIVE_ENV=prod
+          fi
+          echo "CFN_ENV=$EFFECTIVE_ENV" >> "$GITHUB_ENV"
+          echo "Effective environment: $EFFECTIVE_ENV"
+          # Validate required vars
+          if [[ -z "${CFN_HOSTED_ZONE_ID}" ]]; then echo "CFN_HOSTED_ZONE_ID is required"; exit 1; fi
+          if [[ -z "${CFN_ARTIFACTS_BUCKET}" ]]; then echo "CFN_ARTIFACTS_BUCKET is required"; exit 1; fi
+
       - name: Validate all CloudFormation templates
         run: |
           set -euo pipefail
@@ -76,32 +98,32 @@ jobs:
             --query 'Stacks[0].StackStatus' \
             --output text 2>/dev/null || echo "DOES_NOT_EXIST")
           echo "Current stack status: $STATUS"
+
           delete_stack() {
             aws cloudformation delete-stack --stack-name "${CFN_STACK_NAME}" "$@"
             aws cloudformation wait stack-delete-complete \
               --stack-name "${CFN_STACK_NAME}" \
               --cli-read-timeout 600 || true
           }
+
           case "$STATUS" in
-            ROLLBACK_FAILED)
-              echo "Stack is in ROLLBACK_FAILED — continuing rollback first..."
-              aws cloudformation continue-update-rollback --stack-name "${CFN_STACK_NAME}" || true
-              aws cloudformation wait stack-rollback-complete \
-                --stack-name "${CFN_STACK_NAME}" \
-                --cli-read-timeout 300 || true
-              echo "Deleting stack..."
-              delete_stack
-              echo "Stack deleted."
-              ;;
-            ROLLBACK_COMPLETE|CREATE_FAILED)
-              echo "Stack is in $STATUS — deleting before redeploy..."
-              delete_stack
-              echo "Stack deleted."
+            DOES_NOT_EXIST)
+              echo "Stack does not exist. Proceeding."
               ;;
             DELETE_FAILED)
-              echo "Stack is in DELETE_FAILED — force-deleting..."
+              echo "Stack is DELETE_FAILED — force deleting..."
               delete_stack --deletion-mode FORCE_DELETE_STACK
+              echo "Stack deleted (force)."
+              ;;
+            ROLLBACK_COMPLETE|ROLLBACK_FAILED|CREATE_FAILED|UPDATE_ROLLBACK_FAILED|UPDATE_ROLLBACK_COMPLETE|IMPORT_ROLLBACK_FAILED)
+              echo "Stack is $STATUS — deleting before redeploy..."
+              aws cloudformation continue-update-rollback --stack-name "${CFN_STACK_NAME}" 2>/dev/null || true
+              sleep 10
+              delete_stack
               echo "Stack deleted."
+              ;;
+            *)
+              echo "Stack is in $STATUS — proceeding with deploy."
               ;;
           esac
 
@@ -127,6 +149,7 @@ jobs:
               DeployedAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       - name: Output stack results
+        if: success()
         run: |
           aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
