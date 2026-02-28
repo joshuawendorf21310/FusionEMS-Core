@@ -6,16 +6,16 @@ import { useRouter } from 'next/navigation';
 
 const PANEL_STYLE = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: 'var(--color-bg-panel, #0f1720)',
+  background: 'var(--color-bg-panel, var(--color-bg-input))',
   border: '1px solid rgba(255,255,255,0.08)',
 };
 
 const INPUT_STYLE: React.CSSProperties = {
   width: '100%',
-  background: '#0e161f',
+  background: 'var(--color-bg-input)',
   border: '1px solid rgba(255,255,255,0.08)',
   clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-  color: '#fff',
+  color: 'var(--color-text-primary)',
   fontSize: '0.9375rem',
   padding: '10px 12px',
   outline: 'none',
@@ -32,8 +32,8 @@ const LABEL_STYLE: React.CSSProperties = {
 
 const BTN_PRIMARY: React.CSSProperties = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: '#ff6b1a',
-  color: '#fff',
+  background: 'var(--color-brand-orange)',
+  color: 'var(--color-text-primary)',
   fontWeight: 600,
   fontSize: '0.9375rem',
   padding: '11px 0',
@@ -106,14 +106,14 @@ export default function RepLoginPage() {
               marginBottom: '18px',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
           </div>
-          <h1 style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
+          <h1 style={{ color: 'var(--color-text-primary)', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
             Authorized Representative Portal
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.875rem', margin: 0 }}>

@@ -112,7 +112,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
