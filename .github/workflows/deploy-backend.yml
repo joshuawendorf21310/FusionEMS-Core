@@ -88,14 +88,12 @@ jobs:
           set -euo pipefail
           IMAGE="${{ steps.meta.outputs.ecr_repo }}:${{ steps.meta.outputs.image_tag }}"
           docker build \
-            --file backend/core_app/Dockerfile \
+            --file backend/Dockerfile \
             --tag "$IMAGE" \
-            --tag "${{ steps.meta.outputs.ecr_repo }}:latest" \
             --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --build-arg GIT_SHA="${GITHUB_SHA}" \
             backend/
           docker push "$IMAGE"
-          docker push "${{ steps.meta.outputs.ecr_repo }}:latest"
           echo "Pushed: $IMAGE"
 
   migrate:
@@ -191,6 +189,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          IMAGE="${{ needs.build-push.outputs.ecr_repo }}:${{ needs.build-push.outputs.image_tag }}"
+
           CLUSTER=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
@@ -201,10 +201,30 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue" \
             --output text)
 
+          CURRENT_TASK_DEF_ARN=$(aws ecs describe-services \
+            --cluster "$CLUSTER" \
+            --services "$BACKEND_SERVICE" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          NEW_TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition "$CURRENT_TASK_DEF_ARN" \
+            --query 'taskDefinition' \
+            --output json | \
+            jq --arg IMAGE "$IMAGE" \
+              'del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                   .placementConstraints, .compatibilities, .registeredAt, .registeredBy)
+               | .containerDefinitions |= map(if .name == "backend" then .image = $IMAGE else . end)')
+
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
           aws ecs update-service \
             --cluster "$CLUSTER" \
             --service "$BACKEND_SERVICE" \
-            --force-new-deployment \
+            --task-definition "$NEW_TASK_DEF_ARN" \
             --no-cli-pager
 
           echo "Waiting for backend service to stabilize..."
@@ -212,7 +232,7 @@ jobs:
             --cluster "$CLUSTER" \
             --services "$BACKEND_SERVICE"
 
-          echo "Backend deployed successfully."
+          echo "Backend deployed: ${IMAGE}"
 
       - name: Smoke test
         run: |

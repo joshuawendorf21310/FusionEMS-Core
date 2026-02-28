@@ -24,9 +24,11 @@ Parameters:
     Description: Route53 Hosted Zone ID
     Default: Z0858801IZXAHSWCPH85
 
-  ImageTag:
+  ImageTagFrontend:
     Type: String
-    Default: latest
+
+  ImageTagBackend:
+    Type: String
 
   DesiredCount:
     Type: Number
@@ -197,7 +199,8 @@ Resources:
         PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
         AlbSecurityGroupId: !GetAtt NetworkStack.Outputs.AlbSecurityGroupId
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-        ImageTag: !Ref ImageTag
+        ImageTagFrontend: !Ref ImageTagFrontend
+        ImageTagBackend: !Ref ImageTagBackend
         DesiredCount: !Ref DesiredCount
         DbSecretArn: !GetAtt DataStack.Outputs.DbSecretArn
         AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn

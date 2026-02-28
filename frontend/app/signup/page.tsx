@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const PLANS = [
   { code: 'SCHEDULING_ONLY', label: 'Scheduling Only', desc: 'Calendar, shifts, crew, bids, scheduling PWA', price: 'from $199/mo', color: 'var(--color-status-info)' },
   { code: 'OPS_CORE', label: 'Ops Core', desc: 'TransportLink + CAD + CrewLink + Scheduling', price: 'Contact us', color: 'var(--q-green)' },
-  { code: 'CLINICAL_CORE', label: 'Clinical Core', desc: 'ePCR + NEMSIS/WI validation + Scheduling', price: 'Contact us', color: '#a855f7' },
+  { code: 'CLINICAL_CORE', label: 'Clinical Core', desc: 'ePCR + NEMSIS/WI validation + Scheduling', price: 'Contact us', color: 'var(--color-system-compliance)' },
   { code: 'FULL_STACK', label: 'Full Stack', desc: 'Everything — Ops + Clinical + HEMS + NERIS', price: 'Contact us', color: 'var(--q-orange)' },
 ];
 
@@ -164,7 +164,7 @@ export default function SignupPage() {
             )}
             <div className="mb-4 flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={isGovEntity} onChange={e => setIsGovEntity(e.target.checked)} className="w-4 h-4 accent-[#ff6b1a]" />
+                <input type="checkbox" checked={isGovEntity} onChange={e => setIsGovEntity(e.target.checked)} className="w-4 h-4 accent-orange" />
                 <span className="text-sm">We are a government agency (municipal/county/tribal)</span>
               </label>
             </div>
@@ -183,7 +183,7 @@ export default function SignupPage() {
               {ADDONS.filter(a => !a.gov_only || isGovEntity).map(a => (
                 <label key={a.code} className={`flex items-center justify-between p-4 rounded-sm border cursor-pointer transition-all ${addons.includes(a.code) ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT hover:border-border-strong'}`}>
                   <div className="flex items-center gap-3">
-                    <input type="checkbox" checked={addons.includes(a.code)} onChange={() => toggleAddon(a.code)} className="w-4 h-4 accent-[#ff6b1a]" />
+                    <input type="checkbox" checked={addons.includes(a.code)} onChange={() => toggleAddon(a.code)} className="w-4 h-4 accent-orange" />
                     <div>
                       <div className="text-sm font-semibold">{a.label}</div>
                       {a.gov_only && <div className="text-xs text-status-warning">Government agencies only</div>}
@@ -200,7 +200,7 @@ export default function SignupPage() {
                   {BILLING_TIERS.map(t => (
                     <label key={t.code} className={`flex items-center justify-between p-3 rounded-sm border cursor-pointer ${billingTier === t.code ? 'border-orange' : 'border-border-subtle'}`}>
                       <div className="flex items-center gap-2">
-                        <input type="radio" checked={billingTier === t.code} onChange={() => setBillingTier(t.code)} className="accent-[#ff6b1a]" />
+                        <input type="radio" checked={billingTier === t.code} onChange={() => setBillingTier(t.code)} className="accent-orange" />
                         <span className="text-xs">{t.label}</span>
                       </div>
                       <span className="text-xs text-orange font-bold">{t.base} {t.per_claim}</span>
@@ -223,7 +223,7 @@ export default function SignupPage() {
             <div className="space-y-2 mb-6">
               {COLLECTIONS_MODES.map(m => (
                 <label key={m.code} className={`flex items-center gap-3 p-4 rounded-sm border cursor-pointer transition-all ${collectionsMode === m.code ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT'}`}>
-                  <input type="radio" checked={collectionsMode === m.code} onChange={() => setCollectionsMode(m.code)} className="accent-[#ff6b1a]" />
+                  <input type="radio" checked={collectionsMode === m.code} onChange={() => setCollectionsMode(m.code)} className="accent-orange" />
                   <span className="text-sm">{m.label}</span>
                 </label>
               ))}
@@ -235,7 +235,7 @@ export default function SignupPage() {
                   <div className="flex gap-4">
                     {['mail','email','sms_link'].map(ch => (
                       <label key={ch} className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={statementChannels.includes(ch)} onChange={() => toggleChannel(ch)} className="accent-[#ff6b1a]" />
+                        <input type="checkbox" checked={statementChannels.includes(ch)} onChange={() => toggleChannel(ch)} className="accent-orange" />
                         <span className="text-sm capitalize">{ch.replace('_', ' ')}</span>
                       </label>
                     ))}

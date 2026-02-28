@@ -15,7 +15,7 @@ export default async function SystemsPage() {
             <div className="text-sm font-semibold">{s.name}</div>
             <div className="mt-1 text-xs text-muted">{s.description}</div>
             <div className="mt-3">
-              <StatusBadge status={s.status} accent={s.accent ?? "#94a3b8"} />
+              <StatusBadge status={s.status} accent={s.accent ?? "var(--color-text-muted)"} />
             </div>
           </Link>
         ))}

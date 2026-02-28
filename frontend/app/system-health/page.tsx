@@ -11,14 +11,14 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
       className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
-      <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
+      <div className="text-2xl font-bold" style={{ color: color ?? "var(--color-text-primary)" }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.35)] mt-1">{sub}</div>}
     </motion.div>
   );
 }
 
 function ServiceRow({ service, status, metric, value }: { service: string; status: string; metric: string; value: string | number }) {
-  const statusColor = status === "healthy" ? "#4caf50" : status === "warning" ? "#ff9800" : "#e53935";
+  const statusColor = status === "healthy" ? "var(--color-status-active)" : status === "warning" ? "var(--color-status-warning)" : "var(--color-brand-red)";
   return (
     <div className="flex items-center gap-3 py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusColor }} />
@@ -81,10 +81,10 @@ export default function SystemHealthPage() {
 
   const fmtN = (v: unknown) => typeof v === "number" ? v.toLocaleString() : (v != null ? String(v) : "—");
   const overallStatus = String(dash.overall_status ?? "");
-  const overallColor = overallStatus === "healthy" ? "#4caf50" : overallStatus === "warning" ? "#ff9800" : overallStatus === "degraded" ? "#e53935" : "#94a3b8";
+  const overallColor = overallStatus === "healthy" ? "var(--color-status-active)" : overallStatus === "warning" ? "var(--color-status-warning)" : overallStatus === "degraded" ? "var(--color-brand-red)" : "var(--color-text-muted)";
   const resScore = typeof resilience.resilience_score === "number" ? resilience.resilience_score : 0;
   const resGrade = String(resilience.grade ?? "—");
-  const resColor = resScore >= 90 ? "#4caf50" : resScore >= 80 ? "#8bc34a" : resScore >= 70 ? "#ff9800" : "#e53935";
+  const resColor = resScore >= 90 ? "var(--color-status-active)" : resScore >= 80 ? "var(--color-status-active)" : resScore >= 70 ? "var(--color-status-warning)" : "var(--color-brand-red)";
 
   const handleResolveAlert = async (id: string) => {
     try {
@@ -107,7 +107,7 @@ export default function SystemHealthPage() {
           <p className="text-xs text-text-muted mt-0.5">100-Feature Infrastructure Command · ECS · RDS · Redis · CloudFront · Self-Healing Engine</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-sm border" style={{ borderColor: `${overallColor}44`, background: `${overallColor}11` }}>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-sm border" style={{ borderColor: `color-mix(in srgb, ${overallColor} 27%, transparent)`, background: `color-mix(in srgb, ${overallColor} 7%, transparent)` }}>
             <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: overallColor }} />
             <span className="text-xs font-bold uppercase tracking-wider" style={{ color: overallColor }}>{overallStatus || "Checking…"}</span>
           </div>
@@ -115,14 +115,14 @@ export default function SystemHealthPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        <KpiCard label="Active Alerts" value={fmtN(dash.total_active_alerts)} color="#ff9800" />
-        <KpiCard label="Critical" value={fmtN(dash.critical_alerts)} color="#e53935" />
-        <KpiCard label="Uptime SLA" value={uptime.estimated_uptime_pct != null ? `${uptime.estimated_uptime_pct}%` : "—"} color="#4caf50" sub={`Target: ${uptime.sla_target_pct ?? 99.9}%`} />
+        <KpiCard label="Active Alerts" value={fmtN(dash.total_active_alerts)} color="var(--color-status-warning)" />
+        <KpiCard label="Critical" value={fmtN(dash.critical_alerts)} color="var(--color-brand-red)" />
+        <KpiCard label="Uptime SLA" value={uptime.estimated_uptime_pct != null ? `${uptime.estimated_uptime_pct}%` : "—"} color="var(--color-status-active)" sub={`Target: ${uptime.sla_target_pct ?? 99.9}%`} />
         <KpiCard label="Resilience Score" value={resScore > 0 ? `${resScore}` : "—"} color={resColor} sub={`Grade: ${resGrade}`} />
         <KpiCard label="Services Monitored" value={fmtN(dash.services_monitored ? (dash.services_monitored as string[]).length : 0)} />
-        <KpiCard label="Monitoring Coverage" value={coverage.coverage_pct != null ? `${coverage.coverage_pct}%` : "—"} color="#22d3ee" />
-        <KpiCard label="SLA Breach" value={uptime.sla_breach ? "YES" : "NO"} color={uptime.sla_breach ? "#e53935" : "#4caf50"} />
-        <KpiCard label="Downtime Incidents" value={fmtN(uptime.downtime_incidents)} color={Number(uptime.downtime_incidents) > 0 ? "#e53935" : "#4caf50"} />
+        <KpiCard label="Monitoring Coverage" value={coverage.coverage_pct != null ? `${coverage.coverage_pct}%` : "—"} color="var(--color-status-info)" />
+        <KpiCard label="SLA Breach" value={uptime.sla_breach ? "YES" : "NO"} color={uptime.sla_breach ? "var(--color-brand-red)" : "var(--color-status-active)"} />
+        <KpiCard label="Downtime Incidents" value={fmtN(uptime.downtime_incidents)} color={Number(uptime.downtime_incidents) > 0 ? "var(--color-brand-red)" : "var(--color-status-active)"} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -141,7 +141,7 @@ export default function SystemHealthPage() {
             {ssl.domains?.map(d => (
               <div key={d.domain} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
                 <span className="text-[11px] text-text-secondary truncate">{d.domain}</span>
-                <span className="text-[11px] font-semibold" style={{ color: d.expires_in_days < 30 ? "#e53935" : d.expires_in_days < 60 ? "#ff9800" : "#4caf50" }}>
+                <span className="text-[11px] font-semibold" style={{ color: d.expires_in_days < 30 ? "var(--color-brand-red)" : d.expires_in_days < 60 ? "var(--color-status-warning)" : "var(--color-status-active)" }}>
                   {d.expires_in_days}d
                 </span>
               </div>
@@ -154,7 +154,7 @@ export default function SystemHealthPage() {
               return b ? (
                 <div key={key} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
                   <span className="text-[11px] text-text-secondary uppercase">{key.replace("_", " ")}</span>
-                  <span className="text-[11px] font-bold" style={{ color: String(b.status) === "healthy" ? "#4caf50" : "#e53935" }}>{String(b.status)}</span>
+                  <span className="text-[11px] font-bold" style={{ color: String(b.status) === "healthy" ? "var(--color-status-active)" : "var(--color-brand-red)" }}>{String(b.status)}</span>
                 </div>
               ) : null;
             })}
@@ -166,7 +166,7 @@ export default function SystemHealthPage() {
           <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Active Alerts · {alerts.total ?? 0}</div>
           {alerts.alerts?.slice(0, 8).map((alert, i) => {
             const d = alert.data as Record<string, unknown>;
-            const sevColor = String(d.severity) === "critical" ? "#e53935" : String(d.severity) === "error" ? "#f97316" : String(d.severity) === "warning" ? "#ff9800" : "#94a3b8";
+            const sevColor = String(d.severity) === "critical" ? "var(--color-brand-red)" : String(d.severity) === "error" ? "var(--color-brand-orange-bright)" : String(d.severity) === "warning" ? "var(--color-status-warning)" : "var(--color-text-muted)";
             return (
               <div key={i} className="flex items-start gap-2 py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
                 <span className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0" style={{ background: sevColor }} />
@@ -224,7 +224,7 @@ export default function SystemHealthPage() {
                     <span className="text-text-primary font-semibold">{item.pct}%</span>
                   </div>
                   <div className="h-1 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-                    <motion.div className="h-full rounded-full" style={{ background: item.pct >= 90 ? "#4caf50" : item.pct >= 70 ? "#ff9800" : "#e53935" }}
+                    <motion.div className="h-full rounded-full" style={{ background: item.pct >= 90 ? "var(--color-status-active)" : item.pct >= 70 ? "var(--color-status-warning)" : "var(--color-brand-red)" }}
                       initial={{ width: 0 }} animate={{ width: `${item.pct}%` }} transition={{ duration: 0.8 }} />
                   </div>
                 </div>
@@ -253,7 +253,7 @@ export default function SystemHealthPage() {
                 <span className="text-[10px] px-2 py-0.5 rounded-sm font-bold uppercase"
                   style={{
                     background: item.status === "active" ? "rgba(76,175,80,0.1)" : "rgba(255,152,0,0.1)",
-                    color: item.status === "active" ? "#4caf50" : "#ff9800",
+                    color: item.status === "active" ? "var(--color-status-active)" : "var(--color-status-warning)",
                     border: `1px solid ${item.status === "active" ? "rgba(76,175,80,0.3)" : "rgba(255,152,0,0.3)"}`,
                   }}>
                   {item.status}

@@ -18,11 +18,11 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
-      style={{ borderColor: `${c[status]}40`, color: c[status], background: `${c[status]}12` }}
+      style={{ borderColor: `color-mix(in srgb, ${c[status]} 25%, transparent)`, color: c[status], background: `color-mix(in srgb, ${c[status]} 7%, transparent)` }}
     >
       <span className="w-1 h-1 rounded-full" style={{ background: c[status] }} />
       {label}
@@ -48,7 +48,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -107,7 +107,7 @@ export default function ReportTemplatesPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [brandingLogo, setBrandingLogo] = useState('FusionEMS Quantum');
   const [brandingCompany, setBrandingCompany] = useState('FusionEMS Quantum LLC');
-  const [brandingColor, setBrandingColor] = useState('#29b6f6');
+  const [brandingColor, setBrandingColor] = useState('var(--color-status-info)');
   const [deliveryEmail, setDeliveryEmail] = useState('reports@fusionemsquantum.com');
   const [deliveryFormat, setDeliveryFormat] = useState<'PDF' | 'CSV'>('PDF');
   const [includeCharts, setIncludeCharts] = useState(true);
@@ -140,8 +140,8 @@ export default function ReportTemplatesPage() {
               className="border p-3 bg-bg-input cursor-pointer transition-all"
               style={{
                 clipPath: 'polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)',
-                borderColor: selectedType === t.id ? '#29b6f630' : 'rgba(255,255,255,0.08)',
-                background: selectedType === t.id ? '#29b6f60a' : '#0a1219',
+                borderColor: selectedType === t.id ? 'color-mix(in srgb, var(--color-status-info) 19%, transparent)' : 'rgba(255,255,255,0.08)',
+                background: selectedType === t.id ? 'color-mix(in srgb, var(--color-status-info) 4%, transparent)' : 'var(--color-bg-input)',
               }}
               onClick={() => setSelectedType(t.id)}
             >
@@ -155,7 +155,7 @@ export default function ReportTemplatesPage() {
               <p className="text-[11px] text-[rgba(255,255,255,0.4)] mb-3">{t.desc}</p>
               <button
                 className="text-[10px] font-semibold px-3 py-1 rounded-sm"
-                style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
+                style={{ background: 'color-mix(in srgb, var(--color-status-info) 9%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 19%, transparent)' }}
                 onClick={(e) => { e.stopPropagation(); setSelectedType(t.id); }}
               >
                 Generate
@@ -187,7 +187,7 @@ export default function ReportTemplatesPage() {
                   <td className="py-2 pr-4">
                     <button
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
-                      style={{ background: '#29b6f610', color: 'var(--color-status-info)', border: '1px solid #29b6f625' }}
+                      style={{ background: 'color-mix(in srgb, var(--color-status-info) 6%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 14%, transparent)' }}
                     >
                       PDF
                     </button>
@@ -279,9 +279,9 @@ export default function ReportTemplatesPage() {
                       onClick={() => setDeliveryFormat(f)}
                       className="text-[10px] font-semibold px-4 py-1.5 rounded-sm transition-all"
                       style={{
-                        background: deliveryFormat === f ? '#29b6f618' : 'transparent',
-                        color: deliveryFormat === f ? '#29b6f6' : 'rgba(255,255,255,0.4)',
-                        border: `1px solid ${deliveryFormat === f ? '#29b6f640' : 'rgba(255,255,255,0.08)'}`,
+                        background: deliveryFormat === f ? 'color-mix(in srgb, var(--color-status-info) 9%, transparent)' : 'transparent',
+                        color: deliveryFormat === f ? 'var(--color-status-info)' : 'rgba(255,255,255,0.4)',
+                        border: `1px solid ${deliveryFormat === f ? 'color-mix(in srgb, var(--color-status-info) 25%, transparent)' : 'rgba(255,255,255,0.08)'}`,
                       }}
                     >
                       {f}
@@ -297,14 +297,14 @@ export default function ReportTemplatesPage() {
                 >
                   <div
                     className="w-8 h-4 rounded-full relative transition-all"
-                    style={{ background: includeCharts ? '#29b6f6' : 'rgba(255,255,255,0.1)' }}
+                    style={{ background: includeCharts ? 'var(--color-status-info)' : 'rgba(255,255,255,0.1)' }}
                   >
                     <div
                       className="w-3 h-3 bg-white rounded-full absolute top-0.5 transition-all"
                       style={{ left: includeCharts ? '17px' : '2px' }}
                     />
                   </div>
-                  <span style={{ color: includeCharts ? '#29b6f6' : 'rgba(255,255,255,0.4)' }}>
+                  <span style={{ color: includeCharts ? 'var(--color-status-info)' : 'rgba(255,255,255,0.4)' }}>
                     {includeCharts ? 'Enabled' : 'Disabled'}
                   </span>
                 </button>
@@ -334,7 +334,7 @@ export default function ReportTemplatesPage() {
                   <td className="py-2 pr-4">
                     <button
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
-                      style={{ background: '#29b6f610', color: 'var(--color-status-info)', border: '1px solid #29b6f625' }}
+                      style={{ background: 'color-mix(in srgb, var(--color-status-info) 6%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 14%, transparent)' }}
                     >
                       Download All
                     </button>

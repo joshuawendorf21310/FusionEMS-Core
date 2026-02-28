@@ -233,8 +233,8 @@ export default function LegalPage() {
         style={{ backgroundColor: 'var(--q-bg)', borderColor: 'rgba(255,255,255,0.08)', minHeight: '300px' }}
       >
         <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#ff6b1a" strokeWidth="4" />
-          <path className="opacity-75" fill="#ff6b1a" d="M4 12a8 8 0 018-8v8z" />
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="var(--color-brand-orange)" strokeWidth="4" />
+          <path className="opacity-75" fill="var(--color-brand-orange)" d="M4 12a8 8 0 018-8v8z" />
         </svg>
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
           Preparing your legal packet…
@@ -254,7 +254,7 @@ export default function LegalPage() {
           style={{
             backgroundColor: 'rgba(255,59,59,0.08)',
             borderColor: 'rgba(255,59,59,0.3)',
-            color: '#ff6b6b',
+            color: 'var(--color-brand-red)',
           }}
         >
           <span className="font-semibold">Error: </span>{initError}
@@ -356,7 +356,7 @@ export default function LegalPage() {
           style={{
             backgroundColor: 'rgba(255,59,59,0.08)',
             borderColor: 'rgba(255,59,59,0.3)',
-            color: '#ff6b6b',
+            color: 'var(--color-brand-red)',
           }}
         >
           <span className="font-semibold">Error: </span>{apiError}
@@ -404,8 +404,8 @@ export default function LegalPage() {
                 <div
                   className="w-4 h-4 rounded-sm border flex items-center justify-center transition-colors"
                   style={{
-                    backgroundColor: item.checked ? '#ff6b1a' : 'rgba(255,255,255,0.05)',
-                    borderColor: item.checked ? '#ff6b1a' : 'rgba(255,255,255,0.2)',
+                    backgroundColor: item.checked ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.05)',
+                    borderColor: item.checked ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.2)',
                   }}
                 >
                   {item.checked && (
@@ -447,7 +447,7 @@ export default function LegalPage() {
               style={{
                 backgroundColor: 'rgba(255,107,26,0.04)',
                 borderColor: 'rgba(255,107,26,0.2)',
-                color: '#ff8c42',
+                color: 'var(--color-brand-orange)',
                 fontFamily: 'Georgia, serif',
                 fontSize: '15px',
               }}
@@ -464,7 +464,7 @@ export default function LegalPage() {
             style={{
               backgroundColor: 'rgba(255,59,59,0.08)',
               borderColor: 'rgba(255,59,59,0.3)',
-              color: '#ff6b6b',
+              color: 'var(--color-brand-red)',
             }}
           >
             {sigError}
