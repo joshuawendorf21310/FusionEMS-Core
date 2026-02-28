@@ -7,6 +7,7 @@ on:
         description: 'Environment (dev/prod)'
         required: true
         type: string
+
   workflow_dispatch:
     inputs:
       env:
@@ -14,9 +15,13 @@ on:
         required: true
         default: dev
         type: choice
-        options: [dev, prod]
+        options:
+          - dev
+          - prod
+
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - 'backend/**'
       - 'opa/**'
@@ -26,34 +31,49 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-backend-${{ github.ref }}
+  group: deploy-backend-${{ inputs.env || github.ref }}
   cancel-in-progress: false
 
 jobs:
+
+  # ==========================================
+  # TEST
+  # ==========================================
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
+
       - name: Install dependencies
         run: |
+          set -euo pipefail
           cd backend
           pip install -r requirements.txt
           pip install pytest pytest-asyncio httpx
+
       - name: Run tests
         run: |
+          set -euo pipefail
           cd backend
           python -m pytest tests/ -v --tb=short
 
+
+  # ==========================================
+  # BUILD & PUSH IMAGE
+  # ==========================================
   build-push:
     needs: test
     runs-on: ubuntu-latest
+
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
-      ecr_repo: ${{ steps.ecr.outputs.registry }}
+      ecr_repo: ${{ steps.meta.outputs.ecr_repo }}
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -69,36 +89,53 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set image metadata
+      - name: Resolve image metadata
         id: meta
         run: |
+          set -euo pipefail
+
           IMAGE_TAG="${GITHUB_SHA}"
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+
           ECR_REPO=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" \
             --output text)
+
+          if [ -z "$ECR_REPO" ] || [ "$ECR_REPO" = "None" ]; then
+            echo "ECR repository not found in CloudFormation outputs"
+            exit 1
+          fi
+
           echo "ecr_repo=${ECR_REPO}" >> $GITHUB_OUTPUT
 
       - name: Build and push backend image
         run: |
           set -euo pipefail
+
           IMAGE="${{ steps.meta.outputs.ecr_repo }}:${{ steps.meta.outputs.image_tag }}"
+
           docker build \
             --file backend/Dockerfile \
             --tag "$IMAGE" \
             --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --build-arg GIT_SHA="${GITHUB_SHA}" \
             backend/
-          docker push "$IMAGE"
-          echo "Pushed: $IMAGE"
 
+          docker push "$IMAGE"
+
+          echo "Pushed image: $IMAGE"
+
+
+  # ==========================================
+  # DATABASE MIGRATION
+  # ==========================================
   migrate:
     needs: build-push
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -120,9 +157,14 @@ jobs:
           CLUSTER=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
-            --output text 2>/dev/null || echo "")
+            --output text || echo "")
 
-          TASK_DEF=$(aws ecs list-task-definitions \
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "Cluster not found, skipping migration (first deploy)"
+            exit 0
+          fi
+
+          CURRENT_TASK_DEF=$(aws ecs list-task-definitions \
             --family-prefix "fusionems-quantum-${CFN_ENV}-backend" \
             --sort DESC \
             --query 'taskDefinitionArns[0]' \
@@ -131,23 +173,18 @@ jobs:
           PRIVATE_SUBNETS=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?contains(OutputKey,'PrivateSubnets')].OutputValue" \
-            --output text 2>/dev/null || echo "")
+            --output text)
 
           ECS_SG=$(aws ec2 describe-security-groups \
             --filters "Name=tag:Name,Values=fusionems-quantum-${CFN_ENV}-sg-ecs" \
             --query 'SecurityGroups[0].GroupId' \
             --output text)
 
-          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
-            echo "Cluster not found, skipping migration (first deploy)"
-            exit 0
-          fi
-
           TASK_ARN=$(aws ecs run-task \
             --cluster "$CLUSTER" \
-            --task-definition "$TASK_DEF" \
+            --task-definition "$CURRENT_TASK_DEF" \
             --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[${PRIVATE_SUBNETS//,/,}],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
+            --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNETS],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
             --overrides '{"containerOverrides":[{"name":"backend","command":["python","-m","alembic","upgrade","head"]}]}' \
             --query 'tasks[0].taskArn' \
             --output text)
@@ -156,8 +193,7 @@ jobs:
 
           aws ecs wait tasks-stopped \
             --cluster "$CLUSTER" \
-            --tasks "$TASK_ARN" \
-            --cli-read-timeout 300
+            --tasks "$TASK_ARN"
 
           EXIT_CODE=$(aws ecs describe-tasks \
             --cluster "$CLUSTER" \
@@ -166,11 +202,20 @@ jobs:
             --output text)
 
           echo "Migration exit code: $EXIT_CODE"
-          [ "$EXIT_CODE" = "0" ] || (echo "Migration failed with exit code $EXIT_CODE" && exit 1)
 
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed"
+            exit 1
+          fi
+
+
+  # ==========================================
+  # DEPLOY SERVICE
+  # ==========================================
   deploy-service:
     needs: migrate
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
@@ -178,6 +223,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -196,25 +244,35 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
             --output text)
 
-          BACKEND_SERVICE=$(aws cloudformation describe-stacks \
+          SERVICE=$(aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue" \
             --output text)
 
-          CURRENT_TASK_DEF_ARN=$(aws ecs describe-services \
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "Cluster not found"
+            exit 1
+          fi
+
+          CURRENT_TASK_DEF=$(aws ecs describe-services \
             --cluster "$CLUSTER" \
-            --services "$BACKEND_SERVICE" \
+            --services "$SERVICE" \
             --query 'services[0].taskDefinition' \
             --output text)
 
           NEW_TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition "$CURRENT_TASK_DEF_ARN" \
+            --task-definition "$CURRENT_TASK_DEF" \
             --query 'taskDefinition' \
             --output json | \
             jq --arg IMAGE "$IMAGE" \
-              'del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-                   .placementConstraints, .compatibilities, .registeredAt, .registeredBy)
-               | .containerDefinitions |= map(if .name == "backend" then .image = $IMAGE else . end)')
+              'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,
+                   .placementConstraints,.compatibilities,.registeredAt,.registeredBy)
+               | .containerDefinitions |= map(
+                   if .name == "backend"
+                   then .image = $IMAGE
+                   else .
+                   end
+                 )')
 
           NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
             --cli-input-json "$NEW_TASK_DEF" \
@@ -223,28 +281,29 @@ jobs:
 
           aws ecs update-service \
             --cluster "$CLUSTER" \
-            --service "$BACKEND_SERVICE" \
-            --task-definition "$NEW_TASK_DEF_ARN" \
-            --no-cli-pager
+            --service "$SERVICE" \
+            --task-definition "$NEW_TASK_DEF_ARN"
 
-          echo "Waiting for backend service to stabilize..."
+          echo "Waiting for service to stabilize..."
           aws ecs wait services-stable \
             --cluster "$CLUSTER" \
-            --services "$BACKEND_SERVICE"
+            --services "$SERVICE"
 
-          echo "Backend deployed: ${IMAGE}"
+          echo "Deployment successful: $IMAGE"
 
       - name: Smoke test
         run: |
           set -euo pipefail
           API_URL="https://${{ vars.CFN_API_DOMAIN_NAME }}"
-          for i in {1..30}; do
+
+          for i in {1..60}; do
             if curl -fsS "${API_URL}/api/v1/health" >/dev/null 2>&1; then
               echo "API healthy"
               exit 0
             fi
-            echo "Retry $i/30..."
+            echo "Retry $i/60..."
             sleep 10
           done
-          echo "API health check failed after 30 retries"
+
+          echo "API health check failed"
           exit 1
