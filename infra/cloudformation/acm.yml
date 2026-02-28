@@ -102,6 +102,8 @@ Resources:
                               acm.delete_certificate(CertificateArn=cert_arn)
                           except acm.exceptions.ResourceNotFoundException:
                               pass
+                          except acm.exceptions.ResourceInUseException:
+                              print(f"Certificate {cert_arn} still in use, skipping delete")
                       return send_response(event, context, "SUCCESS", {"CertificateArn": cert_arn})
 
                   domain = props["DomainName"]

@@ -55,6 +55,40 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
 
+  FrontendCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${AppName}-${Env}-frontend-cache'
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+
+  FrontendOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AppName}-${Env}-frontend-origin'
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Origin
+            - Access-Control-Request-Method
+            - Access-Control-Request-Headers
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
   ########################################
   # CLOUDFRONT DISTRIBUTION
   ########################################
@@ -92,14 +126,8 @@ Resources:
             - GET
             - HEAD
           Compress: true
-          ForwardedValues:
-            QueryString: false
-            Cookies:
-              Forward: none
-            Headers:
-              - Origin
-              - Access-Control-Request-Method
-              - Access-Control-Request-Headers
+          CachePolicyId: !Ref FrontendCachePolicy
+          OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
 
         CacheBehaviors:
           - PathPattern: /ws
@@ -180,16 +208,6 @@ Resources:
           AcmCertificateArn: !Ref AcmCertificateArnUsEast1
           SslSupportMethod: sni-only
           MinimumProtocolVersion: TLSv1.2_2021
-
-        CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 0
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 0
 
   ########################################
   # ROUTE53 RECORDS (A + AAAA for IPv4/IPv6)

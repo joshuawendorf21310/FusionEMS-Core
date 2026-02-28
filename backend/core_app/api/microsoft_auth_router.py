@@ -8,8 +8,11 @@ Endpoints:
 from __future__ import annotations
 
 import hashlib
+import hmac
+import json
 import logging
 import secrets
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -38,7 +41,6 @@ _STATE_TTL_SECONDS = 600
 
 
 def _sign_state(nonce: str) -> str:
-    import hmac
     s = get_settings()
     payload = f"{nonce}|{int(__import__('time').time())}"
     sig = hmac.new(s.jwt_secret_key.encode(), payload.encode(), hashlib.sha256).hexdigest()
@@ -46,8 +48,6 @@ def _sign_state(nonce: str) -> str:
 
 
 def _verify_state(state: str) -> bool:
-    import hmac
-    import time as _time
     s = get_settings()
     parts = state.split("|")
     if len(parts) != 3:
@@ -57,7 +57,7 @@ def _verify_state(state: str) -> bool:
         ts = int(ts_str)
     except ValueError:
         return False
-    if abs(_time.time() - ts) > _STATE_TTL_SECONDS:
+    if abs(time.time() - ts) > _STATE_TTL_SECONDS:
         return False
     expected_payload = f"{nonce}|{ts_str}"
     expected_sig = hmac.new(s.jwt_secret_key.encode(), expected_payload.encode(), hashlib.sha256).hexdigest()
@@ -91,8 +91,6 @@ def microsoft_login() -> RedirectResponse:
 
 
 def _exchange_code(code: str) -> dict[str, Any]:
-    import json as _json
-
     s = get_settings()
     body = urllib.parse.urlencode({
         "client_id": s.graph_client_id,
@@ -110,7 +108,7 @@ def _exchange_code(code: str) -> dict[str, Any]:
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            return _json.loads(resp.read().decode())  # type: ignore[no-any-return]
+            return json.loads(resp.read().decode())  # type: ignore[no-any-return]
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
         logger.error("entra_token_exchange_failed status=%d body=%.300s", exc.code, error_body)
@@ -127,14 +125,12 @@ def _exchange_code(code: str) -> dict[str, Any]:
 
 
 def _fetch_userinfo(access_token: str) -> dict[str, Any]:
-    import json as _json
-
     req = urllib.request.Request(_USERINFO_URL, method="GET")
     req.add_header("Authorization", f"Bearer {access_token}")
     req.add_header("Accept", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            return _json.loads(resp.read().decode())  # type: ignore[no-any-return]
+            return json.loads(resp.read().decode())  # type: ignore[no-any-return]
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
         logger.error("entra_userinfo_failed status=%d body=%.300s", exc.code, error_body)

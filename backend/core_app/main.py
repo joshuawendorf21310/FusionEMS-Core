@@ -103,7 +103,6 @@ app = FastAPI(title=settings.app_name)
 configure_otel(app)
 
 _allowed_origins = [
-    f"https://{settings.root_domain_name}" if hasattr(settings, "root_domain_name") else "https://fusionemsquantum.com",
     "https://app.fusionemsquantum.com",
     "https://api.fusionemsquantum.com",
 ]

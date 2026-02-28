@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     ses_configuration_set: str = Field(default="")
     aws_region: str = Field(default="")
 
+    # AWS resource identifiers (injected from CFN outputs via ECS task env)
+    ecs_cluster_name: str = Field(default="", description="ECS cluster name for CloudWatch metrics")
+    ecs_backend_service: str = Field(default="", description="Backend ECS service name")
+    rds_instance_id: str = Field(default="", description="RDS DB instance identifier")
+    redis_cluster_id: str = Field(default="", description="ElastiCache replication group ID")
+    secrets_jwt_arn: str = Field(default="", description="Secrets Manager ARN/name for JWT secret")
+    secrets_stripe_arn: str = Field(default="", description="Secrets Manager ARN/name for Stripe webhook secret")
+
     # Telnyx webhook verification + IVR
     telnyx_public_key: str = Field(default="", description="Base64-encoded Ed25519 public key from Telnyx portal")
     telnyx_webhook_tolerance_seconds: int = Field(default=300)
@@ -149,6 +157,9 @@ class Settings(BaseSettings):
                 ("graph_client_id",                 "GRAPH_CLIENT_ID"),
                 ("graph_client_secret",             "GRAPH_CLIENT_SECRET"),
                 ("graph_founder_email",             "GRAPH_FOUNDER_EMAIL"),
+                ("microsoft_redirect_uri",          "MICROSOFT_REDIRECT_URI"),
+                ("microsoft_post_login_url",        "MICROSOFT_POST_LOGIN_URL"),
+                ("microsoft_post_logout_url",       "MICROSOFT_POST_LOGOUT_URL"),
             ]
             missing = [
                 env_name
