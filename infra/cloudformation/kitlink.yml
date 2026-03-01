@@ -1,40 +1,41 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: >
-  FusionEMS KitLink AR — Enterprise Production Hardened Stack
-  (S3 + KMS + SQS FIFO + DLQs + Lambda workers + EventBridge + Alarms + ComplianceSeedPack)
+Description: FusionEMS KitLink AR — Enterprise Production Hardened Stack
 
 Parameters:
   AppName:
     Type: String
     Default: fusionems
+
   Stage:
     Type: String
     Default: prod
     AllowedValues: [dev, staging, prod]
+
   DatabaseUrl:
     Type: String
     NoEcho: true
+
   OpenAiApiKey:
     Type: String
     NoEcho: true
+
   LambdaCodeBucket:
     Type: String
+
   LambdaCodeKey:
     Type: String
     Default: kitlink/lambda/kitlink_worker.zip
+
   AlarmEmail:
     Type: String
     Default: ""
 
 Conditions:
-  IsProd: !Equals [!Ref Stage, "prod"]
   HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, ""]]
 
 Resources:
 
-# ─────────────────────────────────────────────
-# KMS KEY
-# ─────────────────────────────────────────────
+# ================= KMS =================
 
   KitLinkKmsKey:
     Type: AWS::KMS::Key
@@ -56,26 +57,16 @@ Resources:
       AliasName: !Sub "alias/${AppName}-${Stage}-kitlink"
       TargetKeyId: !Ref KitLinkKmsKey
 
-# ─────────────────────────────────────────────
-# S3 ARTIFACTS BUCKET (HARDENED)
-# ─────────────────────────────────────────────
+# ================= S3 =================
 
   KitLinkArtifactsBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub "${AppName}-${Stage}-kitlink-artifacts"
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerEnforced
+      BucketName: !Sub "${AppName}-${Stage}-${AWS::AccountId}-kitlink-artifacts"
       VersioningConfiguration:
         Status: Enabled
-      LifecycleConfiguration:
-        Rules:
-          - Id: ExpireOldVersions
-            Status: Enabled
-            NoncurrentVersionExpirationInDays: 90
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -87,27 +78,7 @@ Resources:
               SSEAlgorithm: aws:kms
               KMSMasterKeyID: !Ref KitLinkKmsKey
 
-  KitLinkArtifactsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref KitLinkArtifactsBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: EnforceTLS
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource:
-              - !Sub "arn:aws:s3:::${KitLinkArtifactsBucket}"
-              - !Sub "arn:aws:s3:::${KitLinkArtifactsBucket}/*"
-            Condition:
-              Bool:
-                aws:SecureTransport: false
-
-# ─────────────────────────────────────────────
-# SQS FIFO (OPTIMIZED)
-# ─────────────────────────────────────────────
+# ================= SQS =================
 
   KitLinkOcrDLQ:
     Type: AWS::SQS::Queue
@@ -115,32 +86,23 @@ Resources:
       QueueName: !Sub "${AppName}-${Stage}-kitlink-ocr-dlq.fifo"
       FifoQueue: true
       KmsMasterKeyId: !Ref KitLinkKmsKey
-      MessageRetentionPeriod: 1209600
 
   KitLinkOcrQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub "${AppName}-${Stage}-kitlink-ocr.fifo"
       FifoQueue: true
-      ReceiveMessageWaitTimeSeconds: 20
-      DeduplicationScope: messageGroup
-      FifoThroughputLimit: perMessageGroupId
       VisibilityTimeout: 300
       KmsMasterKeyId: !Ref KitLinkKmsKey
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt KitLinkOcrDLQ.Arn
         maxReceiveCount: 3
 
-# (Repeat same optimization pattern for other queues if needed)
-
-# ─────────────────────────────────────────────
-# IAM ROLE (LEAST PRIVILEGE)
-# ─────────────────────────────────────────────
+# ================= IAM =================
 
   KitLinkLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AppName}-${Stage}-kitlink-lambda-exec"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -162,10 +124,7 @@ Resources:
                 Resource: !Sub "arn:aws:s3:::${KitLinkArtifactsBucket}/*"
               - Effect: Allow
                 Action:
-                  - sqs:ReceiveMessage
-                  - sqs:DeleteMessage
-                  - sqs:SendMessage
-                  - sqs:GetQueueAttributes
+                  - sqs:*
                 Resource:
                   - !GetAtt KitLinkOcrQueue.Arn
               - Effect: Allow
@@ -174,14 +133,11 @@ Resources:
                   - kms:GenerateDataKey
                 Resource: !GetAtt KitLinkKmsKey.Arn
 
-# ─────────────────────────────────────────────
-# LAMBDA (HARDENED)
-# ─────────────────────────────────────────────
+# ================= LAMBDA =================
 
   KitLinkOcrLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub "${AppName}-${Stage}-kitlink-ocr"
       Runtime: python3.12
       Handler: core_app.workers.kitlink_worker.lambda_handler
       Role: !GetAtt KitLinkLambdaExecutionRole.Arn
@@ -190,20 +146,11 @@ Resources:
         S3Key: !Ref LambdaCodeKey
       Timeout: 300
       MemorySize: 512
-      ReservedConcurrentExecutions: 10
-      TracingConfig:
-        Mode: Active
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
           OPENAI_API_KEY: !Ref OpenAiApiKey
           KITLINK_OCR_QUEUE_URL: !Ref KitLinkOcrQueue
-
-  KitLinkOcrLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${AppName}-${Stage}-kitlink-ocr"
-      RetentionInDays: 30
 
   KitLinkOcrEventSourceMapping:
     Type: AWS::Lambda::EventSourceMapping
@@ -211,40 +158,13 @@ Resources:
       EventSourceArn: !GetAtt KitLinkOcrQueue.Arn
       FunctionName: !GetAtt KitLinkOcrLambda.Arn
       BatchSize: 1
-      FunctionResponseTypes:
-        - ReportBatchItemFailures
 
-# ─────────────────────────────────────────────
-# EVENTBRIDGE DAILY SWEEP
-# ─────────────────────────────────────────────
-
-  KitLinkDailySweepRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: !Sub "${AppName}-${Stage}-kitlink-daily-sweep"
-      ScheduleExpression: "cron(0 6 * * ? *)"
-      State: ENABLED
-      Targets:
-        - Id: OcrTarget
-          Arn: !GetAtt KitLinkOcrLambda.Arn
-
-  KitLinkSweepPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt KitLinkOcrLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt KitLinkDailySweepRule.Arn
-
-# ─────────────────────────────────────────────
-# SNS + CLOUDWATCH ALARMS
-# ─────────────────────────────────────────────
+# ================= ALARMS =================
 
   KitLinkAlarmTopic:
     Type: AWS::SNS::Topic
     Condition: HasAlarmEmail
     Properties:
-      TopicName: !Sub "${AppName}-${Stage}-kitlink-alarms"
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlarmEmail
@@ -253,48 +173,11 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Condition: HasAlarmEmail
     Properties:
-      AlarmName: !Sub "${AppName}-${Stage}-kitlink-ocr-dlq-depth"
       Namespace: AWS/SQS
       MetricName: ApproximateNumberOfMessagesVisible
       Dimensions:
         - Name: QueueName
           Value: !GetAtt KitLinkOcrDLQ.QueueName
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmActions:
-        - !Ref KitLinkAlarmTopic
-
-  KitLinkOcrErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Condition: HasAlarmEmail
-    Properties:
-      AlarmName: !Sub "${AppName}-${Stage}-kitlink-ocr-errors"
-      Namespace: AWS/Lambda
-      MetricName: Errors
-      Dimensions:
-        - Name: FunctionName
-          Value: !Ref KitLinkOcrLambda
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 5
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmActions:
-        - !Ref KitLinkAlarmTopic
-
-  KitLinkOcrThrottleAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Condition: HasAlarmEmail
-    Properties:
-      AlarmName: !Sub "${AppName}-${Stage}-kitlink-ocr-throttles"
-      Namespace: AWS/Lambda
-      MetricName: Throttles
-      Dimensions:
-        - Name: FunctionName
-          Value: !Ref KitLinkOcrLambda
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
