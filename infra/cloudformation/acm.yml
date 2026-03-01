@@ -1,7 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  FusionEMS Quantum - ACM Certificate (us-east-1) with Route 53 DNS validation.
-  Hardened production version with safe rotation, DNS INSYNC wait, and log retention.
+Description: FusionEMS Quantum - ACM Certificate (us-east-1)
 
 Parameters:
   Env:
@@ -17,244 +15,26 @@ Parameters:
 
 Resources:
 
-  ############################################################
-  # IAM ROLE
-  ############################################################
-
-  AcmCertLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: AcmRoute53Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - acm:RequestCertificate
-                  - acm:DescribeCertificate
-                  - acm:DeleteCertificate
-                  - acm:AddTagsToCertificate
-                Resource: '*'
-                Condition:
-                  StringEquals:
-                    aws:RequestedRegion: us-east-1
-              - Effect: Allow
-                Action:
-                  - route53:ChangeResourceRecordSets
-                  - route53:GetChange
-                Resource:
-                  - !Sub 'arn:aws:route53:::hostedzone/${HostedZoneId}'
-                  - 'arn:aws:route53:::change/*'
-
-  ############################################################
-  # LOG RETENTION (CRITICAL)
-  ############################################################
-
-  AcmCertLambdaLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${AppName}-${Env}-acm-cert-provisioner'
-      RetentionInDays: 30
-
-  ############################################################
-  # LAMBDA FUNCTION
-  ############################################################
-
-  AcmCertLambda:
-    Type: AWS::Lambda::Function
-    DependsOn:
-      - AcmCertLambdaRole
-    Properties:
-      FunctionName: !Sub '${AppName}-${Env}-acm-cert-provisioner'
-      Runtime: python3.11
-      Handler: index.handler
-      Timeout: 900
-      MemorySize: 256
-      Role: !GetAtt AcmCertLambdaRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import time
-          import urllib.request
-          import boto3
-
-          acm = boto3.client("acm", region_name="us-east-1")
-          r53 = boto3.client("route53")
-
-          def send(event, context, status, data=None, reason=""):
-              body = json.dumps({
-                  "Status": status,
-                  "Reason": reason or f"See logs: {context.log_stream_name}",
-                  "PhysicalResourceId": (data or {}).get("CertificateArn", event.get("PhysicalResourceId", "none")),
-                  "StackId": event["StackId"],
-                  "RequestId": event["RequestId"],
-                  "LogicalResourceId": event["LogicalResourceId"],
-                  "Data": data or {},
-              }).encode("utf-8")
-
-              req = urllib.request.Request(
-                  event["ResponseURL"],
-                  data=body,
-                  method="PUT",
-                  headers={"content-type": ""},
-              )
-              urllib.request.urlopen(req)
-
-          def wait_for_dns_records(cert_arn):
-              for _ in range(40):
-                  desc = acm.describe_certificate(CertificateArn=cert_arn)
-                  options = desc["Certificate"].get("DomainValidationOptions", [])
-                  if options and all("ResourceRecord" in o for o in options):
-                      return options
-                  time.sleep(5)
-              raise Exception("Timed out waiting for DNS validation records")
-
-          def wait_for_route53(change_id):
-              while True:
-                  status = r53.get_change(Id=change_id)["ChangeInfo"]["Status"]
-                  if status == "INSYNC":
-                      return
-                  time.sleep(5)
-
-          def wait_for_issued(cert_arn, timeout=900):
-              deadline = time.time() + timeout
-              while time.time() < deadline:
-                  desc = acm.describe_certificate(CertificateArn=cert_arn)
-                  status = desc["Certificate"]["Status"]
-                  if status == "ISSUED":
-                      return
-                  if status == "FAILED":
-                      raise Exception("Certificate validation failed")
-                  time.sleep(15)
-              raise Exception("Timed out waiting for certificate issuance")
-
-          def handler(event, context):
-              print(json.dumps(event))
-              props = event["ResourceProperties"]
-              request_type = event["RequestType"]
-
-              try:
-                  if request_type == "Delete":
-                      cert_arn = event.get("PhysicalResourceId", "")
-                      if cert_arn.startswith("arn:aws:acm:"):
-                          try:
-                              acm.delete_certificate(CertificateArn=cert_arn)
-                          except acm.exceptions.ResourceInUseException:
-                              pass
-                          except acm.exceptions.ResourceNotFoundException:
-                              pass
-                      return send(event, context, "SUCCESS", {"CertificateArn": cert_arn})
-
-                  domain = props["DomainName"]
-                  sans = props.get("SubjectAlternativeNames", [])
-                  hosted_zone_id = props["HostedZoneId"]
-
-                  old_cert_arn = event.get("PhysicalResourceId")
-
-                  need_new = (
-                      request_type == "Create"
-                      or not old_cert_arn
-                  )
-
-                  if not need_new and request_type == "Update":
-                      old_props = event.get("OldResourceProperties", {})
-                      if (
-                          domain != old_props.get("DomainName")
-                          or sorted(sans) != sorted(old_props.get("SubjectAlternativeNames", []))
-                      ):
-                          need_new = True
-
-                  if need_new:
-                      resp = acm.request_certificate(
-                          DomainName=domain,
-                          SubjectAlternativeNames=sans or [domain],
-                          ValidationMethod="DNS",
-                          Tags=[
-                              {"Key": "Application", "Value": props.get("AppName", "")},
-                              {"Key": "Environment", "Value": props.get("Env", "")},
-                              {"Key": "ManagedBy", "Value": "CloudFormation"},
-                          ],
-                      )
-                      cert_arn = resp["CertificateArn"]
-
-                      options = wait_for_dns_records(cert_arn)
-
-                      changes = []
-                      seen = set()
-                      for opt in options:
-                          rr = opt["ResourceRecord"]
-                          key = (rr["Name"], rr["Value"])
-                          if key in seen:
-                              continue
-                          seen.add(key)
-                          changes.append({
-                              "Action": "UPSERT",
-                              "ResourceRecordSet": {
-                                  "Name": rr["Name"],
-                                  "Type": rr["Type"],
-                                  "TTL": 300,
-                                  "ResourceRecords": [{"Value": rr["Value"]}],
-                              },
-                          })
-
-                      if changes:
-                          resp = r53.change_resource_record_sets(
-                              HostedZoneId=hosted_zone_id,
-                              ChangeBatch={
-                                  "Comment": "ACM DNS validation",
-                                  "Changes": changes,
-                              },
-                          )
-                          wait_for_route53(resp["ChangeInfo"]["Id"])
-
-                      wait_for_issued(cert_arn)
-
-                      if request_type == "Update" and old_cert_arn:
-                          try:
-                              acm.delete_certificate(CertificateArn=old_cert_arn)
-                          except Exception:
-                              pass
-
-                  else:
-                      cert_arn = old_cert_arn
-
-                  return send(event, context, "SUCCESS", {"CertificateArn": cert_arn})
-
-              except Exception as e:
-                  print("ERROR:", str(e))
-                  return send(event, context, "FAILED",
-                              {"CertificateArn": event.get("PhysicalResourceId", "none")},
-                              str(e))
-
-  ############################################################
-  # CUSTOM RESOURCE
-  ############################################################
-
   AcmCertificate:
-    Type: Custom::AcmCertificate
+    Type: AWS::CertificateManager::Certificate
     Properties:
-      ServiceToken: !GetAtt AcmCertLambda.Arn
       DomainName: !Ref RootDomainName
       SubjectAlternativeNames:
-        - !Ref RootDomainName
         - !Ref ApiDomainName
-      HostedZoneId: !Ref HostedZoneId
-      AppName: !Ref AppName
-      Env: !Ref Env
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref RootDomainName
+          HostedZoneId: !Ref HostedZoneId
+        - DomainName: !Ref ApiDomainName
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Application
+          Value: !Ref AppName
+        - Key: Environment
+          Value: !Ref Env
 
 Outputs:
   CertificateArn:
-    Description: ACM certificate ARN in us-east-1
-    Value: !GetAtt AcmCertificate.CertificateArn
+    Value: !Ref AcmCertificate
     Export:
       Name: !Sub '${AppName}-${Env}-AcmCertArnUsEast1'
