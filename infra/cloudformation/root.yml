@@ -110,7 +110,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/data.yml'
+    TemplateURL: network.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
