@@ -27,7 +27,7 @@ jobs:
       CFN_ARTIFACTS_BUCKET: ${{ vars.CFN_ARTIFACTS_BUCKET }}
       CFN_ALERT_EMAIL: ${{ vars.CFN_ALERT_EMAIL }}
       CFN_DESIRED_COUNT: ${{ vars.CFN_DESIRED_COUNT }}
-      CFN_DESIRED_COUNT_DEFAULT: ${{ vars.CFN_DESIRED_COUNT_DEFAULT || '2' }}
+      CFN_DESIRED_COUNT_DEFAULT: ${{ vars.CFN_DESIRED_COUNT_DEFAULT }}
 
     steps:
       - uses: actions/checkout@v4
@@ -87,20 +87,17 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
-          DEFAULT_DESIRED_COUNT="${CFN_DESIRED_COUNT_DEFAULT}"
+          DEFAULT_DESIRED_COUNT="${CFN_DESIRED_COUNT_DEFAULT:-2}"
+          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-$DEFAULT_DESIRED_COUNT}"
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query 'Stacks[0].StackStatus' \
             --output text >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            if [ -n "${CFN_DESIRED_COUNT:-}" ]; then
-              echo "final_desired_count=${CFN_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
-            else
-              echo "final_desired_count=" >> "$GITHUB_OUTPUT"
-            fi
+            echo "final_desired_count=${FINAL_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "final_desired_count=${CFN_DESIRED_COUNT:-$DEFAULT_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
+            echo "final_desired_count=${FINAL_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create initial stack deployment
