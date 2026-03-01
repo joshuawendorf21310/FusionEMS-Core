@@ -1,9 +1,8 @@
-name: Deploy Production
+name: Deploy Production (Visual + Diagnostics)
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,6 +14,19 @@ env:
   STACK_NAME: fusionems-core
   ARTIFACT_BUCKET: fusionemsquantum-cfn-artifacts-prod
 
+  # Root template in this repo
+  ROOT_TEMPLATE: infra/cloudformation/root.yml
+
+  # Root stack parameters (prod)
+  Env: prod
+  AppName: fusionems-quantum
+  RootDomainName: app.fusionemsquantum.com
+  ApiDomainName: api.fusionemsquantum.com
+  HostedZoneId: Z0858801IZXAHSWCPH85
+  ImageTagFrontend: latest
+  ImageTagBackend: latest
+  DesiredCount: "2"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,38 +35,304 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::793439286972:role/fusionems-github-deploy-role
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Validate Template
+      - name: Ensure Artifact Bucket Exists
+        shell: bash
         run: |
-          aws cloudformation validate-template \
-            --template-body file://infra/cloudformation/root.yml
+          set -euo pipefail
+          echo "== Ensure artifact bucket =="
+          if aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
+            echo "Bucket exists: $ARTIFACT_BUCKET"
+          else
+            echo "Creating bucket: $ARTIFACT_BUCKET"
+            aws s3 mb "s3://$ARTIFACT_BUCKET" --region "$AWS_REGION"
+          fi
 
-      - name: Package CloudFormation
+      # -------------------------------------------------------------------
+      # AUTO-HEAL: CloudFormation stack states that cannot be updated
+      # -------------------------------------------------------------------
+      - name: Heal Stack If It Is Undeployable
+        shell: bash
         run: |
+          set -euo pipefail
+          echo "== Stack heal check =="
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "Stacks[0].StackStatus" \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+
+          echo "Current stack status: $STATUS"
+
+          # These states typically block updates and require delete/recreate:
+          # - ROLLBACK_COMPLETE: creation failed; AWS blocks update
+          # - DELETE_FAILED: deletion got stuck; fix then delete
+          # - UPDATE_ROLLBACK_COMPLETE: update failed and rolled back; usually still updatable,
+          #   but if it keeps failing, delete is often fastest.
+          # - ROLLBACK_FAILED: rollback couldn't complete
+          # - UPDATE_ROLLBACK_FAILED: rollback after update failed
+
+          case "$STATUS" in
+            NOT_FOUND)
+              echo "No stack exists yet. Good."
+              ;;
+            ROLLBACK_COMPLETE|ROLLBACK_FAILED|DELETE_FAILED|UPDATE_ROLLBACK_FAILED)
+              echo "Stack is in a broken state ($STATUS). Deleting it so we can redeploy clean."
+              aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
+              echo "Waiting for delete..."
+              aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region "$AWS_REGION" || true
+              ;;
+            *)
+              echo "Stack is in an updateable state ($STATUS). Continuing."
+              ;;
+          esac
+
+      - name: Validate Root Template
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "== Validate template =="
+          aws cloudformation validate-template --template-body "file://$ROOT_TEMPLATE"
+
+      - name: Package Root Template (uploads nested refs to S3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "== Package CloudFormation =="
           aws cloudformation package \
-            --template-file infra/cloudformation/root.yml \
-            --s3-bucket $ARTIFACT_BUCKET \
+            --template-file "$ROOT_TEMPLATE" \
+            --s3-bucket "$ARTIFACT_BUCKET" \
             --output-template-file packaged.yml
 
+      # -------------------------------------------------------------------
+      # DEPLOY (CREATE/UPDATE)
+      # -------------------------------------------------------------------
       - name: Deploy Stack
+        shell: bash
         run: |
+          set -euo pipefail
+          echo "== Deploy stack =="
           aws cloudformation deploy \
             --template-file packaged.yml \
-            --stack-name $STACK_NAME \
-            --region $AWS_REGION \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
             --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
-              Env=prod \
-              AppName=fusionems-quantum \
-              RootDomainName=app.fusionemsquantum.com \
-              ApiDomainName=api.fusionemsquantum.com \
-              HostedZoneId=Z0858801IZXAHSWCPH85 \
-              ImageTagFrontend=latest \
-              ImageTagBackend=latest \
-              DesiredCount=2 \
-              NestedTemplatesBucket=$ARTIFACT_BUCKET
+              Env="$Env" \
+              AppName="$AppName" \
+              RootDomainName="$RootDomainName" \
+              ApiDomainName="$ApiDomainName" \
+              HostedZoneId="$HostedZoneId" \
+              NestedTemplatesBucket="$ARTIFACT_BUCKET" \
+              ImageTagFrontend="$ImageTagFrontend" \
+              ImageTagBackend="$ImageTagBackend" \
+              DesiredCount="$DesiredCount"
+
+      # -------------------------------------------------------------------
+      # LIVE VISUAL EVENT STREAM (polling)
+      # This runs even if deploy fails: it’s the best way to see WHAT failed.
+      # -------------------------------------------------------------------
+      - name: Live Stack Event Stream (Visual)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "============================================================"
+          echo " LIVE STACK EVENTS (polling) - $STACK_NAME"
+          echo "============================================================"
+          echo "Tip: If something fails, look for *_FAILED and the Reason column."
+          echo
+
+          # We’ll poll for up to 25 minutes.
+          # If you want longer: increase MAX_LOOPS.
+          MAX_LOOPS=300
+          SLEEP=5
+
+          # Track newest timestamp we have printed
+          LAST_TS=""
+
+          for ((i=1; i<=MAX_LOOPS; i++)); do
+            STATUS=$(aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+              --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_FOUND")
+
+            echo "---- poll #$i | stack status: $STATUS | $(date -u +"%Y-%m-%dT%H:%M:%SZ") ----"
+
+            # Print the latest 12 events in a clean table
+            aws cloudformation describe-stack-events \
+              --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+              --query "StackEvents[0:12].[Timestamp,ResourceStatus,LogicalResourceId,ResourceType,ResourceStatusReason]" \
+              --output table || true
+
+            # Stop early if stack is complete
+            case "$STATUS" in
+              CREATE_COMPLETE|UPDATE_COMPLETE)
+                echo "✅ Stack finished successfully: $STATUS"
+                break
+                ;;
+              CREATE_FAILED|ROLLBACK_IN_PROGRESS|ROLLBACK_COMPLETE|UPDATE_ROLLBACK_IN_PROGRESS|UPDATE_ROLLBACK_COMPLETE|UPDATE_ROLLBACK_FAILED|ROLLBACK_FAILED)
+                echo "❌ Stack entered failure/rollback state: $STATUS"
+                break
+                ;;
+            esac
+
+            sleep "$SLEEP"
+          done
+
+      # -------------------------------------------------------------------
+      # FAILURE DIAGNOSTICS (EXTREME DETAIL)
+      # Runs if anything failed.
+      # -------------------------------------------------------------------
+      - name: Failure Diagnostics (CFN + ECS + Logs)
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "============================================================"
+          echo " ❌ FAILURE DIAGNOSTICS - $STACK_NAME"
+          echo "============================================================"
+
+          echo
+          echo "== 1) Stack status =="
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "Stacks[0].[StackStatus,StackStatusReason]" \
+            --output table || true
+
+          echo
+          echo "== 2) The FIRST failing resource (if any) =="
+          # This finds the most recent resource event with FAILED
+          aws cloudformation describe-stack-events \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "StackEvents[?contains(ResourceStatus, 'FAILED')][0].[Timestamp,ResourceStatus,LogicalResourceId,ResourceType,ResourceStatusReason]" \
+            --output table || true
+
+          echo
+          echo "== 3) Current stack resources (failed ones will stand out) =="
+          aws cloudformation describe-stack-resources \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "StackResources[].[LogicalResourceId,ResourceType,ResourceStatus,PhysicalResourceId]" \
+            --output table || true
+
+          echo
+          echo "== 4) Last 40 stack events (more context) =="
+          aws cloudformation describe-stack-events \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "StackEvents[0:40].[Timestamp,ResourceStatus,LogicalResourceId,ResourceType,ResourceStatusReason]" \
+            --output table || true
+
+          # If ECS exists, dump ECS service events + stopped task reasons
+          echo
+          echo "== 5) ECS diagnostics (if cluster exists) =="
+
+          CLUSTER=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "Stacks[0].Outputs[?OutputKey=='EcsClusterName'].OutputValue | [0]" \
+            --output text 2>/dev/null || echo "")
+
+          BACKEND_SVC=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue | [0]" \
+            --output text 2>/dev/null || echo "")
+
+          FRONTEND_SVC=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue | [0]" \
+            --output text 2>/dev/null || echo "")
+
+          echo "Cluster: $CLUSTER"
+          echo "Backend svc: $BACKEND_SVC"
+          echo "Frontend svc: $FRONTEND_SVC"
+
+          if [[ -n "$CLUSTER" ]]; then
+            echo
+            echo "-- ECS service snapshot --"
+            aws ecs list-services --cluster "$CLUSTER" --region "$AWS_REGION" --output table || true
+
+            if [[ -n "$BACKEND_SVC" ]]; then
+              echo
+              echo "-- Backend service events --"
+              aws ecs describe-services \
+                --cluster "$CLUSTER" --services "$BACKEND_SVC" --region "$AWS_REGION" \
+                --query "services[0].events[0:12].[createdAt,message]" \
+                --output table || true
+
+              echo
+              echo "-- Backend stopped tasks (reason) --"
+              TASKS=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$BACKEND_SVC" --desired-status STOPPED --region "$AWS_REGION" --query "taskArns[0:5]" --output text || true)
+              if [[ -n "$TASKS" ]]; then
+                aws ecs describe-tasks --cluster "$CLUSTER" --tasks $TASKS --region "$AWS_REGION" \
+                  --query "tasks[].{Task:taskArn,StopCode:stopCode,StoppedReason:stoppedReason}" \
+                  --output table || true
+              else
+                echo "No stopped tasks found for backend."
+              fi
+            fi
+
+            if [[ -n "$FRONTEND_SVC" ]]; then
+              echo
+              echo "-- Frontend service events --"
+              aws ecs describe-services \
+                --cluster "$CLUSTER" --services "$FRONTEND_SVC" --region "$AWS_REGION" \
+                --query "services[0].events[0:12].[createdAt,message]" \
+                --output table || true
+
+              echo
+              echo "-- Frontend stopped tasks (reason) --"
+              TASKS=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$FRONTEND_SVC" --desired-status STOPPED --region "$AWS_REGION" --query "taskArns[0:5]" --output text || true)
+              if [[ -n "$TASKS" ]]; then
+                aws ecs describe-tasks --cluster "$CLUSTER" --tasks $TASKS --region "$AWS_REGION" \
+                  --query "tasks[].{Task:taskArn,StopCode:stopCode,StoppedReason:stoppedReason}" \
+                  --output table || true
+              else
+                echo "No stopped tasks found for frontend."
+              fi
+            fi
+          else
+            echo "No ECS cluster output found (stack likely failed before compute)."
+          fi
+
+          echo
+          echo "== 6) CloudWatch Logs (best effort) =="
+          # If your ECS logs are in /fusionems-quantum/prod and /fusionems-quantum/dev, this helps.
+          # Update if your log group differs.
+          for LG in "/fusionems-quantum/prod" "/fusionems-quantum/dev"; do
+            echo "--- Checking log group: $LG ---"
+            aws logs describe-log-streams \
+              --log-group-name "$LG" --region "$AWS_REGION" \
+              --order-by LastEventTime --descending \
+              --query "logStreams[0:3].[logStreamName,lastEventTimestamp]" \
+              --output table 2>/dev/null || echo "No access or log group not found."
+          done
+
+          echo
+          echo "== END DIAGNOSTICS =="
+          echo "Most common causes:"
+          echo " - IAM: AccessDenied (secretsmanager:GetSecretValue, iam:PassRole, etc)"
+          echo " - Missing ECR image tag (manifest not found)"
+          echo " - Bad health check path -> ALB keeps tasks unhealthy"
+          echo " - Wrong env vars cause app crash-loop"
+          echo
+
+      # -------------------------------------------------------------------
+      # SUCCESS OUTPUTS (URLS)
+      # -------------------------------------------------------------------
+      - name: Outputs (URLs + IDs)
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "============================================================"
+          echo " ✅ DEPLOY SUCCESS - STACK OUTPUTS"
+          echo "============================================================"
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" --region "$AWS_REGION" \
+            --query "Stacks[0].Outputs" \
+            --output table
