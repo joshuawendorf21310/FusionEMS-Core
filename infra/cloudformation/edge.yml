@@ -4,47 +4,42 @@ Description: FusionEMS Quantum - Enterprise Edge Stack (CloudFront + Route53 + W
 Parameters:
   Env:
     Type: String
+
   AppName:
     Type: String
+
   RootDomainName:
     Type: String
+
   ApiDomainName:
     Type: String
+
   HostedZoneId:
     Type: String
+
   AcmCertificateArnUsEast1:
     Type: String
+
   AlbDnsName:
     Type: String
 
-Conditions:
-  IsProd: !Equals [!Ref Env, 'prod']
-
 Resources:
 
-# ─────────────────────────────────────────────
-# LOGGING BUCKET
-# ─────────────────────────────────────────────
+# ================= LOG BUCKET =================
 
   CloudFrontLogsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AppName}-${Env}-cf-logs'
+      BucketName: !Sub '${AppName}-${Env}-${AWS::AccountId}-cf-logs'
       VersioningConfiguration:
         Status: Enabled
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-# ─────────────────────────────────────────────
-# WAF
-# ─────────────────────────────────────────────
+# ================= WAF =================
 
   WebACL:
     Type: AWS::WAFv2::WebACL
@@ -71,35 +66,7 @@ Resources:
             MetricName: common
             SampledRequestsEnabled: true
 
-        - Name: AWSManagedBotControl
-          Priority: 2
-          OverrideAction:
-            None: {}
-          Statement:
-            ManagedRuleGroupStatement:
-              VendorName: AWS
-              Name: AWSManagedRulesBotControlRuleSet
-          VisibilityConfig:
-            CloudWatchMetricsEnabled: true
-            MetricName: bot
-            SampledRequestsEnabled: true
-
-        - Name: ApiRateLimit
-          Priority: 3
-          Action:
-            Block: {}
-          Statement:
-            RateBasedStatement:
-              Limit: 2000
-              AggregateKeyType: IP
-          VisibilityConfig:
-            CloudWatchMetricsEnabled: true
-            MetricName: rate-limit
-            SampledRequestsEnabled: true
-
-# ─────────────────────────────────────────────
-# SECURITY HEADERS POLICY
-# ─────────────────────────────────────────────
+# ================= SECURITY HEADERS =================
 
   SecurityHeadersPolicy:
     Type: AWS::CloudFront::ResponseHeadersPolicy
@@ -120,14 +87,8 @@ Resources:
           ReferrerPolicy:
             ReferrerPolicy: strict-origin-when-cross-origin
             Override: true
-          XSSProtection:
-            Protection: true
-            ModeBlock: true
-            Override: true
 
-# ─────────────────────────────────────────────
-# CACHE POLICIES
-# ─────────────────────────────────────────────
+# ================= CACHE POLICIES =================
 
   NoCachePolicy:
     Type: AWS::CloudFront::CachePolicy
@@ -138,8 +99,6 @@ Resources:
         MinTTL: 0
         MaxTTL: 0
         ParametersInCacheKeyAndForwardedToOrigin:
-          EnableAcceptEncodingBrotli: true
-          EnableAcceptEncodingGzip: true
           HeadersConfig:
             HeaderBehavior: allViewer
           QueryStringsConfig:
@@ -156,8 +115,6 @@ Resources:
         MaxTTL: 31536000
         MinTTL: 0
         ParametersInCacheKeyAndForwardedToOrigin:
-          EnableAcceptEncodingBrotli: true
-          EnableAcceptEncodingGzip: true
           HeadersConfig:
             HeaderBehavior: none
           QueryStringsConfig:
@@ -165,9 +122,7 @@ Resources:
           CookiesConfig:
             CookieBehavior: none
 
-# ─────────────────────────────────────────────
-# DISTRIBUTION
-# ─────────────────────────────────────────────
+# ================= DISTRIBUTION =================
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -183,7 +138,7 @@ Resources:
         DefaultRootObject: index.html
 
         Logging:
-          Bucket: !GetAtt CloudFrontLogsBucket.DomainName
+          Bucket: !Sub '${CloudFrontLogsBucket}.s3.amazonaws.com'
           IncludeCookies: false
 
         Origins:
@@ -211,20 +166,12 @@ Resources:
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
             CachePolicyId: !Ref NoCachePolicy
 
-          - PathPattern: /ws/*
-            TargetOriginId: AlbOrigin
-            ViewerProtocolPolicy: https-only
-            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
-            CachePolicyId: !Ref NoCachePolicy
-
         ViewerCertificate:
           AcmCertificateArn: !Ref AcmCertificateArnUsEast1
           SslSupportMethod: sni-only
           MinimumProtocolVersion: TLSv1.2_2021
 
-# ─────────────────────────────────────────────
-# ROUTE53
-# ─────────────────────────────────────────────
+# ================= ROUTE53 =================
 
   RootDomainRecordA:
     Type: AWS::Route53::RecordSet
@@ -247,7 +194,6 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2
 
 Outputs:
-
   CloudFrontDomain:
     Value: !GetAtt CloudFrontDistribution.DomainName
 
