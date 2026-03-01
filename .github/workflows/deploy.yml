@@ -27,7 +27,7 @@ jobs:
       CFN_ARTIFACTS_BUCKET: ${{ vars.CFN_ARTIFACTS_BUCKET }}
       CFN_ALERT_EMAIL: ${{ vars.CFN_ALERT_EMAIL }}
       CFN_DESIRED_COUNT: ${{ vars.CFN_DESIRED_COUNT }}
-      CFN_DESIRED_COUNT_DEFAULT: 2
+      CFN_DESIRED_COUNT_DEFAULT: ${{ vars.CFN_DESIRED_COUNT_DEFAULT }}
 
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +87,8 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
-          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-$CFN_DESIRED_COUNT_DEFAULT}"
+          # Fallback to 2 replicas when no desired count is configured.
+          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-${CFN_DESIRED_COUNT_DEFAULT:-2}}"
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query 'Stacks[0].StackStatus' \
@@ -112,6 +113,7 @@ jobs:
             NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
             ImageTagFrontend="${GITHUB_SHA}"
             ImageTagBackend="${GITHUB_SHA}"
+            # Bootstrap with 0 tasks so ECR repos exist before images are pushed.
             DesiredCount=0
           )
 
