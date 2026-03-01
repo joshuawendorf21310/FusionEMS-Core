@@ -1,15 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Root Nested Stack (Enterprise Production-Ready, Ordered + Packaged Safe)
+Description: FusionEMS Quantum - Root Stack
 
 Parameters:
   Env:
     Type: String
     AllowedValues: [dev, prod]
-    Default: dev
+    Default: prod
 
   AppName:
     Type: String
-    Default: fusionems-quantum
+    Default: fusionems
 
   RootDomainName:
     Type: String
@@ -21,105 +21,42 @@ Parameters:
 
   HostedZoneId:
     Type: String
-    Default: Z0858801IZXAHSWCPH85
 
   ImageTagFrontend:
     Type: String
+    Default: latest
 
   ImageTagBackend:
     Type: String
-
-  DesiredCount:
-    Type: Number
-    Default: 2
-
-  DbInstanceClass:
-    Type: String
-    Default: db.t4g.medium
-
-  DbMultiAZ:
-    Type: String
-    Default: 'false'
-    AllowedValues: ['true', 'false']
-
-  RedisNodeType:
-    Type: String
-    Default: cache.t4g.small
-
-  AlertEmail:
-    Type: String
-    Default: founder@fusionemsquantum.com
+    Default: latest
 
   NestedTemplatesBucket:
     Type: String
 
-  GraphTenantId:
-    Type: String
-    Default: ''
-
-  GraphClientId:
-    Type: String
-    Default: ''
-
-  GraphClientSecret:
-    Type: String
-    NoEcho: true
-    Default: ''
-
-  GraphFounderEmail:
-    Type: String
-    Default: ''
-
-Conditions:
-  IsProd: !Equals [!Ref Env, 'prod']
-
 Resources:
 
-  # ================= ACM =================
-  AcmStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: acm.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        RootDomainName: !Ref RootDomainName
-        ApiDomainName: !Ref ApiDomainName
-        HostedZoneId: !Ref HostedZoneId
-
-  # ================= Network =================
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: network.yml
       Parameters:
-        Env: !Ref Env
         AppName: !Ref AppName
+        Env: !Ref Env
 
-  # ================= Data =================
   DataStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
       TemplateURL: data.yml
       Parameters:
-        Env: !Ref Env
         AppName: !Ref AppName
-        DbInstanceClass: !Ref DbInstanceClass
-        DbMultiAZ: !Ref DbMultiAZ
-        RedisNodeType: !Ref RedisNodeType
+        Env: !Ref Env
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-        GraphTenantId: !Ref GraphTenantId
-        GraphClientId: !Ref GraphClientId
-        GraphClientSecret: !Ref GraphClientSecret
-        GraphFounderEmail: !Ref GraphFounderEmail
 
-  # ================= Cognito =================
   CognitoStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: NetworkStack
     Properties:
       TemplateURL: cognito.yml
       Parameters:
@@ -128,31 +65,16 @@ Resources:
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
 
-  # ================= Billing =================
-  BillingStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: DataStack
-    Properties:
-      TemplateURL: billing.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
-        LambdaSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
-        LambdaSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-
-  # ================= Compute =================
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - DataStack
       - CognitoStack
-      - BillingStack
     Properties:
       TemplateURL: compute.yml
       Parameters:
-        Env: !Ref Env
         AppName: !Ref AppName
+        Env: !Ref Env
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PublicSubnets: !GetAtt NetworkStack.Outputs.PublicSubnets
         PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
@@ -160,20 +82,15 @@ Resources:
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
         ImageTagFrontend: !Ref ImageTagFrontend
         ImageTagBackend: !Ref ImageTagBackend
-        DesiredCount: !Ref DesiredCount
         DbSecretArn: !GetAtt DataStack.Outputs.DbSecretArn
         AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
         RedisPrimaryEndpoint: !GetAtt DataStack.Outputs.RedisPrimaryEndpoint
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
-        AcmCertificateArn: !GetAtt AcmStack.Outputs.CertificateArn
 
-  # ================= Edge =================
   EdgeStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - ComputeStack
-      - AcmStack
+    DependsOn: ComputeStack
     Properties:
       TemplateURL: edge.yml
       Parameters:
@@ -182,18 +99,8 @@ Resources:
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
         HostedZoneId: !Ref HostedZoneId
-        AcmCertificateArnUsEast1: !GetAtt AcmStack.Outputs.CertificateArn
         AlbDnsName: !GetAtt ComputeStack.Outputs.AlbDnsName
 
 Outputs:
   CloudFrontDomain:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDomain
-
-  CloudFrontDistributionId:
-    Value: !GetAtt EdgeStack.Outputs.CloudFrontDistributionId
-
-  BackendEcrRepoUri:
-    Value: !GetAtt ComputeStack.Outputs.BackendEcrRepoUri
-
-  FrontendEcrRepoUri:
-    Value: !GetAtt ComputeStack.Outputs.FrontendEcrRepoUri
