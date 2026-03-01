@@ -86,6 +86,7 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
+          DEFAULT_DESIRED_COUNT=2
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query 'Stacks[0].StackStatus' \
@@ -94,10 +95,10 @@ jobs:
             echo "final_desired_count=" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "final_desired_count=${CFN_DESIRED_COUNT:-2}" >> "$GITHUB_OUTPUT"
+            echo "final_desired_count=${CFN_DESIRED_COUNT:-$DEFAULT_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Bootstrap stack for ECR outputs
+      - name: Create stack for ECR outputs
         if: steps.stack_check.outputs.exists != 'true'
         run: |
           set -euo pipefail
