@@ -80,7 +80,7 @@ Resources:
   AcmStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/acm.yml'
+      TemplateURL: network.yml:
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -96,7 +96,7 @@ Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/network.yml'
+      TemplateURL: network.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -134,7 +134,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/cognito.yml'
+      TemplateURL: network.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -150,7 +150,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: DataStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/billing.yml'
+      TemplateURL: network.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -170,7 +170,7 @@ Resources:
       - CognitoStack
       - BillingStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/compute.yml'
+      TemplateURL: network.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -200,7 +200,7 @@ Resources:
       - ComputeStack
       - AcmStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/edge.yml'
+      TemplateURL: network.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
