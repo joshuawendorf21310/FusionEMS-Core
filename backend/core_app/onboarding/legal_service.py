@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import hashlib
 import io
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from core_app.services.domination_service import DominationService
 from core_app.core.config import get_settings
+from core_app.services.domination_service import DominationService
 
 
 class LegalService:
@@ -30,7 +31,7 @@ class LegalService:
         import asyncio
 
         str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         loop = asyncio.get_event_loop()
         packet = loop.run_until_complete(
@@ -122,7 +123,7 @@ class LegalService:
 
         loop = asyncio.get_event_loop()
         settings = get_settings()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         now_iso = now.isoformat()
 
         updated_docs = []
@@ -215,12 +216,19 @@ class LegalService:
 
     def _render_executed_pdf(self, doc_type: str, packet_data: dict, signing_data: dict) -> bytes:
         try:
-            from reportlab.lib.pagesizes import letter
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib.units import inch
             from reportlab.lib import colors
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
             from reportlab.lib.enums import TA_CENTER  # noqa: F401
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+            from reportlab.lib.units import inch
+            from reportlab.platypus import (
+                HRFlowable,
+                Paragraph,
+                SimpleDocTemplate,
+                Spacer,
+                Table,
+                TableStyle,
+            )
 
             buffer = io.BytesIO()
             doc = SimpleDocTemplate(
@@ -287,7 +295,7 @@ class LegalService:
             signer_name = signing_data.get("signer_name", "")
             signer_email = signing_data.get("signer_email", "")
             signer_title = signing_data.get("signer_title", "")
-            signed_at = datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")
+            signed_at = datetime.now(UTC).strftime("%B %d, %Y at %H:%M UTC")
             plan_data = packet_data.get("plan_data", {})
 
             def header_block(doc_label: str) -> list:
@@ -615,25 +623,25 @@ class LegalService:
                 f"Agency: {packet_data.get('agency_name', '')}\n"
                 f"Signer: {signing_data.get('signer_name', '')} <{signing_data.get('signer_email', '')}>\n"
                 f"Title: {signing_data.get('signer_title', '')}\n"
-                f"Signed At: {datetime.now(timezone.utc).isoformat()}\n"
+                f"Signed At: {datetime.now(UTC).isoformat()}\n"
                 f"IP: {signing_data.get('ip_address', '')}\n"
                 f"Signature: {signing_data.get('signature_text', '')}\n"
                 f"BAA Consent: {signing_data.get('consents', {}).get('baa')}\n"
                 f"MSA Consent: {signing_data.get('consents', {}).get('msa')}\n"
                 f"Order Form Consent: {signing_data.get('consents', {}).get('order_form')}\n"
-            ).encode("utf-8")
+            ).encode()
             text_len = len(text_content)
             page_stream = (
                 f"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
                 f"/Contents 4 0 R /Resources << /Font << /F1 << /Type /Font "
                 f"/Subtype /Type1 /BaseFont /Helvetica >> >> >> >>\nendobj\n"
                 f"4 0 obj\n<< /Length {text_len} >>\nstream\n"
-            ).encode("utf-8")
+            ).encode()
             trailer = (
-                "\nendstream\nendobj\n"
-                "xref\n0 5\n0000000000 65535 f\n"
-                "trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n9\n%%EOF\n"
-            ).encode("utf-8")
+                b"\nendstream\nendobj\n"
+                b"xref\n0 5\n0000000000 65535 f\n"
+                b"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n9\n%%EOF\n"
+            )
             return b"".join(lines) + page_stream + text_content + trailer
 
     def get_legal_status(self, application_id: str) -> dict:

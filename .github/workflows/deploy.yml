@@ -10,8 +10,50 @@ permissions:
   id-token: write
 
 jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dev dependencies
+        run: |
+          pip install -r backend/requirements.txt -q 2>/dev/null || true
+          pip install -r backend/requirements-dev.txt -q
+
+      - name: Ruff lint (0 errors gate)
+        run: cd backend && python -m ruff check . --output-format=concise
+
+      - name: Ruff format check
+        run: cd backend && python -m ruff format . --check
+
+      - name: Pytest unit tests
+        run: cd backend && python -m pytest tests/ -q --ignore=tests/smoke --continue-on-collection-errors
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: TypeScript typecheck (0 errors gate)
+        run: cd frontend && npx tsc --noEmit
+
+      - name: ESLint (0 errors gate)
+        run: cd frontend && npx eslint . --ext .ts,.tsx
+
   deploy:
     runs-on: ubuntu-latest
+    needs: quality-gate
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -158,7 +200,8 @@ jobs:
           docker push "$REPO:latest"
           echo "Pushed frontend: $REPO:$IMAGE_TAG"
 
-      - name: Force new ECS deployment
+      - name: Get ECS cluster and service names
+        id: ecs-names
         shell: bash
         run: |
           set -euo pipefail
@@ -166,10 +209,6 @@ jobs:
             --stack-name "$STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
             --output text 2>/dev/null || echo "")
-          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
-            echo "ECS cluster not found in stack outputs — skipping service update."
-            exit 0
-          fi
           BACKEND_SVC=$(aws cloudformation describe-stacks \
             --stack-name "$STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue" \
@@ -178,6 +217,115 @@ jobs:
             --stack-name "$STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue" \
             --output text 2>/dev/null || echo "")
+          BACKEND_TASK_DEF=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendTaskDefinition'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "cluster=$CLUSTER" >> "$GITHUB_OUTPUT"
+          echo "backend_svc=$BACKEND_SVC" >> "$GITHUB_OUTPUT"
+          echo "frontend_svc=$FRONTEND_SVC" >> "$GITHUB_OUTPUT"
+          echo "backend_task_def=$BACKEND_TASK_DEF" >> "$GITHUB_OUTPUT"
+          echo "ECS cluster: $CLUSTER | backend: $BACKEND_SVC | frontend: $FRONTEND_SVC"
+
+      - name: Run DB migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          TASK_DEF="${{ steps.ecs-names.outputs.backend_task_def }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ] || [ -z "$TASK_DEF" ] || [ "$TASK_DEF" = "None" ]; then
+            echo "ECS cluster or task definition not found — skipping migration run-task."
+            exit 0
+          fi
+
+          SUBNET=$(aws ec2 describe-subnets \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "Subnets[0].SubnetId" --output text 2>/dev/null || echo "")
+          SECURITY_GROUP=$(aws ec2 describe-security-groups \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+
+          NETWORK_CFG=""
+          if [ -n "$SUBNET" ] && [ "$SUBNET" != "None" ] && [ -n "$SECURITY_GROUP" ] && [ "$SECURITY_GROUP" != "None" ]; then
+            NETWORK_CFG="awsvpcConfiguration={subnets=[$SUBNET],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}"
+          fi
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            ${NETWORK_CFG:+--network-configuration "$NETWORK_CFG"} \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}' \
+            --query "tasks[0].taskArn" --output text)
+
+          echo "Migration task started: $TASK_ARN"
+          echo "Waiting for migration task to complete..."
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[0].exitCode" --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::DB migration task exited with code $EXIT_CODE"
+            exit 1
+          fi
+          echo "DB migrations completed successfully."
+
+      - name: Sync Stripe pricing catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          TASK_DEF="${{ steps.ecs-names.outputs.backend_task_def }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ] || [ -z "$TASK_DEF" ] || [ "$TASK_DEF" = "None" ]; then
+            echo "ECS cluster or task definition not found — skipping Stripe catalog sync."
+            exit 0
+          fi
+
+          SUBNET=$(aws ec2 describe-subnets \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "Subnets[0].SubnetId" --output text 2>/dev/null || echo "")
+          SECURITY_GROUP=$(aws ec2 describe-security-groups \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+
+          NETWORK_CFG=""
+          if [ -n "$SUBNET" ] && [ "$SUBNET" != "None" ] && [ -n "$SECURITY_GROUP" ] && [ "$SECURITY_GROUP" != "None" ]; then
+            NETWORK_CFG="awsvpcConfiguration={subnets=[$SUBNET],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}"
+          fi
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            ${NETWORK_CFG:+--network-configuration "$NETWORK_CFG"} \
+            --overrides "{\"containerOverrides\":[{\"name\":\"backend\",\"command\":[\"python\",\"-m\",\"core_app.pricing.stripe_sync\",\"--stage\",\"$CFN_ENV\"]}]}" \
+            --query "tasks[0].taskArn" --output text)
+
+          echo "Stripe sync task started: $TASK_ARN"
+          echo "Waiting for Stripe sync task to complete..."
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[0].exitCode" --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::Stripe catalog sync task exited with code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Stripe catalog sync completed successfully."
+
+      - name: Force new ECS deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          BACKEND_SVC="${{ steps.ecs-names.outputs.backend_svc }}"
+          FRONTEND_SVC="${{ steps.ecs-names.outputs.frontend_svc }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "ECS cluster not found in stack outputs — skipping service update."
+            exit 0
+          fi
           if [ -n "$BACKEND_SVC" ] && [ "$BACKEND_SVC" != "None" ]; then
             aws ecs update-service --cluster "$CLUSTER" --service "$BACKEND_SVC" --force-new-deployment --no-cli-pager
             echo "Triggered backend service update."
@@ -186,3 +334,102 @@ jobs:
             aws ecs update-service --cluster "$CLUSTER" --service "$FRONTEND_SVC" --force-new-deployment --no-cli-pager
             echo "Triggered frontend service update."
           fi
+
+      - name: Wait for ECS services to stabilize
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          BACKEND_SVC="${{ steps.ecs-names.outputs.backend_svc }}"
+          FRONTEND_SVC="${{ steps.ecs-names.outputs.frontend_svc }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "No ECS cluster — skipping stability wait."
+            exit 0
+          fi
+
+          SERVICES=()
+          [ -n "$BACKEND_SVC" ] && [ "$BACKEND_SVC" != "None" ] && SERVICES+=("$BACKEND_SVC")
+          [ -n "$FRONTEND_SVC" ] && [ "$FRONTEND_SVC" != "None" ] && SERVICES+=("$FRONTEND_SVC")
+
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "No services to wait for."
+            exit 0
+          fi
+
+          echo "Waiting for services to stabilize: ${SERVICES[*]}"
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services "${SERVICES[@]}"
+          echo "All ECS services are stable."
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEALTH_URL="https://$API_DOMAIN_NAME/api/v1/health"
+          CATALOG_URL="https://$API_DOMAIN_NAME/public/pricing/catalog"
+          MAX_RETRIES=6
+          SLEEP=10
+
+          for URL in "$HEALTH_URL" "$CATALOG_URL"; do
+            echo "Smoke testing: $URL"
+            for i in $(seq 1 $MAX_RETRIES); do
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || echo "000")
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "  OK ($URL returned 200)"
+                break
+              fi
+              echo "  Attempt $i/$MAX_RETRIES: HTTP $HTTP_CODE — retrying in ${SLEEP}s..."
+              sleep $SLEEP
+              if [ "$i" = "$MAX_RETRIES" ]; then
+                echo "::error::Smoke test failed for $URL after $MAX_RETRIES attempts (last HTTP $HTTP_CODE)"
+                exit 1
+              fi
+            done
+          done
+          echo "All smoke tests passed."
+
+      - name: Rollback on failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          BACKEND_SVC="${{ steps.ecs-names.outputs.backend_svc }}"
+          FRONTEND_SVC="${{ steps.ecs-names.outputs.frontend_svc }}"
+
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "No ECS cluster — cannot rollback."
+            exit 0
+          fi
+
+          echo "::warning::Deployment failed — rolling back ECS services to previous task definition revision."
+
+          _rollback_service() {
+            local SVC="$1"
+            [ -z "$SVC" ] || [ "$SVC" = "None" ] && return
+            CURRENT_TD=$(aws ecs describe-services \
+              --cluster "$CLUSTER" --services "$SVC" \
+              --query "services[0].taskDefinition" --output text 2>/dev/null || echo "")
+            if [ -z "$CURRENT_TD" ] || [ "$CURRENT_TD" = "None" ]; then
+              echo "Cannot determine current task definition for $SVC — skipping rollback."
+              return
+            fi
+            FAMILY=$(echo "$CURRENT_TD" | rev | cut -d'/' -f1 | rev | sed 's/:[0-9]*$//')
+            REVISION=$(echo "$CURRENT_TD" | grep -oP ':\K[0-9]+$' || echo "")
+            if [ -z "$REVISION" ] || [ "$REVISION" -le 1 ]; then
+              echo "No previous revision available for $SVC — skipping rollback."
+              return
+            fi
+            PREV_REVISION=$((REVISION - 1))
+            PREV_TD="${FAMILY}:${PREV_REVISION}"
+            echo "Rolling back $SVC → $PREV_TD"
+            aws ecs update-service \
+              --cluster "$CLUSTER" --service "$SVC" \
+              --task-definition "$PREV_TD" \
+              --force-new-deployment --no-cli-pager || echo "Rollback update for $SVC failed — manual intervention required."
+          }
+
+          _rollback_service "$BACKEND_SVC"
+          _rollback_service "$FRONTEND_SVC"
+          echo "Rollback initiated. Monitor ECS console for completion."

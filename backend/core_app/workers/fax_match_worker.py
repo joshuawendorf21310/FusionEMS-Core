@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -270,7 +270,7 @@ def _persist_status(
         logger.error("fax_match_persist_skipped DATABASE_URL not set")
         return
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     suggested_json = json.dumps(suggested_matches or [], default=str)
 
     try:

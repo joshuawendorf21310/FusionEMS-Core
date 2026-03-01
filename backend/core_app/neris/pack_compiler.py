@@ -5,13 +5,13 @@ import io
 import json
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
 import yaml
 
-from core_app.documents.s3_storage import put_bytes, default_docs_bucket
+from core_app.documents.s3_storage import default_docs_bucket, put_bytes
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import EventPublisher
 
@@ -101,7 +101,7 @@ class NERISPackCompiler:
                     "entity_type": entity_type,
                     "rules_json": rules,
                     "schema_version": (pack.get("data") or {}).get("source_ref", ""),
-                    "compiled_at": datetime.now(timezone.utc).isoformat(),
+                    "compiled_at": datetime.now(UTC).isoformat(),
                     "s3_key": s3_key,
                 },
                 correlation_id=correlation_id,
@@ -110,7 +110,7 @@ class NERISPackCompiler:
         pdata = dict(pack.get("data") or {})
         pdata["status"] = "staged"
         pdata["compiled"] = True
-        pdata["compiled_at"] = datetime.now(timezone.utc).isoformat()
+        pdata["compiled_at"] = datetime.now(UTC).isoformat()
         await self.svc.update(
             table="neris_packs",
             tenant_id=self.tenant_id,

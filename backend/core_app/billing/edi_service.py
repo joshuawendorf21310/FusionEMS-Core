@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import hashlib
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from core_app.billing.x12_837p import build_837p_ambulance
 from core_app.billing.x12_835 import parse_835 as _parse_835_base
+from core_app.billing.x12_837p import build_837p_ambulance
 from core_app.repositories.domination_repository import DominationRepository
 from core_app.services.domination_service import DominationService
 
@@ -44,7 +45,7 @@ _277_STATUS_MAP: dict[str, str] = {
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class EDIService:
@@ -164,6 +165,7 @@ class EDIService:
         errors: list[str] = []
         try:
             import io
+
             import pyx12.error_handler
             import pyx12.params
             import pyx12.x12file
@@ -171,7 +173,7 @@ class EDIService:
             errh = pyx12.error_handler.errh_null()
             src = pyx12.x12file.X12Reader(io.StringIO(x12_text))
             ctx = pyx12.x12context.X12ContextReader(param, errh, src)
-            for seg, seg_data, trig_node, loop_node in ctx.iter_segments():
+            for seg, _seg_data, _trig_node, _loop_node in ctx.iter_segments():
                 if errh.err_count > 0:
                     errors.append(f"pyx12_error seg={seg}")
         except Exception as exc:
@@ -282,7 +284,7 @@ class EDIService:
         claim_ids = (batch.get("data") or {}).get("claim_ids") or []
         status_code = "A2" if accepted else "A6"
         for cid_str in claim_ids:
-            try:
+            with contextlib.suppress(Exception):
                 self.db.execute(
                     text(
                         "INSERT INTO claim_status_history "
@@ -298,8 +300,6 @@ class EDIService:
                         "now": _utcnow(),
                     },
                 )
-            except Exception:
-                pass
         self.db.commit()
 
     def parse_277(self, x12_text: str) -> dict:
@@ -326,7 +326,7 @@ class EDIService:
         for i, cid in enumerate(claim_ids):
             code = status_codes[i] if i < len(status_codes) else "A1"
             desc = status_descriptions[i] if i < len(status_descriptions) else code
-            try:
+            with contextlib.suppress(Exception):
                 self.db.execute(
                     text(
                         "INSERT INTO claim_status_history "
@@ -343,8 +343,6 @@ class EDIService:
                         "now": now,
                     },
                 )
-            except Exception:
-                pass
         self.db.commit()
 
         return {
@@ -366,14 +364,10 @@ class EDIService:
             parts = seg.split("*")
             tag = parts[0].strip()
             if tag == "BPR" and len(parts) > 16:
-                try:
+                with contextlib.suppress(Exception):
                     payment_amount = float(parts[2].strip())
-                except Exception:
-                    pass
-                try:
+                with contextlib.suppress(Exception):
                     paid_date = parts[16].strip()
-                except Exception:
-                    pass
             if tag == "TRN" and len(parts) > 2:
                 check_number = parts[2].strip()
 

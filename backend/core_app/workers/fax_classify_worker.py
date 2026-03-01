@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -197,7 +197,7 @@ def _persist_results(
                         updated_at = %s
                     WHERE fax_id = %s
                     """,
-                    (doc_type, case_id, status, datetime.now(timezone.utc).isoformat(), fax_id),
+                    (doc_type, case_id, status, datetime.now(UTC).isoformat(), fax_id),
                 )
             conn.commit()
     except Exception as exc:

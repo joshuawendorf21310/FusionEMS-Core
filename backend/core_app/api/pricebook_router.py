@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -108,7 +108,7 @@ async def activate_pricebook(
             )
     data = dict(pb.get("data") or {})
     data["status"] = "active"
-    data["activated_at"] = datetime.now(timezone.utc).isoformat()
+    data["activated_at"] = datetime.now(UTC).isoformat()
     updated = await svc.update(
         table="pricebooks",
         tenant_id=current.tenant_id,
@@ -174,7 +174,7 @@ async def set_entitlements(
             "collections_mode": payload.get("collections_mode", "none"),
             "trip_enabled": payload.get("trip_enabled", False),
             "active": True,
-            "set_at": datetime.now(timezone.utc).isoformat(),
+            "set_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=correlation_id,
     )

@@ -115,3 +115,33 @@ def retrieve_checkout_session(
         stripe_account=connected_account_id,
     )
     return dict(session)
+
+
+def create_patient_checkout_session(
+    *,
+    cfg: StripeConfig,
+    amount_cents: int,
+    success_url: str,
+    cancel_url: str,
+    metadata: dict[str, str] | None = None,
+    currency: str = "usd",
+) -> dict[str, Any]:
+    """Create a direct Stripe Checkout Session for patient bill payment."""
+    _configure(cfg)
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        line_items=[
+            {
+                "price_data": {
+                    "currency": currency,
+                    "unit_amount": amount_cents,
+                    "product_data": {"name": "EMS Billing Payment"},
+                },
+                "quantity": 1,
+            }
+        ],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata=metadata or {},
+    )
+    return dict(session)

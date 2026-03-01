@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from core_app.api.dependencies import db_session_dependency
 from core_app.core.config import get_settings
 from core_app.onboarding.legal_service import LegalService
+from core_app.pricing.catalog import PLANS, calculate_quote
 from core_app.roi.engine import compute_roi, hash_outputs
 from core_app.services.event_publisher import get_event_publisher
 
@@ -28,6 +29,19 @@ router = APIRouter(prefix="/public/onboarding", tags=["Onboarding"])
 
 def _legal_svc(db: Session) -> LegalService:
     return LegalService(db, get_event_publisher())
+
+
+def _get_stripe_price_ids(stage: str, aws_region: str, lookup_keys: list[str]) -> dict[str, str]:
+    try:
+        import boto3
+        ssm = boto3.client("ssm", region_name=aws_region or "us-east-1")
+        prefix = f"/fusionems/{stage}/stripe/prices"
+        names = [f"{prefix}/{lk}" for lk in lookup_keys]
+        resp = ssm.get_parameters(Names=names, WithDecryption=False)
+        return {p["Name"].split("/")[-1]: p["Value"] for p in resp.get("Parameters", [])}
+    except Exception as exc:
+        logger.warning("SSM price ID lookup failed: %s — will use price_data fallback", exc)
+        return {}
 
 
 @router.post("/start")
@@ -58,7 +72,7 @@ async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_ses
     })
     roi_hash = hash_outputs(roi)
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
     existing = db.execute(
         text(
             "SELECT id, roi_snapshot_hash, status FROM onboarding_applications "
@@ -109,6 +123,88 @@ async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_ses
         "application_id": str(row["id"]),
         "roi_snapshot_hash": roi_hash,
         "status": "started",
+        "next_steps": ["sign_legal", "checkout", "provisioning"],
+    }
+
+
+@router.post("/apply")
+async def onboarding_apply(payload: dict[str, Any], db: Session = Depends(db_session_dependency)):
+    email = str(payload.get("email", "")).lower().strip()
+    agency_name = str(payload.get("agency_name", "")).strip()
+    agency_type = str(payload.get("agency_type", "EMS")).strip()
+    state = str(payload.get("state", "")).strip()
+    first_name = str(payload.get("first_name", "")).strip()
+    last_name = str(payload.get("last_name", "")).strip()
+    phone = str(payload.get("phone", "")).strip()
+    plan_code = str(payload.get("plan_code", "")).strip()
+    tier_code = str(payload.get("tier_code", "") or "").strip() or None
+    billing_tier_code = str(payload.get("billing_tier_code", "") or "").strip() or None
+    addon_codes = list(payload.get("addon_codes", payload.get("modules", [])))
+    is_government_entity = bool(payload.get("is_government_entity", False))
+    collections_mode = str(payload.get("collections_mode", "none"))
+    statement_channels = payload.get("statement_channels", ["mail"])
+    collector_vendor_name = str(payload.get("collector_vendor_name", "") or "")
+    placement_method = str(payload.get("placement_method", "portal_upload"))
+
+    if not email or not agency_name:
+        raise HTTPException(status_code=422, detail="email and agency_name are required")
+
+    try:
+        quote = calculate_quote(
+            plan_code=plan_code,
+            tier_code=tier_code,
+            billing_tier_code=billing_tier_code,
+            addon_codes=addon_codes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    row = db.execute(
+        text(
+            """
+            INSERT INTO onboarding_applications (
+                contact_email, agency_name, agency_type, zip_code,
+                plan_code, tier_code, billing_tier_code, addon_codes,
+                selected_modules, status, legal_status,
+                first_name, last_name, phone,
+                is_government_entity, collections_mode, statement_channels,
+                collector_vendor_name, placement_method
+            ) VALUES (
+                :email, :agency, :atype, :zip,
+                :plan_code, :tier_code, :billing_tier_code, :addon_codes::jsonb,
+                :mods::jsonb, 'started', 'pending',
+                :first_name, :last_name, :phone,
+                :is_gov, :collections_mode, :statement_channels::jsonb,
+                :collector_vendor_name, :placement_method
+            ) RETURNING id
+            """
+        ),
+        {
+            "email": email,
+            "agency": agency_name,
+            "atype": agency_type,
+            "zip": state,
+            "plan_code": plan_code,
+            "tier_code": tier_code,
+            "billing_tier_code": billing_tier_code,
+            "addon_codes": json.dumps(addon_codes),
+            "mods": json.dumps(addon_codes),
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone": phone,
+            "is_gov": is_government_entity,
+            "collections_mode": collections_mode,
+            "statement_channels": json.dumps(statement_channels),
+            "collector_vendor_name": collector_vendor_name,
+            "placement_method": placement_method,
+        },
+    ).mappings().first()
+    db.commit()
+
+    return {
+        "application_id": str(row["id"]),
+        "status": "started",
+        "requires_quote": quote.requires_quote,
         "next_steps": ["sign_legal", "checkout", "provisioning"],
     }
 
@@ -237,7 +333,9 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
 
     app_row = db.execute(
         text(
-            "SELECT id, agency_name, annual_call_volume, selected_modules, legal_status, status "
+            "SELECT id, agency_name, annual_call_volume, selected_modules, "
+            "plan_code, tier_code, billing_tier_code, addon_codes, "
+            "legal_status, status "
             "FROM onboarding_applications WHERE id = :app_id"
         ),
         {"app_id": application_id},
@@ -263,33 +361,72 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
         }
 
     try:
+        plan_code = app_row["plan_code"] or ""
+        tier_code = app_row["tier_code"] or None
+        billing_tier_code = app_row["billing_tier_code"] or None
+        addon_codes = list(app_row["addon_codes"] or app_row["selected_modules"] or [])
+
+        if not plan_code or plan_code not in PLANS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Application has no valid plan_code (got {plan_code!r}). Re-submit via /apply.",
+            )
+
+        try:
+            quote = calculate_quote(
+                plan_code=plan_code,
+                tier_code=tier_code,
+                billing_tier_code=billing_tier_code,
+                addon_codes=addon_codes,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+
+        if quote.requires_quote:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Plan {plan_code!r} requires a custom quote — contact sales.",
+            )
+
         stripe_lib.api_key = settings.stripe_secret_key
-        selected_modules = app_row["selected_modules"] or []
-        annual_call_volume = int(app_row["annual_call_volume"] or 0)
+        stage = settings.environment or "prod"
 
-        base_amount_cents = 50000
-        if annual_call_volume > 5000:
-            base_amount_cents = 150000
-        elif annual_call_volume > 2000:
-            base_amount_cents = 100000
+        lookup_keys = [item["lookup_key"] for item in quote.stripe_line_items]
+        price_id_map = _get_stripe_price_ids(
+            stage=stage,
+            aws_region=settings.aws_region or "us-east-1",
+            lookup_keys=lookup_keys,
+        )
 
-        module_amount_cents = len(selected_modules) * 5000
-
-        line_items = [
-            {
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {
-                        "name": f"FusionEMS Quantum — {app_row['agency_name']}",
-                        "description": f"Platform subscription setup — {annual_call_volume} annual calls, "
-                                       f"{len(selected_modules)} modules",
+        line_items = []
+        for item in quote.stripe_line_items:
+            lk = item["lookup_key"]
+            price_id = price_id_map.get(lk)
+            if price_id:
+                entry: dict[str, Any] = {"price": price_id}
+                if not item.get("metered"):
+                    entry["quantity"] = item.get("quantity", 1)
+                line_items.append(entry)
+            else:
+                from core_app.pricing.catalog import ADDONS, BILLING_TIERS, SCHEDULING_TIERS
+                unit_amount = _lookup_key_to_cents(lk, SCHEDULING_TIERS, BILLING_TIERS, ADDONS, quote)
+                entry = {
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {"name": f"FusionEMS — {lk}"},
+                        "unit_amount": unit_amount,
+                        "recurring": {
+                            "interval": "month",
+                            **({"usage_type": "metered"} if item.get("metered") else {}),
+                        },
                     },
-                    "unit_amount": base_amount_cents + module_amount_cents,
-                    "recurring": {"interval": "month"},
-                },
-                "quantity": 1,
-            }
-        ]
+                }
+                if not item.get("metered"):
+                    entry["quantity"] = item.get("quantity", 1)
+                line_items.append(entry)
+
+        if not line_items:
+            raise HTTPException(status_code=422, detail="No billable line items for this plan configuration")
 
         base_url = settings.api_base_url.rstrip("/")
         session = stripe_lib.checkout.Session.create(
@@ -308,9 +445,32 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
 
         return {"checkout_url": session.url}
 
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Stripe checkout creation failed for application %s: %s", application_id, exc)
         raise HTTPException(status_code=500, detail=f"Stripe error: {str(exc)}")
+
+
+def _lookup_key_to_cents(
+    lookup_key: str,
+    scheduling_tiers: Any,
+    billing_tiers: Any,
+    addons: Any,
+    quote: Any,
+) -> int:
+    for t in scheduling_tiers.values():
+        if t.lookup_key == lookup_key:
+            return t.monthly_cents
+    for bt in billing_tiers.values():
+        if bt.base_lookup_key == lookup_key:
+            return bt.base_monthly_cents
+        if bt.per_claim_lookup_key == lookup_key:
+            return bt.per_claim_cents
+    for a in addons.values():
+        if a.lookup_key == lookup_key:
+            return a.monthly_cents
+    return 0
 
 
 @router.get("/status/{application_id}")

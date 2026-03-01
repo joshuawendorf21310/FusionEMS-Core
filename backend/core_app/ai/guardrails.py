@@ -5,7 +5,6 @@ from typing import Any
 
 from pydantic import BaseModel, field_validator, model_validator
 
-
 PHI_PATTERNS = [
     # SSN — with or without dashes
     re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
@@ -54,24 +53,15 @@ CLAIM_SUBMISSION_PATTERNS = [
 
 
 def contains_phi(text: str) -> bool:
-    for pattern in PHI_PATTERNS:
-        if pattern.search(text):
-            return True
-    return False
+    return any(pattern.search(text) for pattern in PHI_PATTERNS)
 
 
 def contains_financial_mutation(text: str) -> bool:
-    for pattern in FINANCIAL_MUTATION_PATTERNS:
-        if pattern.search(text):
-            return True
-    return False
+    return any(pattern.search(text) for pattern in FINANCIAL_MUTATION_PATTERNS)
 
 
 def contains_claim_submission(text: str) -> bool:
-    for pattern in CLAIM_SUBMISSION_PATTERNS:
-        if pattern.search(text):
-            return True
-    return False
+    return any(pattern.search(text) for pattern in CLAIM_SUBMISSION_PATTERNS)
 
 
 class AiOutput(BaseModel):
@@ -87,7 +77,7 @@ class AiOutput(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def no_financial_mutations(self) -> "AiOutput":
+    def no_financial_mutations(self) -> AiOutput:
         if self.task_type in ("billing", "claim", "payment"):
             if contains_financial_mutation(self.content):
                 raise ValueError("AI output contains financial mutation instruction — blocked by guardrail")
@@ -115,7 +105,7 @@ class AiBillingDraftOutput(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def enforce_human_review(self) -> "AiBillingDraftOutput":
+    def enforce_human_review(self) -> AiBillingDraftOutput:
         self.requires_human_review = True
         return self
 
@@ -126,7 +116,7 @@ class AiNarrativeOutput(BaseModel):
     requires_review: bool = True
 
     @model_validator(mode="after")
-    def always_require_review(self) -> "AiNarrativeOutput":
+    def always_require_review(self) -> AiNarrativeOutput:
         self.requires_review = True
         return self
 

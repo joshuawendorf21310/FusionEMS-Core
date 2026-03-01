@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
+from core_app.documents.s3_storage import default_exports_bucket, presign_get, put_bytes
 
 
 def store_edi_artifact(*, db: Session, tenant_id: str, artifact_type: str, file_name: str, content: bytes, content_type: str) -> dict[str, Any]:

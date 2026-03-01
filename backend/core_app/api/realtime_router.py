@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from datetime import datetime, timezone
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+from typing import Any
 
+import redis.asyncio as redis_async
 from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from jose import JWTError, jwt
@@ -13,8 +15,6 @@ from jose import JWTError, jwt
 from core_app.api.dependencies import get_current_user
 from core_app.core.config import get_settings
 from core_app.schemas.auth import CurrentUser
-
-import redis.asyncio as redis_async
 
 router = APIRouter(prefix="/realtime", tags=["realtime"])
 
@@ -57,7 +57,7 @@ async def realtime_sse(
     await pubsub.psubscribe(*safe_patterns)
 
     async def event_stream() -> AsyncIterator[str]:
-        yield _sse({"eventType": "connected", "tenantId": tenant_id, "ts": datetime.now(timezone.utc).isoformat()})
+        yield _sse({"eventType": "connected", "tenantId": tenant_id, "ts": datetime.now(UTC).isoformat()})
         last_heartbeat = 0.0
 
         try:
@@ -70,7 +70,7 @@ async def realtime_sse(
                 if now - last_heartbeat > 15:
                     last_heartbeat = now
                     await _presence_ping(r, tenant_id, "user", str(current.user_id))
-                    yield _sse({"eventType": "heartbeat", "ts": datetime.now(timezone.utc).isoformat()})
+                    yield _sse({"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()})
 
                 message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
                 if message and message.get("type") in ("pmessage", "message"):
@@ -128,7 +128,7 @@ async def realtime_ws(websocket: WebSocket) -> None:
             if now - last_ping > 20:
                 last_ping = now
                 await _presence_ping(r, tenant_id_str, "user", str(user_id))
-                await websocket.send_text(json.dumps({"eventType": "heartbeat", "ts": datetime.now(timezone.utc).isoformat()}))
+                await websocket.send_text(json.dumps({"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()}))
 
             msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if msg and msg.get("type") == "pmessage":

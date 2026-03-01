@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -107,7 +107,7 @@ async def onboarding_start(
             "department_id": dept_id,
             "current_step": "1",
             "step_status_json": step_status,
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
             "completed_at": None,
         },
         correlation_id=correlation_id,
@@ -179,7 +179,7 @@ async def onboarding_step_complete(
 
     all_complete = all(step_status.get(s["id"]) == "complete" for s in ONBOARDING_STEPS)
     if all_complete:
-        rdata["completed_at"] = datetime.now(timezone.utc).isoformat()
+        rdata["completed_at"] = datetime.now(UTC).isoformat()
 
     updated = await svc.update(
         table="neris_onboarding",

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -52,7 +53,7 @@ async def track_view(
         if expires_at_raw:
             try:
                 expires_at = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) > expires_at:
+                if datetime.now(UTC) > expires_at:
                     return Response(content=TRACKING_PIXEL, media_type="image/gif")
             except Exception:
                 pass
@@ -72,23 +73,21 @@ async def track_view(
                 "entity_id": entity_id_raw,
                 "ip": ip,
                 "user_agent": ua[:512],
-                "viewed_at": datetime.now(timezone.utc).isoformat(),
+                "viewed_at": datetime.now(UTC).isoformat(),
             },
             correlation_id=None,
         )
 
-        try:
+        with contextlib.suppress(Exception):
             await svc.update(
                 table="track_tokens",
                 tenant_id=tenant_uuid,
                 actor_user_id=None,
                 record_id=uuid.UUID(str(track["id"])),
                 expected_version=track.get("version", 1),
-                patch={"last_viewed_at": datetime.now(timezone.utc).isoformat(), "view_count": (data.get("view_count", 0) + 1)},
+                patch={"last_viewed_at": datetime.now(UTC).isoformat(), "view_count": (data.get("view_count", 0) + 1)},
                 correlation_id=None,
             )
-        except Exception:
-            pass
 
         if entity_type == "letter" and entity_id_raw and tenant_id_raw:
             await emit_letter_viewed(
@@ -131,7 +130,7 @@ async def create_track_token(
             "tenant_id": tenant_id,
             "entity_type": entity_type,
             "redirect_url": redirect_url,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=None,
     )

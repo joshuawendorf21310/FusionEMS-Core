@@ -3,18 +3,18 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
+from core_app.epcr.chart_model import Chart
+from core_app.epcr.completeness_engine import CompletenessEngine
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.epcr.chart_model import Chart
-from core_app.epcr.completeness_engine import CompletenessEngine
 
 router = APIRouter(prefix="/api/v1/hems", tags=["HEMS"])
 
@@ -101,7 +101,7 @@ async def submit_acceptance(
             "force_accepted": bool(payload.get("force_accept")),
             "force_reason": payload.get("force_reason"),
             "accepted": True,
-            "accepted_at": datetime.now(timezone.utc).isoformat(),
+            "accepted_at": datetime.now(UTC).isoformat(),
             "wx_ceiling_ft": payload.get("wx_ceiling_ft"),
             "wx_visibility_sm": payload.get("wx_visibility_sm"),
             "wx_wind_kt": payload.get("wx_wind_kt"),
@@ -131,7 +131,7 @@ async def submit_weather_brief(
         data={
             "mission_id": str(mission_id),
             "pilot_user_id": str(current.user_id),
-            "briefed_at": datetime.now(timezone.utc).isoformat(),
+            "briefed_at": datetime.now(UTC).isoformat(),
             "source": payload.get("source", "1800wxbrief"),
             "ceiling_ft": payload.get("ceiling_ft"),
             "visibility_sm": payload.get("visibility_sm"),
@@ -187,7 +187,7 @@ async def set_aircraft_readiness(
             "maintenance_hold": payload.get("maintenance_hold", False),
             "hold_until": payload.get("hold_until"),
             "set_by": str(current.user_id),
-            "set_at": datetime.now(timezone.utc).isoformat(),
+            "set_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=correlation_id,
     )
@@ -240,7 +240,7 @@ async def submit_risk_audit(
             "risk_level": risk_level,
             "risk_factors_snapshot": RISK_FACTORS,
             "narrative": payload.get("narrative"),
-            "audited_at": datetime.now(timezone.utc).isoformat(),
+            "audited_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=correlation_id,
     )
@@ -289,7 +289,7 @@ async def acknowledge_mission(
             "pilot_user_id": str(current.user_id),
             "decision": decision,
             "decline_reason": payload.get("decline_reason"),
-            "acknowledged_at": datetime.now(timezone.utc).isoformat(),
+            "acknowledged_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
@@ -306,7 +306,7 @@ async def record_wheels_up(
 ):
     _check(current)
     svc = _svc(db)
-    wheels_up_time = payload.get("wheels_up_time") or datetime.now(timezone.utc).isoformat()
+    wheels_up_time = payload.get("wheels_up_time") or datetime.now(UTC).isoformat()
     row = await svc.create(
         table="hems_mission_events",
         tenant_id=current.tenant_id,
@@ -337,7 +337,7 @@ async def record_wheels_down(
 ):
     _check(current)
     svc = _svc(db)
-    wheels_down_time = payload.get("wheels_down_time") or datetime.now(timezone.utc).isoformat()
+    wheels_down_time = payload.get("wheels_down_time") or datetime.now(UTC).isoformat()
     row = await svc.create(
         table="hems_mission_events",
         tenant_id=current.tenant_id,
@@ -366,7 +366,7 @@ async def complete_mission(
 ):
     _check(current)
     svc = _svc(db)
-    completed_at = datetime.now(timezone.utc).isoformat()
+    completed_at = datetime.now(UTC).isoformat()
     row = await svc.create(
         table="hems_mission_events",
         tenant_id=current.tenant_id,
@@ -520,7 +520,7 @@ async def fetch_live_weather(
             "icao": icao,
             "metar": results.get("metar"),
             "taf": results.get("taf"),
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
             "source": "aviationweather.gov",
         },
         correlation_id=None,

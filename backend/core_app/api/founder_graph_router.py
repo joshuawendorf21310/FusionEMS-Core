@@ -23,7 +23,7 @@ OneDrive endpoints:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
@@ -55,7 +55,7 @@ class SendMailRequest(BaseModel):
     to: list[str]
     subject: str
     body_html: str
-    cc: Optional[list[str]] = None
+    cc: list[str] | None = None
 
 
 class ReplyRequest(BaseModel):

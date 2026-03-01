@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -13,7 +13,11 @@ from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.core.config import get_settings
-from core_app.payments.stripe_service import StripeConfig, StripeNotConfigured, create_connect_checkout_session
+from core_app.payments.stripe_service import (
+    StripeConfig,
+    StripeNotConfigured,
+    create_connect_checkout_session,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.telnyx.client import TelnyxApiError, send_sms
 
@@ -25,7 +29,7 @@ _E164_US_RE = re.compile(r"^\+1[2-9]\d{9}$")
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _get_connected_account(db: Session, tenant_id: str) -> str | None:

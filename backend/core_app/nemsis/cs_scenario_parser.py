@@ -3,8 +3,8 @@ from __future__ import annotations
 import io
 import json
 import uuid
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from dataclasses import dataclass
 from typing import Any
 

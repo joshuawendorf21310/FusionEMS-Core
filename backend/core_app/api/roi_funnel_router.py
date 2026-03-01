@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.roi.engine import compute_roi
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.roi.engine import compute_roi
 
 router = APIRouter(prefix="/api/v1/roi-funnel", tags=["ROI + Self-Service Funnel"])
 
@@ -239,7 +239,7 @@ async def generate_proposal(
             "expiration_days": body.expiration_days,
             "include_modules": body.include_modules,
             "status": "pending",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
@@ -324,7 +324,7 @@ async def activate_subscription(
             "tenant_id": str(body.tenant_id),
             "plan": body.plan,
             "modules": body.modules,
-            "billing_start": body.billing_start or datetime.now(timezone.utc).isoformat(),
+            "billing_start": body.billing_start or datetime.now(UTC).isoformat(),
             "status": "active",
         },
         correlation_id=getattr(request.state, "correlation_id", None),
@@ -349,7 +349,7 @@ async def sign_baa(
             "signer_name": body.signer_name,
             "signer_email": body.signer_email,
             "signer_title": body.signer_title,
-            "signed_at": datetime.now(timezone.utc).isoformat(),
+            "signed_at": datetime.now(UTC).isoformat(),
             "status": "signed",
         },
         correlation_id=getattr(request.state, "correlation_id", None),
@@ -410,7 +410,7 @@ async def roi_share_link(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    token = hashlib.sha256(f"{current.tenant_id}{datetime.now(timezone.utc).isoformat()}".encode()).hexdigest()[:16]
+    token = hashlib.sha256(f"{current.tenant_id}{datetime.now(UTC).isoformat()}".encode()).hexdigest()[:16]
     record = await svc.create(
         table="roi_share_links",
         tenant_id=current.tenant_id,
@@ -438,7 +438,7 @@ async def conversion_kpis(
         "total_proposals": len(proposals),
         "active_subscriptions": len(active_subs),
         "proposal_to_paid_conversion_pct": conversion_rate,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -454,7 +454,7 @@ async def subscription_lifecycle(
     for s in subs:
         status = s.get("data", {}).get("status", "unknown")
         statuses[status] = statuses.get(status, 0) + 1
-    return {"lifecycle": statuses, "total": len(subs), "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"lifecycle": statuses, "total": len(subs), "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.post("/trial-activate")
@@ -496,5 +496,5 @@ async def revenue_pipeline(
         "pending_pipeline_cents": pending_value,
         "active_mrr_cents": active_mrr,
         "pipeline_to_mrr_ratio": round(pending_value / max(active_mrr, 1), 2),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }

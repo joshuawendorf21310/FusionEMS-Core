@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 
-
 from core_app.billing.validation import BillingValidator
 
 

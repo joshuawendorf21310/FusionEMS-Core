@@ -1,18 +1,24 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.core.config import get_settings
-from core_app.payments.stripe_service import StripeConfig, verify_webhook_signature, StripeNotConfigured
+from core_app.payments.stripe_service import (
+    StripeConfig,
+    StripeNotConfigured,
+    verify_webhook_signature,
+)
+from core_app.pricing.catalog import calculate_quote
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -52,7 +58,7 @@ async def signup(payload: dict[str, Any], request: Request, db: Session = Depend
             "annual_call_volume": payload.get("annual_call_volume"),
             "selected_modules": payload.get("modules", []),
             "status": "pending_payment",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
@@ -62,33 +68,50 @@ async def signup(payload: dict[str, Any], request: Request, db: Session = Depend
         return {"status": "ok", "application_id": application_id, "checkout_url": None, "note": "stripe_not_configured"}
 
     stripe_lib.api_key = settings.stripe_secret_key
-    selected_modules = payload.get("modules", [])
-    annual_call_volume = int(payload.get("annual_call_volume") or 0)
 
-    base_amount_cents = 50000
-    if annual_call_volume > 5000:
-        base_amount_cents = 150000
-    elif annual_call_volume > 2000:
-        base_amount_cents = 100000
-    module_amount_cents = len(selected_modules) * 5000
+    plan_code = str(payload.get("plan_code", "") or "").strip()
+    tier_code = str(payload.get("tier_code", "") or "").strip() or None
+    billing_tier_code = str(payload.get("billing_tier_code", "") or "").strip() or None
+    addon_codes = list(payload.get("addon_codes", payload.get("modules", [])))
+
+    try:
+        quote = calculate_quote(
+            plan_code=plan_code,
+            tier_code=tier_code,
+            billing_tier_code=billing_tier_code,
+            addon_codes=addon_codes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if quote.requires_quote:
+        return {
+            "status": "ok",
+            "application_id": application_id,
+            "checkout_url": None,
+            "note": "contact_sales",
+        }
+
+    if not quote.stripe_line_items:
+        raise HTTPException(status_code=422, detail="No billable line items for this plan configuration")
+
+    agency_name = payload.get("agency_name", "New Agency")
+    line_items = [
+        {
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": f"FusionEMS — {agency_name}"},
+                "unit_amount": quote.total_monthly_cents,
+                "recurring": {"interval": "month"},
+            },
+            "quantity": 1,
+        }
+    ]
 
     base_url = settings.api_base_url.rstrip("/")
     session = stripe_lib.checkout.Session.create(
         mode="subscription",
-        line_items=[
-            {
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {
-                        "name": f"FusionEMS Quantum — {payload.get('agency_name', 'New Agency')}",
-                        "description": f"Platform subscription — {annual_call_volume} annual calls, {len(selected_modules)} modules",
-                    },
-                    "unit_amount": base_amount_cents + module_amount_cents,
-                    "recurring": {"interval": "month"},
-                },
-                "quantity": 1,
-            }
-        ],
+        line_items=line_items,
         metadata={"application_id": str(application_id), "source": "public_signup"},
         success_url=f"{base_url}/onboarding/success?application_id={application_id}",
         cancel_url=f"{base_url}/onboarding/cancel?application_id={application_id}",
@@ -126,10 +149,8 @@ async def stripe_webhook(request: Request, db: Session = Depends(db_session_depe
 
     idempotency_tenant = system_uuid
     if not application_id and tenant_id_meta:
-        try:
+        with contextlib.suppress(Exception):
             idempotency_tenant = uuid.UUID(tenant_id_meta)
-        except Exception:
-            pass
 
     svc = DominationService(db, get_event_publisher())
     existing = svc.repo("stripe_webhook_receipts").list(idempotency_tenant, limit=2000)
@@ -197,7 +218,7 @@ async def _handle_onboarding_payment(
     stripe_obj = event.get("data", {}).get("object", {})
     stripe_customer_id = stripe_obj.get("customer")
     stripe_subscription_id = stripe_obj.get("subscription")
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     db.execute(
         text(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -73,7 +73,7 @@ async def founder_dashboard(
         "mrr_cents": mrr,
         "tenant_count": len(active_tenants),
         "error_count_1h": 0,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -99,7 +99,7 @@ async def webhook_health(
         except Exception:
             health[source] = "unknown"
 
-    return {"health": health, "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"health": health, "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.get("/feature-flags")
@@ -150,6 +150,7 @@ async def aws_cost_summary(
     require_role(current, ["founder"])
     try:
         import boto3
+
         from core_app.core.config import get_settings
         settings = get_settings()
         client = boto3.client("ce", region_name=settings.aws_region or "us-east-1")

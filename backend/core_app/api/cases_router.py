@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -66,7 +66,7 @@ async def create_case(
             "cms_gate_passed": False,
             "cms_gate_score": None,
             "cms_gate_result": None,
-            "opened_at": datetime.now(timezone.utc).isoformat(),
+            "opened_at": datetime.now(UTC).isoformat(),
             "closed_at": None,
             "timeline": [],
             "tags": payload.get("tags", []),
@@ -129,14 +129,14 @@ async def transition_status(
     timeline = list(data.get("timeline") or [])
     timeline.append({
         "status": new_status,
-        "at": datetime.now(timezone.utc).isoformat(),
+        "at": datetime.now(UTC).isoformat(),
         "by": str(current.user_id),
         "note": payload.get("note"),
     })
     data["status"] = new_status
     data["timeline"] = timeline
     if new_status in ("complete", "cancelled", "billed"):
-        data["closed_at"] = datetime.now(timezone.utc).isoformat()
+        data["closed_at"] = datetime.now(UTC).isoformat()
     updated = await svc.update(
         table="cases",
         tenant_id=current.tenant_id,

@@ -2,25 +2,25 @@ from __future__ import annotations
 
 import base64
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
+from core_app.core.config import get_settings
+from core_app.epcr.ai_smart_text import SmartTextEngine
+from core_app.epcr.chart_model import Chart, ChartStatus
+from core_app.epcr.completeness_engine import CompletenessEngine
+from core_app.epcr.evidence_service import EvidenceService
+from core_app.epcr.jcs_hash import build_chart_hash_payload, jcs_sha256
+from core_app.epcr.nemsis_exporter import NEMSISExporter
+from core_app.epcr.sync_engine import SyncConflictPolicy, SyncEngine
+from core_app.nemsis.validator import NEMSISValidator
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.core.config import get_settings
-from core_app.epcr.chart_model import Chart, ChartStatus
-from core_app.epcr.jcs_hash import build_chart_hash_payload, jcs_sha256
-from core_app.epcr.nemsis_exporter import NEMSISExporter
-from core_app.epcr.sync_engine import SyncEngine, SyncConflictPolicy
-from core_app.epcr.evidence_service import EvidenceService
-from core_app.epcr.completeness_engine import CompletenessEngine
-from core_app.epcr.ai_smart_text import SmartTextEngine
-from core_app.nemsis.validator import NEMSISValidator
 
 router = APIRouter(prefix="/api/v1/epcr", tags=["ePCR"])
 
@@ -123,7 +123,7 @@ async def update_chart(
         raise HTTPException(status_code=404, detail="Chart not found")
     updated_data = {**rec["data"], **patch}
     updated_data["last_modified_by"] = str(current.user_id)
-    updated_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updated_data["updated_at"] = datetime.now(UTC).isoformat()
     mode = updated_data.get("chart_mode", "bls")
     score_result = CompletenessEngine().score_chart(updated_data, mode)
     updated_data["completeness_score"] = score_result["score"]
@@ -197,7 +197,7 @@ async def add_vital(
         payload["vital_id"] = str(uuid.uuid4())
     updated_data = dict(rec["data"])
     updated_data.setdefault("vitals", []).append(payload)
-    updated_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updated_data["updated_at"] = datetime.now(UTC).isoformat()
     updated_rec = await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
@@ -227,7 +227,7 @@ async def add_medication(
         payload["med_id"] = str(uuid.uuid4())
     updated_data = dict(rec["data"])
     updated_data.setdefault("medications", []).append(payload)
-    updated_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updated_data["updated_at"] = datetime.now(UTC).isoformat()
     updated_rec = await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
@@ -257,7 +257,7 @@ async def add_procedure(
         payload["proc_id"] = str(uuid.uuid4())
     updated_data = dict(rec["data"])
     updated_data.setdefault("procedures", []).append(payload)
-    updated_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updated_data["updated_at"] = datetime.now(UTC).isoformat()
     updated_rec = await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
@@ -287,7 +287,7 @@ async def add_assessment(
         payload["assessment_id"] = str(uuid.uuid4())
     updated_data = dict(rec["data"])
     updated_data.setdefault("assessments", []).append(payload)
-    updated_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updated_data["updated_at"] = datetime.now(UTC).isoformat()
     updated_rec = await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
@@ -325,7 +325,7 @@ async def upload_attachment(
     )
     updated_data = dict(rec["data"])
     updated_data.setdefault("attachments", []).append(attachment_record)
-    updated_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updated_data["updated_at"] = datetime.now(UTC).isoformat()
     await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
@@ -376,7 +376,7 @@ async def sync_chart(
         policy = SyncConflictPolicy.LAST_WRITE_WINS
     server_chart_data = rec.get("data", {})
     resolved, conflict_notes = SyncEngine().resolve_conflict(local_chart, server_chart_data, policy)
-    resolved["updated_at"] = datetime.now(timezone.utc).isoformat()
+    resolved["updated_at"] = datetime.now(UTC).isoformat()
     await _svc(db).update(
         table="epcr_charts",
         tenant_id=current.tenant_id,
@@ -417,7 +417,7 @@ async def export_nemsis(
             "chart_id": chart_id,
             "valid": result.valid,
             "export_errors": [i.plain_message for i in result.issues if i.severity == "error"],
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
@@ -554,7 +554,7 @@ async def submit_chart(
             detail={"message": "Chart already submitted", "chart_id": chart_id},
         )
 
-    submitted_at = datetime.now(timezone.utc)
+    submitted_at = datetime.now(UTC)
     submitted_at_iso = submitted_at.isoformat()
 
     # --- Deterministic SHA-256 (JCS / RFC 8785) ---

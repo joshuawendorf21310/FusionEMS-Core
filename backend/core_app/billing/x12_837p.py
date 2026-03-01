@@ -76,9 +76,7 @@ def build_837p_ambulance(
     segments.append(_seg("CLM", claim.get("claim_id", st_ctrl), f"{total_charge/100:.2f}", "", "11:B:1", "Y", "A", "Y", "Y"))
     segments.append(_seg("DTP", "431", "D8", claim.get("dos", gs_date)))
 
-    lx = 0
-    for sl in service_lines:
-        lx += 1
+    for lx, sl in enumerate(service_lines, start=1):
         proc = sl.get("procedure_code", "A0429")
         charge = float(sl.get("charge", 0))
         units = str(sl.get("units", 1))

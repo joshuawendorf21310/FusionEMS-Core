@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from core_app.database import get_db
+from core_app.db.session import get_db_session as get_db
 from core_app.repositories.domination_repository import DominationRepository
 
 router = APIRouter(prefix="/api/v1/kitlink", tags=["kitlink"])
@@ -306,7 +307,7 @@ def list_layouts(db: Session = Depends(get_db), tenant_id: str = Query(...)):
 def publish_layout(layout_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    row = repo.update("unit_layouts", tid, uuid.UUID(layout_id), {"status": "active", "published_at": datetime.now(timezone.utc).isoformat()})
+    row = repo.update("unit_layouts", tid, uuid.UUID(layout_id), {"status": "active", "published_at": datetime.now(UTC).isoformat()})
     if not row:
         raise HTTPException(status_code=404, detail="Layout not found")
     return {"id": layout_id, "status": "active"}
@@ -326,7 +327,7 @@ def generate_marker(payload: dict[str, Any], db: Session = Depends(get_db), tena
         "marker_code": marker_code,
         "status": "pending_print",
         "format": payload.get("format", "qr"),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     })
     return {"id": str(row["id"]), "marker_code": marker_code, "status": "pending_print"}
 
@@ -347,7 +348,7 @@ def get_marker_sheet(sheet_id: str = Query(...), db: Session = Depends(get_db), 
 def mark_printed(marker_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    row = repo.update("ar_markers", tid, uuid.UUID(marker_id), {"status": "printed", "printed_at": datetime.now(timezone.utc).isoformat()})
+    row = repo.update("ar_markers", tid, uuid.UUID(marker_id), {"status": "printed", "printed_at": datetime.now(UTC).isoformat()})
     if not row:
         raise HTTPException(status_code=404, detail="Marker not found")
     return {"id": marker_id, "status": "printed"}
@@ -357,7 +358,7 @@ def mark_printed(marker_id: str, db: Session = Depends(get_db), tenant_id: str =
 def activate_marker(marker_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    row = repo.update("ar_markers", tid, uuid.UUID(marker_id), {"status": "active", "activated_at": datetime.now(timezone.utc).isoformat()})
+    row = repo.update("ar_markers", tid, uuid.UUID(marker_id), {"status": "active", "activated_at": datetime.now(UTC).isoformat()})
     if not row:
         raise HTTPException(status_code=404, detail="Marker not found")
     return {"id": marker_id, "status": "active"}
@@ -386,7 +387,7 @@ def resolve_marker(marker_code: str, db: Session = Depends(get_db), tenant_id: s
         "entity_id": entity_id,
         "status": marker["data"].get("status"),
         "next_steps": next_steps,
-        "resolved_at": datetime.now(timezone.utc).isoformat(),
+        "resolved_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -417,7 +418,7 @@ def shift_start_check(payload: dict[str, Any], db: Session = Depends(get_db), te
                 "crew_user_id": crew_user_id,
                 "shift_type": "start",
                 "status": "open",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             })
             discrepancies.append({"id": str(disc["id"]), "item": count_entry.get("item_name"), "delta": actual - expected})
 
@@ -428,7 +429,7 @@ def shift_start_check(payload: dict[str, Any], db: Session = Depends(get_db), te
         "shift_type": "start",
         "counts": narc_counts,
         "discrepancy_count": len(discrepancies),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     })
 
     blocked = len(discrepancies) > 0
@@ -447,7 +448,7 @@ def shift_end_check(payload: dict[str, Any], db: Session = Depends(get_db), tena
     count_row = repo.create("narc_counts", tid, {
         **payload,
         "shift_type": "end",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     })
     return {"count_id": str(count_row["id"]), "status": "complete"}
 
@@ -465,7 +466,7 @@ def submit_restock(payload: dict[str, Any], db: Session = Depends(get_db), tenan
         **payload,
         "txn_type": "restock",
         "status": "posted",
-        "posted_at": datetime.now(timezone.utc).isoformat(),
+        "posted_at": datetime.now(UTC).isoformat(),
     })
     txn_id = str(txn["id"])
     line_ids = []
@@ -485,7 +486,7 @@ def narc_seal_scan(payload: dict[str, Any], db: Session = Depends(get_db), tenan
     tid = uuid.UUID(tenant_id)
     row = repo.create("narc_seals", tid, {
         **payload,
-        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "scanned_at": datetime.now(UTC).isoformat(),
         "status": "verified",
     })
     return {"id": str(row["id"]), "status": "verified"}
@@ -505,13 +506,13 @@ def narc_count(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id
                 "actual_qty": c.get("actual_qty"),
                 "delta": c.get("actual_qty", 0) - c.get("expected_qty", 0),
                 "status": "open",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             })
             discrepancies.append({"id": str(dr["id"]), "item": c.get("item_name")})
     row = repo.create("narc_counts", tid, {
         **payload,
         "discrepancy_count": len(discrepancies),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     })
     return {"count_id": str(row["id"]), "discrepancies": discrepancies}
 
@@ -524,7 +525,7 @@ def narc_waste(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id
         raise HTTPException(status_code=400, detail="witness_user_id is required for waste events")
     row = repo.create("narc_waste_events", tid, {
         **payload,
-        "wasted_at": datetime.now(timezone.utc).isoformat(),
+        "wasted_at": datetime.now(UTC).isoformat(),
     })
     return {"id": str(row["id"]), "status": "recorded"}
 
@@ -541,7 +542,7 @@ def manual_transaction(payload: dict[str, Any], db: Session = Depends(get_db), t
     txn = repo.create("inventory_transactions", tid, {
         **payload,
         "status": "posted",
-        "posted_at": datetime.now(timezone.utc).isoformat(),
+        "posted_at": datetime.now(UTC).isoformat(),
     })
     txn_id = str(txn["id"])
     for line in lines:
@@ -564,7 +565,7 @@ def epcr_usage_hook(payload: dict[str, Any], db: Session = Depends(get_db), tena
         "epcr_id": payload.get("epcr_id"),
         "unit_id": payload.get("unit_id"),
         "status": "posted",
-        "posted_at": datetime.now(timezone.utc).isoformat(),
+        "posted_at": datetime.now(UTC).isoformat(),
     })
     txn_id = str(txn["id"])
     for usage in usages:
@@ -591,7 +592,7 @@ def ocr_scan(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: 
         "s3_key": s3_key,
         "status": "pending",
         "context": payload,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     })
     presigned_url = f"https://s3.amazonaws.com/BUCKET/{s3_key}?presigned=1"
     return {"job_id": str(row["id"]), "upload_url": presigned_url, "s3_key": s3_key}
@@ -620,7 +621,7 @@ def confirm_ocr_job(job_id: str, payload: dict[str, Any], db: Session = Depends(
         **job["data"],
         "status": "confirmed",
         "confirmed_data": payload,
-        "confirmed_at": datetime.now(timezone.utc).isoformat(),
+        "confirmed_at": datetime.now(UTC).isoformat(),
     })
     return {"id": job_id, "status": "confirmed"}
 
@@ -634,7 +635,7 @@ def report_expiring(days: int = Query(30), db: Session = Depends(get_db), tenant
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     rows = repo.list("stock_balances", tid)
-    cutoff = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+    cutoff = (datetime.now(UTC) + timedelta(days=days)).isoformat()
     expiring = [
         {"id": str(r["id"]), "data": r["data"]}
         for r in rows

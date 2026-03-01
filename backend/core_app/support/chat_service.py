@@ -1,9 +1,10 @@
 from __future__ import annotations
-import uuid
-from datetime import datetime, timezone
 
-from core_app.services.domination_service import DominationService
+import uuid
+from datetime import UTC, datetime
+
 from core_app.ai.service import AiService
+from core_app.services.domination_service import DominationService
 
 ESCALATION_TRIGGERS = [
     "urgent", "lawsuit", "legal action", "hipaa violation", "breach",
@@ -34,7 +35,7 @@ class ChatService:
                 "unread_founder": True,
                 "escalated": False,
                 "message_count": 0,
-                "last_message_at": datetime.now(timezone.utc).isoformat(),
+                "last_message_at": datetime.now(UTC).isoformat(),
             },
             correlation_id=None,
         )
@@ -66,7 +67,7 @@ class ChatService:
         thread = self.svc.repo("support_threads").get(tenant_id=self.tenant_id, record_id=thread_id)
         if thread:
             current_data = thread.get("data") or {}
-            current_data["last_message_at"] = datetime.now(timezone.utc).isoformat()
+            current_data["last_message_at"] = datetime.now(UTC).isoformat()
             current_data["message_count"] = current_data.get("message_count", 0) + 1
             if sender_role == "agency":
                 current_data["unread_founder"] = True
@@ -126,7 +127,7 @@ class ChatService:
             data={
                 "thread_id": str(thread_id),
                 "trigger_phrase": triggered_by,
-                "escalated_at": datetime.now(timezone.utc).isoformat(),
+                "escalated_at": datetime.now(UTC).isoformat(),
                 "resolved": False,
             },
             correlation_id=None,
@@ -157,8 +158,9 @@ class ChatService:
         return True
 
     def _queue_ai_reply(self, thread_id: str, user_message: str) -> None:
-        from sqlalchemy import text
         import json
+
+        from sqlalchemy import text
 
         messages = self.get_thread_messages(thread_id, limit=5)
         context_lines = []
@@ -200,7 +202,7 @@ class ChatService:
             "sender_id": "ai",
             "content": response_text,
             "attachments": [],
-            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "sent_at": datetime.now(UTC).isoformat(),
             "read_by_founder": False,
             "ai_meta": meta,
         }
@@ -231,8 +233,9 @@ class ChatService:
         return [dict(r) for r in rows]
 
     async def mark_thread_read_by_founder(self, thread_id: str) -> None:
-        from sqlalchemy import text
         import json
+
+        from sqlalchemy import text
 
         thread = self.svc.repo("support_threads").get(tenant_id=self.tenant_id, record_id=thread_id)
         if thread:

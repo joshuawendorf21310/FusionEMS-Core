@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -39,7 +39,7 @@ async def _append_attachment_to_chart(
 ) -> None:
     updated_data = dict(rec["data"])
     updated_data.setdefault("attachments", []).append(attachment)
-    updated_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updated_data["updated_at"] = datetime.now(UTC).isoformat()
     await svc.update(
         table="epcr_charts",
         tenant_id=tenant_id,

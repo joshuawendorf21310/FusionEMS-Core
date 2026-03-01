@@ -125,7 +125,7 @@ function WizardPageInner() {
         <div className="mx-6 mt-4 p-4 rounded-lg border border-emerald-700 bg-emerald-900/20 flex items-center gap-3">
           <span className="text-emerald-400 text-xl">✓</span>
           <div>
-            <p className="text-sm font-semibold text-emerald-300">Setup Complete — You're Live!</p>
+            <p className="text-sm font-semibold text-emerald-300">Setup Complete — You&apos;re Live!</p>
             <p className="text-xs text-emerald-600 mt-0.5">All 9 steps completed. KitLink AR is fully configured.</p>
           </div>
           <a

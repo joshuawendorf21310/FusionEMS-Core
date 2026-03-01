@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -51,8 +51,9 @@ def _run_statement_schedule(body: dict, correlation_id: str) -> dict:
         return {"error": "no_db"}
     db = _Session()
     try:
-        from sqlalchemy import text
         import json as _json
+
+        from sqlalchemy import text
         rows = db.execute(text("SELECT id, tenant_id, data FROM ar_accounts WHERE data->>'status' NOT IN ('closed','placed','dispute')")).fetchall()
         queued = 0
         for row in rows:
@@ -95,8 +96,9 @@ def _post_payment(body: dict, correlation_id: str) -> dict:
         return {"error": "invalid_params"}
     db = _Session()
     try:
-        from sqlalchemy import text
         import json as _json
+
+        from sqlalchemy import text
         row = db.execute(text("SELECT id, tenant_id, version, data FROM ar_accounts WHERE id = :id"), {"id": account_id}).fetchone()
         if not row:
             return {"error": "account_not_found"}
@@ -114,7 +116,7 @@ def _post_payment(body: dict, correlation_id: str) -> dict:
             "amount_cents": amount_cents,
             "method": body.get("method", "card"),
             "processor_ref": body.get("processor_ref"),
-            "posted_at": datetime.now(timezone.utc).isoformat(),
+            "posted_at": datetime.now(UTC).isoformat(),
         })})
         db.execute(text("""
             UPDATE ar_accounts SET data = :data, version = version + 1, updated_at = now() WHERE id = :id

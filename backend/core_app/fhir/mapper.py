@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from core_app.models.patient import Patient
 from core_app.models.incident import Incident
+from core_app.models.patient import Patient
 
 
 def _fhir_id(u: UUID | str) -> str:

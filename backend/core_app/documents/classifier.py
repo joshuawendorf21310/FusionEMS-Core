@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-
-
 DOC_TYPES = ["facesheet", "pcs", "insurance_card", "signature", "denial_letter", "appeal_response", "other"]
 
 

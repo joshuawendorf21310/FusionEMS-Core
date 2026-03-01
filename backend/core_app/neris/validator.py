@@ -88,9 +88,8 @@ class NERISValidator:
                             "suggested_fix": "Use format: YYYY-MM-DDTHH:MM:SS",
                         })
 
-                if ftype == "email" and isinstance(value, str):
-                    if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
-                        issues.append({
+                if ftype == "email" and isinstance(value, str) and not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+                    issues.append({
                             "severity": "error",
                             "entity_type": entity_type,
                             "rule_id": f"{path}.invalid_email",
@@ -147,11 +146,7 @@ class NERISValidator:
                         a_dt = datetime.fromisoformat(a_val.replace("Z", "+00:00"))
                         b_dt = datetime.fromisoformat(b_val.replace("Z", "+00:00"))
                         violated = False
-                        if op == ">=" and not (a_dt >= b_dt):
-                            violated = True
-                        elif op == "<=" and not (a_dt <= b_dt):
-                            violated = True
-                        elif op == ">" and not (a_dt > b_dt):
+                        if op == ">=" and not (a_dt >= b_dt) or op == "<=" and not (a_dt <= b_dt) or op == ">" and not (a_dt > b_dt):
                             violated = True
                         if violated:
                             issues.append({

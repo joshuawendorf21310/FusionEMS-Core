@@ -1,29 +1,29 @@
 from __future__ import annotations
 
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 try:
-    from weasyprint import HTML, CSS  # noqa: F401
+    from weasyprint import CSS, HTML  # noqa: F401
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
 
 try:
-    from reportlab.lib.pagesizes import letter  # noqa: F401
     from reportlab.lib import colors  # noqa: F401
+    from reportlab.lib.pagesizes import letter  # noqa: F401
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet  # noqa: F401
     from reportlab.lib.units import inch  # noqa: F401
     from reportlab.platypus import (  # noqa: F401
-        SimpleDocTemplate,
+        HRFlowable,
+        PageBreak,
         Paragraph,
+        SimpleDocTemplate,
         Spacer,
         Table,
         TableStyle,
-        HRFlowable,
-        PageBreak,
     )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # noqa: F401
     RL_AVAILABLE = True
 except ImportError:
     RL_AVAILABLE = False
@@ -48,7 +48,7 @@ BRAND_STRIPE_A = colors.HexColor("#f8fafc") if RL_AVAILABLE else None
 
 
 def _now_str() -> str:
-    return datetime.now(timezone.utc).strftime("%B %d, %Y %H:%M UTC")
+    return datetime.now(UTC).strftime("%B %d, %Y %H:%M UTC")
 
 
 def _rl_styles() -> dict:

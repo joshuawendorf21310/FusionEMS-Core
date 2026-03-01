@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 try:
@@ -57,7 +57,7 @@ def generate_roi_proposal_pdf(roi_data: dict[str, Any], agency_info: dict[str, A
 
     agency_name = agency_info.get("name", "Your Agency")
     story.append(Paragraph(f"Prepared for: <b>{agency_name}</b>", body_style))
-    story.append(Paragraph(f"Date: {datetime.now(timezone.utc).strftime('%B %d, %Y')}", body_style))
+    story.append(Paragraph(f"Date: {datetime.now(UTC).strftime('%B %d, %Y')}", body_style))
     story.append(Spacer(1, 0.3*inch))
 
     story.append(Paragraph("Revenue Opportunity Analysis", section_style))
@@ -135,7 +135,7 @@ def generate_contract_pdf(
 
     body = ParagraphStyle("body", parent=styles["Normal"], fontSize=10, spaceAfter=8, leading=14)
     story.append(Paragraph(f"Contract ID: {contract_id or str(uuid.uuid4())[:8].upper()}", body))
-    story.append(Paragraph(f"Date: {datetime.now(timezone.utc).strftime('%B %d, %Y')}", body))
+    story.append(Paragraph(f"Date: {datetime.now(UTC).strftime('%B %d, %Y')}", body))
     story.append(Paragraph(f"Agency: {agency_info.get('name', 'Agency Name')}", body))
     story.append(Spacer(1, 0.2*inch))
 

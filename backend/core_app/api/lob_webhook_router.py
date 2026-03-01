@@ -4,12 +4,11 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
-from fastapi import Depends
 
 from core_app.api.dependencies import db_session_dependency
 from core_app.core.config import get_settings
@@ -117,7 +116,7 @@ async def lob_webhook(
             "event_type": event_type,
             "payload_sha256": payload_sha256,
             "payload": payload,
-            "received_at": datetime.now(timezone.utc).isoformat(),
+            "received_at": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         },
         correlation_id=correlation_id,
@@ -140,7 +139,7 @@ async def lob_webhook(
             "payload": payload,
             "payload_sha256": payload_sha256,
             "correlation_id": correlation_id,
-            "received_at": datetime.now(timezone.utc).isoformat(),
+            "received_at": datetime.now(UTC).isoformat(),
         },
         deduplication_id=event_id,
     )

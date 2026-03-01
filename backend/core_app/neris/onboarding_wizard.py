@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -140,7 +140,7 @@ class NERISOnboardingWizard:
             for s in ONBOARDING_STEPS if s["required"]
         )
         if all_required_done and not rd.get("completed_at"):
-            rd["completed_at"] = datetime.now(timezone.utc).isoformat()
+            rd["completed_at"] = datetime.now(UTC).isoformat()
             dept = self._get_department(department_id)
             if dept:
                 dept_data = dict(dept.get("data") or {})

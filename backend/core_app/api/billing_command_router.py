@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.billing.ar_aging import compute_revenue_forecast
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.billing.ar_aging import compute_revenue_forecast
 
 router = APIRouter(prefix="/api/v1/billing-command", tags=["Billing Command Center"])
 
@@ -78,7 +78,7 @@ async def revenue_dashboard(
         "revenue_cents": revenue_cents,
         "clean_claim_rate_pct": clean_claim_rate,
         "denial_rate_pct": denial_rate,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -291,7 +291,7 @@ async def billing_kpis(
         "denial_rate": round(denied / total * 100, 2) if total else 0,
         "total_revenue_cents": revenue,
         "avg_days_to_payment": avg_dtp,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -316,7 +316,7 @@ async def batch_resubmit(
             record_id=claim["id"],
             actor_user_id=current.user_id,
             expected_version=claim.get("version", 1),
-            patch={"status": "resubmitted", "resubmit_reason": body.resubmit_reason, "resubmitted_at": datetime.now(timezone.utc).isoformat()},
+            patch={"status": "resubmitted", "resubmit_reason": body.resubmit_reason, "resubmitted_at": datetime.now(UTC).isoformat()},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
         results.append({"claim_id": str(claim_id), "status": "resubmitted"})
@@ -401,7 +401,7 @@ async def stripe_reconciliation(
         "active_subscriptions": len(active),
         "past_due_subscriptions": len(past_due),
         "mrr_cents": mrr,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -476,7 +476,7 @@ async def billing_alerts(
     overdue = [lnk for lnk in overdue_links if lnk.get("data", {}).get("status") == "overdue"]
     if overdue:
         alerts.append({"type": "overdue_payments", "count": len(overdue), "severity": "medium"})
-    return {"alerts": alerts, "total": len(alerts), "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"alerts": alerts, "total": len(alerts), "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.post("/alert-thresholds")
@@ -610,7 +610,7 @@ async def billing_health(
         "status": health_status,
         "clean_claim_rate_pct": clean_rate,
         "total_claims": total,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -622,7 +622,7 @@ async def tenant_billing_ranking(
     require_role(current, ["founder"])
     svc = DominationService(db, get_event_publisher())
     tenants = svc.repo("tenants").list(tenant_id=current.tenant_id, limit=10000)
-    return {"tenants": tenants[:20], "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"tenants": tenants[:20], "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.post("/payer-follow-up")
@@ -669,5 +669,5 @@ async def executive_summary(
         "total_revenue_cents": revenue,
         "mrr_cents": mrr,
         "arr_cents": mrr * 12,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }

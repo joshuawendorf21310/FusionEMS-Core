@@ -21,7 +21,6 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi.testclient import TestClient
 
-
 # ── Ed25519 test key pair ────────────────────────────────────────────────────
 
 def _generate_test_keypair():
@@ -218,9 +217,10 @@ def _sms_headers(private_key, body_bytes: bytes) -> dict[str, str]:
 
 class TestSmsWebhook:
     def _make_client(self, private_key, public_key_b64, db_mock):
-        from core_app.api.sms_webhook_router import router
         from fastapi import FastAPI
+
         from core_app.api.dependencies import db_session_dependency
+        from core_app.api.sms_webhook_router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -425,9 +425,10 @@ def _voice_headers(private_key, body_bytes: bytes) -> dict[str, str]:
 
 class TestIvrStateMachine:
     def _make_client(self, private_key, public_key_b64, db_mock):
-        from core_app.api.voice_webhook_router import router
         from fastapi import FastAPI
+
         from core_app.api.dependencies import db_session_dependency
+        from core_app.api.voice_webhook_router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -756,9 +757,10 @@ def _fax_headers(private_key, body_bytes: bytes) -> dict[str, str]:
 
 class TestFaxWebhook:
     def _make_client(self, private_key, public_key_b64, db_mock):
-        from core_app.api.fax_webhook_router import router
         from fastapi import FastAPI
+
         from core_app.api.dependencies import db_session_dependency
+        from core_app.api.fax_webhook_router import router
 
         app = FastAPI()
         app.include_router(router)

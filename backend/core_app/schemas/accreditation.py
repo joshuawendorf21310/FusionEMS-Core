@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import Any
+
+from pydantic import BaseModel, Field
+
 
 class AccreditationItemCreate(BaseModel):
     standard_ref: str = Field(min_length=1, max_length=128)

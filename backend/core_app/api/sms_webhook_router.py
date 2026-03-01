@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -24,7 +24,7 @@ HELP_KEYWORDS  = {"HELP", "INFO"}
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _insert_event(db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict) -> bool:

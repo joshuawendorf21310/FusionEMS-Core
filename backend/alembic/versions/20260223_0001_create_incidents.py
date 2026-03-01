@@ -1,7 +1,7 @@
 """create incidents table
 
 Revision ID: 20260223_0001
-Revises: 
+Revises:
 Create Date: 2026-02-23 00:00:00.000000
 """
 

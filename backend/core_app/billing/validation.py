@@ -38,9 +38,8 @@ class BillingValidator:
         have_types = set()
         for d in docs:
             dd = d["data"]
-            if dd.get("owner_entity_type") == "billing_case" and dd.get("owner_entity_id") == str(case_id):
-                if dd.get("doc_type"):
-                    have_types.add(dd["doc_type"])
+            if dd.get("owner_entity_type") == "billing_case" and dd.get("owner_entity_id") == str(case_id) and dd.get("doc_type"):
+                have_types.add(dd["doc_type"])
 
         missing = [t for t in required_docs if t not in have_types]
         risk = 0.05

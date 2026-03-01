@@ -5,6 +5,7 @@ Codex must implement schema validation against NERIS requirements once official 
 import json
 from pathlib import Path
 
+
 def main() -> None:
     report = {"neris": "ready-interface", "ok": True}
     Path("artifacts").mkdir(exist_ok=True)

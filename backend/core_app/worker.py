@@ -15,7 +15,7 @@ import asyncio
 import logging
 import signal
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ async def _executive_briefing_loop(stop: asyncio.Event) -> None:
         if stop.is_set():
             break
 
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         if now_utc.hour == _BRIEFING_HOUR_UTC and now_utc.minute == 0:
             try:
                 await _generate_executive_briefing()
@@ -86,7 +86,7 @@ async def _executive_briefing_loop(stop: asyncio.Event) -> None:
 
 
 def _seconds_until_hour(target_hour: int) -> float:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if now.hour < target_hour:
         next_run = now.replace(hour=target_hour, minute=0, second=0, microsecond=0)
     elif now.hour == target_hour and now.minute == 0:
@@ -135,7 +135,7 @@ async def _generate_executive_briefing() -> None:
         publisher = get_event_publisher()
 
         briefing: dict = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "type": "executive_briefing",
             "summary": "Daily executive briefing generated.",
         }
@@ -158,7 +158,7 @@ async def _generate_executive_briefing() -> None:
                         },
                         {
                             "role": "user",
-                            "content": f"Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}. Generate today's briefing.",
+                            "content": f"Date: {datetime.now(UTC).strftime('%Y-%m-%d')}. Generate today's briefing.",
                         },
                     ],
                     max_tokens=512,

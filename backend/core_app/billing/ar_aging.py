@@ -96,7 +96,7 @@ def compute_ar_aging(db: Session, tenant_id: uuid.UUID, svc: DominationService |
         total_claims += 1
         days_list.append(days_out)
 
-    for payer, data_p in payer_breakdown.items():
+    for _, data_p in payer_breakdown.items():
         if data_p["count"] > 0:
             data_p["avg_days"] = round(data_p["days_sum"] / data_p["count"], 1)
 

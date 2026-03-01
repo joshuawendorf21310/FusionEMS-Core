@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import requests
 from typing import Any
+
+import requests
 
 from core_app.core.config import get_settings
 

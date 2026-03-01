@@ -38,7 +38,6 @@ import math
 from decimal import Decimal
 from typing import Any
 
-
 _VOLATILE_TOP_LEVEL = frozenset({
     "updated_at",
     "completeness_score",

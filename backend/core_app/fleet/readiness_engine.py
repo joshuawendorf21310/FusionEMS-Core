@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import EventPublisher
-
 
 WEIGHTS = {
     "active_alerts": 40,
@@ -29,7 +28,7 @@ class ReadinessEngine:
 
     def compute_unit_readiness(self, unit_id: uuid.UUID) -> dict[str, Any]:
         uid = str(unit_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         alerts = self.svc.repo("fleet_alerts").list(tenant_id=self.tenant_id, limit=200)
         active_alerts = [

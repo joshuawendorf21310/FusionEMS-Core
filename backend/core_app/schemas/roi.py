@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import Any
+
+from pydantic import BaseModel, Field
+
 
 class RoiInput(BaseModel):
     zip_code: str = Field(min_length=3, max_length=16)

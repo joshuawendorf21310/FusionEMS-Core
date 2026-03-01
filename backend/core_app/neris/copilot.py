@@ -5,7 +5,6 @@ from typing import Any
 
 from core_app.ai.service import AiService
 
-
 SYSTEM_PROMPT = """You are a NERIS (National Emergency Response Information System) compliance expert for Wisconsin fire departments. You explain validation errors in plain English and generate structured remediation actions. Always respond with valid JSON only, no markdown.
 
 Output schema:

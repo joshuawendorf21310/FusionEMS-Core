@@ -3,16 +3,15 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-
-from core_app.services.cognito_jwt import verify_cognito_jwt, CognitoAuthError
-from core_app.services.opa import check_policy, opa_enabled, OpaError
-from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from core_app.core.config import get_settings
 from core_app.db.session import get_db_session
 from core_app.repositories.user_repository import UserRepository
 from core_app.schemas.auth import CurrentUser
+from core_app.services.cognito_jwt import CognitoAuthError, verify_cognito_jwt
+from core_app.services.opa import OpaError, check_policy, opa_enabled
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 

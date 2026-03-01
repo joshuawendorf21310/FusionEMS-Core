@@ -4,24 +4,32 @@ import base64
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
-from core_app.billing.validation import BillingValidator
-from core_app.billing.x12_837p import build_837p_ambulance
-from core_app.billing.x12_835 import parse_835
+from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
 from core_app.billing.artifacts import store_edi_artifact
+from core_app.billing.validation import BillingValidator
+from core_app.billing.x12_835 import parse_835
+from core_app.billing.x12_837p import build_837p_ambulance
 from core_app.core.config import get_settings
-from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
-from core_app.integrations.officeally import OfficeAllySftpConfig, submit_837_via_sftp, OfficeAllyClientError
-from core_app.payments.stripe_service import StripeConfig, create_patient_checkout_session, StripeNotConfigured
-from core_app.fax.telnyx_service import TelnyxConfig, send_sms, TelnyxNotConfigured
+from core_app.documents.s3_storage import default_exports_bucket, presign_get, put_bytes
+from core_app.fax.telnyx_service import TelnyxConfig, TelnyxNotConfigured, send_sms
+from core_app.integrations.officeally import (
+    OfficeAllyClientError,
+    OfficeAllySftpConfig,
+    submit_837_via_sftp,
+)
+from core_app.payments.stripe_service import (
+    StripeConfig,
+    StripeNotConfigured,
+    create_patient_checkout_session,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
 
 router = APIRouter(prefix="/api/v1/billing", tags=["Billing"])
 

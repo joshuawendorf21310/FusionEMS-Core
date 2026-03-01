@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/v1/voice-advanced", tags=["AI Voice Advanced"])
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _db_insert(db: Session, table: str, data: dict[str, Any]) -> str:
@@ -25,7 +25,7 @@ def _db_insert(db: Session, table: str, data: dict[str, Any]) -> str:
     data["id"] = rid
     data["created_at"] = _utcnow()
     cols = ", ".join(data.keys())
-    vals = ", ".join(f":{k}" for k in data.keys())
+    vals = ", ".join(f":{k}" for k in data)
     db.execute(text(f"INSERT INTO {table} ({cols}) VALUES ({vals}) ON CONFLICT DO NOTHING"), data)
     db.commit()
     return rid
@@ -672,7 +672,7 @@ def callback_slot_optimizer(
     db: Session = Depends(db_session_dependency),
     _user: dict = Depends(get_current_user),
 ) -> dict:
-    base = datetime.now(timezone.utc)
+    base = datetime.now(UTC)
     if body.urgency_score >= 80:
         slot_offset_hours = 1
     elif body.urgency_score >= 50:

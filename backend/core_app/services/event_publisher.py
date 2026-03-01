@@ -4,7 +4,7 @@ import json
 import logging
 import uuid
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core_app.core.config import get_settings
@@ -114,7 +114,7 @@ class RedisEventPublisher(EventPublisher):
             "entity_id": str(entity_id),
             "event_type": event_name,
             "payload": payload,
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         }
         try:

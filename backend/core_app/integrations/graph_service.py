@@ -8,15 +8,14 @@ Architecture:
 """
 from __future__ import annotations
 
+import json as _json
 import logging
 import threading
 import time
-from typing import Any
-
-import urllib.request
-import urllib.parse
 import urllib.error
-import json as _json
+import urllib.parse
+import urllib.request
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

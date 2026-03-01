@@ -1,19 +1,18 @@
 from __future__ import annotations
 
+import base64
 import time
-from typing import Optional
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
-from cryptography.exceptions import InvalidSignature
-import base64
 
 
 def verify_telnyx_webhook(
     *,
     raw_body: bytes,
-    signature_ed25519: Optional[str],
-    timestamp: Optional[str],
+    signature_ed25519: str | None,
+    timestamp: str | None,
     public_key_base64: str,
     tolerance_seconds: int = 300,
 ) -> bool:

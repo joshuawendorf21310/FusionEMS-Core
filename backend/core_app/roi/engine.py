@@ -90,7 +90,7 @@ def compute_roi(inputs: dict[str, Any]) -> dict[str, Any]:
     base_sub = 499.0
     per_call = 1.25
     module_cost = 0.0
-    for m in inputs.get("selected_modules", []):
+    for _m in inputs.get("selected_modules", []):
         module_cost += 99.0
     fusion_cost = 12 * (base_sub + module_cost) + call_volume * per_call
 

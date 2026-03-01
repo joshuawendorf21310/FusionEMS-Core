@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -363,7 +363,7 @@ async def validate_incident(
         correlation_id = getattr(request.state, "correlation_id", None)
         current_data = dict(inc.get("data") or {})
         current_data["status"] = "validated"
-        current_data["validated_at"] = datetime.now(timezone.utc).isoformat()
+        current_data["validated_at"] = datetime.now(UTC).isoformat()
         current_data["neris_pack_id"] = str(pack_id)
         await svc.update(
             table="fire_incidents",

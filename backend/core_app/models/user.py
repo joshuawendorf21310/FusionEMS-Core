@@ -1,7 +1,13 @@
 from sqlalchemy import String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core_app.db.base import Base, SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin, VersionMixin
+from core_app.db.base import (
+    Base,
+    SoftDeleteMixin,
+    TimestampMixin,
+    UUIDPrimaryKeyMixin,
+    VersionMixin,
+)
 from core_app.models.tenant import TenantScopedMixin
 
 

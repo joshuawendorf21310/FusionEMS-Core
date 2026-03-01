@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.builders.claim_packet_generator import ClaimPacketGenerator
-from core_app.documents.s3_storage import put_bytes, presign_get, default_docs_bucket
+from core_app.documents.s3_storage import default_docs_bucket, presign_get, put_bytes
 from core_app.repositories.domination_repository import DominationRepository
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
@@ -18,11 +18,11 @@ router = APIRouter(prefix="/api/v1/claims", tags=["Claim Packets"])
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _timestamp_slug() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def _load_claim_bundle(

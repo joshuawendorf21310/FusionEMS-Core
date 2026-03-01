@@ -35,7 +35,7 @@ class SchedulingEngine:
         self.repo_availability = DominationRepository(db, table="availability_blocks")
 
     def _now(self) -> dt.datetime:
-        return dt.datetime.now(tz=dt.timezone.utc)
+        return dt.datetime.now(tz=dt.UTC)
 
     def list_expiring_credentials(self, within_days: int = 30) -> list[dict[str, Any]]:
         cutoff = self._now() + dt.timedelta(days=within_days)

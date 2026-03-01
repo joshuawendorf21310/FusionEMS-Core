@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import stripe
-from fastapi import APIRouter, Header, HTTPException, Request, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency
@@ -106,7 +106,7 @@ async def stripe_webhook(
             "event_type": event_type,
             "connected_account_id": connected_account_id,
             "payload": event,
-            "received_at": datetime.now(timezone.utc).isoformat(),
+            "received_at": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         },
         correlation_id=correlation_id,
@@ -129,7 +129,7 @@ async def stripe_webhook(
             "connected_account_id": connected_account_id,
             "payload": event,
             "correlation_id": correlation_id,
-            "received_at": datetime.now(timezone.utc).isoformat(),
+            "received_at": datetime.now(UTC).isoformat(),
         },
         deduplication_id=event_id,
     )

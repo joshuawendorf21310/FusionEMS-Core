@@ -1,18 +1,19 @@
 from __future__ import annotations
-import uuid
-import json
+
 import hashlib
+import json
+import os
 import time
-from datetime import datetime, timezone
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from core_app.database import get_db
+from core_app.db.session import get_db_session as get_db
 from core_app.repositories.domination_repository import DominationRepository
-import os
 
 router = APIRouter(prefix="/api/v1/founder/compliance", tags=["founder-compliance"])
 
@@ -93,7 +94,7 @@ def _ingest_pack(pack_id: str, tenant_id: uuid.UUID, db: Session) -> dict:
         repo.update("compliance_packs", system_tid, existing["id"], {
             **existing["data"],
             "pack_hash": pack_hash,
-            "ingested_at": datetime.now(timezone.utc).isoformat(),
+            "ingested_at": datetime.now(UTC).isoformat(),
             "status": "staged",
         })
         pack_row_id = str(existing["id"])
@@ -105,7 +106,7 @@ def _ingest_pack(pack_id: str, tenant_id: uuid.UUID, db: Session) -> dict:
             "effective_date": pack_json.get("effective_date"),
             "pack_hash": pack_hash,
             "status": "staged",
-            "ingested_at": datetime.now(timezone.utc).isoformat(),
+            "ingested_at": datetime.now(UTC).isoformat(),
         })
         pack_row_id = str(row["id"])
 
@@ -113,7 +114,7 @@ def _ingest_pack(pack_id: str, tenant_id: uuid.UUID, db: Session) -> dict:
         "pack_id": pack_id,
         "pack_hash": pack_hash,
         "pack_json": pack_json,
-        "versioned_at": datetime.now(timezone.utc).isoformat(),
+        "versioned_at": datetime.now(UTC).isoformat(),
     })
 
     for rule in pack_json.get("global_rules", []):
@@ -163,7 +164,7 @@ def _get_tenant_config(tenant_id: uuid.UUID, db: Session) -> dict:
 def _update_tenant_config(tenant_id: uuid.UUID, patch: dict, actor: str, db: Session) -> dict:
     repo = _repo(db)
     rows = repo.list("tenant_compliance_config", tenant_id)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     if rows:
         existing = rows[0]
         new_data = {**existing["data"], **patch, "updated_at": now, "updated_by": actor}
@@ -182,7 +183,7 @@ def _emit_audit(action: str, tenant_id: str, actor: str, before: list, after: li
         "actor": actor,
         "before_pack_ids": before,
         "after_pack_ids": after,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     })
 
 

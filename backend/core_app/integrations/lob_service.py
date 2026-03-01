@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import io
+import logging
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -10,7 +11,6 @@ from typing import Any
 import requests
 
 from core_app.core.config import get_settings
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
-import os
+
 import json
+import os
 import uuid
-import boto3
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
+
+import boto3
 
 WORKER_TYPE = os.environ.get("KITLINK_WORKER_TYPE", "kitlink_ocr")
 
@@ -55,6 +57,7 @@ def handle_ocr(record: dict) -> dict:
     image_bytes = obj["Body"].read()
 
     import base64
+
     import openai
 
     client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
@@ -98,7 +101,7 @@ def handle_ocr(record: dict) -> dict:
         WHERE data->>'job_id' = %s AND tenant_id = %s AND deleted_at IS NULL
         """,
         (
-            json.dumps({"status": "needs_confirm", "ocr_result": parsed, "processed_at": datetime.now(timezone.utc).isoformat()}),
+            json.dumps({"status": "needs_confirm", "ocr_result": parsed, "processed_at": datetime.now(UTC).isoformat()}),
             job_id,
             tenant_id,
         ),
@@ -157,7 +160,7 @@ def handle_stock_rebuild(record: dict) -> dict:
             (tenant_id, item_id, loc_id or ""),
         )
         existing = cur.fetchone()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         if existing:
             cur.execute(
                 """
@@ -193,7 +196,7 @@ def handle_stock_rebuild(record: dict) -> dict:
 def handle_expiration_sweep(record: dict) -> dict:
     body = json.loads(record.get("body", "{}"))
     days_ahead = int(body.get("days_ahead", 30))
-    cutoff = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).isoformat()
+    cutoff = (datetime.now(UTC) + timedelta(days=days_ahead)).isoformat()
 
     conn = _db_conn()
     cur = conn.cursor()
@@ -231,7 +234,7 @@ def handle_expiration_sweep(record: dict) -> dict:
 
     cur.close()
     conn.close()
-    return {"sweep_date": datetime.now(timezone.utc).isoformat(), "expiring_count": len(alerts)}
+    return {"sweep_date": datetime.now(UTC).isoformat(), "expiring_count": len(alerts)}
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +309,7 @@ def handle_anomaly(record: dict) -> dict:
                 INSERT INTO kitlink_anomaly_flags (id, tenant_id, version, data, created_at, updated_at)
                 VALUES (gen_random_uuid(), %s, 1, %s::jsonb, now(), now())
                 """,
-                (tenant_id, json.dumps({**flag, "event": body, "flagged_at": datetime.now(timezone.utc).isoformat()})),
+                (tenant_id, json.dumps({**flag, "event": body, "flagged_at": datetime.now(UTC).isoformat()})),
             )
         conn.commit()
         cur.close()
@@ -332,7 +335,7 @@ def handle_pdf(record: dict) -> dict:
 <h1>KitLink {doc_type.replace('_', ' ').title()}</h1>
 <p>Tenant: {tenant_id}</p>
 <p>Entity: {entity_id}</p>
-<p>Generated: {datetime.now(timezone.utc).isoformat()}</p>
+<p>Generated: {datetime.now(UTC).isoformat()}</p>
 <p>Report Type: {doc_type}</p>
 </body>
 </html>"""

@@ -8,6 +8,7 @@ from openai import OpenAI
 
 from core_app.core.config import get_settings
 
+
 class AiService:
     def __init__(self) -> None:
         settings = get_settings()

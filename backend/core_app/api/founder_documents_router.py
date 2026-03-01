@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
@@ -299,7 +299,7 @@ async def manual_provision(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Provisioning failed: {str(exc)}")
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     db.execute(
         text(
             "UPDATE onboarding_applications SET status = 'provisioned', "

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy import text

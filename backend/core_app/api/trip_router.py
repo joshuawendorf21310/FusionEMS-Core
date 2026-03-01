@@ -5,7 +5,7 @@ import hashlib
 import io
 import uuid
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from xml.dom import minidom
 
@@ -208,7 +208,7 @@ async def update_debt(
 def _build_trip_xml(debts: list[dict], tenant_id: str) -> bytes:
     root = ET.Element("TRIPSubmission")
     root.set("xmlns", "http://dor.wisconsin.gov/trip/v1")
-    root.set("SubmissionDate", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    root.set("SubmissionDate", datetime.now(UTC).strftime("%Y-%m-%d"))
     root.set("AgencyID", tenant_id)
     debts_el = ET.SubElement(root, "Debts")
     for debt in debts:
@@ -251,7 +251,7 @@ async def generate_export(
     export_id = str(uuid.uuid4())
     s3_key = f"trip/exports/{current.tenant_id}/{export_id}.xml"
     try:
-        from core_app.documents.s3_storage import put_bytes, default_exports_bucket
+        from core_app.documents.s3_storage import default_exports_bucket, put_bytes
         bucket = default_exports_bucket()
         if bucket:
             put_bytes(bucket=bucket, key=s3_key, content=xml_bytes, content_type="application/xml")
@@ -262,7 +262,7 @@ async def generate_export(
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data={
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "method": payload.get("method", "file_upload"),
             "s3_xml_key": s3_key,
             "record_count": len(exportable),
@@ -323,7 +323,7 @@ async def import_rejects(
         actor_user_id=current.user_id,
         data={
             "parsed_json": {"rows": rows},
-            "imported_at": datetime.now(timezone.utc).isoformat(),
+            "imported_at": datetime.now(UTC).isoformat(),
             "row_count": len(rows),
         },
         correlation_id=correlation_id,
@@ -404,7 +404,7 @@ async def import_postings(
                     "amount_cents": amount_cents,
                     "method": "trip_intercept",
                     "processor_ref": f"trip-posting-{debt_id_str}",
-                    "posted_at": datetime.now(timezone.utc).isoformat(),
+                    "posted_at": datetime.now(UTC).isoformat(),
                 },
                 correlation_id=correlation_id,
             )
@@ -450,7 +450,7 @@ async def import_postings(
         actor_user_id=current.user_id,
         data={
             "parsed_json": {"rows": rows},
-            "imported_at": datetime.now(timezone.utc).isoformat(),
+            "imported_at": datetime.now(UTC).isoformat(),
             "applied_count": applied,
             "unmatched_count": unmatched,
             "row_count": len(rows),

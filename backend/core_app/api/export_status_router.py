@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import uuid
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api/v1/export-status", tags=["ExportStatus"])
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _tenant(current: CurrentUser) -> str:
@@ -44,7 +45,7 @@ async def export_queue_monitor(
 ):
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     queued = [j for j in jobs if _data(j).get("status") == "queued"]
     processing = [j for j in jobs if _data(j).get("status") == "processing"]
     completed_today = [j for j in jobs if _data(j).get("status") == "completed" and (_data(j).get("completed_at") or "").startswith(today)]
@@ -355,10 +356,8 @@ async def export_performance_score(
         d = _data(j)
         s, c = d.get("started_at"), d.get("completed_at")
         if s and c:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 latencies.append(int((datetime.fromisoformat(c.replace("Z", "+00:00")) - datetime.fromisoformat(s.replace("Z", "+00:00"))).total_seconds() * 1000))
-            except (ValueError, TypeError):
-                pass
     avg_latency = round(sum(latencies) / len(latencies)) if latencies else 0
     sla_records = svc.repo("export_sla").list(tenant_id=current.tenant_id, limit=100)
     sla_adherence = 100.0
@@ -784,7 +783,7 @@ async def export_failure_clustering(
     for i, (reason, g) in enumerate(groups.items()):
         clusters.append({
             "cluster_id": f"c{i + 1}",
-            "reason": g["reason"],
+            "reason": reason,
             "count": g["count"],
             "states": sorted(g["states"]),
             "first_seen": g["first_seen"],
@@ -821,15 +820,15 @@ async def export_file_integrity_hash(
     svc = _svc(db)
     content = str(payload.get("content", "")).encode()
     sha = hashlib.sha256(content).hexdigest()
-    md5 = hashlib.md5(content).hexdigest()
+    checksum = hashlib.sha256(content).hexdigest()
     await svc.create(
         table="export_integrity_hashes",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"job_id": payload.get("job_id"), "sha256": sha, "md5": md5, "generated_at": _now()},
+        data={"job_id": payload.get("job_id"), "sha256": sha, "checksum": checksum, "generated_at": _now()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"job_id": payload.get("job_id"), "sha256": sha, "md5": md5, "generated_at": _now()}
+    return {"job_id": payload.get("job_id"), "sha256": sha, "checksum": checksum, "generated_at": _now()}
 
 
 @router.post("/proof")
@@ -1113,7 +1112,7 @@ async def secure_transfer_monitor(
 ):
     svc = _svc(db)
     transfers = svc.repo("export_transfers").list(tenant_id=current.tenant_id, limit=1000)
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     active = [t for t in transfers if _data(t).get("status") == "in_progress"]
     completed_today = [t for t in transfers if _data(t).get("status") == "completed" and (_data(t).get("completed_at") or "").startswith(today)]
     items = [
@@ -1142,7 +1141,7 @@ async def timeout_detection(
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
     timeouts = [j for j in jobs if _data(j).get("reason_code") == "TIMEOUT"]
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     timeouts_24h = [j for j in timeouts if (_data(j).get("failed_at") or _data(j).get("created_at") or "").startswith(today)]
     incidents = [
         {"job_id": str(j.get("id", "")), "incident_id": _data(j).get("incident_id"), "timed_out_at": _data(j).get("failed_at")}
@@ -1158,7 +1157,7 @@ async def error_rate_analytics(
 ):
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     today_jobs = [j for j in jobs if (_data(j).get("created_at") or "").startswith(today)]
     total_today = len(today_jobs) or 1
     errors_today = [j for j in today_jobs if _data(j).get("status") == "failed"]
@@ -1764,7 +1763,7 @@ async def export_timeout_escalation(
     svc = _svc(db)
     escalations = svc.repo("export_escalations").list(tenant_id=current.tenant_id, limit=1000)
     timeout_esc = [e for e in escalations if _data(e).get("type") == "timeout"]
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     last_24h = [e for e in timeout_esc if (_data(e).get("escalated_at") or "").startswith(today)]
     return {"escalations": [_data(e) for e in timeout_esc], "total": len(timeout_esc), "last_24h": len(last_24h)}
 

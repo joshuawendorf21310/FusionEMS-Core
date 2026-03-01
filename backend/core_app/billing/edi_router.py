@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/v1/edi", tags=["EDI"])
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class GenerateBatchRequest(BaseModel):

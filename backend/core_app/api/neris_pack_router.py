@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, require_role
+from core_app.core.config import get_settings
 from core_app.neris.pack_manager import NERISPackManager
 from core_app.neris.validator import NERISValidator
 from core_app.schemas.auth import CurrentUser
 from core_app.services.event_publisher import get_event_publisher
-from core_app.core.config import get_settings
 
 router = APIRouter(prefix="/api/v1/founder/neris", tags=["NERIS Packs"])
 
@@ -26,6 +26,7 @@ def _validator(db: Session, current: CurrentUser) -> NERISValidator:
 
 def _enqueue_pack_compile(pack_id: str, tenant_id: str, actor_user_id: str) -> None:
     import json
+
     import boto3
     queue_url = get_settings().neris_pack_compile_queue_url
     if not queue_url:

@@ -7,9 +7,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
+from core_app.fhir.mapper import map_to_fhir
 from core_app.schemas.auth import CurrentUser
 from core_app.schemas.fhir import FhirExportRequest, FhirExportResponse
-from core_app.fhir.mapper import map_to_fhir
 
 router = APIRouter(prefix="/fhir", tags=["fhir"])
 

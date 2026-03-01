@@ -4,11 +4,10 @@ import io
 import json
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-
-from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
+from core_app.documents.s3_storage import default_exports_bucket, presign_get, put_bytes
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import EventPublisher
 
@@ -119,11 +118,11 @@ class NERISExporter:
             if inc:
                 incidents_payload.append(self.build_incident_payload(inc))
 
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         metadata = {
             "tenant_id": str(self.tenant_id),
             "department_id": str(department_id),
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "record_counts": {"incidents": len(incidents_payload)},
             "format_version": "neris-wi-rms-v1",
         }
@@ -150,7 +149,7 @@ class NERISExporter:
                 "s3_key": s3_key,
                 "bucket": bucket or "",
                 "incident_count": len(incidents_payload),
-                "exported_at": datetime.now(timezone.utc).isoformat(),
+                "exported_at": datetime.now(UTC).isoformat(),
                 "format_version": "neris-wi-rms-v1",
             },
             correlation_id=correlation_id,

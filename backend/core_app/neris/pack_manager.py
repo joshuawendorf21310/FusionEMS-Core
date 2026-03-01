@@ -9,14 +9,13 @@ records neris_packs + neris_pack_files rows via DominationService.
 
 import os  # noqa: E402
 import uuid  # noqa: E402
-from datetime import datetime, timezone  # noqa: E402
+from datetime import UTC, datetime  # noqa: E402
 from typing import Any  # noqa: E402
 
 from sqlalchemy.orm import Session  # noqa: E402
 
 from core_app.services.domination_service import DominationService  # noqa: E402
 from core_app.services.event_publisher import EventPublisher  # noqa: E402
-
 
 GITHUB_ZIP_URL = "https://github.com/{repo}/archive/{ref}.zip"
 PACK_S3_PREFIX = "neris/packs"
@@ -79,7 +78,7 @@ class NERISPackManager:
                 )
 
         pdata["status"] = "active"
-        pdata["activated_at"] = datetime.now(timezone.utc).isoformat()
+        pdata["activated_at"] = datetime.now(UTC).isoformat()
         updated = await self.svc.update(
             table="neris_packs",
             tenant_id=self.tenant_id,
@@ -115,6 +114,7 @@ class NERISPackManager:
 
 def _enqueue_pack_import(*, pack_id: str, repo: str, ref: str, name: str, tenant_id: str, actor_user_id: str) -> None:
     import json  # noqa: E402
+
     import boto3  # noqa: E402
     queue_url = os.environ.get("NERIS_PACK_IMPORT_QUEUE_URL", "")
     if not queue_url:

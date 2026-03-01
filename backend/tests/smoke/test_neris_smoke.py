@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import uuid
-import pytest
 from unittest.mock import patch
 
+import pytest
 
 SKIP_IF_NO_DB = pytest.mark.skipif(
     not os.environ.get("DATABASE_URL"),
@@ -58,8 +58,11 @@ class TestNERISSmoke:
     @pytest.mark.asyncio
     async def test_03_validator_missing_required_fields(self):
         """Validator returns errors for missing required fields."""
+        from core_app.neris.pack_compiler import (
+            _wi_default_incident_sections,
+            _wi_default_value_sets,
+        )
         from core_app.neris.validator import NERISValidator
-        from core_app.neris.pack_compiler import _wi_default_incident_sections, _wi_default_value_sets
 
         # Build a minimal rules dict inline (no DB needed)
         vs = _wi_default_value_sets()
@@ -73,7 +76,7 @@ class TestNERISSmoke:
         # Patch _get_rules to return our inline rules
         validator = NERISValidator(self.db, self.publisher, self.tenant_id)
         pack_id = uuid.uuid4()
-        
+
         with patch.object(validator, "_get_rules", return_value=rules):
             issues = validator.validate(pack_id, "INCIDENT", {})
 
@@ -87,8 +90,11 @@ class TestNERISSmoke:
     @pytest.mark.asyncio
     async def test_04_validator_valid_incident_passes(self):
         """Validator returns no errors for a valid incident payload."""
+        from core_app.neris.pack_compiler import (
+            _wi_default_incident_sections,
+            _wi_default_value_sets,
+        )
         from core_app.neris.validator import NERISValidator
-        from core_app.neris.pack_compiler import _wi_default_incident_sections, _wi_default_value_sets
 
         vs = _wi_default_value_sets()
         rules = {
@@ -126,8 +132,11 @@ class TestNERISSmoke:
     @pytest.mark.asyncio
     async def test_05_validator_invalid_value_set(self):
         """Validator catches invalid value set codes."""
+        from core_app.neris.pack_compiler import (
+            _wi_default_incident_sections,
+            _wi_default_value_sets,
+        )
         from core_app.neris.validator import NERISValidator
-        from core_app.neris.pack_compiler import _wi_default_incident_sections, _wi_default_value_sets
 
         vs = _wi_default_value_sets()
         rules = {

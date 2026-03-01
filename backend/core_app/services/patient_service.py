@@ -8,7 +8,12 @@ from core_app.models.audit_log import AuditLog
 from core_app.models.patient import Patient
 from core_app.repositories.incident_repository import IncidentRepository
 from core_app.repositories.patient_repository import PatientRepository
-from core_app.schemas.patient import PatientCreateRequest, PatientListResponse, PatientResponse, PatientUpdateRequest
+from core_app.schemas.patient import (
+    PatientCreateRequest,
+    PatientListResponse,
+    PatientResponse,
+    PatientUpdateRequest,
+)
 from core_app.services.event_publisher import EventPublisher
 
 SENSITIVE_PATIENT_AUDIT_FIELDS = {

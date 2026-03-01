@@ -9,10 +9,15 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
+from core_app.imports.vendor_parsers import (
+    detect_vendor,
+    parse_vendor_csv,
+    parse_vendor_xml,
+    score_import_completeness,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.imports.vendor_parsers import parse_vendor_csv, parse_vendor_xml, detect_vendor, score_import_completeness
 
 router = APIRouter(prefix="/api/v1/imports", tags=['Imports'])
 

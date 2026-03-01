@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 try:
@@ -151,10 +152,8 @@ class NEMSISValidator:
             "issue_count": len(xsd_issues),
         }
 
-        try:
+        with contextlib.suppress(ET.ParseError):
             root = ET.fromstring(xml_bytes)
-        except ET.ParseError:
-            pass
 
         if root is not None:
             nat_issues = self._stage_national_schematron(root)
@@ -188,7 +187,7 @@ class NEMSISValidator:
             issues=all_issues,
             stage_results=stage_results,
             xml_bytes=xml_bytes,
-            validated_at=datetime.now(timezone.utc).isoformat(),
+            validated_at=datetime.now(UTC).isoformat(),
         )
 
     def _stage_xsd(self, xml_bytes: bytes) -> list[ValidationIssue]:

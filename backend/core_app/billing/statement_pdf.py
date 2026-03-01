@@ -4,7 +4,7 @@ import hashlib
 import io
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 try:
@@ -70,7 +70,7 @@ class StatementContext:
 
     def __post_init__(self):
         if self.generated_at is None:
-            self.generated_at = datetime.now(timezone.utc)
+            self.generated_at = datetime.now(UTC)
 
 
 def _require_reportlab() -> None:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import boto3
@@ -47,7 +47,7 @@ def _safe(fn, fallback=None):
 def get_cw_metric_avg(namespace: str, metric_name: str, dimensions: list[dict], minutes: int = 5) -> float | None:
     def _call():
         cw = _cw_client()
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - timedelta(minutes=minutes)
         resp = cw.get_metric_statistics(
             Namespace=namespace,
@@ -81,7 +81,7 @@ def get_ssl_expiration(domains: list[str]) -> list[dict[str, Any]]:
                 cert = detail["Certificate"]
                 not_after = cert.get("NotAfter")
                 if not_after:
-                    days_left = (not_after - datetime.now(timezone.utc)).days
+                    days_left = (not_after - datetime.now(UTC)).days
                     results.append({"domain": domain, "expires_in_days": days_left, "status": "valid" if days_left > 30 else "expiring"})
                 else:
                     results.append({"domain": domain, "expires_in_days": None, "status": "unknown"})
@@ -109,7 +109,7 @@ def get_rds_backup_status(db_instance_id: str) -> dict[str, Any]:
 def get_cost_mtd() -> dict[str, Any]:
     def _call():
         ce = _ce_client()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start = now.replace(day=1).strftime("%Y-%m-%d")
         end = now.strftime("%Y-%m-%d")
         resp = ce.get_cost_and_usage(

@@ -4,11 +4,17 @@ from datetime import datetime
 from sqlalchemy import DateTime, Enum, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core_app.db.base import Base, SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin, VersionMixin
+from core_app.db.base import (
+    Base,
+    SoftDeleteMixin,
+    TimestampMixin,
+    UUIDPrimaryKeyMixin,
+    VersionMixin,
+)
 from core_app.models.tenant import TenantScopedMixin
 
 
-class IncidentStatus(str, enum.Enum):
+class IncidentStatus(enum.StrEnum):
     DRAFT = "draft"
     IN_PROGRESS = "in_progress"
     READY_FOR_REVIEW = "ready_for_review"

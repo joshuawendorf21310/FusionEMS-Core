@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -170,7 +170,7 @@ async def update_template(
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     patch["version"] = record.get("data", {}).get("version", 1) + 1
     patch["updated_by"] = str(current.user_id)
-    patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+    patch["updated_at"] = datetime.now(UTC).isoformat()
     updated = await svc.update(
         table="templates",
         tenant_id=current.tenant_id,
@@ -215,7 +215,7 @@ async def delete_template(
         record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        patch={"status": "archived", "archived_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "archived", "archived_at": datetime.now(UTC).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {"status": "archived", "template_id": str(template_id)}
@@ -590,7 +590,7 @@ async def lifecycle_management(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     all_templates = svc.repo("templates").list(tenant_id=current.tenant_id, limit=5000)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     lifecycle = {
         "total": len(all_templates),
         "draft": sum(1 for t in all_templates if t.get("data", {}).get("status") == "draft"),
@@ -615,7 +615,7 @@ async def generate_secure_link(
     record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
-    token = hashlib.sha256(f"{template_id}{current.tenant_id}{datetime.now(timezone.utc).isoformat()}".encode()).hexdigest()
+    token = hashlib.sha256(f"{template_id}{current.tenant_id}{datetime.now(UTC).isoformat()}".encode()).hexdigest()
     link = await svc.create(
         table="template_secure_links",
         tenant_id=current.tenant_id,
@@ -663,11 +663,11 @@ async def policy_mass_refresh(
             record_id=t["id"],
             actor_user_id=current.user_id,
             expected_version=t.get("version", 1),
-            patch={"policy_refreshed_at": datetime.now(timezone.utc).isoformat()},
+            patch={"policy_refreshed_at": datetime.now(UTC).isoformat()},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
         updated_count += 1
-    return {"refreshed_count": updated_count, "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"refreshed_count": updated_count, "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.get("/dependency-map")

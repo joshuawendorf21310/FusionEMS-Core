@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import uuid
@@ -116,7 +117,7 @@ def _insert_message(db: Session, session_id: uuid.UUID, role: str, content_text:
 
 
 def _log_audit(db: Session, action: str, founder_user_id: uuid.UUID, payload: dict[str, Any]) -> None:
-    try:
+    with contextlib.suppress(Exception):
         db.execute(
             text("""
                 INSERT INTO founder_chat_sessions (id, founder_user_id, title)
@@ -125,8 +126,6 @@ def _log_audit(db: Session, action: str, founder_user_id: uuid.UUID, payload: di
             """),
             {"uid": str(founder_user_id), "action": action},
         )
-    except Exception:
-        pass
     try:
         db.execute(
             text("""

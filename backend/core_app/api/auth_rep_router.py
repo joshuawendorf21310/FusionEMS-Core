@@ -5,14 +5,14 @@ import hmac
 import secrets
 import string
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
-from core_app.fax.telnyx_service import TelnyxConfig, send_sms, TelnyxNotConfigured
+from core_app.fax.telnyx_service import TelnyxConfig, TelnyxNotConfigured, send_sms
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -60,7 +60,7 @@ async def register_rep(
     svc = DominationService(db, publisher)
     otp_code = _generate_otp()
     session_id = uuid.uuid4()
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
+    expires_at = (datetime.now(UTC) + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
 
     await svc.create(
         table="auth_rep_sessions",
@@ -129,7 +129,7 @@ async def verify_otp(
         raise HTTPException(status_code=400, detail="session_not_pending")
 
     expires_at = datetime.fromisoformat(data["otp_expires_at"])
-    if datetime.now(timezone.utc) > expires_at:
+    if datetime.now(UTC) > expires_at:
         raise HTTPException(status_code=400, detail="otp_expired")
 
     MAX_OTP_ATTEMPTS = 5
@@ -156,7 +156,7 @@ async def verify_otp(
         actor_user_id=current.user_id,
         record_id=uuid.UUID(str(session["id"])),
         expected_version=session["version"],
-        patch={"status": "verified", "verified_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "verified", "verified_at": datetime.now(UTC).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
@@ -171,7 +171,7 @@ async def verify_otp(
             "email": data.get("email"),
             "phone": data.get("phone"),
             "verification_method": data.get("delivery_method", "otp"),
-            "verified_at": datetime.now(timezone.utc).isoformat(),
+            "verified_at": datetime.now(UTC).isoformat(),
             "status": "active",
         },
         correlation_id=getattr(request.state, "correlation_id", None),
@@ -215,7 +215,7 @@ async def upload_rep_document(
             "document_type": payload.document_type,
             "s3_key": payload.s3_key,
             "notes": payload.notes,
-            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "uploaded_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
@@ -256,7 +256,7 @@ async def sign_authorization(
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    signed_at = payload.signed_at or datetime.now(timezone.utc).isoformat()
+    signed_at = payload.signed_at or datetime.now(UTC).isoformat()
 
     row = await svc.create(
         table="rep_signatures",
@@ -317,7 +317,7 @@ async def upload_rep_document_multipart(
     if len(content) > MAX_BYTES:
         raise HTTPException(status_code=413, detail="file_too_large")
 
-    from core_app.documents.s3_storage import put_bytes, default_docs_bucket
+    from core_app.documents.s3_storage import default_docs_bucket, put_bytes
     bucket = default_docs_bucket()
     doc_key = f"tenants/{current.tenant_id}/rep-docs/{uuid.uuid4()}/{getattr(file, 'filename', 'upload')}"
     if bucket:
@@ -338,7 +338,7 @@ async def upload_rep_document_multipart(
             "filename": getattr(file, "filename", "upload"),
             "content_type": content_type,
             "size_bytes": len(content),
-            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "uploaded_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )

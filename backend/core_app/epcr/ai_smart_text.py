@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core_app.ai.service import AiService
@@ -27,7 +27,7 @@ class SmartTextEngine:
             "tone": tone,
             "cache_key": cache_key,
             "token_usage": meta.get("usage", {}),
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
     def generate_handoff_summary(self, chart: dict[str, Any]) -> dict[str, Any]:
@@ -44,7 +44,7 @@ class SmartTextEngine:
             "format": "SBAR",
             "cache_key": cache_key,
             "token_usage": meta.get("usage", {}),
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
     def generate_billing_synopsis(self, chart: dict[str, Any]) -> dict[str, Any]:
@@ -60,7 +60,7 @@ class SmartTextEngine:
             "synopsis": text,
             "cache_key": cache_key,
             "token_usage": meta.get("usage", {}),
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
     def detect_missing_documentation(self, chart: dict[str, Any], mode: str = "bls") -> dict[str, Any]:
@@ -331,4 +331,4 @@ class SmartTextEngine:
         exclude = {"updated_at", "sync_status", "completeness_score", "completeness_issues"}
         filtered = {k: v for k, v in chart.items() if k not in exclude}
         serialized = json.dumps(filtered, sort_keys=True, default=str)
-        return hashlib.sha256(f"{serialized}:{prompt_type}".encode("utf-8")).hexdigest()
+        return hashlib.sha256(f"{serialized}:{prompt_type}".encode()).hexdigest()

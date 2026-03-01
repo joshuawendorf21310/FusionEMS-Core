@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core_app.documents.s3_storage import put_bytes
@@ -49,7 +49,7 @@ class CaptureService:
             "size_bytes": len(content),
             "sha256": sha256,
             "enhanced": enhanced,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "attachment_type": "rhythm_strip",
         }
 
@@ -83,7 +83,7 @@ class CaptureService:
             "size_bytes": len(content),
             "sha256": sha256,
             "enhanced": False,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "attachment_type": "pump_screen",
             "extracted_fields": extracted_fields,
         }
@@ -118,7 +118,7 @@ class CaptureService:
             "size_bytes": len(content),
             "sha256": sha256,
             "enhanced": False,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "attachment_type": "vent_screen",
             "extracted_fields": extracted_fields,
         }

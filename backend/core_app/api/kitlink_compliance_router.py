@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from core_app.database import get_db
+from core_app.db.session import get_db_session as get_db
 from core_app.repositories.domination_repository import DominationRepository
 
 router = APIRouter(prefix="/api/v1/kitlink/compliance", tags=["kitlink-compliance"])
@@ -78,12 +79,12 @@ def activate_pack(payload: dict[str, Any], db: Session = Depends(get_db), tenant
     stored = repo.list("compliance_packs", tid)
     existing = next((r for r in stored if r["data"].get("pack_key") == pack_key), None)
     if existing:
-        repo.update("compliance_packs", tid, existing["id"], {**existing["data"], "active": True, "activated_at": datetime.now(timezone.utc).isoformat()})
+        repo.update("compliance_packs", tid, existing["id"], {**existing["data"], "active": True, "activated_at": datetime.now(UTC).isoformat()})
         return {"pack_key": pack_key, "status": "activated", "id": str(existing["id"])}
     row = repo.create("compliance_packs", tid, {
         **pack_data,
         "active": True,
-        "activated_at": datetime.now(timezone.utc).isoformat(),
+        "activated_at": datetime.now(UTC).isoformat(),
         "unit_profile": payload.get("unit_profile", "PARAMEDIC"),
     })
     for item_id in pack_data["check_templates"]:
@@ -107,7 +108,7 @@ def create_inspection(payload: dict[str, Any], db: Session = Depends(get_db), te
     row = repo.create("compliance_inspections", tid, {
         **payload,
         "status": "in_progress",
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": datetime.now(UTC).isoformat(),
     })
     return {"id": str(row["id"]), "status": "in_progress"}
 
@@ -133,7 +134,7 @@ def submit_inspection(inspection_id: str, payload: dict[str, Any], db: Session =
             "rule_id": "NO_EXPIRED_MEDS_FLUIDS",
             "severity": "hard_fail",
             "description": "Expired medications or IV fluids found",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         })
         findings.append({"id": str(f["id"]), "rule_id": "NO_EXPIRED_MEDS_FLUIDS", "severity": "hard_fail"})
 
@@ -145,7 +146,7 @@ def submit_inspection(inspection_id: str, payload: dict[str, Any], db: Session =
                 "check_id": item_id,
                 "severity": "fail",
                 "description": f"Mandatory item missing: {item_id}",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             })
             findings.append({"id": str(f["id"]), "rule_id": item_id, "severity": "fail"})
 
@@ -156,13 +157,11 @@ def submit_inspection(inspection_id: str, payload: dict[str, Any], db: Session =
             "rule_id": "NARC_SEAL_INTACT",
             "severity": "warning",
             "description": "Narcotics seal not verified",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         })
         warnings.append({"id": str(w["id"]), "rule_id": "NARC_SEAL_INTACT"})
 
-    if hard_fail:
-        result_status = "fail"
-    elif findings:
+    if hard_fail or findings:
         result_status = "fail"
     elif warnings:
         result_status = "pass_with_warnings"
@@ -176,7 +175,7 @@ def submit_inspection(inspection_id: str, payload: dict[str, Any], db: Session =
         "hard_fail": hard_fail,
         "finding_count": len(findings),
         "warning_count": len(warnings),
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "submitted_at": datetime.now(UTC).isoformat(),
         "responses": responses,
     })
 
@@ -294,7 +293,7 @@ def wizard_step(payload: dict[str, Any], db: Session = Depends(get_db), tenant_i
             "steps_completed": steps_completed,
             "go_live_complete": go_live_complete,
             "last_step": step,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
         })
         state_id = str(existing["id"])
     else:
@@ -304,7 +303,7 @@ def wizard_step(payload: dict[str, Any], db: Session = Depends(get_db), tenant_i
             "steps_completed": steps_completed,
             "go_live_complete": go_live_complete,
             "last_step": step,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
             "step_data": {step: payload.get("data", {})},
         })
         state_id = str(row["id"])

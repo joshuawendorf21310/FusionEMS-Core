@@ -9,6 +9,7 @@ Codex must extend with official XSD + Schematron validation for certification ru
 """
 
 from __future__ import annotations
+
 import json
 import re
 from pathlib import Path
@@ -23,10 +24,8 @@ def parse_html_table(html: str) -> dict[str, str]:
     for r in rows:
         cols = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r, flags=re.S|re.I)
         cols = [re.sub(r"<[^>]+>", "", c).strip() for c in cols]
-        if len(cols) >= 2 and cols[0] and cols[1] and len(cols[0]) < 120:
-            # heuristic: element-ish key contains dots
-            if "." in cols[0]:
-                result[cols[0]] = cols[1]
+        if len(cols) >= 2 and cols[0] and cols[1] and len(cols[0]) < 120 and "." in cols[0]:
+            result[cols[0]] = cols[1]
     return result
 
 def main() -> None:

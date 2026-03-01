@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC
 from typing import Any
 
 from sqlalchemy import text
@@ -64,7 +65,7 @@ async def send_payment_link_for_call(
         f"— Reply STOP to opt out."
     )
 
-    from core_app.telnyx.client import send_sms, TelnyxApiError
+    from core_app.telnyx.client import TelnyxApiError, send_sms
     try:
         resp = send_sms(
             api_key=api_key,
@@ -109,7 +110,7 @@ def _log_sms_out(
     body: str,
     resp: dict,
 ) -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
     message_id = (resp.get("data") or {}).get("id") or resp.get("id") or ""
     db.execute(
         text(
@@ -124,7 +125,7 @@ def _log_sms_out(
             "from_": from_phone,
             "to_": to_phone,
             "body": body,
-            "now": datetime.now(timezone.utc).isoformat(),
+            "now": datetime.now(UTC).isoformat(),
         },
     )
     db.commit()

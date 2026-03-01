@@ -3,12 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 
-class SyncConflictPolicy(str, Enum):
+class SyncConflictPolicy(StrEnum):
     FIELD_WINS = "field_wins"
     STATION_WINS = "station_wins"
     LAST_WRITE_WINS = "last_write_wins"
@@ -60,7 +60,7 @@ class SyncEngine:
             merged_log_map[e.get("event_id")] = e
         resolved["_event_log"] = sorted(merged_log_map.values(), key=lambda x: x.get("timestamp", ""))
         resolved["sync_status"] = "synced"
-        resolved["updated_at"] = datetime.now(timezone.utc).isoformat()
+        resolved["updated_at"] = datetime.now(UTC).isoformat()
         return resolved, notes
 
     def build_sync_delta(self, local_chart: dict[str, Any], server_chart: dict[str, Any]) -> dict[str, Any]:
@@ -79,7 +79,7 @@ class SyncEngine:
         result = dict(base_chart)
         for key, change in delta.items():
             result[key] = change.get("local", change.get("server"))
-        result["updated_at"] = datetime.now(timezone.utc).isoformat()
+        result["updated_at"] = datetime.now(UTC).isoformat()
         return result
 
     def compute_sync_hash(self, chart: dict[str, Any]) -> str:
@@ -100,7 +100,7 @@ class SyncEngine:
             "chart_id": chart_id,
             "action": action,
             "actor": actor,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "field_changes": field_changes,
         }
         entry["hash"] = hashlib.sha256(json.dumps(entry, sort_keys=True, default=str).encode()).hexdigest()

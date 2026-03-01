@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import secrets
 import string
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -81,7 +82,7 @@ async def provision_tenant(
                 {
                     "app_id": application_id,
                     "tid": str(tenant_id),
-                    "now": datetime.now(timezone.utc).isoformat(),
+                    "now": datetime.now(UTC).isoformat(),
                 },
             )
             db.commit()
@@ -104,7 +105,7 @@ async def provision_tenant(
                 "status": "provisioning",
                 "legal_status": "signed" if application_id else None,
                 "s3_prefix": f"tenants/{tenant_id}",
-                "provisioned_at": datetime.now(timezone.utc).isoformat(),
+                "provisioned_at": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -157,10 +158,7 @@ async def provision_tenant(
                 logger.warning("Cognito setup failed (non-blocking): %s", e)
 
         call_volume_tier = "standard"
-        if isinstance(default_modules, list):
-            module_count = len(default_modules)
-        else:
-            module_count = 0
+        module_count = len(default_modules) if isinstance(default_modules, list) else 0
 
         entitlements = {
             "modules": default_modules,
@@ -181,7 +179,7 @@ async def provision_tenant(
     except Exception as exc:
         logger.error("Tenant provisioning failed for %s: %s", tenant_name, exc)
         if tenant_row is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await svc.update(
                     table="tenants",
                     tenant_id=tenant_id,
@@ -191,8 +189,6 @@ async def provision_tenant(
                     patch={"status": "failed", "error": str(exc)},
                     correlation_id=None,
                 )
-            except Exception:
-                pass
         raise
 
     await publisher.publish(

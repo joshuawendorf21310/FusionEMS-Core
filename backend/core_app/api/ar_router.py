@@ -6,7 +6,7 @@ import json
 import os as _os
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -161,7 +161,7 @@ async def create_payment_plan(
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data={"entry_type": "ar.plan.created", "account_id": str(account_id), "plan_id": str(plan["id"]),
-              "at": datetime.now(timezone.utc).isoformat()},
+              "at": datetime.now(UTC).isoformat()},
         correlation_id=correlation_id,
     )
     return plan
@@ -214,7 +214,7 @@ async def create_dispute(
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data={"entry_type": "ar.dispute.opened", "account_id": str(account_id),
-              "dispute_id": str(dispute["id"]), "at": datetime.now(timezone.utc).isoformat()},
+              "dispute_id": str(dispute["id"]), "at": datetime.now(UTC).isoformat()},
         correlation_id=correlation_id,
     )
     return dispute
@@ -237,7 +237,7 @@ async def resolve_dispute(
     correlation_id = getattr(request.state, "correlation_id", None)
     data = dict(dispute.get("data") or {})
     data["status"] = payload.get("resolution", "resolved")
-    data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+    data["resolved_at"] = datetime.now(UTC).isoformat()
     data["resolved_by"] = str(current.user_id)
     updated = await svc.update(
         table="ar_disputes",
@@ -277,7 +277,7 @@ async def run_statements(
     correlation_id = getattr(request.state, "correlation_id", None)
     svc = _svc(db)
     accounts = svc.repo("ar_accounts").list(tenant_id=current.tenant_id, limit=500)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     queued = []
     for acc in accounts:
         d = acc.get("data") or {}
@@ -349,7 +349,7 @@ async def payment_webhook(
             "amount_cents": amount_cents,
             "method": payload.get("method", "card"),
             "processor_ref": payload.get("processor_ref") or payload.get("payment_intent_id"),
-            "posted_at": datetime.now(timezone.utc).isoformat(),
+            "posted_at": datetime.now(UTC).isoformat(),
         },
     )
     return {"status": "posted", "payment_id": str(payment["id"])}
@@ -440,18 +440,18 @@ async def generate_placement(
             "case_id": d.get("case_id", ""),
         })
 
-    batch_id = f"batch-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    batch_id = f"batch-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("placements.csv", csv_buf.getvalue())
-        audit = {"batch_id": batch_id, "generated_at": datetime.now(timezone.utc).isoformat(),
+        audit = {"batch_id": batch_id, "generated_at": datetime.now(UTC).isoformat(),
                  "account_count": len(eligible), "tenant_id": str(current.tenant_id)}
         zf.writestr("audit.json", json.dumps(audit, indent=2))
     zip_bytes = zip_buf.getvalue()
 
     s3_key = f"ar/placements/{current.tenant_id}/{batch_id}/export.zip"
     try:
-        from core_app.documents.s3_storage import put_bytes, default_exports_bucket
+        from core_app.documents.s3_storage import default_exports_bucket, put_bytes
         bucket = default_exports_bucket()
         if bucket:
             put_bytes(bucket=bucket, key=s3_key, content=zip_bytes, content_type="application/zip")
@@ -466,7 +466,7 @@ async def generate_placement(
             "vendor_profile_id": str(vendor_id),
             "batch_id": batch_id,
             "s3_export_zip_key": s3_key,
-            "placed_at": datetime.now(timezone.utc).isoformat(),
+            "placed_at": datetime.now(UTC).isoformat(),
             "status": "generated",
             "account_count": len(eligible),
         },
@@ -513,7 +513,7 @@ async def import_vendor_status(
         data={
             "vendor_profile_id": str(vendor_id),
             "parsed_json": parsed,
-            "imported_at": datetime.now(timezone.utc).isoformat(),
+            "imported_at": datetime.now(UTC).isoformat(),
             "row_count": len(rows),
         },
         correlation_id=correlation_id,

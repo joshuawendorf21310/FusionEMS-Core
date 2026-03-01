@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 try:
@@ -21,18 +21,18 @@ except ImportError:
 try:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
     from reportlab.platypus import (
-        SimpleDocTemplate,
+        HRFlowable,
+        Image,
+        PageBreak,
         Paragraph,
+        SimpleDocTemplate,
         Spacer,
         Table,
         TableStyle,
-        Image,
-        HRFlowable,
-        PageBreak,
     )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     RL_AVAILABLE = True
 except ImportError:
     RL_AVAILABLE = False
@@ -251,7 +251,7 @@ class CoverSheetGenerator:
             "claim_id": claim_id,
             "tenant_id": tenant_id,
             "doc_type": doc_type,
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
         })
         qr_img = _qr_image(qr_payload)
         bc_img = _barcode_image(claim_id[:20])

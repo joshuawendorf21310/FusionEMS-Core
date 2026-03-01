@@ -7,7 +7,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
-from core_app.schemas.accreditation import AccreditationItemCreate, AccreditationItemUpdate, AccreditationDashboard
+from core_app.schemas.accreditation import (
+    AccreditationDashboard,
+    AccreditationItemCreate,
+    AccreditationItemUpdate,
+)
 from core_app.schemas.auth import CurrentUser
 
 router = APIRouter(prefix="/accreditation", tags=["accreditation"])
@@ -48,7 +52,7 @@ def update_item(item_id: str, payload: AccreditationItemUpdate, db: Session = De
     if payload.score_weight is not None:
         updates["score_weight"] = payload.score_weight
 
-    sets = ", ".join([f"{k} = :{k}" if k != "required_docs" else "required_docs = :required_docs::jsonb" for k in updates.keys()])
+    sets = ", ".join([f"{k} = :{k}" if k != "required_docs" else "required_docs = :required_docs::jsonb" for k in updates])
     if not sets:
         return {"ok": True}
 

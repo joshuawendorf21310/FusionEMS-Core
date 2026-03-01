@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import uuid
 import base64
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -9,10 +9,10 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
+from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
 
 router = APIRouter(prefix="/api/v1/nemsis", tags=["NEMSIS"])
 

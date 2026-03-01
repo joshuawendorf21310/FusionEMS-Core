@@ -156,9 +156,10 @@ def process_pack_compile(body: dict, correlation_id: str) -> dict:
 
     db = _Session()
     try:
-        from core_app.services.event_publisher import get_event_publisher
-        from core_app.neris.pack_compiler import NERISPackCompiler
         import asyncio
+
+        from core_app.neris.pack_compiler import NERISPackCompiler
+        from core_app.services.event_publisher import get_event_publisher
 
         publisher = get_event_publisher()
         tid = uuid.UUID(tenant_id) if tenant_id else uuid.uuid4()

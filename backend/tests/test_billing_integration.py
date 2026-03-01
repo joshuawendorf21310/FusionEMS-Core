@@ -19,7 +19,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -171,6 +170,7 @@ class TestStripeSignatureVerification:
 
     def test_invalid_signature_raises(self):
         import stripe
+
         from core_app.payments.stripe_service import StripeConfig, verify_webhook_signature
 
         body = self._make_event()
@@ -182,7 +182,11 @@ class TestStripeSignatureVerification:
             verify_webhook_signature(cfg=cfg, payload=body, sig_header=bad_sig_header)
 
     def test_missing_webhook_secret_raises(self):
-        from core_app.payments.stripe_service import StripeConfig, StripeNotConfigured, verify_webhook_signature
+        from core_app.payments.stripe_service import (
+            StripeConfig,
+            StripeNotConfigured,
+            verify_webhook_signature,
+        )
         cfg = StripeConfig(secret_key="sk_test_" + "x" * 24, webhook_secret=None)
         with pytest.raises(StripeNotConfigured):
             verify_webhook_signature(cfg=cfg, payload=b"{}", sig_header="t=1,v1=abc")

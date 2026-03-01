@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -20,8 +21,8 @@ class ClaimMatcher:
         decoded_text: str | None = None
 
         try:
-            import zxingcpp
             import numpy as np
+            import zxingcpp
             from PIL import Image as PILImage
             img = PILImage.open(_io.BytesIO(image_bytes)).convert("RGB")
             arr = np.array(img)
@@ -33,8 +34,8 @@ class ClaimMatcher:
 
         if decoded_text is None:
             try:
-                from pyzbar.pyzbar import decode as pyzbar_decode
                 import PIL.Image
+                from pyzbar.pyzbar import decode as pyzbar_decode
                 img = PIL.Image.open(_io.BytesIO(image_bytes))
                 results = pyzbar_decode(img)
                 if results:
@@ -232,8 +233,8 @@ class ClaimMatcher:
         attachment_type: str,
         actor: str = "auto",
     ) -> dict:
-        now = datetime.now(timezone.utc).isoformat()
-        try:
+        now = datetime.now(UTC).isoformat()
+        with contextlib.suppress(Exception):
             self.db.execute(
                 text(
                     "INSERT INTO claim_documents "
@@ -251,8 +252,6 @@ class ClaimMatcher:
                     "tid": self.tenant_id,
                 },
             )
-        except Exception:
-            pass
 
         self.db.execute(
             text(
@@ -263,7 +262,7 @@ class ClaimMatcher:
             {"claim_id": claim_id, "now": now, "fax_id": fax_id},
         )
 
-        try:
+        with contextlib.suppress(Exception):
             self.db.execute(
                 text(
                     "INSERT INTO document_audit_events "
@@ -278,8 +277,6 @@ class ClaimMatcher:
                     "meta": json.dumps({"claim_id": claim_id, "attachment_type": attachment_type}),
                 },
             )
-        except Exception:
-            pass
 
         self.db.commit()
         return {

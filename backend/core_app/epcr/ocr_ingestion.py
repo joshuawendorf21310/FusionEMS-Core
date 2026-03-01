@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -49,7 +49,7 @@ class EPCROcrService:
             "review_items": review_items,
             "review_count": len([v for v in parsed_fields.values() if v["value"]]),
             "status": "completed",
-            "processed_at": datetime.now(timezone.utc).isoformat(),
+            "processed_at": datetime.now(UTC).isoformat(),
         }
 
     def _parse_facesheet_fields(self, text: str) -> dict[str, Any]:
@@ -137,7 +137,7 @@ class EPCROcrService:
             "review_count": len([v for v in parsed_fields.values() if v]),
             "status": "completed",
             "paperwork_type": "transport",
-            "processed_at": datetime.now(timezone.utc).isoformat(),
+            "processed_at": datetime.now(UTC).isoformat(),
         }
 
     def _parse_transport_fields(self, text: str) -> dict[str, Any]:
@@ -186,7 +186,7 @@ class EPCROcrService:
         lines: list[str] = []
         next_token: str | None = None
 
-        for attempt in range(_TEXTRACT_MAX_POLLS):
+        for _attempt in range(_TEXTRACT_MAX_POLLS):
             time.sleep(_TEXTRACT_POLL_INTERVAL_S)
             try:
                 kwargs: dict[str, Any] = {"JobId": job_id}

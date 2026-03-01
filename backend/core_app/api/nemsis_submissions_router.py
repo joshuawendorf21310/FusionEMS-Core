@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import base64 as _b64
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -45,9 +45,9 @@ from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.core.config import get_settings
+from core_app.epcr.chart_model import ChartStatus
 from core_app.epcr.jcs_hash import jcs_sha256
 from core_app.epcr.nemsis_exporter import NEMSISExporter
-from core_app.epcr.chart_model import ChartStatus
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -117,7 +117,7 @@ async def create_submission(
     sha256_hex = jcs_sha256({"xml_bytes_b64": xml_bytes.hex(), "chart_id": chart_id})
 
     submission_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     # Store XML to S3
     xml_s3_key = f"nemsis-submissions/{current.tenant_id}/{chart_id}/{submission_id}/payload.xml"
@@ -274,7 +274,7 @@ async def accept_submission(
                 locked_data = {
                     **chart_rec.get("data", {}),
                     "chart_status": ChartStatus.LOCKED.value,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(UTC).isoformat(),
                 }
                 lock_result = await svc.update(
                     table="epcr_charts",
@@ -360,7 +360,7 @@ async def retry_submission(
     sha256_hex = jcs_sha256({"xml_bytes_b64": xml_bytes.hex(), "chart_id": chart_id})
 
     new_submission_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     xml_s3_key = f"nemsis-submissions/{current.tenant_id}/{chart_id}/{new_submission_id}/payload.xml"
     try:
@@ -452,7 +452,7 @@ async def _advance_status(
             detail=f"Cannot transition from '{current_status}' to '{to_status}'",
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     now_iso = now.isoformat()
     chart_id = rec_data.get("chart_id", "")
 

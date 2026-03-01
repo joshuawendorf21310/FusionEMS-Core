@@ -4,9 +4,8 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-
 
 from core_app.ai.service import AiService
 from core_app.support.chat_service import ESCALATION_TRIGGERS
@@ -56,13 +55,12 @@ def process_ai_reply(message: dict[str, Any]) -> None:
         if database_url_idem:
             try:
                 import psycopg as _psycopg_idem
-                with _psycopg_idem.connect(database_url_idem) as _conn_idem:
-                    with _conn_idem.cursor() as _cur_idem:
-                        _cur_idem.execute(
-                            "SELECT id FROM support_messages WHERE data->>'in_reply_to_message_id' = %s AND data->>'sender_role' = 'ai' LIMIT 1",
-                            (last_msg_id,),
-                        )
-                        _existing_idem = _cur_idem.fetchone()
+                with _psycopg_idem.connect(database_url_idem) as _conn_idem, _conn_idem.cursor() as _cur_idem:
+                    _cur_idem.execute(
+                        "SELECT id FROM support_messages WHERE data->>'in_reply_to_message_id' = %s AND data->>'sender_role' = 'ai' LIMIT 1",
+                        (last_msg_id,),
+                    )
+                    _existing_idem = _cur_idem.fetchone()
                 if _existing_idem:
                     logger.info("support_ai_reply_skip_already_replied thread_id=%s correlation_id=%s", thread_id, correlation_id)
                     return {"skipped": True, "reason": "already_replied"}
@@ -135,7 +133,7 @@ def process_ai_reply(message: dict[str, Any]) -> None:
                                 "thread_id": thread_id,
                                 "tenant_id": tenant_id,
                                 "trigger": triggered_by,
-                                "escalated_at": datetime.now(timezone.utc).isoformat(),
+                                "escalated_at": datetime.now(UTC).isoformat(),
                             }),
                         ),
                     )
@@ -146,7 +144,7 @@ def process_ai_reply(message: dict[str, Any]) -> None:
                 "sender_id": "ai",
                 "content": response_text,
                 "attachments": [],
-                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "sent_at": datetime.now(UTC).isoformat(),
                 "read_by_founder": False,
                 "ai_meta": meta,
             }

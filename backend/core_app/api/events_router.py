@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import json as _json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
 from core_app.schemas.auth import CurrentUser
@@ -144,7 +145,7 @@ async def mark_event_read(
                 {
                     "event_id": event_id,
                     "user_id": str(current.user_id),
-                    "read_at": datetime.now(timezone.utc).isoformat(),
+                    "read_at": datetime.now(UTC).isoformat(),
                 },
                 separators=(",", ":"),
             ),

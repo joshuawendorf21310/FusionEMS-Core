@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -55,7 +55,7 @@ class FaultDetector:
                     "source": "obd_fault_detector",
                     "acknowledged": False,
                     "resolved": False,
-                    "detected_at": datetime.now(timezone.utc).isoformat(),
+                    "detected_at": datetime.now(UTC).isoformat(),
                 })
 
         fault_codes = obd_payload.get("fault_codes", [])
@@ -69,7 +69,7 @@ class FaultDetector:
                 "source": "obd_dtc",
                 "acknowledged": False,
                 "resolved": False,
-                "detected_at": datetime.now(timezone.utc).isoformat(),
+                "detected_at": datetime.now(UTC).isoformat(),
             })
 
         rpm = obd_payload.get("engine_rpm")
@@ -86,7 +86,7 @@ class FaultDetector:
                         "source": "idle_detector",
                         "acknowledged": False,
                         "resolved": False,
-                        "detected_at": datetime.now(timezone.utc).isoformat(),
+                        "detected_at": datetime.now(UTC).isoformat(),
                     })
             except (TypeError, ValueError):
                 pass

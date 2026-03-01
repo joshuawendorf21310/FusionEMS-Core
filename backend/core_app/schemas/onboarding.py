@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 
+
 class OnboardingStartRequest(BaseModel):
     email: EmailStr
     agency_name: str = Field(min_length=2, max_length=255)

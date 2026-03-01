@@ -4,13 +4,13 @@ import hashlib
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.core.config import get_settings
-from core_app.documents.s3_storage import put_bytes, default_docs_bucket
-from core_app.fax.telnyx_service import TelnyxConfig, download_media, TelnyxNotConfigured
+from core_app.documents.s3_storage import default_docs_bucket, put_bytes
+from core_app.fax.telnyx_service import TelnyxConfig, TelnyxNotConfigured, download_media
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher

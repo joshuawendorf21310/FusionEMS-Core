@@ -6,11 +6,17 @@ from sqlalchemy import CheckConstraint, Date, Enum, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core_app.db.base import Base, SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin, VersionMixin
+from core_app.db.base import (
+    Base,
+    SoftDeleteMixin,
+    TimestampMixin,
+    UUIDPrimaryKeyMixin,
+    VersionMixin,
+)
 from core_app.models.tenant import TenantScopedMixin
 
 
-class PatientGender(str, enum.Enum):
+class PatientGender(enum.StrEnum):
     FEMALE = "female"
     MALE = "male"
     NON_BINARY = "non_binary"

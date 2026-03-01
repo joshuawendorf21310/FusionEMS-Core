@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -27,6 +27,7 @@ def _get_redis():
     if _redis_client is None:
         try:
             import redis as redis_lib
+
             from core_app.core.config import get_settings
             settings = get_settings()
             _redis_client = redis_lib.from_url(

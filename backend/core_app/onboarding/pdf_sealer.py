@@ -1,9 +1,11 @@
 from __future__ import annotations
+
+import contextlib
 import hashlib
 import io
 
 try:
-    from pyhanko.sign import signers, fields  # noqa: F401
+    from pyhanko.sign import fields, signers  # noqa: F401
     from pyhanko.sign.fields import SigFieldSpec  # noqa: F401
     from pyhanko_certvalidator import CertificateValidator  # noqa: F401
     PYHANKO_AVAILABLE = True
@@ -11,21 +13,28 @@ except ImportError:
     PYHANKO_AVAILABLE = False
 
 try:
-    from reportlab.lib.pagesizes import letter  # noqa: F401
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # noqa: F401
-    from reportlab.lib.units import inch  # noqa: F401
     from reportlab.lib import colors  # noqa: F401
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle  # noqa: F401
+    from reportlab.lib.pagesizes import letter  # noqa: F401
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet  # noqa: F401
+    from reportlab.lib.units import inch  # noqa: F401
+    from reportlab.platypus import (  # noqa: F401
+        HRFlowable,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
 try:
-    from pypdf import PdfWriter, PdfReader  # noqa: F401
+    from pypdf import PdfReader, PdfWriter  # noqa: F401
     PYPDF_AVAILABLE = True
 except ImportError:
     try:
-        from PyPDF2 import PdfWriter, PdfReader
+        from PyPDF2 import PdfReader, PdfWriter
         PYPDF_AVAILABLE = True
     except ImportError:
         PYPDF_AVAILABLE = False
@@ -74,11 +83,12 @@ class PDFSealer:
         }
 
     def _attempt_pyhanko_seal(self, pdf_bytes: bytes, signer_name: str, signer_email: str) -> bytes:
-        import tempfile
         import os
+        import tempfile
+
         from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
         from pyhanko.sign import signers as ph_signers
-        from pyhanko.sign.fields import append_signature_field, SigFieldSpec
+        from pyhanko.sign.fields import SigFieldSpec, append_signature_field
 
         with tempfile.NamedTemporaryFile(suffix=".p12", delete=False) as tmp_p12:
             p12_path = tmp_p12.name
@@ -97,10 +107,8 @@ class PDFSealer:
             )
             return out_buf.getvalue()
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 os.unlink(p12_path)
-            except Exception:
-                pass
 
     def _append_audit_page_reportlab(self, original_bytes: bytes, audit_data: dict) -> bytes:
         audit_buf = io.BytesIO()
@@ -213,13 +221,14 @@ class PDFSealer:
 
 def _generate_self_signed_p12(output_path: str, common_name: str, email: str) -> None:
     try:
+        import datetime as dt
+
         from cryptography import x509
-        from cryptography.x509.oid import NameOID
+        from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import rsa
-        from cryptography.hazmat.backends import default_backend
-        import datetime as dt
         from cryptography.hazmat.primitives.serialization import pkcs12
+        from cryptography.x509.oid import NameOID
 
         key = rsa.generate_private_key(
             public_exponent=65537,

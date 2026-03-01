@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Any
 from xml.etree.ElementTree import Element, SubElement, tostring
-import xml.etree.ElementTree as ET
 
 NEMSIS_NS = "http://www.nemsis.org"
 NEMSIS_VERSION = "3.5.0.191130CP1"

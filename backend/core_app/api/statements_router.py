@@ -3,19 +3,31 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
-from core_app.billing.statement_pdf import StatementContext, generate_billing_statement_pdf, TEMPLATE_VERSION
+from core_app.billing.statement_pdf import (
+    TEMPLATE_VERSION,
+    StatementContext,
+    generate_billing_statement_pdf,
+)
 from core_app.core.config import get_settings
 from core_app.fax.telnyx_service import TelnyxConfig, send_sms
-from core_app.integrations.lob_service import send_statement_letter, _get_lob_config, LobNotConfigured
-from core_app.payments.stripe_service import StripeConfig, StripeNotConfigured, create_connect_checkout_session
+from core_app.integrations.lob_service import (
+    LobNotConfigured,
+    _get_lob_config,
+    send_statement_letter,
+)
+from core_app.payments.stripe_service import (
+    StripeConfig,
+    StripeNotConfigured,
+    create_connect_checkout_session,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -40,11 +52,11 @@ class MailStatementRequest(BaseModel):
     service_lines: list[dict[str, Any]]
     amount_due_cents: int
     amount_paid_cents: int = 0
-    patient_account_ref: Optional[str] = None
+    patient_account_ref: str | None = None
 
 
 class PayStatementRequest(BaseModel):
-    patient_account_ref: Optional[str] = None
+    patient_account_ref: str | None = None
 
 
 class PaySmsRequest(BaseModel):
@@ -166,7 +178,7 @@ async def mail_statement(
             "template_version": TEMPLATE_VERSION,
             "lob_response": lob_resp,
             "status": "created",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         },
         correlation_id=correlation_id,
@@ -256,7 +268,7 @@ async def create_payment_session(
             "connected_account_id": connected_account_id,
             "amount_cents": amount_due_cents,
             "status": "pending",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         },
         correlation_id=correlation_id,

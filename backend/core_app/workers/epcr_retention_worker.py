@@ -31,8 +31,9 @@ Run via the main worker.py loop:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -73,10 +74,8 @@ def _apply_s3_lifecycle(bucket: str, prefix: str = "") -> None:
             ]
         }
         existing = {}
-        try:
+        with contextlib.suppress(s3.exceptions.ClientError):
             existing = s3.get_bucket_lifecycle_configuration(Bucket=bucket)
-        except s3.exceptions.ClientError:
-            pass
         existing_ids = {r["ID"] for r in existing.get("Rules", [])}
         if rule_id not in existing_ids:
             s3.put_bucket_lifecycle_configuration(
@@ -107,7 +106,7 @@ def apply_all_s3_lifecycle_policies() -> None:
 # ------------------------------------------------------------------ #
 
 def _cutoff(years: int = RETENTION_YEARS) -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=years * 365)
+    return datetime.now(UTC) - timedelta(days=years * 365)
 
 
 def _sweep_table(

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime
 from typing import Any
 from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement, tostring
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -124,10 +124,7 @@ def _format_nemsis_time(val: Any) -> str:
     if not val:
         return NV_NOT_RECORDED
     try:
-        if isinstance(val, str):
-            dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
-        else:
-            dt = val
+        dt = datetime.fromisoformat(val.replace("Z", "+00:00")) if isinstance(val, str) else val
         return dt.strftime("%Y-%m-%dT%H:%M:%S%z")
     except Exception:
         return NV_NOT_RECORDED

@@ -5,7 +5,6 @@ import io
 from typing import Any
 from xml.etree import ElementTree as ET
 
-
 VENDOR_SIGNATURES = {
     "imagetrend": ["PCRNumber", "UnitCallSign", "AgencyName", "IncidentNumber", "CADIncidentNumber"],
     "eso": ["Incident_Number", "Unit_Number", "Patient_Last_Name", "ESO_ID", "RunNumber"],

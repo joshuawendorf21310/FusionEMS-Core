@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.scheduling.ai_advisor import AISchedulingAdvisor
+from core_app.scheduling.engine import SchedulingEngine
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.scheduling.engine import SchedulingEngine
-from core_app.scheduling.ai_advisor import AISchedulingAdvisor
 
 router = APIRouter(prefix="/api/v1/scheduling", tags=['Scheduling'])
 
@@ -167,7 +167,7 @@ async def fatigue_report(
     from core_app.services.domination_service import DominationService
     svc = DominationService(db, get_event_publisher())
     assignments = svc.repo("crew_assignments").list(tenant_id=current.tenant_id, limit=1000)
-    now = _dt.datetime.now(tz=_dt.timezone.utc)
+    now = _dt.datetime.now(tz=_dt.UTC)
     crew_hours_7d: dict[str, float] = {}
     crew_hours_24h: dict[str, float] = {}
     for a in assignments:

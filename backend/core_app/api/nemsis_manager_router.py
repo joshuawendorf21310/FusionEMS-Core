@@ -3,14 +3,14 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
 
 router = APIRouter(prefix="/api/v1/nemsis-manager", tags=["NEMSIS 3.5.1 Dataset Manager"])
 
@@ -708,7 +708,7 @@ async def schema_cache_status(
         "version": NEMSIS_351_SCHEMA["version"],
         "element_count": len(NEMSIS_351_SCHEMA["elements"]),
         "cache_ttl_seconds": 3600,
-        "checksum": hashlib.md5(str(NEMSIS_351_SCHEMA).encode()).hexdigest(),
+        "checksum": hashlib.sha256(str(NEMSIS_351_SCHEMA).encode()).hexdigest(),
     }
 
 
@@ -825,9 +825,8 @@ async def timestamp_integrity(
         ("eTimes.11", "eTimes.13"),
     ]
     for a, b in ordered_keys:
-        if a in times and b in times:
-            if str(times[a]) > str(times[b]):
-                errors.append({"rule": f"{a} must be before {b}", "a": times[a], "b": times[b]})
+        if a in times and b in times and str(times[a]) > str(times[b]):
+            errors.append({"rule": f"{a} must be before {b}", "a": times[a], "b": times[b]})
     return {"valid": not errors, "timestamp_errors": errors}
 
 
@@ -944,9 +943,8 @@ async def response_time_validation(
     dispatch = payload.get("eTimes.01")
     on_scene = payload.get("eTimes.06")
     warnings = []
-    if dispatch and on_scene:
-        if str(on_scene) < str(dispatch):
-            return {"valid": False, "errors": ["Scene arrival before dispatch call"]}
+    if dispatch and on_scene and str(on_scene) < str(dispatch):
+        return {"valid": False, "errors": ["Scene arrival before dispatch call"]}
     return {"valid": True, "warnings": warnings, "dispatch": dispatch, "on_scene": on_scene}
 
 
