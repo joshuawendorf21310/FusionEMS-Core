@@ -85,13 +85,6 @@ Resources:
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
         ImageTagFrontend: !Ref ImageTagFrontend
         ImageTagBackend: !Ref ImageTagBackend
-        DbSecretArn: !GetAtt DataStack.Outputs.DbSecretArn
-        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
-        RedisPrimaryEndpoint: !GetAtt DataStack.Outputs.RedisPrimaryEndpoint
-        CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
-        CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
-
-        # ✅ FIX: compute.yml requires this parameter
         AcmCertificateArn: !Ref AcmCertificateArnUsEast1
 
   EdgeStack:

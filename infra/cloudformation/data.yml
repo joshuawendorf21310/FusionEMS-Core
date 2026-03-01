@@ -12,7 +12,6 @@ Parameters:
     Type: String
     Default: db.t4g.large
 
-  # ✅ FIX: Make username configurable and default to a non-reserved value
   DbMasterUsername:
     Type: String
     Default: fusionems_admin
@@ -86,7 +85,6 @@ Resources:
       Name: !Sub '${AppName}/${Env}/DB'
       KmsKeyId: !Ref DataKmsKey
       GenerateSecretString:
-        # ✅ FIX: username is no longer "fusion"
         SecretStringTemplate: !Sub '{"username":"${DbMasterUsername}","dbname":"${DbName}"}'
         GenerateStringKey: password
         PasswordLength: 40
@@ -100,6 +98,13 @@ Resources:
       GenerateSecretString:
         PasswordLength: 40
         ExcludePunctuation: true
+
+  AppSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AppName}/${Env}/AppSecrets'
+      KmsKeyId: !Ref DataKmsKey
+      SecretString: '{"stripe_secret_key":"REPLACE_ME","openai_api_key":"REPLACE_ME","telnyx_api_key":"REPLACE_ME","lob_api_key":"REPLACE_ME","jwt_secret_key":"REPLACE_ME"}'
 
 # ================= RDS =================
 
@@ -142,7 +147,6 @@ Resources:
       EnablePerformanceInsights: true
       PerformanceInsightsKMSKeyId: !Ref DataKmsKey
 
-      # Reads username/password/dbname from the secret
       MasterUsername: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:password}}'
       DBName: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:dbname}}'
@@ -199,4 +203,4 @@ Outputs:
     Value: !Ref RedisReplicationGroup
 
   AppSecretsArn:
-    Value: !Ref DbSecret
+    Value: !Ref AppSecrets
