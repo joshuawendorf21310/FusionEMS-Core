@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Compute Stack (ECS Fargate multi-container + ALB + ECR)
+Description: FusionEMS Quantum - Compute Stack (Production Safe ECS + ALB)
 
 Parameters:
   AppName:
@@ -29,23 +29,15 @@ Parameters:
   FrontendContainerPort:
     Type: Number
     Default: 3000
-  DbSecretArn:
-    Type: String
-  AppSecretsArn:
-    Type: String
-  RedisPrimaryEndpoint:
-    Type: String
-  CognitoUserPoolId:
-    Type: String
-  CognitoClientId:
-    Type: String
   AcmCertificateArn:
     Type: String
 
 Conditions:
-  IsProd: !Equals [!Ref Env, prod]
+  IsProd: !Equals [!Ref Env, 'prod']
 
 Resources:
+
+# ================= ECR =================
 
   BackendEcrRepository:
     Type: AWS::ECR::Repository
@@ -57,30 +49,14 @@ Resources:
     Properties:
       RepositoryName: !Sub '${AppName}-${Env}-frontend'
 
+# ================= ECS =================
+
   EcsCluster:
     Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: !Sub '${AppName}-${Env}-cluster'
-      ClusterSettings:
-        - Name: containerInsights
-          Value: enabled
-
-  BackendLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/${AppName}/${Env}/backend'
-      RetentionInDays: !If [IsProd, 90, 30]
-
-  FrontendLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/${AppName}/${Env}/frontend'
-      RetentionInDays: !If [IsProd, 90, 30]
 
   TaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${AppName}-${Env}-ecs-exec-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -91,56 +67,34 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
-  TaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${AppName}-${Env}-ecs-task-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
+# ================= ALB =================
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub '${AppName}-${Env}-alb'
       Subnets: !Split [',', !Ref PublicSubnets]
       SecurityGroups:
         - !Ref AlbSecurityGroupId
       Scheme: internet-facing
       Type: application
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: '300'
-        - Key: deletion_protection.enabled
-          Value: !If [IsProd, 'true', 'false']
 
   BackendTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub '${AppName}-${Env}-backend-tg'
       Port: !Ref BackendContainerPort
       Protocol: HTTP
       TargetType: ip
       VpcId: !Ref VpcId
       HealthCheckPath: /api/v1/health
-      Matcher:
-        HttpCode: '200-399'
 
   FrontendTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub '${AppName}-${Env}-frontend-tg'
       Port: !Ref FrontendContainerPort
       Protocol: HTTP
       TargetType: ip
       VpcId: !Ref VpcId
       HealthCheckPath: /healthz
-      Matcher:
-        HttpCode: '200-399'
 
   HttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -154,44 +108,36 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref FrontendTargetGroup
 
+# ================= BACKEND =================
+
   BackendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Sub '${AppName}-${Env}-backend'
       Cpu: '1024'
       Memory: '2048'
       NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
+      RequiresCompatibilities: [FARGATE]
       ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
-      TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: backend
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTagBackend}'
           PortMappings:
             - ContainerPort: !Ref BackendContainerPort
-          HealthCheck:
-            Command:
-              - CMD-SHELL
-              - !Sub 'curl -f http://localhost:${BackendContainerPort}/api/v1/health || exit 1'
-          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub '/${AppName}/${Env}/backend'
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
 
   BackendService:
     Type: AWS::ECS::Service
+    DependsOn: HttpsListener
     Properties:
-      ServiceName: !Sub '${AppName}-${Env}-backend'
       Cluster: !Ref EcsCluster
       DesiredCount: !Ref DesiredCount
       LaunchType: FARGATE
-      EnableExecuteCommand: true
-      PlatformVersion: 1.4.0
       TaskDefinition: !Ref BackendTaskDefinition
-      DeploymentConfiguration:
-        MinimumHealthyPercent: 50
-        MaximumPercent: 200
-        DeploymentCircuitBreaker:
-          Enable: true
-          Rollback: true
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
@@ -203,45 +149,46 @@ Resources:
           ContainerName: backend
           ContainerPort: !Ref BackendContainerPort
 
-  BackendScalingTarget:
-    Type: AWS::ApplicationAutoScaling::ScalableTarget
-    Properties:
-      MaxCapacity: 10
-      MinCapacity: 2
-      ResourceId: !Sub 'service/${EcsCluster}/${AppName}-${Env}-backend'
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
+# ================= FRONTEND =================
 
-  BackendCpuScalingPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  FrontendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
     Properties:
-      PolicyName: !Sub '${AppName}-${Env}-backend-cpu-scaling'
-      PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref BackendScalingTarget
-      TargetTrackingScalingPolicyConfiguration:
-        TargetValue: 70.0
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ECSServiceAverageCPUUtilization
+      Cpu: '512'
+      Memory: '1024'
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: frontend
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-frontend:${ImageTagFrontend}'
+          PortMappings:
+            - ContainerPort: !Ref FrontendContainerPort
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub '/${AppName}/${Env}/frontend'
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
 
-  FrontendScalingTarget:
-    Type: AWS::ApplicationAutoScaling::ScalableTarget
+  FrontendService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpsListener
     Properties:
-      MaxCapacity: 10
-      MinCapacity: 2
-      ResourceId: !Sub 'service/${EcsCluster}/${AppName}-${Env}-frontend'
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
-
-  FrontendCpuScalingPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
-    Properties:
-      PolicyName: !Sub '${AppName}-${Env}-frontend-cpu-scaling'
-      PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref FrontendScalingTarget
-      TargetTrackingScalingPolicyConfiguration:
-        TargetValue: 70.0
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ECSServiceAverageCPUUtilization
+      Cluster: !Ref EcsCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref FrontendTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref EcsServiceSecurityGroupId
+          Subnets: !Split [',', !Ref PrivateSubnets]
+      LoadBalancers:
+        - TargetGroupArn: !Ref FrontendTargetGroup
+          ContainerName: frontend
+          ContainerPort: !Ref FrontendContainerPort
 
 Outputs:
   AlbDnsName:
@@ -257,7 +204,7 @@ Outputs:
     Value: !Ref EcsCluster
 
   BackendServiceName:
-    Value: !GetAtt BackendService.Name
+    Value: !Ref BackendService
 
   FrontendServiceName:
-    Value: !Sub '${AppName}-${Env}-frontend'
+    Value: !Ref FrontendService
