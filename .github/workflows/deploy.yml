@@ -113,7 +113,7 @@ jobs:
             NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
             ImageTagFrontend="${GITHUB_SHA}"
             ImageTagBackend="${GITHUB_SHA}"
-            # Bootstrap with 0 tasks so ECR repositories exist before images are pushed.
+            # Bootstrap with 0 tasks to avoid resource allocation while ECR repositories are created.
             DesiredCount=0
           )
 
