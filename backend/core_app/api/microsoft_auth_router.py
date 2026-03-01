@@ -5,6 +5,7 @@ Endpoints:
   GET  /auth/microsoft/callback — Exchange code for tokens, issue JWT, redirect to frontend
   GET  /auth/microsoft/logout   — Redirect to Entra logout, then back to frontend login page
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -60,7 +61,9 @@ def _verify_state(state: str) -> bool:
     if abs(time.time() - ts) > _STATE_TTL_SECONDS:
         return False
     expected_payload = f"{nonce}|{ts_str}"
-    expected_sig = hmac.new(s.jwt_secret_key.encode(), expected_payload.encode(), hashlib.sha256).hexdigest()
+    expected_sig = hmac.new(
+        s.jwt_secret_key.encode(), expected_payload.encode(), hashlib.sha256
+    ).hexdigest()
     return hmac.compare_digest(sig, expected_sig)
 
 
@@ -92,14 +95,16 @@ def microsoft_login() -> RedirectResponse:
 
 def _exchange_code(code: str) -> dict[str, Any]:
     s = get_settings()
-    body = urllib.parse.urlencode({
-        "client_id": s.graph_client_id,
-        "client_secret": s.graph_client_secret,
-        "code": code,
-        "redirect_uri": s.microsoft_redirect_uri,
-        "grant_type": "authorization_code",
-        "scope": _SCOPES,
-    }).encode("utf-8")
+    body = urllib.parse.urlencode(
+        {
+            "client_id": s.graph_client_id,
+            "client_secret": s.graph_client_secret,
+            "code": code,
+            "redirect_uri": s.microsoft_redirect_uri,
+            "grant_type": "authorization_code",
+            "scope": _SCOPES,
+        }
+    ).encode("utf-8")
     req = urllib.request.Request(
         _TOKEN_URL.format(tenant_id=s.graph_tenant_id),
         data=body,
@@ -165,20 +170,28 @@ def microsoft_callback(
         )
 
     if not code:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing authorization code")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing authorization code"
+        )
 
     if not _verify_state(state):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired state parameter")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired state parameter"
+        )
 
     token_data = _exchange_code(code)
     ms_access_token: str = token_data.get("access_token", "")
     if not ms_access_token:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="No access_token in Entra response")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail="No access_token in Entra response"
+        )
 
     userinfo = _fetch_userinfo(ms_access_token)
     email: str = (userinfo.get("mail") or userinfo.get("userPrincipalName") or "").lower().strip()
     if not email:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No email in Microsoft profile")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No email in Microsoft profile"
+        )
 
     user_repo = UserRepository(db)
     user = user_repo.get_by_email(email)
@@ -194,6 +207,7 @@ def microsoft_callback(
 
     redirect_url = f"{s.microsoft_post_login_url}?token={jwt_token}"
     return RedirectResponse(url=redirect_url, status_code=302)
+
 
 @router.get("/logout")
 def microsoft_logout() -> RedirectResponse:

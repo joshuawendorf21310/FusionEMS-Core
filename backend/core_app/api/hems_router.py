@@ -80,9 +80,7 @@ async def submit_acceptance(
             status_code=422,
             detail={"message": "Acceptance checklist incomplete", "missing_items": missing},
         )
-    risk_score = sum(
-        f["weight"] for f in RISK_FACTORS if f["id"] in risk_flags
-    )
+    risk_score = sum(f["weight"] for f in RISK_FACTORS if f["id"] in risk_flags)
     risk_level = "low" if risk_score < 20 else "medium" if risk_score < 45 else "high"
     correlation_id = getattr(request.state, "correlation_id", None)
     svc = _svc(db)
@@ -173,7 +171,9 @@ async def set_aircraft_readiness(
     _check(current)
     state = payload.get("state", "ready")
     if state not in AIRCRAFT_READINESS_STATES:
-        raise HTTPException(status_code=422, detail=f"state must be one of {sorted(AIRCRAFT_READINESS_STATES)}")
+        raise HTTPException(
+            status_code=422, detail=f"state must be one of {sorted(AIRCRAFT_READINESS_STATES)}"
+        )
     svc = _svc(db)
     correlation_id = getattr(request.state, "correlation_id", None)
     return await svc.create(
@@ -255,9 +255,11 @@ async def safety_timeline(
     _check(current)
     svc = _svc(db)
     mid = str(mission_id)
+
     def fetch(table: str) -> list[dict]:
         rows = svc.repo(table).list(tenant_id=current.tenant_id, limit=50)
         return [r for r in rows if (r.get("data") or {}).get("mission_id") == mid]
+
     return {
         "mission_id": mid,
         "acceptance": fetch("hems_acceptance_records"),
@@ -453,7 +455,9 @@ async def mission_stream(
                     row_id = str(row.get("id", ""))
                     if last_event_ids.get(table) != row_id:
                         last_event_ids[table] = row_id
-                        event_type = (row.get("data") or {}).get("event_type", table.replace("_", "-"))
+                        event_type = (row.get("data") or {}).get(
+                            "event_type", table.replace("_", "-")
+                        )
                         yield f"event: {event_type}\ndata: {json.dumps(row)}\n\n"
 
             await asyncio.sleep(5)
@@ -484,7 +488,12 @@ async def fetch_live_weather(
         raise HTTPException(status_code=422, detail="icao must be 3-5 characters")
 
     base = "https://aviationweather.gov/api/data"
-    results: dict[str, Any] = {"icao": icao, "metar": None, "taf": None, "source": "aviationweather.gov"}
+    results: dict[str, Any] = {
+        "icao": icao,
+        "metar": None,
+        "taf": None,
+        "source": "aviationweather.gov",
+    }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:

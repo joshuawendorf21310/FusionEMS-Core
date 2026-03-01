@@ -44,7 +44,9 @@ def _safe(fn, fallback=None):
         return fallback
 
 
-def get_cw_metric_avg(namespace: str, metric_name: str, dimensions: list[dict], minutes: int = 5) -> float | None:
+def get_cw_metric_avg(
+    namespace: str, metric_name: str, dimensions: list[dict], minutes: int = 5
+) -> float | None:
     def _call():
         cw = _cw_client()
         end = datetime.now(UTC)
@@ -63,6 +65,7 @@ def get_cw_metric_avg(namespace: str, metric_name: str, dimensions: list[dict], 
             return None
         latest = max(points, key=lambda p: p["Timestamp"])
         return round(latest["Average"], 2)
+
     return _safe(_call)
 
 
@@ -82,13 +85,23 @@ def get_ssl_expiration(domains: list[str]) -> list[dict[str, Any]]:
                 not_after = cert.get("NotAfter")
                 if not_after:
                     days_left = (not_after - datetime.now(UTC)).days
-                    results.append({"domain": domain, "expires_in_days": days_left, "status": "valid" if days_left > 30 else "expiring"})
+                    results.append(
+                        {
+                            "domain": domain,
+                            "expires_in_days": days_left,
+                            "status": "valid" if days_left > 30 else "expiring",
+                        }
+                    )
                 else:
                     results.append({"domain": domain, "expires_in_days": None, "status": "unknown"})
             else:
                 results.append({"domain": domain, "expires_in_days": None, "status": "not_found"})
         return results
-    return _safe(_call, fallback=[{"domain": d, "expires_in_days": None, "status": "unavailable"} for d in domains])
+
+    return _safe(
+        _call,
+        fallback=[{"domain": d, "expires_in_days": None, "status": "unavailable"} for d in domains],
+    )
 
 
 def get_rds_backup_status(db_instance_id: str) -> dict[str, Any]:
@@ -103,7 +116,10 @@ def get_rds_backup_status(db_instance_id: str) -> dict[str, Any]:
             "last_backup": latest.isoformat() if latest else None,
             "retention_days": retention,
         }
-    return _safe(_call, fallback={"status": "unavailable", "last_backup": None, "retention_days": 0})
+
+    return _safe(
+        _call, fallback={"status": "unavailable", "last_backup": None, "retention_days": 0}
+    )
 
 
 def get_cost_mtd() -> dict[str, Any]:
@@ -122,6 +138,7 @@ def get_cost_mtd() -> dict[str, Any]:
             amount = float(results[0]["Total"]["UnblendedCost"]["Amount"])
             return {"estimated_spend_usd": round(amount, 2)}
         return {"estimated_spend_usd": 0}
+
     return _safe(_call, fallback={"estimated_spend_usd": None})
 
 
@@ -135,12 +152,18 @@ def get_secret_metadata(secret_id: str) -> dict[str, Any] | None:
             "last_changed": last_changed.isoformat() if last_changed else None,
             "last_rotated": last_rotated.isoformat() if last_rotated else None,
         }
+
     return _safe(_call)
 
 
 def get_db_connections(db_instance_id: str) -> dict[str, Any]:
     val = get_cw_metric_avg(
-        "AWS/RDS", "DatabaseConnections",
+        "AWS/RDS",
+        "DatabaseConnections",
         [{"Name": "DBInstanceIdentifier", "Value": db_instance_id}],
     )
-    return {"active_connections": val if val is not None else 0, "max_connections": 500, "pool_utilization_pct": round((val or 0) / 500 * 100, 1)}
+    return {
+        "active_connections": val if val is not None else 0,
+        "max_connections": 500,
+        "pool_utilization_pct": round((val or 0) / 500 * 100, 1),
+    }

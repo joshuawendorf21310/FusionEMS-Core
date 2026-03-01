@@ -35,9 +35,13 @@ def allowed_transition_targets(from_status: IncidentStatus) -> set[IncidentStatu
     return ALLOWED_INCIDENT_TRANSITIONS.get(from_status, set())
 
 
-class Incident(Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
+class Incident(
+    Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin
+):
     __tablename__ = "incidents"
-    __table_args__ = (UniqueConstraint("tenant_id", "incident_number", name="uq_incidents_tenant_number"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "incident_number", name="uq_incidents_tenant_number"),
+    )
 
     incident_number: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     dispatch_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

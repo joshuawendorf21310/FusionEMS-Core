@@ -111,7 +111,9 @@ async def update_layout(
     if rec is None:
         raise HTTPException(status_code=404, detail="Layout not found")
 
-    hidden_fields: list[str] = patch.get("hidden_fields", rec.get("data", {}).get("hidden_fields", []))
+    hidden_fields: list[str] = patch.get(
+        "hidden_fields", rec.get("data", {}).get("hidden_fields", [])
+    )
     for field in hidden_fields:
         if field in _NEMSIS_REQUIRED_PATHS:
             raise HTTPException(

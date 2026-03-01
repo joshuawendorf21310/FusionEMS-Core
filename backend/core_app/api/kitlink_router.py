@@ -23,37 +23,92 @@ _STARTER_TEMPLATES: dict[str, dict] = {
             {
                 "label": "Schedule II",
                 "items": [
-                    {"name": "Morphine Sulfate 10mg/mL", "controlled_schedule": "II", "unit": "vial", "par_qty": 4},
-                    {"name": "Fentanyl 100mcg/2mL", "controlled_schedule": "II", "unit": "vial", "par_qty": 4},
-                    {"name": "Ketamine 500mg/10mL", "controlled_schedule": "II", "unit": "vial", "par_qty": 2},
+                    {
+                        "name": "Morphine Sulfate 10mg/mL",
+                        "controlled_schedule": "II",
+                        "unit": "vial",
+                        "par_qty": 4,
+                    },
+                    {
+                        "name": "Fentanyl 100mcg/2mL",
+                        "controlled_schedule": "II",
+                        "unit": "vial",
+                        "par_qty": 4,
+                    },
+                    {
+                        "name": "Ketamine 500mg/10mL",
+                        "controlled_schedule": "II",
+                        "unit": "vial",
+                        "par_qty": 2,
+                    },
                 ],
             },
             {
                 "label": "Schedule III–V",
                 "items": [
-                    {"name": "Midazolam 5mg/mL", "controlled_schedule": "III", "unit": "vial", "par_qty": 4},
-                    {"name": "Diazepam 5mg/mL", "controlled_schedule": "IV", "unit": "vial", "par_qty": 2},
-                    {"name": "Lorazepam 2mg/mL", "controlled_schedule": "IV", "unit": "vial", "par_qty": 2},
+                    {
+                        "name": "Midazolam 5mg/mL",
+                        "controlled_schedule": "III",
+                        "unit": "vial",
+                        "par_qty": 4,
+                    },
+                    {
+                        "name": "Diazepam 5mg/mL",
+                        "controlled_schedule": "IV",
+                        "unit": "vial",
+                        "par_qty": 2,
+                    },
+                    {
+                        "name": "Lorazepam 2mg/mL",
+                        "controlled_schedule": "IV",
+                        "unit": "vial",
+                        "par_qty": 2,
+                    },
                 ],
             },
             {
                 "label": "Naloxone / Rescue",
                 "items": [
-                    {"name": "Naloxone 2mg/2mL", "controlled_schedule": None, "unit": "vial", "par_qty": 6},
-                    {"name": "Naloxone Intranasal 4mg", "controlled_schedule": None, "unit": "device", "par_qty": 2},
+                    {
+                        "name": "Naloxone 2mg/2mL",
+                        "controlled_schedule": None,
+                        "unit": "vial",
+                        "par_qty": 6,
+                    },
+                    {
+                        "name": "Naloxone Intranasal 4mg",
+                        "controlled_schedule": None,
+                        "unit": "device",
+                        "par_qty": 2,
+                    },
                 ],
             },
             {
                 "label": "Supplies",
                 "items": [
-                    {"name": "Waste Bag (biohazard)", "controlled_schedule": None, "unit": "each", "par_qty": 10},
-                    {"name": "Witness Form", "controlled_schedule": None, "unit": "form", "par_qty": 5},
+                    {
+                        "name": "Waste Bag (biohazard)",
+                        "controlled_schedule": None,
+                        "unit": "each",
+                        "par_qty": 10,
+                    },
+                    {
+                        "name": "Witness Form",
+                        "controlled_schedule": None,
+                        "unit": "form",
+                        "par_qty": 5,
+                    },
                 ],
             },
             {
                 "label": "Seals",
                 "items": [
-                    {"name": "Numbered Security Seal", "controlled_schedule": None, "unit": "each", "par_qty": 20},
+                    {
+                        "name": "Numbered Security Seal",
+                        "controlled_schedule": None,
+                        "unit": "each",
+                        "par_qty": 20,
+                    },
                 ],
             },
         ],
@@ -197,8 +252,11 @@ def _tid(tenant_id: str | None = Query(None)) -> uuid.UUID:
 # Inventory Items
 # ---------------------------------------------------------------------------
 
+
 @router.post("/items")
-def create_item(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def create_item(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     item = repo.create("inventory_items", tid, payload)
@@ -217,8 +275,11 @@ def list_items(db: Session = Depends(get_db), tenant_id: str = Query(...)):
 # Formulary
 # ---------------------------------------------------------------------------
 
+
 @router.post("/formulary")
-def create_formulary(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def create_formulary(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     row = repo.create("formulary_items", tid, payload)
@@ -237,6 +298,7 @@ def list_formulary(db: Session = Depends(get_db), tenant_id: str = Query(...)):
 # Kit Templates
 # ---------------------------------------------------------------------------
 
+
 @router.post("/kits")
 def create_kit(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
@@ -254,7 +316,9 @@ def list_kits(db: Session = Depends(get_db), tenant_id: str = Query(...)):
 
 
 @router.post("/kits/{kit_id}/compartments")
-def add_compartment(kit_id: str, payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def add_compartment(
+    kit_id: str, payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     payload["kit_template_id"] = kit_id
@@ -278,7 +342,11 @@ def clone_starter_kit(key: str, db: Session = Depends(get_db), tenant_id: str = 
         comp_row = repo.create("kit_compartments", tid, {**comp, "kit_template_id": kit_id})
         comp_id = str(comp_row["id"])
         for item in items:
-            repo.create("compartment_items", tid, {**item, "compartment_id": comp_id, "kit_template_id": kit_id})
+            repo.create(
+                "compartment_items",
+                tid,
+                {**item, "compartment_id": comp_id, "kit_template_id": kit_id},
+            )
         comp_ids.append(comp_id)
     return {"kit_id": kit_id, "compartment_count": len(comp_ids), "source_key": key}
 
@@ -287,8 +355,11 @@ def clone_starter_kit(key: str, db: Session = Depends(get_db), tenant_id: str = 
 # Unit Layouts
 # ---------------------------------------------------------------------------
 
+
 @router.post("/layouts")
-def create_layout(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def create_layout(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     row = repo.create("unit_layouts", tid, {**payload, "status": "draft"})
@@ -307,7 +378,12 @@ def list_layouts(db: Session = Depends(get_db), tenant_id: str = Query(...)):
 def publish_layout(layout_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    row = repo.update("unit_layouts", tid, uuid.UUID(layout_id), {"status": "active", "published_at": datetime.now(UTC).isoformat()})
+    row = repo.update(
+        "unit_layouts",
+        tid,
+        uuid.UUID(layout_id),
+        {"status": "active", "published_at": datetime.now(UTC).isoformat()},
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Layout not found")
     return {"id": layout_id, "status": "active"}
@@ -317,23 +393,32 @@ def publish_layout(layout_id: str, db: Session = Depends(get_db), tenant_id: str
 # AR Markers
 # ---------------------------------------------------------------------------
 
+
 @router.post("/ar/markers/generate")
-def generate_marker(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def generate_marker(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     marker_code = f"KL-{str(uuid.uuid4())[:8].upper()}"
-    row = repo.create("ar_markers", tid, {
-        **payload,
-        "marker_code": marker_code,
-        "status": "pending_print",
-        "format": payload.get("format", "qr"),
-        "generated_at": datetime.now(UTC).isoformat(),
-    })
+    row = repo.create(
+        "ar_markers",
+        tid,
+        {
+            **payload,
+            "marker_code": marker_code,
+            "status": "pending_print",
+            "format": payload.get("format", "qr"),
+            "generated_at": datetime.now(UTC).isoformat(),
+        },
+    )
     return {"id": str(row["id"]), "marker_code": marker_code, "status": "pending_print"}
 
 
 @router.get("/ar/markers/sheet.pdf")
-def get_marker_sheet(sheet_id: str = Query(...), db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def get_marker_sheet(
+    sheet_id: str = Query(...), db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     rows = repo.list("ar_marker_sheets", tid)
@@ -341,14 +426,23 @@ def get_marker_sheet(sheet_id: str = Query(...), db: Session = Depends(get_db), 
     if not sheet:
         raise HTTPException(status_code=404, detail="Sheet not found")
     s3_key = sheet["data"].get("s3_key")
-    return {"sheet_id": sheet_id, "s3_key": s3_key, "download_url": f"https://s3.amazonaws.com/{s3_key}"}
+    return {
+        "sheet_id": sheet_id,
+        "s3_key": s3_key,
+        "download_url": f"https://s3.amazonaws.com/{s3_key}",
+    }
 
 
 @router.post("/ar/markers/{marker_id}/mark-printed")
 def mark_printed(marker_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    row = repo.update("ar_markers", tid, uuid.UUID(marker_id), {"status": "printed", "printed_at": datetime.now(UTC).isoformat()})
+    row = repo.update(
+        "ar_markers",
+        tid,
+        uuid.UUID(marker_id),
+        {"status": "printed", "printed_at": datetime.now(UTC).isoformat()},
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Marker not found")
     return {"id": marker_id, "status": "printed"}
@@ -358,7 +452,12 @@ def mark_printed(marker_id: str, db: Session = Depends(get_db), tenant_id: str =
 def activate_marker(marker_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    row = repo.update("ar_markers", tid, uuid.UUID(marker_id), {"status": "active", "activated_at": datetime.now(UTC).isoformat()})
+    row = repo.update(
+        "ar_markers",
+        tid,
+        uuid.UUID(marker_id),
+        {"status": "active", "activated_at": datetime.now(UTC).isoformat()},
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Marker not found")
     return {"id": marker_id, "status": "active"}
@@ -395,8 +494,11 @@ def resolve_marker(marker_code: str, db: Session = Depends(get_db), tenant_id: s
 # Shift Checks
 # ---------------------------------------------------------------------------
 
+
 @router.post("/checks/shift-start")
-def shift_start_check(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def shift_start_check(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     seal_code = payload.get("seal_code")
@@ -409,47 +511,69 @@ def shift_start_check(payload: dict[str, Any], db: Session = Depends(get_db), te
         expected = count_entry.get("expected_qty", 0)
         actual = count_entry.get("actual_qty", 0)
         if expected != actual:
-            disc = repo.create("narc_discrepancies", tid, {
-                "item_name": count_entry.get("item_name"),
-                "expected_qty": expected,
-                "actual_qty": actual,
-                "delta": actual - expected,
-                "unit_id": unit_id,
-                "crew_user_id": crew_user_id,
-                "shift_type": "start",
-                "status": "open",
-                "created_at": datetime.now(UTC).isoformat(),
-            })
-            discrepancies.append({"id": str(disc["id"]), "item": count_entry.get("item_name"), "delta": actual - expected})
+            disc = repo.create(
+                "narc_discrepancies",
+                tid,
+                {
+                    "item_name": count_entry.get("item_name"),
+                    "expected_qty": expected,
+                    "actual_qty": actual,
+                    "delta": actual - expected,
+                    "unit_id": unit_id,
+                    "crew_user_id": crew_user_id,
+                    "shift_type": "start",
+                    "status": "open",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+            )
+            discrepancies.append(
+                {
+                    "id": str(disc["id"]),
+                    "item": count_entry.get("item_name"),
+                    "delta": actual - expected,
+                }
+            )
 
-    count_row = repo.create("narc_counts", tid, {
-        "unit_id": unit_id,
-        "crew_user_id": crew_user_id,
-        "seal_code": seal_code,
-        "shift_type": "start",
-        "counts": narc_counts,
-        "discrepancy_count": len(discrepancies),
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    count_row = repo.create(
+        "narc_counts",
+        tid,
+        {
+            "unit_id": unit_id,
+            "crew_user_id": crew_user_id,
+            "seal_code": seal_code,
+            "shift_type": "start",
+            "counts": narc_counts,
+            "discrepancy_count": len(discrepancies),
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+    )
 
     blocked = len(discrepancies) > 0
     return {
         "count_id": str(count_row["id"]),
         "discrepancies": discrepancies,
         "blocked": blocked,
-        "message": "Discrepancy found — supervisor alert required" if blocked else "Shift start check complete",
+        "message": "Discrepancy found — supervisor alert required"
+        if blocked
+        else "Shift start check complete",
     }
 
 
 @router.post("/checks/shift-end")
-def shift_end_check(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def shift_end_check(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    count_row = repo.create("narc_counts", tid, {
-        **payload,
-        "shift_type": "end",
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    count_row = repo.create(
+        "narc_counts",
+        tid,
+        {
+            **payload,
+            "shift_type": "end",
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+    )
     return {"count_id": str(count_row["id"]), "status": "complete"}
 
 
@@ -457,17 +581,24 @@ def shift_end_check(payload: dict[str, Any], db: Session = Depends(get_db), tena
 # Restock
 # ---------------------------------------------------------------------------
 
+
 @router.post("/restock/submit")
-def submit_restock(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def submit_restock(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     lines = payload.pop("lines", [])
-    txn = repo.create("inventory_transactions", tid, {
-        **payload,
-        "txn_type": "restock",
-        "status": "posted",
-        "posted_at": datetime.now(UTC).isoformat(),
-    })
+    txn = repo.create(
+        "inventory_transactions",
+        tid,
+        {
+            **payload,
+            "txn_type": "restock",
+            "status": "posted",
+            "posted_at": datetime.now(UTC).isoformat(),
+        },
+    )
     txn_id = str(txn["id"])
     line_ids = []
     for line in lines:
@@ -480,15 +611,22 @@ def submit_restock(payload: dict[str, Any], db: Session = Depends(get_db), tenan
 # Narcotics
 # ---------------------------------------------------------------------------
 
+
 @router.post("/narc/seal/scan")
-def narc_seal_scan(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def narc_seal_scan(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
-    row = repo.create("narc_seals", tid, {
-        **payload,
-        "scanned_at": datetime.now(UTC).isoformat(),
-        "status": "verified",
-    })
+    row = repo.create(
+        "narc_seals",
+        tid,
+        {
+            **payload,
+            "scanned_at": datetime.now(UTC).isoformat(),
+            "status": "verified",
+        },
+    )
     return {"id": str(row["id"]), "status": "verified"}
 
 
@@ -500,20 +638,28 @@ def narc_count(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id
     discrepancies = []
     for c in counts:
         if c.get("expected_qty", 0) != c.get("actual_qty", 0):
-            dr = repo.create("narc_discrepancies", tid, {
-                "item_name": c.get("item_name"),
-                "expected_qty": c.get("expected_qty"),
-                "actual_qty": c.get("actual_qty"),
-                "delta": c.get("actual_qty", 0) - c.get("expected_qty", 0),
-                "status": "open",
-                "created_at": datetime.now(UTC).isoformat(),
-            })
+            dr = repo.create(
+                "narc_discrepancies",
+                tid,
+                {
+                    "item_name": c.get("item_name"),
+                    "expected_qty": c.get("expected_qty"),
+                    "actual_qty": c.get("actual_qty"),
+                    "delta": c.get("actual_qty", 0) - c.get("expected_qty", 0),
+                    "status": "open",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+            )
             discrepancies.append({"id": str(dr["id"]), "item": c.get("item_name")})
-    row = repo.create("narc_counts", tid, {
-        **payload,
-        "discrepancy_count": len(discrepancies),
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    row = repo.create(
+        "narc_counts",
+        tid,
+        {
+            **payload,
+            "discrepancy_count": len(discrepancies),
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+    )
     return {"count_id": str(row["id"]), "discrepancies": discrepancies}
 
 
@@ -523,10 +669,14 @@ def narc_waste(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id
     tid = uuid.UUID(tenant_id)
     if not payload.get("witness_user_id"):
         raise HTTPException(status_code=400, detail="witness_user_id is required for waste events")
-    row = repo.create("narc_waste_events", tid, {
-        **payload,
-        "wasted_at": datetime.now(UTC).isoformat(),
-    })
+    row = repo.create(
+        "narc_waste_events",
+        tid,
+        {
+            **payload,
+            "wasted_at": datetime.now(UTC).isoformat(),
+        },
+    )
     return {"id": str(row["id"]), "status": "recorded"}
 
 
@@ -534,16 +684,23 @@ def narc_waste(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id
 # Transactions (manual)
 # ---------------------------------------------------------------------------
 
+
 @router.post("/transactions")
-def manual_transaction(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def manual_transaction(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     lines = payload.pop("lines", [])
-    txn = repo.create("inventory_transactions", tid, {
-        **payload,
-        "status": "posted",
-        "posted_at": datetime.now(UTC).isoformat(),
-    })
+    txn = repo.create(
+        "inventory_transactions",
+        tid,
+        {
+            **payload,
+            "status": "posted",
+            "posted_at": datetime.now(UTC).isoformat(),
+        },
+    )
     txn_id = str(txn["id"])
     for line in lines:
         repo.create("inventory_transaction_lines", tid, {**line, "transaction_id": txn_id})
@@ -554,26 +711,37 @@ def manual_transaction(payload: dict[str, Any], db: Session = Depends(get_db), t
 # ePCR Usage Hook
 # ---------------------------------------------------------------------------
 
+
 @router.post("/epcr-usage-hook")
-def epcr_usage_hook(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def epcr_usage_hook(
+    payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     usages = payload.get("usages", [])
-    txn = repo.create("inventory_transactions", tid, {
-        "txn_type": "epcr_deduct",
-        "incident_id": payload.get("incident_id"),
-        "epcr_id": payload.get("epcr_id"),
-        "unit_id": payload.get("unit_id"),
-        "status": "posted",
-        "posted_at": datetime.now(UTC).isoformat(),
-    })
+    txn = repo.create(
+        "inventory_transactions",
+        tid,
+        {
+            "txn_type": "epcr_deduct",
+            "incident_id": payload.get("incident_id"),
+            "epcr_id": payload.get("epcr_id"),
+            "unit_id": payload.get("unit_id"),
+            "status": "posted",
+            "posted_at": datetime.now(UTC).isoformat(),
+        },
+    )
     txn_id = str(txn["id"])
     for usage in usages:
-        repo.create("inventory_transaction_lines", tid, {
-            **usage,
-            "transaction_id": txn_id,
-            "direction": "out",
-        })
+        repo.create(
+            "inventory_transaction_lines",
+            tid,
+            {
+                **usage,
+                "transaction_id": txn_id,
+                "direction": "out",
+            },
+        )
     return {"transaction_id": txn_id, "deducted_count": len(usages)}
 
 
@@ -581,19 +749,24 @@ def epcr_usage_hook(payload: dict[str, Any], db: Session = Depends(get_db), tena
 # OCR
 # ---------------------------------------------------------------------------
 
+
 @router.post("/ocr/scan")
 def ocr_scan(payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     job_id = str(uuid.uuid4())
     s3_key = f"kitlink/scans/{tid}/{job_id}.jpg"
-    row = repo.create("kitlink_ocr_jobs", tid, {
-        "job_id": job_id,
-        "s3_key": s3_key,
-        "status": "pending",
-        "context": payload,
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    row = repo.create(
+        "kitlink_ocr_jobs",
+        tid,
+        {
+            "job_id": job_id,
+            "s3_key": s3_key,
+            "status": "pending",
+            "context": payload,
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+    )
     presigned_url = f"https://s3.amazonaws.com/BUCKET/{s3_key}?presigned=1"
     return {"job_id": str(row["id"]), "upload_url": presigned_url, "s3_key": s3_key}
 
@@ -610,19 +783,26 @@ def get_ocr_job(job_id: str, db: Session = Depends(get_db), tenant_id: str = Que
 
 
 @router.post("/ocr/jobs/{job_id}/confirm")
-def confirm_ocr_job(job_id: str, payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def confirm_ocr_job(
+    job_id: str, payload: dict[str, Any], db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     rows = repo.list("kitlink_ocr_jobs", tid)
     job = next((r for r in rows if str(r["id"]) == job_id), None)
     if not job:
         raise HTTPException(status_code=404, detail="OCR job not found")
-    repo.update("kitlink_ocr_jobs", tid, uuid.UUID(job_id), {
-        **job["data"],
-        "status": "confirmed",
-        "confirmed_data": payload,
-        "confirmed_at": datetime.now(UTC).isoformat(),
-    })
+    repo.update(
+        "kitlink_ocr_jobs",
+        tid,
+        uuid.UUID(job_id),
+        {
+            **job["data"],
+            "status": "confirmed",
+            "confirmed_data": payload,
+            "confirmed_at": datetime.now(UTC).isoformat(),
+        },
+    )
     return {"id": job_id, "status": "confirmed"}
 
 
@@ -630,8 +810,11 @@ def confirm_ocr_job(job_id: str, payload: dict[str, Any], db: Session = Depends(
 # Reports
 # ---------------------------------------------------------------------------
 
+
 @router.get("/reports/expiring")
-def report_expiring(days: int = Query(30), db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def report_expiring(
+    days: int = Query(30), db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     rows = repo.list("stock_balances", tid)
@@ -650,7 +833,10 @@ def report_discrepancies(db: Session = Depends(get_db), tenant_id: str = Query(.
     tid = uuid.UUID(tenant_id)
     rows = repo.list("narc_discrepancies", tid)
     open_disc = [r for r in rows if r["data"].get("status") == "open"]
-    return {"open_count": len(open_disc), "items": [{"id": str(r["id"]), "data": r["data"]} for r in open_disc]}
+    return {
+        "open_count": len(open_disc),
+        "items": [{"id": str(r["id"]), "data": r["data"]} for r in open_disc],
+    }
 
 
 @router.get("/reports/par-misses")

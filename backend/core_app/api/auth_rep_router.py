@@ -86,16 +86,26 @@ async def register_rep(
     if payload.delivery_method == "sms" and payload.phone:
         try:
             from core_app.core.config import get_settings
+
             settings = get_settings()
-            cfg = TelnyxConfig(api_key=settings.telnyx_api_key, messaging_profile_id=settings.telnyx_messaging_profile_id or None)
-            send_sms(cfg=cfg, to=payload.phone, body=f"Your FusionEMS authorization code: {otp_code}. Expires in {OTP_EXPIRY_MINUTES} min.")
+            cfg = TelnyxConfig(
+                api_key=settings.telnyx_api_key,
+                messaging_profile_id=settings.telnyx_messaging_profile_id or None,
+            )
+            send_sms(
+                cfg=cfg,
+                to=payload.phone,
+                body=f"Your FusionEMS authorization code: {otp_code}. Expires in {OTP_EXPIRY_MINUTES} min.",
+            )
             sent = True
         except TelnyxNotConfigured:
             pass
 
     if (not sent) and payload.email:
         try:
-            get_ses_service().send_otp(email=payload.email, otp_code=otp_code, expires_minutes=OTP_EXPIRY_MINUTES)
+            get_ses_service().send_otp(
+                email=payload.email, otp_code=otp_code, expires_minutes=OTP_EXPIRY_MINUTES
+            )
             sent = True
         except Exception:
             pass
@@ -118,7 +128,9 @@ async def verify_otp(
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    matches = svc.repo("auth_rep_sessions").list_raw_by_field("session_id", str(payload.session_id), limit=1)
+    matches = svc.repo("auth_rep_sessions").list_raw_by_field(
+        "session_id", str(payload.session_id), limit=1
+    )
     session = matches[0] if matches else None
 
     if not session:
@@ -199,7 +211,9 @@ async def upload_rep_document(
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    matches = svc.repo("auth_rep_sessions").list_raw_by_field("session_id", str(payload.session_id), limit=1)
+    matches = svc.repo("auth_rep_sessions").list_raw_by_field(
+        "session_id", str(payload.session_id), limit=1
+    )
     session = matches[0] if matches else None
     if not session:
         raise HTTPException(status_code=404, detail="session_not_found")
@@ -318,8 +332,11 @@ async def upload_rep_document_multipart(
         raise HTTPException(status_code=413, detail="file_too_large")
 
     from core_app.documents.s3_storage import default_docs_bucket, put_bytes
+
     bucket = default_docs_bucket()
-    doc_key = f"tenants/{current.tenant_id}/rep-docs/{uuid.uuid4()}/{getattr(file, 'filename', 'upload')}"
+    doc_key = (
+        f"tenants/{current.tenant_id}/rep-docs/{uuid.uuid4()}/{getattr(file, 'filename', 'upload')}"
+    )
     if bucket:
         put_bytes(bucket=bucket, key=doc_key, content=content, content_type=content_type)
 

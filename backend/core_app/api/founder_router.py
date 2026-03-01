@@ -12,46 +12,123 @@ from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
 
-router = APIRouter(prefix="/api/v1/founder", tags=['Founder'])
+router = APIRouter(prefix="/api/v1/founder", tags=["Founder"])
 
 
-@router.get("/tenants", dependencies=[Depends(require_role("founder","admin"))])
-async def tenants(request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+@router.get("/tenants", dependencies=[Depends(require_role("founder", "admin"))])
+async def tenants(
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
     scores = svc.repo("governance_scores").list(tenant_id=current.tenant_id, limit=50, offset=0)
     return [{"tenant_id": str(current.tenant_id), "governance_scores": scores}]
 
-@router.get("/tenants/{tenant_id}/billing", dependencies=[Depends(require_role("founder","admin","billing"))])
-async def tenant_billing(tenant_id: uuid.UUID, request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
-    svc = DominationService(db, get_event_publisher())
-    return {"billing_jobs": svc.repo("billing_jobs").list(tenant_id=current.tenant_id, limit=200, offset=0), "claims": svc.repo("claims").list(tenant_id=current.tenant_id, limit=200, offset=0)}
 
-@router.get("/tenants/{tenant_id}/compliance", dependencies=[Depends(require_role("founder","admin"))])
-async def tenant_compliance(tenant_id: uuid.UUID, request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+@router.get(
+    "/tenants/{tenant_id}/billing",
+    dependencies=[Depends(require_role("founder", "admin", "billing"))],
+)
+async def tenant_billing(
+    tenant_id: uuid.UUID,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
-    return {"nemsis": svc.repo("nemsis_validation_results").list(tenant_id=current.tenant_id, limit=50, offset=0),
-            "neris": svc.repo("neris_validation_results").list(tenant_id=current.tenant_id, limit=50, offset=0),
-            "scores": svc.repo("governance_scores").list(tenant_id=current.tenant_id, limit=50, offset=0)}
+    return {
+        "billing_jobs": svc.repo("billing_jobs").list(
+            tenant_id=current.tenant_id, limit=200, offset=0
+        ),
+        "claims": svc.repo("claims").list(tenant_id=current.tenant_id, limit=200, offset=0),
+    }
+
+
+@router.get(
+    "/tenants/{tenant_id}/compliance", dependencies=[Depends(require_role("founder", "admin"))]
+)
+async def tenant_compliance(
+    tenant_id: uuid.UUID,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    svc = DominationService(db, get_event_publisher())
+    return {
+        "nemsis": svc.repo("nemsis_validation_results").list(
+            tenant_id=current.tenant_id, limit=50, offset=0
+        ),
+        "neris": svc.repo("neris_validation_results").list(
+            tenant_id=current.tenant_id, limit=50, offset=0
+        ),
+        "scores": svc.repo("governance_scores").list(
+            tenant_id=current.tenant_id, limit=50, offset=0
+        ),
+    }
+
 
 @router.post("/support/impersonate/start", dependencies=[Depends(require_role("founder"))])
-async def impersonate(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def impersonate(
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
-    return await svc.create(table="support_sessions", tenant_id=current.tenant_id, actor_user_id=current.user_id, data={"type":"impersonate", **payload}, correlation_id=getattr(request.state,"correlation_id",None))
+    return await svc.create(
+        table="support_sessions",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={"type": "impersonate", **payload},
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
 
 @router.post("/support/session/start", dependencies=[Depends(require_role("founder"))])
-async def support_session(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def support_session(
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
-    return await svc.create(table="support_sessions", tenant_id=current.tenant_id, actor_user_id=current.user_id, data={"type":"remote_support", **payload}, correlation_id=getattr(request.state,"correlation_id",None))
+    return await svc.create(
+        table="support_sessions",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={"type": "remote_support", **payload},
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
 
-@router.post("/ai/chat", dependencies=[Depends(require_role("founder","admin"))])
-async def ai_chat(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+
+@router.post("/ai/chat", dependencies=[Depends(require_role("founder", "admin"))])
+async def ai_chat(
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
-    run = {"prompt": payload.get("message"), "model": payload.get("model","gpt-4.1"), "status":"queued"}
-    return await svc.create(table="ai_runs", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=run, correlation_id=getattr(request.state,"correlation_id",None))
+    run = {
+        "prompt": payload.get("message"),
+        "model": payload.get("model", "gpt-4.1"),
+        "status": "queued",
+    }
+    return await svc.create(
+        table="ai_runs",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=run,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
 
-@router.post("/docs/generate", dependencies=[Depends(require_role("founder","admin"))])
-async def docs(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user)):
-    return {"status":"accepted","kind":payload.get("kind"),"name":payload.get("name")}
+
+@router.post("/docs/generate", dependencies=[Depends(require_role("founder", "admin"))])
+async def docs(
+    payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user)
+):
+    return {"status": "accepted", "kind": payload.get("kind"), "name": payload.get("name")}
 
 
 @router.get("/dashboard")
@@ -66,8 +143,11 @@ async def founder_dashboard(
     active_tenants = [t for t in tenants_list if t.get("data", {}).get("status") == "active"]
 
     subscriptions = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=10000)
-    mrr = sum(int(s.get("data", {}).get("monthly_amount_cents", 0)) for s in subscriptions
-              if s.get("data", {}).get("status") == "active")
+    mrr = sum(
+        int(s.get("data", {}).get("monthly_amount_cents", 0))
+        for s in subscriptions
+        if s.get("data", {}).get("status") == "active"
+    )
 
     return {
         "mrr_cents": mrr,
@@ -91,7 +171,8 @@ async def webhook_health(
     for source in sources:
         try:
             dead_items = [
-                r for r in svc.repo("webhook_dlq").list(tenant_id=current.tenant_id, limit=100)
+                r
+                for r in svc.repo("webhook_dlq").list(tenant_id=current.tenant_id, limit=100)
                 if r.get("data", {}).get("source") == source
                 and r.get("data", {}).get("status") == "dead"
             ]
@@ -152,9 +233,11 @@ async def aws_cost_summary(
         import boto3
 
         from core_app.core.config import get_settings
+
         settings = get_settings()
         client = boto3.client("ce", region_name=settings.aws_region or "us-east-1")
         from datetime import date, timedelta
+
         end = date.today().isoformat()
         start = (date.today() - timedelta(days=30)).isoformat()
         resp = client.get_cost_and_usage(
@@ -166,11 +249,13 @@ async def aws_cost_summary(
         results = []
         for period in resp.get("ResultsByTime", []):
             for group in period.get("Groups", []):
-                results.append({
-                    "service": group["Keys"][0],
-                    "amount": float(group["Metrics"]["UnblendedCost"]["Amount"]),
-                    "unit": group["Metrics"]["UnblendedCost"]["Unit"],
-                })
+                results.append(
+                    {
+                        "service": group["Keys"][0],
+                        "amount": float(group["Metrics"]["UnblendedCost"]["Amount"]),
+                        "unit": group["Metrics"]["UnblendedCost"]["Unit"],
+                    }
+                )
         total = sum(r["amount"] for r in results)
         return {"period": f"{start} to {end}", "total_usd": round(total, 2), "by_service": results}
     except Exception as e:
@@ -210,7 +295,9 @@ async def compliance_status(
         },
         "compliance_packs": {
             "active_count": len(active_packs),
-            "packs": [{"id": p.get("id"), "name": (p.get("data") or {}).get("name")} for p in active_packs],
+            "packs": [
+                {"id": p.get("id"), "name": (p.get("data") or {}).get("name")} for p in active_packs
+            ],
         },
         "overall": "partial" if (nemsis_latest or neris_latest or active_packs) else "none",
     }

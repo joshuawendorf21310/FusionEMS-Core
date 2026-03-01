@@ -25,12 +25,16 @@ class NERISPackCompiler:
     stores into neris_compiled_rules + neris_value_set_definitions/items.
     """
 
-    def __init__(self, db, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID) -> None:
+    def __init__(
+        self, db, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID
+    ) -> None:
         self.svc = DominationService(db, publisher)
         self.tenant_id = tenant_id
         self.actor_user_id = actor_user_id
 
-    async def compile_pack(self, pack_id: uuid.UUID, correlation_id: str | None = None) -> dict[str, Any]:
+    async def compile_pack(
+        self, pack_id: uuid.UUID, correlation_id: str | None = None
+    ) -> dict[str, Any]:
         pack = self.svc.repo("neris_packs").get(tenant_id=self.tenant_id, record_id=pack_id)
         if not pack:
             raise ValueError("pack_not_found")
@@ -90,7 +94,9 @@ class NERISPackCompiler:
             rules_bytes = json.dumps(rules, indent=2).encode()
             s3_key = f"{PACK_S3_PREFIX}/{pack_id}/compiled/rules_{entity_type.lower()}.json"
             if bucket:
-                put_bytes(bucket=bucket, key=s3_key, content=rules_bytes, content_type="application/json")
+                put_bytes(
+                    bucket=bucket, key=s3_key, content=rules_bytes, content_type="application/json"
+                )
 
             await self.svc.create(
                 table="neris_compiled_rules",
@@ -120,7 +126,11 @@ class NERISPackCompiler:
             expected_version=pack.get("version", 1),
             correlation_id=correlation_id,
         )
-        return {"pack_id": str(pack_id), "entity_rules_fields": len(entity_rules.get("sections", [])), "incident_rules_fields": len(incident_rules.get("sections", []))}
+        return {
+            "pack_id": str(pack_id),
+            "entity_rules_fields": len(entity_rules.get("sections", [])),
+            "incident_rules_fields": len(incident_rules.get("sections", [])),
+        }
 
     def _parse_value_sets(self, raw_files: dict[str, bytes]) -> dict[str, Any]:
         value_sets: dict[str, Any] = {}
@@ -129,38 +139,80 @@ class NERISPackCompiler:
             if "valueset" in path_lower or "value_set" in path_lower or "values" in path_lower:
                 try:
                     if path_lower.endswith(".csv"):
-                        reader = csv.DictReader(io.StringIO(content.decode("utf-8", errors="replace")))
+                        reader = csv.DictReader(
+                            io.StringIO(content.decode("utf-8", errors="replace"))
+                        )
                         rows = list(reader)
                         if rows:
                             code_field = next((k for k in rows[0] if "code" in k.lower()), None)
-                            display_field = next((k for k in rows[0] if "description" in k.lower() or "display" in k.lower() or "name" in k.lower()), None)
-                            vs_code = os.path.splitext(os.path.basename(path))[0].upper().replace("-", "_").replace(" ", "_")
+                            display_field = next(
+                                (
+                                    k
+                                    for k in rows[0]
+                                    if "description" in k.lower()
+                                    or "display" in k.lower()
+                                    or "name" in k.lower()
+                                ),
+                                None,
+                            )
+                            vs_code = (
+                                os.path.splitext(os.path.basename(path))[0]
+                                .upper()
+                                .replace("-", "_")
+                                .replace(" ", "_")
+                            )
                             items = []
                             for r in rows:
                                 c = r.get(code_field, "").strip() if code_field else ""
                                 d = r.get(display_field, "").strip() if display_field else c
                                 if c:
                                     items.append({"code": c, "display": d})
-                            value_sets[vs_code] = {"name": vs_code, "source_path": path, "items": items}
+                            value_sets[vs_code] = {
+                                "name": vs_code,
+                                "source_path": path,
+                                "items": items,
+                            }
                     elif path_lower.endswith((".yml", ".yaml")):
                         parsed = yaml.safe_load(content.decode("utf-8", errors="replace")) or {}
                         if isinstance(parsed, dict):
-                            vs_code = parsed.get("code") or parsed.get("id") or os.path.splitext(os.path.basename(path))[0].upper()
+                            vs_code = (
+                                parsed.get("code")
+                                or parsed.get("id")
+                                or os.path.splitext(os.path.basename(path))[0].upper()
+                            )
                             items_raw = parsed.get("values") or parsed.get("items") or []
                             items = []
                             for item in items_raw:
                                 if isinstance(item, dict):
-                                    items.append({"code": str(item.get("code") or item.get("value") or ""), "display": str(item.get("display") or item.get("description") or item.get("name") or "")})
+                                    items.append(
+                                        {
+                                            "code": str(
+                                                item.get("code") or item.get("value") or ""
+                                            ),
+                                            "display": str(
+                                                item.get("display")
+                                                or item.get("description")
+                                                or item.get("name")
+                                                or ""
+                                            ),
+                                        }
+                                    )
                                 elif isinstance(item, str):
                                     items.append({"code": item, "display": item})
-                            value_sets[str(vs_code).upper()] = {"name": str(vs_code), "source_path": path, "items": items}
+                            value_sets[str(vs_code).upper()] = {
+                                "name": str(vs_code),
+                                "source_path": path,
+                                "items": items,
+                            }
                 except Exception:
                     pass
         if not value_sets:
             value_sets = _wi_default_value_sets()
         return value_sets
 
-    def _build_entity_rules(self, raw_files: dict[str, bytes], value_sets: dict[str, Any]) -> dict[str, Any]:
+    def _build_entity_rules(
+        self, raw_files: dict[str, bytes], value_sets: dict[str, Any]
+    ) -> dict[str, Any]:
         return {
             "entity_type": "ENTITY",
             "sections": [
@@ -168,35 +220,86 @@ class NERISPackCompiler:
                     "id": "department.identity",
                     "label": "Department Identity",
                     "fields": [
-                        {"path": "department.name", "label": "Department Name", "type": "string", "required": True},
-                        {"path": "department.state", "label": "State", "type": "string", "required": True},
-                        {"path": "department.primary_contact_name", "label": "Primary Contact Name", "type": "string", "required": True},
-                        {"path": "department.primary_contact_email", "label": "Primary Contact Email", "type": "email", "required": True},
-                        {"path": "department.primary_contact_phone", "label": "Primary Contact Phone", "type": "string", "required": True},
+                        {
+                            "path": "department.name",
+                            "label": "Department Name",
+                            "type": "string",
+                            "required": True,
+                        },
+                        {
+                            "path": "department.state",
+                            "label": "State",
+                            "type": "string",
+                            "required": True,
+                        },
+                        {
+                            "path": "department.primary_contact_name",
+                            "label": "Primary Contact Name",
+                            "type": "string",
+                            "required": True,
+                        },
+                        {
+                            "path": "department.primary_contact_email",
+                            "label": "Primary Contact Email",
+                            "type": "email",
+                            "required": True,
+                        },
+                        {
+                            "path": "department.primary_contact_phone",
+                            "label": "Primary Contact Phone",
+                            "type": "string",
+                            "required": True,
+                        },
                     ],
                 },
                 {
                     "id": "department.stations",
                     "label": "Fire Stations",
                     "fields": [
-                        {"path": "department.stations[].name", "label": "Station Name", "type": "string", "required": True},
-                        {"path": "department.stations[].address", "label": "Station Address", "type": "object", "required": True},
+                        {
+                            "path": "department.stations[].name",
+                            "label": "Station Name",
+                            "type": "string",
+                            "required": True,
+                        },
+                        {
+                            "path": "department.stations[].address",
+                            "label": "Station Address",
+                            "type": "object",
+                            "required": True,
+                        },
                     ],
                 },
                 {
                     "id": "department.apparatus",
                     "label": "Apparatus",
                     "fields": [
-                        {"path": "department.apparatus[].unit_id", "label": "Unit ID", "type": "string", "required": True},
-                        {"path": "department.apparatus[].unit_type_code", "label": "Unit Type", "type": "string", "required": True, "value_set": "UNIT_TYPE"},
+                        {
+                            "path": "department.apparatus[].unit_id",
+                            "label": "Unit ID",
+                            "type": "string",
+                            "required": True,
+                        },
+                        {
+                            "path": "department.apparatus[].unit_type_code",
+                            "label": "Unit Type",
+                            "type": "string",
+                            "required": True,
+                            "value_set": "UNIT_TYPE",
+                        },
                     ],
                 },
             ],
-            "value_sets": {k: {"allowed": [i["code"] for i in v.get("items", [])]} for k, v in value_sets.items()},
+            "value_sets": {
+                k: {"allowed": [i["code"] for i in v.get("items", [])]}
+                for k, v in value_sets.items()
+            },
             "constraints": [],
         }
 
-    def _build_incident_rules(self, raw_files: dict[str, bytes], value_sets: dict[str, Any]) -> dict[str, Any]:
+    def _build_incident_rules(
+        self, raw_files: dict[str, bytes], value_sets: dict[str, Any]
+    ) -> dict[str, Any]:
         sections = _parse_incident_modules(raw_files, value_sets)
         if not sections:
             sections = _wi_default_incident_sections()
@@ -204,7 +307,10 @@ class NERISPackCompiler:
         return {
             "entity_type": "INCIDENT",
             "sections": sections,
-            "value_sets": {k: {"allowed": [i["code"] for i in v.get("items", [])]} for k, v in value_sets.items()},
+            "value_sets": {
+                k: {"allowed": [i["code"] for i in v.get("items", [])]}
+                for k, v in value_sets.items()
+            },
             "constraints": [
                 {
                     "id": "incident.end_after_start",
@@ -239,13 +345,19 @@ def _parse_incident_modules(raw_files: dict[str, bytes], value_sets: dict[str, A
                     fields = []
                     for f in parsed.get("fields", []):
                         if isinstance(f, dict):
-                            fields.append({
-                                "path": f"incident.{f.get('name', f.get('id', ''))}",
-                                "label": f.get("label") or f.get("name") or "",
-                                "type": f.get("type") or "string",
-                                "required": bool(f.get("required", False)),
-                                **({"value_set": f["valueSet"].upper()} if f.get("valueSet") else {}),
-                            })
+                            fields.append(
+                                {
+                                    "path": f"incident.{f.get('name', f.get('id', ''))}",
+                                    "label": f.get("label") or f.get("name") or "",
+                                    "type": f.get("type") or "string",
+                                    "required": bool(f.get("required", False)),
+                                    **(
+                                        {"value_set": f["valueSet"].upper()}
+                                        if f.get("valueSet")
+                                        else {}
+                                    ),
+                                }
+                            )
                     if fields:
                         sections.append({"id": sec_id, "label": sec_label, "fields": fields})
             except Exception:
@@ -341,51 +453,159 @@ def _wi_default_incident_sections() -> list[dict]:
             "id": "incident.basics",
             "label": "Incident Basics",
             "fields": [
-                {"path": "incident.incident_number", "label": "Incident Number", "type": "string", "required": True},
-                {"path": "incident.start_datetime", "label": "Incident Start Date/Time", "type": "datetime", "required": True},
-                {"path": "incident.end_datetime", "label": "Incident End Date/Time", "type": "datetime", "required": False},
-                {"path": "incident.type_code", "label": "Incident Type", "type": "string", "required": True, "value_set": "INCIDENT_TYPE"},
-                {"path": "incident.location.address", "label": "Incident Address", "type": "string", "required": True},
-                {"path": "incident.location.city", "label": "City", "type": "string", "required": True},
-                {"path": "incident.location.state", "label": "State", "type": "string", "required": True},
-                {"path": "incident.location.zip", "label": "ZIP Code", "type": "string", "required": False},
+                {
+                    "path": "incident.incident_number",
+                    "label": "Incident Number",
+                    "type": "string",
+                    "required": True,
+                },
+                {
+                    "path": "incident.start_datetime",
+                    "label": "Incident Start Date/Time",
+                    "type": "datetime",
+                    "required": True,
+                },
+                {
+                    "path": "incident.end_datetime",
+                    "label": "Incident End Date/Time",
+                    "type": "datetime",
+                    "required": False,
+                },
+                {
+                    "path": "incident.type_code",
+                    "label": "Incident Type",
+                    "type": "string",
+                    "required": True,
+                    "value_set": "INCIDENT_TYPE",
+                },
+                {
+                    "path": "incident.location.address",
+                    "label": "Incident Address",
+                    "type": "string",
+                    "required": True,
+                },
+                {
+                    "path": "incident.location.city",
+                    "label": "City",
+                    "type": "string",
+                    "required": True,
+                },
+                {
+                    "path": "incident.location.state",
+                    "label": "State",
+                    "type": "string",
+                    "required": True,
+                },
+                {
+                    "path": "incident.location.zip",
+                    "label": "ZIP Code",
+                    "type": "string",
+                    "required": False,
+                },
             ],
         },
         {
             "id": "incident.property",
             "label": "Property Information",
             "fields": [
-                {"path": "incident.property_use_code", "label": "Property Use", "type": "string", "required": False, "value_set": "PROPERTY_USE"},
-                {"path": "incident.on_site_materials", "label": "On-Site Materials", "type": "string", "required": False},
+                {
+                    "path": "incident.property_use_code",
+                    "label": "Property Use",
+                    "type": "string",
+                    "required": False,
+                    "value_set": "PROPERTY_USE",
+                },
+                {
+                    "path": "incident.on_site_materials",
+                    "label": "On-Site Materials",
+                    "type": "string",
+                    "required": False,
+                },
             ],
         },
         {
             "id": "incident.units",
             "label": "Units & Personnel",
             "fields": [
-                {"path": "incident.units[].unit_id", "label": "Unit ID", "type": "string", "required": True},
-                {"path": "incident.units[].arrival_datetime", "label": "Arrival Time", "type": "datetime", "required": False},
-                {"path": "incident.units[].departure_datetime", "label": "Departure Time", "type": "datetime", "required": False},
+                {
+                    "path": "incident.units[].unit_id",
+                    "label": "Unit ID",
+                    "type": "string",
+                    "required": True,
+                },
+                {
+                    "path": "incident.units[].arrival_datetime",
+                    "label": "Arrival Time",
+                    "type": "datetime",
+                    "required": False,
+                },
+                {
+                    "path": "incident.units[].departure_datetime",
+                    "label": "Departure Time",
+                    "type": "datetime",
+                    "required": False,
+                },
             ],
         },
         {
             "id": "incident.actions",
             "label": "Actions Taken",
             "fields": [
-                {"path": "incident.actions[].action_code", "label": "Action Code", "type": "string", "required": False, "value_set": "ACTION_TAKEN"},
-                {"path": "incident.actions[].action_datetime", "label": "Action Time", "type": "datetime", "required": False},
+                {
+                    "path": "incident.actions[].action_code",
+                    "label": "Action Code",
+                    "type": "string",
+                    "required": False,
+                    "value_set": "ACTION_TAKEN",
+                },
+                {
+                    "path": "incident.actions[].action_datetime",
+                    "label": "Action Time",
+                    "type": "datetime",
+                    "required": False,
+                },
             ],
         },
         {
             "id": "incident.outcomes",
             "label": "Outcomes",
             "fields": [
-                {"path": "incident.outcomes.civilian_injuries", "label": "Civilian Injuries", "type": "integer", "required": False},
-                {"path": "incident.outcomes.civilian_fatalities", "label": "Civilian Fatalities", "type": "integer", "required": False},
-                {"path": "incident.outcomes.firefighter_injuries", "label": "Firefighter Injuries", "type": "integer", "required": False},
-                {"path": "incident.outcomes.firefighter_fatalities", "label": "Firefighter Fatalities", "type": "integer", "required": False},
-                {"path": "incident.outcomes.property_loss_estimate", "label": "Property Loss ($)", "type": "number", "required": False},
-                {"path": "incident.outcomes.contents_loss_estimate", "label": "Contents Loss ($)", "type": "number", "required": False},
+                {
+                    "path": "incident.outcomes.civilian_injuries",
+                    "label": "Civilian Injuries",
+                    "type": "integer",
+                    "required": False,
+                },
+                {
+                    "path": "incident.outcomes.civilian_fatalities",
+                    "label": "Civilian Fatalities",
+                    "type": "integer",
+                    "required": False,
+                },
+                {
+                    "path": "incident.outcomes.firefighter_injuries",
+                    "label": "Firefighter Injuries",
+                    "type": "integer",
+                    "required": False,
+                },
+                {
+                    "path": "incident.outcomes.firefighter_fatalities",
+                    "label": "Firefighter Fatalities",
+                    "type": "integer",
+                    "required": False,
+                },
+                {
+                    "path": "incident.outcomes.property_loss_estimate",
+                    "label": "Property Loss ($)",
+                    "type": "number",
+                    "required": False,
+                },
+                {
+                    "path": "incident.outcomes.contents_loss_estimate",
+                    "label": "Contents Loss ($)",
+                    "type": "number",
+                    "required": False,
+                },
             ],
         },
     ]

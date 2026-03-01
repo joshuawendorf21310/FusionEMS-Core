@@ -26,9 +26,15 @@ class NERISCopilot:
     def __init__(self) -> None:
         self.ai = AiService()
 
-    def explain_issues(self, issues: list[dict[str, Any]], context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def explain_issues(
+        self, issues: list[dict[str, Any]], context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         if not issues:
-            return {"summary": "No validation issues found. Your data is ready for export.", "actions": [], "confidence": 1.0}
+            return {
+                "summary": "No validation issues found. Your data is ready for export.",
+                "actions": [],
+                "confidence": 1.0,
+            }
 
         ctx = context or {}
         state = ctx.get("state", "WI")

@@ -107,7 +107,9 @@ class LegalService:
 
         consents = signing_data.get("consents", {})
         if not (consents.get("baa") and consents.get("msa") and consents.get("order_form")):
-            raise ValueError("All three consents (baa, msa, order_form) must be True to execute signing.")
+            raise ValueError(
+                "All three consents (baa, msa, order_form) must be True to execute signing."
+            )
 
         repo = self._svc.repo("legal_packets")
         records = repo.list(self._system_tenant_id, limit=5000)
@@ -137,6 +139,7 @@ class LegalService:
             if settings.s3_bucket_docs:
                 try:
                     from core_app.documents.s3_storage import put_bytes
+
                     put_bytes(
                         bucket=settings.s3_bucket_docs,
                         key=s3_key_executed,
@@ -302,7 +305,11 @@ class LegalService:
                 header_table = Table(
                     [
                         [Paragraph("FusionEMS Quantum", header_style)],
-                        [Paragraph("Advanced Emergency Medical Services Platform", subheader_style)],
+                        [
+                            Paragraph(
+                                "Advanced Emergency Medical Services Platform", subheader_style
+                            )
+                        ],
                         [Paragraph(doc_label, doc_title_style)],
                     ],
                     colWidths=[7.0 * inch],
@@ -325,200 +332,254 @@ class LegalService:
             if doc_type == "BAA":
                 elements += header_block("BUSINESS ASSOCIATE AGREEMENT (BAA)")
                 elements.append(Paragraph("Parties", section_style))
-                elements.append(Paragraph(
-                    f"This Business Associate Agreement (\"BAA\") is entered into as of {signed_at} "
-                    f"between <b>FusionEMS Quantum, LLC</b> (\"Business Associate\") and "
-                    f"<b>{agency_name}</b> (\"Covered Entity\").",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        f'This Business Associate Agreement ("BAA") is entered into as of {signed_at} '
+                        f'between <b>FusionEMS Quantum, LLC</b> ("Business Associate") and '
+                        f'<b>{agency_name}</b> ("Covered Entity").',
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("1. Permitted Uses and Disclosures", section_style))
-                elements.append(Paragraph(
-                    "Business Associate may use or disclose PHI only as necessary to perform the services "
-                    "described in the Master Subscription Agreement, or as required by law. Business Associate "
-                    "shall not use or disclose PHI in a manner that would violate 45 C.F.R. Parts 164.502 and "
-                    "164.504 if done by Covered Entity.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Business Associate may use or disclose PHI only as necessary to perform the services "
+                        "described in the Master Subscription Agreement, or as required by law. Business Associate "
+                        "shall not use or disclose PHI in a manner that would violate 45 C.F.R. Parts 164.502 and "
+                        "164.504 if done by Covered Entity.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("2. Safeguards", section_style))
-                elements.append(Paragraph(
-                    "Business Associate shall implement administrative, physical, and technical safeguards that "
-                    "reasonably and appropriately protect the confidentiality, integrity, and availability of "
-                    "electronic PHI (ePHI) as required by the HIPAA Security Rule (45 C.F.R. Part 164, Subpart C). "
-                    "Safeguards include AES-256 encryption at rest, TLS 1.2+ in transit, role-based access controls, "
-                    "audit logging, and annual workforce training.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Business Associate shall implement administrative, physical, and technical safeguards that "
+                        "reasonably and appropriately protect the confidentiality, integrity, and availability of "
+                        "electronic PHI (ePHI) as required by the HIPAA Security Rule (45 C.F.R. Part 164, Subpart C). "
+                        "Safeguards include AES-256 encryption at rest, TLS 1.2+ in transit, role-based access controls, "
+                        "audit logging, and annual workforce training.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("3. Breach Notification", section_style))
-                elements.append(Paragraph(
-                    "Business Associate shall notify Covered Entity without unreasonable delay and in no case "
-                    "later than 60 calendar days following discovery of a Breach of Unsecured PHI as defined "
-                    "under 45 C.F.R. § 164.402. Notice shall include: (a) identity of each individual whose "
-                    "PHI was breached, (b) description of the PHI involved, (c) steps individuals should take "
-                    "to protect themselves, (d) description of what Business Associate is doing to investigate, "
-                    "mitigate, and prevent future occurrences.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Business Associate shall notify Covered Entity without unreasonable delay and in no case "
+                        "later than 60 calendar days following discovery of a Breach of Unsecured PHI as defined "
+                        "under 45 C.F.R. § 164.402. Notice shall include: (a) identity of each individual whose "
+                        "PHI was breached, (b) description of the PHI involved, (c) steps individuals should take "
+                        "to protect themselves, (d) description of what Business Associate is doing to investigate, "
+                        "mitigate, and prevent future occurrences.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("4. Subcontractors", section_style))
-                elements.append(Paragraph(
-                    "Business Associate shall ensure that any subcontractors or agents that create, receive, "
-                    "maintain, or transmit PHI on behalf of Business Associate agree to the same restrictions "
-                    "and conditions that apply to Business Associate under this BAA, in accordance with "
-                    "45 C.F.R. § 164.308(b)(2).",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Business Associate shall ensure that any subcontractors or agents that create, receive, "
+                        "maintain, or transmit PHI on behalf of Business Associate agree to the same restrictions "
+                        "and conditions that apply to Business Associate under this BAA, in accordance with "
+                        "45 C.F.R. § 164.308(b)(2).",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("5. PHI Return and Destruction", section_style))
-                elements.append(Paragraph(
-                    "Upon termination of the MSA for any reason, Business Associate shall return or destroy "
-                    "all PHI received from, or created or received on behalf of, Covered Entity. If return or "
-                    "destruction is not feasible, Business Associate shall extend the protections of this BAA "
-                    "to that PHI and limit further uses and disclosures to those purposes that make the return "
-                    "or destruction infeasible, in compliance with 45 C.F.R. § 164.504(e)(2)(ii)(J).",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Upon termination of the MSA for any reason, Business Associate shall return or destroy "
+                        "all PHI received from, or created or received on behalf of, Covered Entity. If return or "
+                        "destruction is not feasible, Business Associate shall extend the protections of this BAA "
+                        "to that PHI and limit further uses and disclosures to those purposes that make the return "
+                        "or destruction infeasible, in compliance with 45 C.F.R. § 164.504(e)(2)(ii)(J).",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("6. HHS Availability", section_style))
-                elements.append(Paragraph(
-                    "Business Associate shall make its internal practices, books, and records relating to the "
-                    "use and disclosure of PHI received from, or created or received on behalf of, Covered Entity "
-                    "available to the Secretary of HHS for purposes of determining Covered Entity's compliance "
-                    "with HIPAA, in accordance with 45 C.F.R. § 164.504(e)(2)(ii)(H).",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Business Associate shall make its internal practices, books, and records relating to the "
+                        "use and disclosure of PHI received from, or created or received on behalf of, Covered Entity "
+                        "available to the Secretary of HHS for purposes of determining Covered Entity's compliance "
+                        "with HIPAA, in accordance with 45 C.F.R. § 164.504(e)(2)(ii)(H).",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("7. Term and Termination", section_style))
-                elements.append(Paragraph(
-                    "This BAA shall be effective as of the date first set forth above and shall terminate when "
-                    "the MSA terminates. Either party may terminate this BAA if the other party has breached a "
-                    "material term and has failed to cure within 30 days of written notice.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "This BAA shall be effective as of the date first set forth above and shall terminate when "
+                        "the MSA terminates. Either party may terminate this BAA if the other party has breached a "
+                        "material term and has failed to cure within 30 days of written notice.",
+                        body_style,
+                    )
+                )
 
             elif doc_type == "MSA":
                 elements += header_block("MASTER SUBSCRIPTION AGREEMENT (MSA)")
                 elements.append(Paragraph("Parties", section_style))
-                elements.append(Paragraph(
-                    f"This Master Subscription Agreement (\"Agreement\") is entered into as of {signed_at} "
-                    f"between <b>FusionEMS Quantum, LLC</b>, a Delaware limited liability company "
-                    f"(\"FusionEMS\"), and <b>{agency_name}</b> (\"Customer\").",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        f'This Master Subscription Agreement ("Agreement") is entered into as of {signed_at} '
+                        f"between <b>FusionEMS Quantum, LLC</b>, a Delaware limited liability company "
+                        f'("FusionEMS"), and <b>{agency_name}</b> ("Customer").',
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("1. Definitions", section_style))
-                elements.append(Paragraph(
-                    "<b>\"Platform\"</b> means the FusionEMS Quantum software-as-a-service application and all "
-                    "associated APIs, modules, and documentation. <b>\"Subscription\"</b> means Customer's "
-                    "right to access and use the Platform under the terms of this Agreement and the applicable "
-                    "Order Form. <b>\"Authorized Users\"</b> means Customer's employees, contractors, and agents "
-                    "who are permitted to use the Platform.",
-                    body_style,
-                ))
-                elements.append(Paragraph("2. Subscription Scope and Grant of Rights", section_style))
-                elements.append(Paragraph(
-                    "Subject to the terms of this Agreement and payment of applicable fees, FusionEMS grants "
-                    "Customer a non-exclusive, non-transferable, worldwide right to access and use the Platform "
-                    "during the Subscription Term solely for Customer's internal business operations. The modules "
-                    "and usage tiers are set forth in the Order Form.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        '<b>"Platform"</b> means the FusionEMS Quantum software-as-a-service application and all '
+                        'associated APIs, modules, and documentation. <b>"Subscription"</b> means Customer\'s '
+                        "right to access and use the Platform under the terms of this Agreement and the applicable "
+                        'Order Form. <b>"Authorized Users"</b> means Customer\'s employees, contractors, and agents '
+                        "who are permitted to use the Platform.",
+                        body_style,
+                    )
+                )
+                elements.append(
+                    Paragraph("2. Subscription Scope and Grant of Rights", section_style)
+                )
+                elements.append(
+                    Paragraph(
+                        "Subject to the terms of this Agreement and payment of applicable fees, FusionEMS grants "
+                        "Customer a non-exclusive, non-transferable, worldwide right to access and use the Platform "
+                        "during the Subscription Term solely for Customer's internal business operations. The modules "
+                        "and usage tiers are set forth in the Order Form.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("3. Support", section_style))
-                elements.append(Paragraph(
-                    "FusionEMS shall provide standard support via email and in-platform ticketing during "
-                    "business hours (9 AM–6 PM ET, Monday–Friday, excluding US federal holidays). Critical "
-                    "incident response (Severity 1: Platform down or data inaccessible) shall be addressed "
-                    "within 4 hours. Platform availability target is 99.5% monthly uptime, excluding scheduled "
-                    "maintenance windows communicated with at least 48 hours advance notice.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "FusionEMS shall provide standard support via email and in-platform ticketing during "
+                        "business hours (9 AM–6 PM ET, Monday–Friday, excluding US federal holidays). Critical "
+                        "incident response (Severity 1: Platform down or data inaccessible) shall be addressed "
+                        "within 4 hours. Platform availability target is 99.5% monthly uptime, excluding scheduled "
+                        "maintenance windows communicated with at least 48 hours advance notice.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("4. Fees and Payment", section_style))
-                elements.append(Paragraph(
-                    "Customer shall pay the fees set forth in the applicable Order Form. Invoices are due "
-                    "net-30 from invoice date. Overdue balances accrue interest at 1.5% per month. FusionEMS "
-                    "reserves the right to suspend access upon 15 days written notice of non-payment.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Customer shall pay the fees set forth in the applicable Order Form. Invoices are due "
+                        "net-30 from invoice date. Overdue balances accrue interest at 1.5% per month. FusionEMS "
+                        "reserves the right to suspend access upon 15 days written notice of non-payment.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("5. Customer Responsibilities", section_style))
-                elements.append(Paragraph(
-                    "Customer is responsible for: (a) maintaining the confidentiality of access credentials; "
-                    "(b) ensuring Authorized Users comply with this Agreement; (c) maintaining accurate patient "
-                    "and billing data; (d) obtaining all necessary licenses and authorizations to operate EMS "
-                    "services in Customer's jurisdiction; (e) notifying FusionEMS immediately of any unauthorized "
-                    "access or security incident.",
-                    body_style,
-                ))
-                elements.append(Paragraph("6. No Collections Activity; AI Drafts Disclaimer", section_style))
-                elements.append(Paragraph(
-                    "FusionEMS is a software technology provider and does not act as a collection agency or "
-                    "provide legal, billing, or collection advice. Customer is solely responsible for compliance "
-                    "with FDCPA, state collection laws, and payer regulations. AI-generated content (narratives, "
-                    "coding suggestions, appeals) is provided as a draft aid only. Customer's licensed clinical "
-                    "and billing staff must review, verify, and take responsibility for all submitted claims and "
-                    "clinical documentation before submission.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Customer is responsible for: (a) maintaining the confidentiality of access credentials; "
+                        "(b) ensuring Authorized Users comply with this Agreement; (c) maintaining accurate patient "
+                        "and billing data; (d) obtaining all necessary licenses and authorizations to operate EMS "
+                        "services in Customer's jurisdiction; (e) notifying FusionEMS immediately of any unauthorized "
+                        "access or security incident.",
+                        body_style,
+                    )
+                )
+                elements.append(
+                    Paragraph("6. No Collections Activity; AI Drafts Disclaimer", section_style)
+                )
+                elements.append(
+                    Paragraph(
+                        "FusionEMS is a software technology provider and does not act as a collection agency or "
+                        "provide legal, billing, or collection advice. Customer is solely responsible for compliance "
+                        "with FDCPA, state collection laws, and payer regulations. AI-generated content (narratives, "
+                        "coding suggestions, appeals) is provided as a draft aid only. Customer's licensed clinical "
+                        "and billing staff must review, verify, and take responsibility for all submitted claims and "
+                        "clinical documentation before submission.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("7. Confidentiality", section_style))
-                elements.append(Paragraph(
-                    "Each party agrees to keep confidential all non-public information of the other party "
-                    "designated as confidential or that reasonably should be understood to be confidential "
-                    "given the nature of the information and circumstances of disclosure. Neither party shall "
-                    "disclose such information to third parties without prior written consent, except to "
-                    "employees and contractors on a need-to-know basis under confidentiality obligations.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Each party agrees to keep confidential all non-public information of the other party "
+                        "designated as confidential or that reasonably should be understood to be confidential "
+                        "given the nature of the information and circumstances of disclosure. Neither party shall "
+                        "disclose such information to third parties without prior written consent, except to "
+                        "employees and contractors on a need-to-know basis under confidentiality obligations.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("8. Intellectual Property", section_style))
-                elements.append(Paragraph(
-                    "FusionEMS retains all right, title, and interest in and to the Platform, including all "
-                    "improvements, modifications, and derivative works. Customer retains all right, title, "
-                    "and interest in and to Customer Data. Customer grants FusionEMS a limited license to "
-                    "process Customer Data solely to provide the Platform services.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "FusionEMS retains all right, title, and interest in and to the Platform, including all "
+                        "improvements, modifications, and derivative works. Customer retains all right, title, "
+                        "and interest in and to Customer Data. Customer grants FusionEMS a limited license to "
+                        "process Customer Data solely to provide the Platform services.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("9. Warranties and Disclaimer", section_style))
-                elements.append(Paragraph(
-                    "FusionEMS warrants that the Platform will substantially conform to its documentation "
-                    "during the Subscription Term. EXCEPT AS EXPRESSLY SET FORTH HEREIN, THE PLATFORM IS "
-                    "PROVIDED \"AS IS\" AND FUSIONEMSQUANTUM DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, "
-                    "INCLUDING WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "FusionEMS warrants that the Platform will substantially conform to its documentation "
+                        "during the Subscription Term. EXCEPT AS EXPRESSLY SET FORTH HEREIN, THE PLATFORM IS "
+                        'PROVIDED "AS IS" AND FUSIONEMSQUANTUM DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, '
+                        "INCLUDING WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("10. Limitation of Liability", section_style))
-                elements.append(Paragraph(
-                    "IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, "
-                    "EXEMPLARY, OR CONSEQUENTIAL DAMAGES. FUSIONEMSQUANTUM'S AGGREGATE LIABILITY SHALL NOT "
-                    "EXCEED THE FEES PAID BY CUSTOMER IN THE 12 MONTHS PRECEDING THE CLAIM.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, "
+                        "EXEMPLARY, OR CONSEQUENTIAL DAMAGES. FUSIONEMSQUANTUM'S AGGREGATE LIABILITY SHALL NOT "
+                        "EXCEED THE FEES PAID BY CUSTOMER IN THE 12 MONTHS PRECEDING THE CLAIM.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("11. Term and Termination", section_style))
-                elements.append(Paragraph(
-                    "The initial Subscription Term is set forth in the Order Form. Either party may terminate "
-                    "for material breach upon 30 days written notice if the breach is not cured within that "
-                    "period. Upon termination, Customer's access to the Platform will cease and FusionEMS will "
-                    "make Customer Data available for export for 60 days before deletion.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "The initial Subscription Term is set forth in the Order Form. Either party may terminate "
+                        "for material breach upon 30 days written notice if the breach is not cured within that "
+                        "period. Upon termination, Customer's access to the Platform will cease and FusionEMS will "
+                        "make Customer Data available for export for 60 days before deletion.",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("12. Data Export", section_style))
-                elements.append(Paragraph(
-                    "Upon request at any time during the Subscription Term, or within 60 days following "
-                    "termination, FusionEMS shall provide Customer with a complete export of Customer Data "
-                    "in standard formats (CSV, HL7 FHIR JSON, or NEMSIS XML as applicable).",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "Upon request at any time during the Subscription Term, or within 60 days following "
+                        "termination, FusionEMS shall provide Customer with a complete export of Customer Data "
+                        "in standard formats (CSV, HL7 FHIR JSON, or NEMSIS XML as applicable).",
+                        body_style,
+                    )
+                )
                 elements.append(Paragraph("13. Governing Law", section_style))
-                elements.append(Paragraph(
-                    "This Agreement shall be governed by and construed in accordance with the laws of the "
-                    "State of Delaware, without regard to conflict of law principles. Any disputes shall be "
-                    "resolved by binding arbitration under AAA rules in Wilmington, Delaware.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        "This Agreement shall be governed by and construed in accordance with the laws of the "
+                        "State of Delaware, without regard to conflict of law principles. Any disputes shall be "
+                        "resolved by binding arbitration under AAA rules in Wilmington, Delaware.",
+                        body_style,
+                    )
+                )
 
             elif doc_type == "ORDER_FORM":
                 elements += header_block("ORDER FORM")
                 elements.append(Paragraph("Order Details", section_style))
-                elements.append(Paragraph(
-                    f"This Order Form is incorporated into and governed by the Master Subscription Agreement "
-                    f"between <b>FusionEMS Quantum, LLC</b> and <b>{agency_name}</b>, effective {signed_at}.",
-                    body_style,
-                ))
+                elements.append(
+                    Paragraph(
+                        f"This Order Form is incorporated into and governed by the Master Subscription Agreement "
+                        f"between <b>FusionEMS Quantum, LLC</b> and <b>{agency_name}</b>, effective {signed_at}.",
+                        body_style,
+                    )
+                )
 
                 modules = plan_data.get("selected_modules", plan_data.get("modules", []))
-                call_volume = plan_data.get("annual_call_volume", plan_data.get("call_volume_tier", "N/A"))
-                monthly_base = plan_data.get("monthly_base", plan_data.get("base_price", "Per Quote"))
+                call_volume = plan_data.get(
+                    "annual_call_volume", plan_data.get("call_volume_tier", "N/A")
+                )
+                monthly_base = plan_data.get(
+                    "monthly_base", plan_data.get("base_price", "Per Quote")
+                )
                 agency_type = plan_data.get("agency_type", "EMS")
                 per_claim_trigger = plan_data.get(
                     "per_claim_trigger",
@@ -545,7 +606,12 @@ class LegalService:
                             ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
                             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                             ("FONTSIZE", (0, 0), (-1, -1), 9),
-                            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f0f4f8"), WHITE]),
+                            (
+                                "ROWBACKGROUNDS",
+                                (0, 1),
+                                (-1, -1),
+                                [colors.HexColor("#f0f4f8"), WHITE],
+                            ),
                             ("GRID", (0, 0), (-1, -1), 0.5, LIGHT_GRAY),
                             ("LEFTPADDING", (0, 0), (-1, -1), 8),
                             ("RIGHTPADDING", (0, 0), (-1, -1), 8),
@@ -569,8 +635,10 @@ class LegalService:
                     "fire_module": "Fire incident reporting, resource tracking, and NFIRS-compatible export.",
                     "cad_module": "CAD integration bridge for real-time dispatch data ingestion.",
                 }
-                for mod in (modules if modules else []):
-                    desc = module_descriptions.get(mod, "Platform module — see documentation for details.")
+                for mod in modules if modules else []:
+                    desc = module_descriptions.get(
+                        mod, "Platform module — see documentation for details."
+                    )
                     elements.append(Paragraph(f"<b>{mod}:</b> {desc}", body_style))
 
             elements.append(Spacer(1, 0.3 * inch))
@@ -588,7 +656,10 @@ class LegalService:
                 ["User Agent", signing_data.get("user_agent", "")],
                 ["BAA Consent", "ACCEPTED" if consents.get("baa") else "NOT ACCEPTED"],
                 ["MSA Consent", "ACCEPTED" if consents.get("msa") else "NOT ACCEPTED"],
-                ["Order Form Consent", "ACCEPTED" if consents.get("order_form") else "NOT ACCEPTED"],
+                [
+                    "Order Form Consent",
+                    "ACCEPTED" if consents.get("order_form") else "NOT ACCEPTED",
+                ],
             ]
             audit_table = Table(audit_data, colWidths=[2.0 * inch, 5.0 * inch])
             audit_table.setStyle(

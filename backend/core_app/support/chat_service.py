@@ -7,9 +7,21 @@ from core_app.ai.service import AiService
 from core_app.services.domination_service import DominationService
 
 ESCALATION_TRIGGERS = [
-    "urgent", "lawsuit", "legal action", "hipaa violation", "breach",
-    "complaint", "attorney", "sue", "fraud", "human", "speak to someone",
-    "escalate", "call me", "not working", "legal notice",
+    "urgent",
+    "lawsuit",
+    "legal action",
+    "hipaa violation",
+    "breach",
+    "complaint",
+    "attorney",
+    "sue",
+    "fraud",
+    "human",
+    "speak to someone",
+    "escalate",
+    "call me",
+    "not working",
+    "legal notice",
 ]
 
 ESCALATION_DOLLAR_THRESHOLD = 10000
@@ -99,14 +111,19 @@ class ChatService:
 
     def _get_thread(self, thread_id: str) -> dict | None:
         from sqlalchemy import text
-        row = self.db.execute(
-            text(
-                "SELECT id, tenant_id, data, version, created_at, updated_at "
-                "FROM support_threads "
-                "WHERE id = :id AND deleted_at IS NULL"
-            ),
-            {"id": thread_id},
-        ).mappings().first()
+
+        row = (
+            self.db.execute(
+                text(
+                    "SELECT id, tenant_id, data, version, created_at, updated_at "
+                    "FROM support_threads "
+                    "WHERE id = :id AND deleted_at IS NULL"
+                ),
+                {"id": thread_id},
+            )
+            .mappings()
+            .first()
+        )
         return dict(row) if row else None
 
     async def _check_escalation(self, thread_id: str, content: str) -> bool:
@@ -177,8 +194,7 @@ class ChatService:
             "Always be professional and concise."
         )
         user_prompt = (
-            f"Thread context (last messages):\n{context_block}\n\n"
-            f"Current message: {user_message}"
+            f"Thread context (last messages):\n{context_block}\n\nCurrent message: {user_message}"
         )
 
         try:
@@ -187,13 +203,14 @@ class ChatService:
         except Exception:
             return
 
-        low_confidence = "i'm not sure" in response_text.lower() or "unclear" in response_text.lower()
-
-        turn_count = sum(
-            1 for m in messages if m.get("data", {}).get("sender_role") == "ai"
+        low_confidence = (
+            "i'm not sure" in response_text.lower() or "unclear" in response_text.lower()
         )
+
+        turn_count = sum(1 for m in messages if m.get("data", {}).get("sender_role") == "ai")
         if low_confidence or turn_count >= 2:
             import asyncio
+
             asyncio.create_task(self._check_escalation(thread_id, "escalate"))
 
         ai_data = {
@@ -220,16 +237,21 @@ class ChatService:
 
     def get_thread_messages(self, thread_id: str, limit: int = 50) -> list[dict]:
         from sqlalchemy import text
-        rows = self.db.execute(
-            text(
-                "SELECT id, tenant_id, data, version, created_at, updated_at "
-                "FROM support_messages "
-                "WHERE data->>'thread_id' = :thread_id AND deleted_at IS NULL "
-                "ORDER BY created_at ASC "
-                "LIMIT :limit"
-            ),
-            {"thread_id": thread_id, "limit": limit},
-        ).mappings().all()
+
+        rows = (
+            self.db.execute(
+                text(
+                    "SELECT id, tenant_id, data, version, created_at, updated_at "
+                    "FROM support_messages "
+                    "WHERE data->>'thread_id' = :thread_id AND deleted_at IS NULL "
+                    "ORDER BY created_at ASC "
+                    "LIMIT :limit"
+                ),
+                {"thread_id": thread_id, "limit": limit},
+            )
+            .mappings()
+            .all()
+        )
         return [dict(r) for r in rows]
 
     async def mark_thread_read_by_founder(self, thread_id: str) -> None:

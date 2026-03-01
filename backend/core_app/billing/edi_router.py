@@ -80,8 +80,7 @@ async def list_batches(
     repo = DominationRepository(db, table="edi_artifacts")
     all_artifacts = repo.list(tenant_id=current.tenant_id, limit=limit, offset=offset)
     batches = [
-        a for a in all_artifacts
-        if (a.get("data") or {}).get("entity_type") == "submission_batch"
+        a for a in all_artifacts if (a.get("data") or {}).get("entity_type") == "submission_batch"
     ]
     return {"batches": batches, "total": len(batches)}
 
@@ -101,7 +100,8 @@ async def get_batch(
 
     all_artifacts = repo.list(tenant_id=current.tenant_id, limit=1000)
     edi_files = [
-        a for a in all_artifacts
+        a
+        for a in all_artifacts
         if (a.get("data") or {}).get("entity_type") == "edi_file"
         and (a.get("data") or {}).get("batch_id") == str(batch_id)
     ]
@@ -253,7 +253,10 @@ async def ingest_835(
         entity_id=uuid.uuid4(),
         entity_type="era",
         event_type="EDI_835_RECEIVED",
-        payload={"denial_count": len(result.get("denials", [])), "payment_amount": result.get("payment_amount")},
+        payload={
+            "denial_count": len(result.get("denials", [])),
+            "payment_amount": result.get("payment_amount"),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return result
@@ -268,16 +271,21 @@ async def claim_status_history(
     if current.role not in ("founder", "admin", "billing", "ems"):
         raise HTTPException(status_code=403, detail="Forbidden")
     from sqlalchemy import text
+
     try:
-        rows = db.execute(
-            text(
-                "SELECT status_code, status_description, source, effective_date, created_at "
-                "FROM claim_status_history "
-                "WHERE claim_id = :cid AND tenant_id = :tid "
-                "ORDER BY created_at DESC LIMIT 100"
-            ),
-            {"cid": str(claim_id), "tid": str(current.tenant_id)},
-        ).mappings().all()
+        rows = (
+            db.execute(
+                text(
+                    "SELECT status_code, status_description, source, effective_date, created_at "
+                    "FROM claim_status_history "
+                    "WHERE claim_id = :cid AND tenant_id = :tid "
+                    "ORDER BY created_at DESC LIMIT 100"
+                ),
+                {"cid": str(claim_id), "tid": str(current.tenant_id)},
+            )
+            .mappings()
+            .all()
+        )
         history = [dict(r) for r in rows]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"status_history_query_error: {exc}")
@@ -365,7 +373,10 @@ async def ingest_generic(
             entity_id=uuid.uuid4(),
             entity_type="era",
             event_type="EDI_835_RECEIVED",
-            payload={"denial_count": len(result.get("denials", [])), "payment_amount": result.get("payment_amount")},
+            payload={
+                "denial_count": len(result.get("denials", [])),
+                "payment_amount": result.get("payment_amount"),
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
 

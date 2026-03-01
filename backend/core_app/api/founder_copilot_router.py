@@ -58,11 +58,19 @@ def _db_now_sql() -> str:
     return "now()"
 
 
-def _get_session_or_404(db: Session, session_id: uuid.UUID, founder_user_id: uuid.UUID) -> dict[str, Any]:
-    row = db.execute(
-        text("SELECT id, founder_user_id, title, created_at, updated_at FROM founder_chat_sessions WHERE id = :sid"),
-        {"sid": str(session_id)},
-    ).mappings().first()
+def _get_session_or_404(
+    db: Session, session_id: uuid.UUID, founder_user_id: uuid.UUID
+) -> dict[str, Any]:
+    row = (
+        db.execute(
+            text(
+                "SELECT id, founder_user_id, title, created_at, updated_at FROM founder_chat_sessions WHERE id = :sid"
+            ),
+            {"sid": str(session_id)},
+        )
+        .mappings()
+        .first()
+    )
     if row is None:
         raise HTTPException(status_code=404, detail="Session not found")
     if str(row["founder_user_id"]) != str(founder_user_id):
@@ -71,8 +79,9 @@ def _get_session_or_404(db: Session, session_id: uuid.UUID, founder_user_id: uui
 
 
 def _get_run_or_404(db: Session, run_id: uuid.UUID, founder_user_id: uuid.UUID) -> dict[str, Any]:
-    row = db.execute(
-        text("""
+    row = (
+        db.execute(
+            text("""
             SELECT r.id, r.session_id, r.status, r.plan_json, r.release_gate_results_json,
                    r.diff_text, r.diff_s3_key, r.gh_run_id, r.gh_run_url, r.created_at, r.updated_at,
                    s.founder_user_id
@@ -80,8 +89,11 @@ def _get_run_or_404(db: Session, run_id: uuid.UUID, founder_user_id: uuid.UUID) 
             JOIN founder_chat_sessions s ON s.id = r.session_id
             WHERE r.id = :rid
         """),
-        {"rid": str(run_id)},
-    ).mappings().first()
+            {"rid": str(run_id)},
+        )
+        .mappings()
+        .first()
+    )
     if row is None:
         raise HTTPException(status_code=404, detail="Run not found")
     if str(row["founder_user_id"]) != str(founder_user_id):
@@ -96,27 +108,44 @@ def _parse_action_plan(assistant_text: str) -> dict[str, Any] | None:
     end = assistant_text.find("```", start + 14)
     if end == -1:
         return None
-    raw = assistant_text[start + 14:end].strip()
+    raw = assistant_text[start + 14 : end].strip()
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         return None
 
 
-def _insert_message(db: Session, session_id: uuid.UUID, role: str, content_text: str, content_json: dict | None = None) -> dict[str, Any]:
-    row = db.execute(
-        text("""
+def _insert_message(
+    db: Session,
+    session_id: uuid.UUID,
+    role: str,
+    content_text: str,
+    content_json: dict | None = None,
+) -> dict[str, Any]:
+    row = (
+        db.execute(
+            text("""
             INSERT INTO founder_chat_messages (session_id, role, content_text, content_json)
             VALUES (:sid, :role, :ct, :cj)
             RETURNING id, session_id, role, content_text, content_json, created_at
         """),
-        {"sid": str(session_id), "role": role, "ct": content_text, "cj": json.dumps(content_json) if content_json else None},
-    ).mappings().first()
+            {
+                "sid": str(session_id),
+                "role": role,
+                "ct": content_text,
+                "cj": json.dumps(content_json) if content_json else None,
+            },
+        )
+        .mappings()
+        .first()
+    )
     db.commit()
     return dict(row)
 
 
-def _log_audit(db: Session, action: str, founder_user_id: uuid.UUID, payload: dict[str, Any]) -> None:
+def _log_audit(
+    db: Session, action: str, founder_user_id: uuid.UUID, payload: dict[str, Any]
+) -> None:
     with contextlib.suppress(Exception):
         db.execute(
             text("""
@@ -153,14 +182,18 @@ async def create_session(
     db: Session = Depends(db_session_dependency),
 ):
     title = str(payload.get("title") or "New session")[:255]
-    row = db.execute(
-        text("""
+    row = (
+        db.execute(
+            text("""
             INSERT INTO founder_chat_sessions (founder_user_id, title)
             VALUES (:uid, :title)
             RETURNING id, founder_user_id, title, created_at, updated_at
         """),
-        {"uid": str(current.user_id), "title": title},
-    ).mappings().first()
+            {"uid": str(current.user_id), "title": title},
+        )
+        .mappings()
+        .first()
+    )
     db.commit()
     _log_audit(db, "create_session", current.user_id, {"title": title})
     return dict(row)
@@ -171,16 +204,20 @@ async def list_sessions(
     current: CurrentUser = Depends(require_role("founder")),
     db: Session = Depends(db_session_dependency),
 ):
-    rows = db.execute(
-        text("""
+    rows = (
+        db.execute(
+            text("""
             SELECT id, founder_user_id, title, created_at, updated_at
             FROM founder_chat_sessions
             WHERE founder_user_id = :uid
             ORDER BY updated_at DESC
             LIMIT 100
         """),
-        {"uid": str(current.user_id)},
-    ).mappings().all()
+            {"uid": str(current.user_id)},
+        )
+        .mappings()
+        .all()
+    )
     return {"sessions": [dict(r) for r in rows]}
 
 
@@ -199,13 +236,17 @@ async def send_message(
 
     _insert_message(db, session_id, "user", user_text)
 
-    history_rows = db.execute(
-        text("""
+    history_rows = (
+        db.execute(
+            text("""
             SELECT role, content_text FROM founder_chat_messages
             WHERE session_id = :sid ORDER BY created_at ASC LIMIT 40
         """),
-        {"sid": str(session_id)},
-    ).mappings().all()
+            {"sid": str(session_id)},
+        )
+        .mappings()
+        .all()
+    )
 
     history_text = "\n".join(
         f"{r['role'].upper()}: {r['content_text'] or ''}" for r in history_rows
@@ -249,15 +290,19 @@ async def get_messages(
     db: Session = Depends(db_session_dependency),
 ):
     _get_session_or_404(db, session_id, current.user_id)
-    rows = db.execute(
-        text("""
+    rows = (
+        db.execute(
+            text("""
             SELECT id, session_id, role, content_text, content_json, created_at
             FROM founder_chat_messages
             WHERE session_id = :sid
             ORDER BY created_at ASC
         """),
-        {"sid": str(session_id)},
-    ).mappings().all()
+            {"sid": str(session_id)},
+        )
+        .mappings()
+        .all()
+    )
     return {"messages": [dict(r) for r in rows]}
 
 
@@ -274,14 +319,18 @@ async def propose_run(
     if not plan_json:
         raise HTTPException(status_code=422, detail="plan is required")
 
-    row = db.execute(
-        text("""
+    row = (
+        db.execute(
+            text("""
             INSERT INTO founder_chat_runs (session_id, status, plan_json)
             VALUES (:sid, 'proposed', :plan::jsonb)
             RETURNING id, session_id, status, plan_json, created_at, updated_at
         """),
-        {"sid": str(session_id), "plan": json.dumps(plan_json)},
-    ).mappings().first()
+            {"sid": str(session_id), "plan": json.dumps(plan_json)},
+        )
+        .mappings()
+        .first()
+    )
     db.commit()
 
     run = dict(row)
@@ -292,11 +341,20 @@ async def propose_run(
                 INSERT INTO founder_chat_actions (run_id, action_type, payload_json, status)
                 VALUES (:rid, :atype, :payload::jsonb, 'proposed')
             """),
-            {"rid": str(run["id"]), "atype": action.get("type", "UNKNOWN"), "payload": json.dumps(action.get("payload", {}))},
+            {
+                "rid": str(run["id"]),
+                "atype": action.get("type", "UNKNOWN"),
+                "payload": json.dumps(action.get("payload", {})),
+            },
         )
     db.commit()
 
-    _log_audit(db, "propose_run", current.user_id, {"run_id": str(run["id"]), "plan_summary": plan_json.get("summary")})
+    _log_audit(
+        db,
+        "propose_run",
+        current.user_id,
+        {"run_id": str(run["id"]), "plan_summary": plan_json.get("summary")},
+    )
     return run
 
 
@@ -310,7 +368,9 @@ async def execute_run(
 ):
     run = _get_run_or_404(db, run_id, current.user_id)
     if run["status"] not in ("proposed", "blocked"):
-        raise HTTPException(status_code=422, detail=f"Cannot execute run in status '{run['status']}'")
+        raise HTTPException(
+            status_code=422, detail=f"Cannot execute run in status '{run['status']}'"
+        )
 
     settings = get_settings()
     gh_token = getattr(settings, "github_token", "") or ""
@@ -336,7 +396,9 @@ async def execute_run(
                 if resp.status_code == 204:
                     await _poll_gh_run_id(client, gh_owner, gh_repo, gh_token, run_id, db)
                 else:
-                    logger.warning("gh_dispatch_failed status=%s body=%s", resp.status_code, resp.text[:300])
+                    logger.warning(
+                        "gh_dispatch_failed status=%s body=%s", resp.status_code, resp.text[:300]
+                    )
         except Exception as exc:
             logger.warning("gh_dispatch_error run_id=%s err=%s", run_id, exc)
     else:
@@ -354,7 +416,12 @@ async def execute_run(
     db.commit()
 
     _log_audit(db, "execute_run", current.user_id, {"run_id": str(run_id), "ref": ref})
-    return {"run_id": str(run_id), "status": "running", "gh_run_id": gh_run_id, "gh_run_url": gh_run_url}
+    return {
+        "run_id": str(run_id),
+        "status": "running",
+        "gh_run_id": gh_run_id,
+        "gh_run_url": gh_run_url,
+    }
 
 
 async def _poll_gh_run_id(
@@ -366,6 +433,7 @@ async def _poll_gh_run_id(
     db: Session,
 ) -> None:
     import asyncio
+
     await asyncio.sleep(3)
     try:
         resp = await client.get(
@@ -378,8 +446,14 @@ async def _poll_gh_run_id(
             if runs:
                 latest = runs[0]
                 db.execute(
-                    text("UPDATE founder_chat_runs SET gh_run_id = :ghid, gh_run_url = :ghurl WHERE id = :rid"),
-                    {"ghid": str(latest["id"]), "ghurl": latest.get("html_url"), "rid": str(run_id)},
+                    text(
+                        "UPDATE founder_chat_runs SET gh_run_id = :ghid, gh_run_url = :ghurl WHERE id = :rid"
+                    ),
+                    {
+                        "ghid": str(latest["id"]),
+                        "ghurl": latest.get("html_url"),
+                        "rid": str(run_id),
+                    },
                 )
     except Exception as exc:
         logger.warning("poll_gh_run_id_failed err=%s", exc)
@@ -392,13 +466,17 @@ async def get_run(
     db: Session = Depends(db_session_dependency),
 ):
     run = _get_run_or_404(db, run_id, current.user_id)
-    actions = db.execute(
-        text("""
+    actions = (
+        db.execute(
+            text("""
             SELECT id, run_id, action_type, payload_json, status, result_json, created_at
             FROM founder_chat_actions WHERE run_id = :rid ORDER BY created_at ASC
         """),
-        {"rid": str(run_id)},
-    ).mappings().all()
+            {"rid": str(run_id)},
+        )
+        .mappings()
+        .all()
+    )
     return {"run": run, "actions": [dict(a) for a in actions]}
 
 
@@ -426,11 +504,18 @@ async def approve_run(
         )
 
     db.execute(
-        text("UPDATE founder_chat_runs SET status = 'approved', updated_at = now() WHERE id = :rid"),
+        text(
+            "UPDATE founder_chat_runs SET status = 'approved', updated_at = now() WHERE id = :rid"
+        ),
         {"rid": str(run_id)},
     )
     db.commit()
-    _log_audit(db, "approve_run", current.user_id, {"run_id": str(run_id), "force": bool(payload.get("force"))})
+    _log_audit(
+        db,
+        "approve_run",
+        current.user_id,
+        {"run_id": str(run_id), "force": bool(payload.get("force"))},
+    )
     return {"run_id": str(run_id), "status": "approved"}
 
 

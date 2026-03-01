@@ -30,6 +30,7 @@ def require_role(*roles: str):
         if current.role not in roles:
             raise HTTPException(status_code=403, detail="Insufficient role")
         return current
+
     return dep
 
 
@@ -80,6 +81,7 @@ async def list_charts(
     db: Session = Depends(db_session_dependency),
 ):
     from sqlalchemy import text
+
     clauses = ["tenant_id = :tenant_id", "deleted_at IS NULL"]
     params: dict[str, Any] = {"tenant_id": str(current.tenant_id), "limit": limit, "offset": offset}
     if status:
@@ -534,7 +536,10 @@ async def submit_chart(
     if not readiness["ready"]:
         raise HTTPException(
             status_code=422,
-            detail={"message": "Chart not ready for submission", "blocking_issues": readiness["blocking_issues"]},
+            detail={
+                "message": "Chart not ready for submission",
+                "blocking_issues": readiness["blocking_issues"],
+            },
         )
 
     # --- Guard 2: NEMSIS validation ---
@@ -649,6 +654,13 @@ async def get_event_log(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    return _svc(db).repo("epcr_event_log").list_raw_by_field(
-        "chart_id", chart_id, tenant_id=current.tenant_id, limit=200,
+    return (
+        _svc(db)
+        .repo("epcr_event_log")
+        .list_raw_by_field(
+            "chart_id",
+            chart_id,
+            tenant_id=current.tenant_id,
+            limit=200,
+        )
     )

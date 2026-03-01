@@ -16,27 +16,54 @@ from core_app.schemas.auth import CurrentUser
 
 router = APIRouter(prefix="/accreditation", tags=["accreditation"])
 
+
 @router.post("/items")
-def create_item(payload: AccreditationItemCreate, db: Session = Depends(db_session_dependency), user: CurrentUser = Depends(get_current_user)):
-    row = db.execute(
-        text("""
+def create_item(
+    payload: AccreditationItemCreate,
+    db: Session = Depends(db_session_dependency),
+    user: CurrentUser = Depends(get_current_user),
+):
+    row = (
+        db.execute(
+            text("""
             INSERT INTO accreditation_items
             (tenant_id, standard_ref, category, required_docs, status, score_weight)
             VALUES (:tid, :ref, :cat, :docs::jsonb, 'not_started', :w)
             RETURNING id
         """),
-        {"tid": str(user.tenant_id), "ref": payload.standard_ref, "cat": payload.category, "docs": json.dumps(payload.required_docs), "w": payload.score_weight},
-    ).mappings().first()
+            {
+                "tid": str(user.tenant_id),
+                "ref": payload.standard_ref,
+                "cat": payload.category,
+                "docs": json.dumps(payload.required_docs),
+                "w": payload.score_weight,
+            },
+        )
+        .mappings()
+        .first()
+    )
     db.commit()
     return {"id": str(row["id"])}
 
+
 @router.patch("/items/{item_id}")
-def update_item(item_id: str, payload: AccreditationItemUpdate, db: Session = Depends(db_session_dependency), user: CurrentUser = Depends(get_current_user)):
+def update_item(
+    item_id: str,
+    payload: AccreditationItemUpdate,
+    db: Session = Depends(db_session_dependency),
+    user: CurrentUser = Depends(get_current_user),
+):
     # optimistic concurrency
-    current = db.execute(
-        text("SELECT version FROM accreditation_items WHERE id=:id AND tenant_id=:tid AND deleted_at IS NULL"),
-        {"id": item_id, "tid": str(user.tenant_id)}
-    ).mappings().first()
+    current = (
+        db.execute(
+            text(
+                "SELECT version FROM accreditation_items WHERE id=:id AND tenant_id=:tid AND deleted_at IS NULL"
+            ),
+            {"id": item_id, "tid": str(user.tenant_id)},
+        )
+        .mappings()
+        .first()
+    )
     if not current:
         raise HTTPException(status_code=404, detail="Not found")
     if int(current["version"]) != payload.version:
@@ -52,7 +79,12 @@ def update_item(item_id: str, payload: AccreditationItemUpdate, db: Session = De
     if payload.score_weight is not None:
         updates["score_weight"] = payload.score_weight
 
-    sets = ", ".join([f"{k} = :{k}" if k != "required_docs" else "required_docs = :required_docs::jsonb" for k in updates])
+    sets = ", ".join(
+        [
+            f"{k} = :{k}" if k != "required_docs" else "required_docs = :required_docs::jsonb"
+            for k in updates
+        ]
+    )
     if not sets:
         return {"ok": True}
 
@@ -60,18 +92,25 @@ def update_item(item_id: str, payload: AccreditationItemUpdate, db: Session = De
         text(f"""UPDATE accreditation_items
                 SET {sets}, version = version + 1, updated_at = now()
                 WHERE id=:id AND tenant_id=:tid"""),
-        {**updates, "id": item_id, "tid": str(user.tenant_id)}
+        {**updates, "id": item_id, "tid": str(user.tenant_id)},
     )
     db.commit()
     return {"ok": True}
 
+
 @router.get("/dashboard", response_model=AccreditationDashboard)
-def dashboard(db: Session = Depends(db_session_dependency), user: CurrentUser = Depends(get_current_user)) -> AccreditationDashboard:
-    rows = db.execute(
-        text("""SELECT category, status, score_weight FROM accreditation_items
+def dashboard(
+    db: Session = Depends(db_session_dependency), user: CurrentUser = Depends(get_current_user)
+) -> AccreditationDashboard:
+    rows = (
+        db.execute(
+            text("""SELECT category, status, score_weight FROM accreditation_items
                 WHERE tenant_id=:tid AND deleted_at IS NULL"""),
-        {"tid": str(user.tenant_id)}
-    ).mappings().all()
+            {"tid": str(user.tenant_id)},
+        )
+        .mappings()
+        .all()
+    )
 
     total_weight = sum(int(r["score_weight"]) for r in rows) or 1
     complete_weight = sum(int(r["score_weight"]) for r in rows if r["status"] == "complete")
@@ -88,4 +127,6 @@ def dashboard(db: Session = Depends(db_session_dependency), user: CurrentUser = 
         else:
             deficiencies.append({"category": cat, "status": r["status"]})
 
-    return AccreditationDashboard(score_percent=score, by_category=by_cat, deficiencies=deficiencies)
+    return AccreditationDashboard(
+        score_percent=score, by_category=by_cat, deficiencies=deficiencies
+    )

@@ -35,6 +35,7 @@ def _check(current: CurrentUser) -> None:
 
 # ─── Accounts ────────────────────────────────────────────────────────────────
 
+
 @router.get("/accounts")
 async def list_accounts(
     status: str | None = None,
@@ -49,7 +50,11 @@ async def list_accounts(
     if status:
         accounts = [a for a in accounts if (a.get("data") or {}).get("status") == status]
     if days_past_due_gte is not None:
-        accounts = [a for a in accounts if (a.get("data") or {}).get("days_past_due", 0) >= days_past_due_gte]
+        accounts = [
+            a
+            for a in accounts
+            if (a.get("data") or {}).get("days_past_due", 0) >= days_past_due_gte
+        ]
     return accounts
 
 
@@ -65,16 +70,31 @@ async def get_account(
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     aid = str(account_id)
-    charges = [c for c in svc.repo("ar_charges").list(tenant_id=current.tenant_id, limit=200)
-               if (c.get("data") or {}).get("account_id") == aid]
-    payments = [p for p in svc.repo("ar_payments").list(tenant_id=current.tenant_id, limit=200)
-                if (p.get("data") or {}).get("account_id") == aid]
-    plans = [p for p in svc.repo("ar_payment_plans").list(tenant_id=current.tenant_id, limit=50)
-             if (p.get("data") or {}).get("account_id") == aid]
-    disputes = [d for d in svc.repo("ar_disputes").list(tenant_id=current.tenant_id, limit=50)
-                if (d.get("data") or {}).get("account_id") == aid]
-    statements = [s for s in svc.repo("ar_statements").list(tenant_id=current.tenant_id, limit=50)
-                  if (s.get("data") or {}).get("account_id") == aid]
+    charges = [
+        c
+        for c in svc.repo("ar_charges").list(tenant_id=current.tenant_id, limit=200)
+        if (c.get("data") or {}).get("account_id") == aid
+    ]
+    payments = [
+        p
+        for p in svc.repo("ar_payments").list(tenant_id=current.tenant_id, limit=200)
+        if (p.get("data") or {}).get("account_id") == aid
+    ]
+    plans = [
+        p
+        for p in svc.repo("ar_payment_plans").list(tenant_id=current.tenant_id, limit=50)
+        if (p.get("data") or {}).get("account_id") == aid
+    ]
+    disputes = [
+        d
+        for d in svc.repo("ar_disputes").list(tenant_id=current.tenant_id, limit=50)
+        if (d.get("data") or {}).get("account_id") == aid
+    ]
+    statements = [
+        s
+        for s in svc.repo("ar_statements").list(tenant_id=current.tenant_id, limit=50)
+        if (s.get("data") or {}).get("account_id") == aid
+    ]
     return {
         "account": account,
         "charges": charges,
@@ -115,6 +135,7 @@ async def create_account(
 
 
 # ─── Payment Plans ────────────────────────────────────────────────────────────
+
 
 @router.post("/accounts/{account_id}/payment-plans")
 async def create_payment_plan(
@@ -160,14 +181,19 @@ async def create_payment_plan(
         table="ledger_entries",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"entry_type": "ar.plan.created", "account_id": str(account_id), "plan_id": str(plan["id"]),
-              "at": datetime.now(UTC).isoformat()},
+        data={
+            "entry_type": "ar.plan.created",
+            "account_id": str(account_id),
+            "plan_id": str(plan["id"]),
+            "at": datetime.now(UTC).isoformat(),
+        },
         correlation_id=correlation_id,
     )
     return plan
 
 
 # ─── Disputes ─────────────────────────────────────────────────────────────────
+
 
 @router.post("/accounts/{account_id}/disputes")
 async def create_dispute(
@@ -180,7 +206,9 @@ async def create_dispute(
     _check(current)
     reason = payload.get("reason_code", "other")
     if reason not in DISPUTE_REASONS:
-        raise HTTPException(status_code=422, detail=f"reason_code must be one of {sorted(DISPUTE_REASONS)}")
+        raise HTTPException(
+            status_code=422, detail=f"reason_code must be one of {sorted(DISPUTE_REASONS)}"
+        )
     svc = _svc(db)
     account = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=account_id)
     if not account:
@@ -213,8 +241,12 @@ async def create_dispute(
         table="ledger_entries",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"entry_type": "ar.dispute.opened", "account_id": str(account_id),
-              "dispute_id": str(dispute["id"]), "at": datetime.now(UTC).isoformat()},
+        data={
+            "entry_type": "ar.dispute.opened",
+            "account_id": str(account_id),
+            "dispute_id": str(dispute["id"]),
+            "at": datetime.now(UTC).isoformat(),
+        },
         correlation_id=correlation_id,
     )
     return dispute
@@ -265,6 +297,7 @@ async def resolve_dispute(
 
 
 # ─── Statements ───────────────────────────────────────────────────────────────
+
 
 @router.post("/statements/run")
 async def run_statements(
@@ -317,6 +350,7 @@ async def run_statements(
 
 # ─── Payments webhook ─────────────────────────────────────────────────────────
 
+
 @router.post("/payments/webhook")
 async def payment_webhook(
     payload: dict[str, Any],
@@ -334,6 +368,7 @@ async def payment_webhook(
         return {"status": "invalid_account_id"}
     system_tenant = _os.environ.get("SYSTEM_TENANT_ID", "00000000-0000-0000-0000-000000000000")
     from core_app.core.config import get_settings
+
     system_tenant = get_settings().system_tenant_id or system_tenant
     try:
         system_tenant_uuid = uuid.UUID(system_tenant)
@@ -356,6 +391,7 @@ async def payment_webhook(
 
 
 # ─── Vendor profiles ──────────────────────────────────────────────────────────
+
 
 @router.post("/vendors")
 async def create_vendor(
@@ -396,6 +432,7 @@ async def list_vendors(
 
 # ─── Placement export ─────────────────────────────────────────────────────────
 
+
 @router.post("/vendors/{vendor_id}/placements/generate")
 async def generate_placement(
     vendor_id: uuid.UUID,
@@ -406,7 +443,9 @@ async def generate_placement(
 ):
     _check(current)
     svc = _svc(db)
-    vendor = svc.repo("collections_vendor_profiles").get(tenant_id=current.tenant_id, record_id=vendor_id)
+    vendor = svc.repo("collections_vendor_profiles").get(
+        tenant_id=current.tenant_id, record_id=vendor_id
+    )
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor profile not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -414,44 +453,61 @@ async def generate_placement(
     min_days = payload.get("min_days_past_due", 90)
     accounts = svc.repo("ar_accounts").list(tenant_id=current.tenant_id, limit=500)
     eligible = [
-        a for a in accounts
+        a
+        for a in accounts
         if (a.get("data") or {}).get("status") not in ("closed", "placed", "dispute")
         and (a.get("data") or {}).get("days_past_due", 0) >= min_days
         and (a.get("data") or {}).get("balance_cents", 0) > 0
     ]
 
     csv_buf = io.StringIO()
-    writer = csv.DictWriter(csv_buf, fieldnames=[
-        "agency_account_number", "patient_name", "dob_year", "balance_dollars",
-        "service_date", "last_statement_date", "dispute_status", "case_id",
-    ])
+    writer = csv.DictWriter(
+        csv_buf,
+        fieldnames=[
+            "agency_account_number",
+            "patient_name",
+            "dob_year",
+            "balance_dollars",
+            "service_date",
+            "last_statement_date",
+            "dispute_status",
+            "case_id",
+        ],
+    )
     writer.writeheader()
     for acc in eligible:
         d = acc.get("data") or {}
         patient = d.get("patient_ref") or {}
-        writer.writerow({
-            "agency_account_number": str(acc["id"]),
-            "patient_name": patient.get("name", ""),
-            "dob_year": patient.get("dob_year", ""),
-            "balance_dollars": "{:.2f}".format((d.get("balance_cents") or 0) / 100),
-            "service_date": patient.get("service_date", ""),
-            "last_statement_date": d.get("last_statement_at", ""),
-            "dispute_status": "none",
-            "case_id": d.get("case_id", ""),
-        })
+        writer.writerow(
+            {
+                "agency_account_number": str(acc["id"]),
+                "patient_name": patient.get("name", ""),
+                "dob_year": patient.get("dob_year", ""),
+                "balance_dollars": "{:.2f}".format((d.get("balance_cents") or 0) / 100),
+                "service_date": patient.get("service_date", ""),
+                "last_statement_date": d.get("last_statement_at", ""),
+                "dispute_status": "none",
+                "case_id": d.get("case_id", ""),
+            }
+        )
 
     batch_id = f"batch-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("placements.csv", csv_buf.getvalue())
-        audit = {"batch_id": batch_id, "generated_at": datetime.now(UTC).isoformat(),
-                 "account_count": len(eligible), "tenant_id": str(current.tenant_id)}
+        audit = {
+            "batch_id": batch_id,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "account_count": len(eligible),
+            "tenant_id": str(current.tenant_id),
+        }
         zf.writestr("audit.json", json.dumps(audit, indent=2))
     zip_bytes = zip_buf.getvalue()
 
     s3_key = f"ar/placements/{current.tenant_id}/{batch_id}/export.zip"
     try:
         from core_app.documents.s3_storage import default_exports_bucket, put_bytes
+
         bucket = default_exports_bucket()
         if bucket:
             put_bytes(bucket=bucket, key=s3_key, content=zip_bytes, content_type="application/zip")

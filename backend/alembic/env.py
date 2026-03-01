@@ -27,9 +27,8 @@ def get_url() -> str:
 
 def _make_sync_url(url: str) -> str:
     """Convert async DB URL to sync for Alembic."""
-    return (
-        url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-           .replace("postgresql+aiopg://", "postgresql+psycopg2://")
+    return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://").replace(
+        "postgresql+aiopg://", "postgresql+psycopg2://"
     )
 
 

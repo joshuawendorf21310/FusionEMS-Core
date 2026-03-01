@@ -18,12 +18,14 @@ class ClaimMatcher:
 
     def decode_qr_payload(self, image_bytes: bytes) -> dict | None:
         import io as _io
+
         decoded_text: str | None = None
 
         try:
             import numpy as np
             import zxingcpp
             from PIL import Image as PILImage
+
             img = PILImage.open(_io.BytesIO(image_bytes)).convert("RGB")
             arr = np.array(img)
             results = zxingcpp.read_barcodes(arr)
@@ -36,6 +38,7 @@ class ClaimMatcher:
             try:
                 import PIL.Image
                 from pyzbar.pyzbar import decode as pyzbar_decode
+
                 img = PIL.Image.open(_io.BytesIO(image_bytes))
                 results = pyzbar_decode(img)
                 if results:
@@ -57,12 +60,14 @@ class ClaimMatcher:
             return None
         try:
             import uuid
+
             cid = uuid.UUID(str(claim_id_raw))
         except Exception:
             return None
         repo = DominationRepository(self.db, table="billing_cases")
         try:
             import uuid
+
             return repo.get(tenant_id=uuid.UUID(self.tenant_id), record_id=cid)
         except Exception:
             return None
@@ -85,6 +90,7 @@ class ClaimMatcher:
         claim_numbers: list[str] = re.findall(r"\b(\d{6,12})\b", ocr_text)
 
         import uuid
+
         try:
             tenant_uuid = uuid.UUID(self.tenant_id)
         except Exception:
@@ -96,43 +102,55 @@ class ClaimMatcher:
         for patient_name in patient_names[:3]:
             if pg_trgm_available:
                 try:
-                    rows = self.db.execute(
-                        text(
-                            "SELECT id, data, tenant_id, version, created_at "
-                            "FROM billing_cases "
-                            "WHERE tenant_id = :tid AND deleted_at IS NULL "
-                            "AND similarity(data->>'patient_last_name' || ' ' || data->>'patient_first_name', :name) > 0.25 "
-                            "ORDER BY similarity(data->>'patient_last_name' || ' ' || data->>'patient_first_name', :name) DESC "
-                            "LIMIT 20"
-                        ),
-                        {"tid": str(tenant_uuid), "name": patient_name},
-                    ).mappings().all()
-                    cases.extend([dict(r) for r in rows])
-                except Exception:
-                    rows = self.db.execute(
-                        text(
-                            "SELECT id, data, tenant_id, version, created_at "
-                            "FROM billing_cases "
-                            "WHERE tenant_id = :tid AND deleted_at IS NULL "
-                            "AND (data->>'patient_last_name' ILIKE :name OR data->>'patient_first_name' ILIKE :name) "
-                            "LIMIT 20"
-                        ),
-                        {"tid": str(tenant_uuid), "name": f"%{patient_name}%"},
-                    ).mappings().all()
-                    cases.extend([dict(r) for r in rows])
-            else:
-                for name_fragment in patient_name.split()[:2]:
-                    try:
-                        rows = self.db.execute(
+                    rows = (
+                        self.db.execute(
                             text(
                                 "SELECT id, data, tenant_id, version, created_at "
                                 "FROM billing_cases "
                                 "WHERE tenant_id = :tid AND deleted_at IS NULL "
-                                "AND (data->>'patient_last_name' ILIKE :frag OR data->>'patient_first_name' ILIKE :frag) "
+                                "AND similarity(data->>'patient_last_name' || ' ' || data->>'patient_first_name', :name) > 0.25 "
+                                "ORDER BY similarity(data->>'patient_last_name' || ' ' || data->>'patient_first_name', :name) DESC "
                                 "LIMIT 20"
                             ),
-                            {"tid": str(tenant_uuid), "frag": f"%{name_fragment}%"},
-                        ).mappings().all()
+                            {"tid": str(tenant_uuid), "name": patient_name},
+                        )
+                        .mappings()
+                        .all()
+                    )
+                    cases.extend([dict(r) for r in rows])
+                except Exception:
+                    rows = (
+                        self.db.execute(
+                            text(
+                                "SELECT id, data, tenant_id, version, created_at "
+                                "FROM billing_cases "
+                                "WHERE tenant_id = :tid AND deleted_at IS NULL "
+                                "AND (data->>'patient_last_name' ILIKE :name OR data->>'patient_first_name' ILIKE :name) "
+                                "LIMIT 20"
+                            ),
+                            {"tid": str(tenant_uuid), "name": f"%{patient_name}%"},
+                        )
+                        .mappings()
+                        .all()
+                    )
+                    cases.extend([dict(r) for r in rows])
+            else:
+                for name_fragment in patient_name.split()[:2]:
+                    try:
+                        rows = (
+                            self.db.execute(
+                                text(
+                                    "SELECT id, data, tenant_id, version, created_at "
+                                    "FROM billing_cases "
+                                    "WHERE tenant_id = :tid AND deleted_at IS NULL "
+                                    "AND (data->>'patient_last_name' ILIKE :frag OR data->>'patient_first_name' ILIKE :frag) "
+                                    "LIMIT 20"
+                                ),
+                                {"tid": str(tenant_uuid), "frag": f"%{name_fragment}%"},
+                            )
+                            .mappings()
+                            .all()
+                        )
                         cases.extend([dict(r) for r in rows])
                     except Exception:
                         pass
@@ -140,16 +158,20 @@ class ClaimMatcher:
         if claim_numbers:
             for cn in claim_numbers[:3]:
                 try:
-                    rows = self.db.execute(
-                        text(
-                            "SELECT id, data, tenant_id, version, created_at "
-                            "FROM billing_cases "
-                            "WHERE tenant_id = :tid AND deleted_at IS NULL "
-                            "AND data->>'claim_id' ILIKE :cn "
-                            "LIMIT 5"
-                        ),
-                        {"tid": str(tenant_uuid), "cn": f"%{cn}%"},
-                    ).mappings().all()
+                    rows = (
+                        self.db.execute(
+                            text(
+                                "SELECT id, data, tenant_id, version, created_at "
+                                "FROM billing_cases "
+                                "WHERE tenant_id = :tid AND deleted_at IS NULL "
+                                "AND data->>'claim_id' ILIKE :cn "
+                                "LIMIT 5"
+                            ),
+                            {"tid": str(tenant_uuid), "cn": f"%{cn}%"},
+                        )
+                        .mappings()
+                        .all()
+                    )
                     cases.extend([dict(r) for r in rows])
                 except Exception:
                     pass
@@ -174,7 +196,9 @@ class ClaimMatcher:
                     cdata = {}
 
             case_full_name = (
-                (cdata.get("patient_last_name", "") + " " + cdata.get("patient_first_name", "")).strip().lower()
+                (cdata.get("patient_last_name", "") + " " + cdata.get("patient_first_name", ""))
+                .strip()
+                .lower()
             )
             for pn in patient_names:
                 if case_full_name and pn.lower() in case_full_name or case_full_name in pn.lower():
@@ -208,13 +232,15 @@ class ClaimMatcher:
                     pass
 
             if score >= 40:
-                results.append({
-                    "claim_id": str(case.get("id", "")),
-                    "claim_data": cdata,
-                    "score": score,
-                    "confidence": round(score / 100, 2),
-                    "match_fields": match_fields,
-                })
+                results.append(
+                    {
+                        "claim_id": str(case.get("id", "")),
+                        "claim_data": cdata,
+                        "score": score,
+                        "confidence": round(score / 100, 2),
+                        "match_fields": match_fields,
+                    }
+                )
 
         results.sort(key=lambda x: x["score"], reverse=True)
         return results

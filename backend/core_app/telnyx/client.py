@@ -41,6 +41,7 @@ def _raise_for(resp: requests.Response, context: str) -> None:
 
 # ── Call Control ──────────────────────────────────────────────────────────────
 
+
 def call_answer(*, api_key: str, call_control_id: str) -> dict[str, Any]:
     r = requests.post(
         f"{TELNYX_API}/calls/{call_control_id}/actions/answer",
@@ -75,6 +76,7 @@ def call_gather_using_audio(
         payload["terminating_digit"] = terminating_digit
     if client_state:
         import base64
+
         payload["client_state"] = base64.b64encode(client_state.encode()).decode()
     r = requests.post(
         f"{TELNYX_API}/calls/{call_control_id}/actions/gather_using_audio",
@@ -97,6 +99,7 @@ def call_playback_start(
     payload: dict[str, Any] = {"audio_url": audio_url, "loop": loop}
     if client_state:
         import base64
+
         payload["client_state"] = base64.b64encode(client_state.encode()).decode()
     r = requests.post(
         f"{TELNYX_API}/calls/{call_control_id}/actions/playback_start",
@@ -121,6 +124,7 @@ def call_transfer(
         payload["from"] = from_
     if client_state:
         import base64
+
         payload["client_state"] = base64.b64encode(client_state.encode()).decode()
     r = requests.post(
         f"{TELNYX_API}/calls/{call_control_id}/actions/transfer",
@@ -144,6 +148,7 @@ def call_hangup(*, api_key: str, call_control_id: str) -> dict[str, Any]:
 
 
 # ── Messaging ─────────────────────────────────────────────────────────────────
+
 
 def send_sms(
     *,
@@ -171,6 +176,7 @@ def send_sms(
 
 
 # ── Media download ────────────────────────────────────────────────────────────
+
 
 def download_media(*, api_key: str, media_url: str) -> bytes:
     r = requests.get(

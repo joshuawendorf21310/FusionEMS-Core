@@ -28,8 +28,7 @@ def _get_sqs() -> Any:
 def enqueue(queue_url: str, message: dict[str, Any], deduplication_id: str | None = None) -> None:
     if not queue_url:
         raise RuntimeError(
-            "SQS queue_url is empty. "
-            "Ensure LOB_EVENTS_QUEUE_URL / STRIPE_EVENTS_QUEUE_URL is set."
+            "SQS queue_url is empty. Ensure LOB_EVENTS_QUEUE_URL / STRIPE_EVENTS_QUEUE_URL is set."
         )
     sqs = _get_sqs()
     kwargs: dict[str, Any] = {

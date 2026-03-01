@@ -47,12 +47,16 @@ async def provision_tenant(
     }
 
     if application_id:
-        existing_key = db.execute(
-            text(
-                "SELECT tenant_id FROM tenant_provisioning_idempotency WHERE application_id = :app_id LIMIT 1"
-            ),
-            {"app_id": application_id},
-        ).mappings().first()
+        existing_key = (
+            db.execute(
+                text(
+                    "SELECT tenant_id FROM tenant_provisioning_idempotency WHERE application_id = :app_id LIMIT 1"
+                ),
+                {"app_id": application_id},
+            )
+            .mappings()
+            .first()
+        )
         if existing_key:
             existing_tenant_id = str(existing_key["tenant_id"])
             logger.info(
@@ -87,7 +91,9 @@ async def provision_tenant(
             )
             db.commit()
         except Exception as exc:
-            logger.warning("Could not write idempotency key for application %s: %s", application_id, exc)
+            logger.warning(
+                "Could not write idempotency key for application %s: %s", application_id, exc
+            )
             db.rollback()
 
     try:
@@ -112,6 +118,7 @@ async def provision_tenant(
         if cognito_user_pool_id:
             try:
                 import boto3
+
                 cognito = boto3.client("cognito-idp", region_name=aws_region)
                 try:
                     cognito.create_group(
@@ -137,7 +144,11 @@ async def provision_tenant(
                         ],
                         DesiredDeliveryMediums=["EMAIL"],
                     )
-                    logger.info("Created Cognito admin user for tenant %s email %s", tenant_id, contact_email)
+                    logger.info(
+                        "Created Cognito admin user for tenant %s email %s",
+                        tenant_id,
+                        contact_email,
+                    )
                     await publisher.publish(
                         "tenant.first_admin_created",
                         tenant_id=tenant_id,
@@ -150,7 +161,9 @@ async def provision_tenant(
                         entity_type="tenant",
                     )
                 except cognito.exceptions.UsernameExistsException:
-                    logger.info("Cognito user already exists for %s, skipping creation.", contact_email)
+                    logger.info(
+                        "Cognito user already exists for %s, skipping creation.", contact_email
+                    )
                 except Exception as e:
                     logger.warning("Cognito admin user creation failed (non-blocking): %s", e)
 
@@ -223,11 +236,17 @@ async def provision_tenant_from_application(
     stripe_event: dict,
 ) -> dict[str, Any]:
     from core_app.core.config import get_settings
+
     settings = get_settings()
 
     tenant_name = application_row.get("agency_name", "")
     contact_email = application_row.get("contact_email", "")
-    selected_modules = application_row.get("selected_modules") or ["billing", "transportlink", "crewlink", "patient_portal"]
+    selected_modules = application_row.get("selected_modules") or [
+        "billing",
+        "transportlink",
+        "crewlink",
+        "patient_portal",
+    ]
     annual_call_volume = int(application_row.get("annual_call_volume") or 0)
 
     if annual_call_volume > 5000:
@@ -239,6 +258,7 @@ async def provision_tenant_from_application(
 
     if isinstance(selected_modules, str):
         import json as _json
+
         try:
             selected_modules = _json.loads(selected_modules)
         except Exception:

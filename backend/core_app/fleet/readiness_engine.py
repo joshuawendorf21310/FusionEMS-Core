@@ -21,7 +21,9 @@ MDT_OFFLINE_THRESHOLD_MINUTES = 15
 
 
 class ReadinessEngine:
-    def __init__(self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID) -> None:
+    def __init__(
+        self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID
+    ) -> None:
         self.svc = DominationService(db, publisher)
         self.tenant_id = tenant_id
         self.actor_user_id = actor_user_id
@@ -32,27 +34,33 @@ class ReadinessEngine:
 
         alerts = self.svc.repo("fleet_alerts").list(tenant_id=self.tenant_id, limit=200)
         active_alerts = [
-            a for a in alerts
+            a
+            for a in alerts
             if (a.get("data") or {}).get("unit_id") == uid
             and not (a.get("data") or {}).get("acknowledged")
             and not (a.get("data") or {}).get("resolved")
         ]
-        critical_alerts = [a for a in active_alerts if (a.get("data") or {}).get("severity") == "critical"]
+        critical_alerts = [
+            a for a in active_alerts if (a.get("data") or {}).get("severity") == "critical"
+        ]
         alert_penalty = min(len(critical_alerts) * 25 + len(active_alerts) * 10, 100)
         alert_score = max(0, 100 - alert_penalty)
 
-        maintenance_list = self.svc.repo("maintenance_work_orders").list(tenant_id=self.tenant_id, limit=100)
+        maintenance_list = self.svc.repo("maintenance_work_orders").list(
+            tenant_id=self.tenant_id, limit=100
+        )
         unit_maintenance = [
-            m for m in maintenance_list
-            if (m.get("data") or {}).get("unit_id") == uid
+            m for m in maintenance_list if (m.get("data") or {}).get("unit_id") == uid
         ]
         open_critical = [
-            m for m in unit_maintenance
+            m
+            for m in unit_maintenance
             if (m.get("data") or {}).get("status") not in ("completed", "cancelled")
             and (m.get("data") or {}).get("priority") in ("critical", "urgent")
         ]
         open_routine = [
-            m for m in unit_maintenance
+            m
+            for m in unit_maintenance
             if (m.get("data") or {}).get("status") not in ("completed", "cancelled")
             and (m.get("data") or {}).get("priority") not in ("critical", "urgent")
         ]
@@ -96,10 +104,14 @@ class ReadinessEngine:
         ]
         if unit_crew_ids:
             expired_creds = [
-                c for c in creds
+                c
+                for c in creds
                 if (c.get("data") or {}).get("crew_member_id") in unit_crew_ids
                 and (c.get("data") or {}).get("expires_at")
-                and datetime.fromisoformat((c.get("data") or {}).get("expires_at", "2099-01-01").replace("Z", "+00:00")) < now
+                and datetime.fromisoformat(
+                    (c.get("data") or {}).get("expires_at", "2099-01-01").replace("Z", "+00:00")
+                )
+                < now
             ]
             credential_score = max(0, 100 - len(expired_creds) * 20)
         else:
@@ -130,7 +142,9 @@ class ReadinessEngine:
             "computed_at": now.isoformat(),
         }
 
-    async def persist_readiness(self, unit_id: uuid.UUID, correlation_id: str | None = None) -> dict[str, Any]:
+    async def persist_readiness(
+        self, unit_id: uuid.UUID, correlation_id: str | None = None
+    ) -> dict[str, Any]:
         result = self.compute_unit_readiness(unit_id)
         saved = await self.svc.create(
             table="readiness_scores",
@@ -152,7 +166,14 @@ class ReadinessEngine:
             except Exception:
                 pass
         if not scores:
-            return {"fleet_count": 0, "avg_readiness": 0, "units_ready": 0, "units_limited": 0, "units_no_go": 0, "scores": []}
+            return {
+                "fleet_count": 0,
+                "avg_readiness": 0,
+                "units_ready": 0,
+                "units_limited": 0,
+                "units_no_go": 0,
+                "scores": [],
+            }
         avg = round(sum(s["readiness_score"] for s in scores) / len(scores))
         return {
             "fleet_count": len(scores),

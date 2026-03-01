@@ -85,7 +85,10 @@ async def track_view(
                 actor_user_id=None,
                 record_id=uuid.UUID(str(track["id"])),
                 expected_version=track.get("version", 1),
-                patch={"last_viewed_at": datetime.now(UTC).isoformat(), "view_count": (data.get("view_count", 0) + 1)},
+                patch={
+                    "last_viewed_at": datetime.now(UTC).isoformat(),
+                    "view_count": (data.get("view_count", 0) + 1),
+                },
                 correlation_id=None,
             )
 

@@ -24,15 +24,21 @@ class PatientGender(enum.StrEnum):
     UNKNOWN = "unknown"
 
 
-class Patient(Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
+class Patient(
+    Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin
+):
     __tablename__ = "patients"
     __table_args__ = (
-        CheckConstraint("date_of_birth IS NOT NULL OR age_years IS NOT NULL", name="ck_patients_dob_or_age"),
+        CheckConstraint(
+            "date_of_birth IS NOT NULL OR age_years IS NOT NULL", name="ck_patients_dob_or_age"
+        ),
         Index("ix_patients_tenant_incident", "tenant_id", "incident_id"),
         Index("ix_patients_tenant_gender", "tenant_id", "gender"),
     )
 
-    incident_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("incidents.id"), nullable=False)
+    incident_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("incidents.id"), nullable=False
+    )
     first_name: Mapped[str] = mapped_column(String(120), nullable=False)
     middle_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     last_name: Mapped[str] = mapped_column(String(120), nullable=False)

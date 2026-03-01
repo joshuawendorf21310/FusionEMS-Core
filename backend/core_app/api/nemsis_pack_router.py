@@ -145,7 +145,9 @@ async def archive_pack(
     db: Session = Depends(db_session_dependency),
 ):
     correlation_id = getattr(request.state, "correlation_id", None)
-    result = await _manager(db, current).archive_pack(pack_id=pack_id, correlation_id=correlation_id)
+    result = await _manager(db, current).archive_pack(
+        pack_id=pack_id, correlation_id=correlation_id
+    )
     if result is None:
         raise HTTPException(status_code=409, detail="Version conflict or pack not found")
     return result

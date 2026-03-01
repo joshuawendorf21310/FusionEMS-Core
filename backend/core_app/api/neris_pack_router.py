@@ -28,17 +28,26 @@ def _enqueue_pack_compile(pack_id: str, tenant_id: str, actor_user_id: str) -> N
     import json
 
     import boto3
+
     queue_url = get_settings().neris_pack_compile_queue_url
     if not queue_url:
         return
     import logging as _logging
+
     _log = _logging.getLogger(__name__)
     try:
         boto3.client("sqs").send_message(
             QueueUrl=queue_url,
             MessageGroupId=pack_id,
             MessageDeduplicationId=f"compile-{pack_id}",
-            MessageBody=json.dumps({"job_type": "neris.pack.compile_rules", "pack_id": pack_id, "tenant_id": tenant_id, "actor_user_id": actor_user_id}),
+            MessageBody=json.dumps(
+                {
+                    "job_type": "neris.pack.compile_rules",
+                    "pack_id": pack_id,
+                    "tenant_id": tenant_id,
+                    "actor_user_id": actor_user_id,
+                }
+            ),
         )
     except Exception as exc:
         _log.error("neris_pack_compile_enqueue_failed pack_id=%s error=%s", pack_id, exc)
@@ -58,7 +67,9 @@ async def import_pack(
     if not name:
         raise HTTPException(status_code=422, detail="name is required")
     correlation_id = getattr(request.state, "correlation_id", None)
-    return await _manager(db, current).import_from_github(repo=repo, ref=ref, name=name, correlation_id=correlation_id)
+    return await _manager(db, current).import_from_github(
+        repo=repo, ref=ref, name=name, correlation_id=correlation_id
+    )
 
 
 @router.post("/packs/{pack_id}/activate")
@@ -70,7 +81,9 @@ async def activate_pack(
 ):
     correlation_id = getattr(request.state, "correlation_id", None)
     try:
-        result = await _manager(db, current).activate_pack(pack_id=pack_id, correlation_id=correlation_id)
+        result = await _manager(db, current).activate_pack(
+            pack_id=pack_id, correlation_id=correlation_id
+        )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     if result is None:
@@ -131,5 +144,10 @@ async def validate_bundle(
         pack_id = uuid.UUID(pack_id_str)
     except ValueError:
         raise HTTPException(status_code=422, detail="pack_id must be a valid UUID")
-    issues = _validator(db, current).validate(pack_id=pack_id, entity_type=entity_type, payload=data)
-    return {"valid": len([i for i in issues if i.get("severity") == "error"]) == 0, "issues": issues}
+    issues = _validator(db, current).validate(
+        pack_id=pack_id, entity_type=entity_type, payload=data
+    )
+    return {
+        "valid": len([i for i in issues if i.get("severity") == "error"]) == 0,
+        "issues": issues,
+    }

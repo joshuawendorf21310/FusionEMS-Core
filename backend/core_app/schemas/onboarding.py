@@ -12,10 +12,12 @@ class OnboardingStartRequest(BaseModel):
     level_mix: dict[str, float] = Field(default_factory=dict)
     selected_modules: list[str] = Field(default_factory=list)
 
+
 class OnboardingStartResponse(BaseModel):
     application_id: str
     roi_snapshot_hash: str
     status: str
+
 
 class ProposalResponse(BaseModel):
     application_id: str

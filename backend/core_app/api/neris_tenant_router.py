@@ -154,7 +154,9 @@ async def onboarding_step_complete(
     if step_id == "7":
         active_pack = _get_active_pack(svc, current.tenant_id)
         if not active_pack:
-            raise HTTPException(status_code=422, detail="An active NERIS pack is required before completing step 7.")
+            raise HTTPException(
+                status_code=422, detail="An active NERIS pack is required before completing step 7."
+            )
         dept_id_str = rdata.get("department_id")
         if dept_id_str:
             try:
@@ -163,12 +165,22 @@ async def onboarding_step_complete(
                 entity_payload = exporter.build_entity_payload(dept_id)
                 pack_id = uuid.UUID(str(active_pack["id"]))
                 validator = _validator(db, current)
-                entity_issues = validator.validate(pack_id=pack_id, entity_type="ENTITY", payload=entity_payload)
+                entity_issues = validator.validate(
+                    pack_id=pack_id, entity_type="ENTITY", payload=entity_payload
+                )
                 errors = [i for i in entity_issues if i.get("severity") == "error"]
                 if errors:
-                    raise HTTPException(status_code=422, detail={"message": "Entity validation must pass before completing step 7.", "issues": errors})
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "message": "Entity validation must pass before completing step 7.",
+                            "issues": errors,
+                        },
+                    )
             except ValueError:
-                raise HTTPException(status_code=422, detail="Invalid department_id in onboarding record.")
+                raise HTTPException(
+                    status_code=422, detail="Invalid department_id in onboarding record."
+                )
 
     step_status[step_id] = "complete"
     step_data = payload.get("data", {})
@@ -213,7 +225,9 @@ async def validate_entity(
     svc = _svc(db)
     active_pack = _get_active_pack(svc, current.tenant_id)
     if not active_pack:
-        raise HTTPException(status_code=422, detail="No active NERIS pack found. Import and activate a pack first.")
+        raise HTTPException(
+            status_code=422, detail="No active NERIS pack found. Import and activate a pack first."
+        )
 
     exporter = _exporter(db, current)
     try:
@@ -222,8 +236,14 @@ async def validate_entity(
         raise HTTPException(status_code=404, detail=str(exc))
 
     pack_id = uuid.UUID(str(active_pack["id"]))
-    issues = _validator(db, current).validate(pack_id=pack_id, entity_type="ENTITY", payload=entity_payload)
-    return {"valid": len([i for i in issues if i.get("severity") == "error"]) == 0, "issues": issues, "pack_id": str(pack_id)}
+    issues = _validator(db, current).validate(
+        pack_id=pack_id, entity_type="ENTITY", payload=entity_payload
+    )
+    return {
+        "valid": len([i for i in issues if i.get("severity") == "error"]) == 0,
+        "issues": issues,
+        "pack_id": str(pack_id),
+    }
 
 
 @router.post("/validate/incidents/{incident_id}")
@@ -245,8 +265,14 @@ async def validate_incident(
     exporter = _exporter(db, current)
     incident_payload = exporter.build_incident_payload(inc)
     pack_id = uuid.UUID(str(active_pack["id"]))
-    issues = _validator(db, current).validate(pack_id=pack_id, entity_type="INCIDENT", payload=incident_payload)
-    return {"valid": len([i for i in issues if i.get("severity") == "error"]) == 0, "issues": issues, "pack_id": str(pack_id)}
+    issues = _validator(db, current).validate(
+        pack_id=pack_id, entity_type="INCIDENT", payload=incident_payload
+    )
+    return {
+        "valid": len([i for i in issues if i.get("severity") == "error"]) == 0,
+        "issues": issues,
+        "pack_id": str(pack_id),
+    }
 
 
 @router.get("/export/entity")
@@ -278,11 +304,17 @@ async def export_incidents(
     svc = _svc(db)
     exporter = _exporter(db, current)
     incidents = svc.repo("fire_incidents").list(tenant_id=current.tenant_id, limit=500)
-    incidents = [i for i in incidents if (i.get("data") or {}).get("department_id") == str(department_id)]
+    incidents = [
+        i for i in incidents if (i.get("data") or {}).get("department_id") == str(department_id)
+    ]
     if date_from:
-        incidents = [i for i in incidents if (i.get("data") or {}).get("start_datetime", "") >= date_from]
+        incidents = [
+            i for i in incidents if (i.get("data") or {}).get("start_datetime", "") >= date_from
+        ]
     if date_to:
-        incidents = [i for i in incidents if (i.get("data") or {}).get("start_datetime", "") <= date_to]
+        incidents = [
+            i for i in incidents if (i.get("data") or {}).get("start_datetime", "") <= date_to
+        ]
     return [exporter.build_incident_payload(i) for i in incidents]
 
 
@@ -317,23 +349,35 @@ async def export_bundle(
             raise HTTPException(status_code=422, detail="Invalid UUID in incident_ids")
     else:
         incidents = svc.repo("fire_incidents").list(tenant_id=current.tenant_id, limit=500)
-        incidents = [i for i in incidents if (i.get("data") or {}).get("department_id") == str(dept_id)]
+        incidents = [
+            i for i in incidents if (i.get("data") or {}).get("department_id") == str(dept_id)
+        ]
         if date_from:
-            incidents = [i for i in incidents if (i.get("data") or {}).get("start_datetime", "") >= date_from]
+            incidents = [
+                i for i in incidents if (i.get("data") or {}).get("start_datetime", "") >= date_from
+            ]
         if date_to:
-            incidents = [i for i in incidents if (i.get("data") or {}).get("start_datetime", "") <= date_to]
+            incidents = [
+                i for i in incidents if (i.get("data") or {}).get("start_datetime", "") <= date_to
+            ]
         incident_ids = [uuid.UUID(str(i["id"])) for i in incidents]
 
     exporter = _exporter(db, current)
-    return await exporter.generate_bundle(department_id=dept_id, incident_ids=incident_ids, correlation_id=correlation_id)
+    return await exporter.generate_bundle(
+        department_id=dept_id, incident_ids=incident_ids, correlation_id=correlation_id
+    )
 
 
 def _require_onboarding_complete(db: Session, current: CurrentUser) -> None:
     svc = _svc(db)
     record = _get_onboarding(svc, current.tenant_id)
     if not record:
-        raise HTTPException(status_code=422, detail="Onboarding not started. Complete onboarding before exporting.")
+        raise HTTPException(
+            status_code=422, detail="Onboarding not started. Complete onboarding before exporting."
+        )
     rdata = record.get("data") or {}
     step_status = rdata.get("step_status_json") or {}
     if step_status.get("7") != "complete":
-        raise HTTPException(status_code=422, detail="Onboarding step 7 must be completed before exporting.")
+        raise HTTPException(
+            status_code=422, detail="Onboarding step 7 must be completed before exporting."
+        )

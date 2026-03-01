@@ -6,6 +6,7 @@ from typing import Any
 
 try:
     from weasyprint import CSS, HTML  # noqa: F401
+
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
@@ -24,6 +25,7 @@ try:
         Table,
         TableStyle,
     )
+
     RL_AVAILABLE = True
 except ImportError:
     RL_AVAILABLE = False
@@ -54,49 +56,123 @@ def _now_str() -> str:
 def _rl_styles() -> dict:
     base = getSampleStyleSheet()
     return {
-        "h1": ParagraphStyle("CPH1", parent=base["Heading1"], fontSize=20, textColor=BRAND_DARK, fontName="Helvetica-Bold", spaceAfter=6),
-        "h2": ParagraphStyle("CPH2", parent=base["Heading2"], fontSize=13, textColor=BRAND_DARK, fontName="Helvetica-Bold", spaceBefore=12, spaceAfter=6),
-        "h3": ParagraphStyle("CPH3", parent=base["Heading3"], fontSize=11, textColor=BRAND_DARK, fontName="Helvetica-Bold", spaceBefore=8, spaceAfter=4),
-        "body": ParagraphStyle("CPBody", parent=base["Normal"], fontSize=9, spaceAfter=3, leading=13),
-        "label": ParagraphStyle("CPLabel", parent=base["Normal"], fontSize=9, fontName="Helvetica-Bold", spaceAfter=2),
-        "small": ParagraphStyle("CPSmall", parent=base["Normal"], fontSize=8, textColor=colors.grey, spaceAfter=2),
-        "footer": ParagraphStyle("CPFooter", parent=base["Normal"], fontSize=8, textColor=colors.grey, alignment=1),
-        "mono": ParagraphStyle("CPMono", parent=base["Code"], fontSize=8, fontName="Courier", spaceAfter=2),
+        "h1": ParagraphStyle(
+            "CPH1",
+            parent=base["Heading1"],
+            fontSize=20,
+            textColor=BRAND_DARK,
+            fontName="Helvetica-Bold",
+            spaceAfter=6,
+        ),
+        "h2": ParagraphStyle(
+            "CPH2",
+            parent=base["Heading2"],
+            fontSize=13,
+            textColor=BRAND_DARK,
+            fontName="Helvetica-Bold",
+            spaceBefore=12,
+            spaceAfter=6,
+        ),
+        "h3": ParagraphStyle(
+            "CPH3",
+            parent=base["Heading3"],
+            fontSize=11,
+            textColor=BRAND_DARK,
+            fontName="Helvetica-Bold",
+            spaceBefore=8,
+            spaceAfter=4,
+        ),
+        "body": ParagraphStyle(
+            "CPBody", parent=base["Normal"], fontSize=9, spaceAfter=3, leading=13
+        ),
+        "label": ParagraphStyle(
+            "CPLabel", parent=base["Normal"], fontSize=9, fontName="Helvetica-Bold", spaceAfter=2
+        ),
+        "small": ParagraphStyle(
+            "CPSmall", parent=base["Normal"], fontSize=8, textColor=colors.grey, spaceAfter=2
+        ),
+        "footer": ParagraphStyle(
+            "CPFooter", parent=base["Normal"], fontSize=8, textColor=colors.grey, alignment=1
+        ),
+        "mono": ParagraphStyle(
+            "CPMono", parent=base["Code"], fontSize=8, fontName="Courier", spaceAfter=2
+        ),
     }
 
 
 def _rl_header(story: list, title: str, s: dict, agency_name: str = "") -> None:
-    header_data = [[
-        Paragraph("<b>FusionEMS Quantum</b>", ParagraphStyle("HdrL", parent=s["body"], textColor=BRAND_WHITE, fontName="Helvetica-Bold", fontSize=11)),
-        Paragraph(f"<b>{title}</b>", ParagraphStyle("HdrC", parent=s["body"], textColor=BRAND_WHITE, fontName="Helvetica-Bold", fontSize=11, alignment=1)),
-        Paragraph(f"{agency_name}<br/><font size=8>CONFIDENTIAL</font>", ParagraphStyle("HdrR", parent=s["body"], textColor=BRAND_WHITE, fontSize=9, alignment=2)),
-    ]]
+    header_data = [
+        [
+            Paragraph(
+                "<b>FusionEMS Quantum</b>",
+                ParagraphStyle(
+                    "HdrL",
+                    parent=s["body"],
+                    textColor=BRAND_WHITE,
+                    fontName="Helvetica-Bold",
+                    fontSize=11,
+                ),
+            ),
+            Paragraph(
+                f"<b>{title}</b>",
+                ParagraphStyle(
+                    "HdrC",
+                    parent=s["body"],
+                    textColor=BRAND_WHITE,
+                    fontName="Helvetica-Bold",
+                    fontSize=11,
+                    alignment=1,
+                ),
+            ),
+            Paragraph(
+                f"{agency_name}<br/><font size=8>CONFIDENTIAL</font>",
+                ParagraphStyle(
+                    "HdrR", parent=s["body"], textColor=BRAND_WHITE, fontSize=9, alignment=2
+                ),
+            ),
+        ]
+    ]
     ht = Table(header_data, colWidths=[2.5 * inch, 3 * inch, 1.5 * inch])
-    ht.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
-        ("PADDING", (0, 0), (-1, -1), 10),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
+    ht.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
+                ("PADDING", (0, 0), (-1, -1), 10),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
     story.append(ht)
     story.append(Spacer(1, 0.15 * inch))
 
 
 def _rl_kv_table(pairs: list[tuple[str, str]], s: dict, col_widths: list | None = None) -> Table:
-    data = [[Paragraph(k, s["label"]), Paragraph(str(v) if v else "—", s["body"])] for k, v in pairs]
+    data = [
+        [Paragraph(k, s["label"]), Paragraph(str(v) if v else "—", s["body"])] for k, v in pairs
+    ]
     widths = col_widths or [1.8 * inch, 5.2 * inch]
     t = Table(data, colWidths=widths)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e0")),
-        ("PADDING", (0, 0), (-1, -1), 6),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e0")),
+                ("PADDING", (0, 0), (-1, -1), 6),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ]
+        )
+    )
     return t
 
 
-def _rl_data_table(headers: list[str], rows: list[list[str]], s: dict, col_widths: list | None = None) -> Table:
-    header_row = [Paragraph(h, ParagraphStyle("TH", parent=s["label"], textColor=BRAND_WHITE, fontSize=9)) for h in headers]
+def _rl_data_table(
+    headers: list[str], rows: list[list[str]], s: dict, col_widths: list | None = None
+) -> Table:
+    header_row = [
+        Paragraph(h, ParagraphStyle("TH", parent=s["label"], textColor=BRAND_WHITE, fontSize=9))
+        for h in headers
+    ]
     data_rows = []
     for row in rows:
         data_rows.append([Paragraph(str(c) if c else "—", s["body"]) for c in row])
@@ -149,7 +225,9 @@ class ClaimPacketGenerator:
                 pass
 
         if RL_AVAILABLE:
-            return self._build_reportlab_packet(claim_data, patient_data, attachments, include_audit)
+            return self._build_reportlab_packet(
+                claim_data, patient_data, attachments, include_audit
+            )
 
         return _FALLBACK_PDF
 
@@ -161,7 +239,10 @@ class ClaimPacketGenerator:
         include_audit: bool,
     ) -> str:
         claim_id = claim_data.get("claim_id") or claim_data.get("id") or "N/A"
-        patient_name = f"{patient_data.get('first_name', '')} {patient_data.get('last_name', '')}".strip() or "N/A"
+        patient_name = (
+            f"{patient_data.get('first_name', '')} {patient_data.get('last_name', '')}".strip()
+            or "N/A"
+        )
         dob = patient_data.get("dob") or "N/A"
         dos = claim_data.get("dos") or claim_data.get("encounter_date") or "N/A"
         payer = claim_data.get("payer_name") or "N/A"
@@ -254,7 +335,9 @@ class ClaimPacketGenerator:
 <div class="page-header">
   <div class="brand">FusionEMS Quantum</div>
   <div style="text-align:center;font-size:11pt;font-weight:bold;">CLAIM PACKET</div>
-  <div class="meta">Claim: {claim_id_short}...<br/>Generated: {generated_at}<br/><span class="confidential">Confidential</span></div>
+  <div class="meta">Claim: {claim_id_short}...<br/>Generated: {
+            generated_at
+        }<br/><span class="confidential">Confidential</span></div>
 </div>
 
 <section>
@@ -268,9 +351,11 @@ class ClaimPacketGenerator:
       <tr><td>Payer</td><td>{payer}</td></tr>
       <tr><td>Member ID</td><td>{member_id}</td></tr>
       <tr><td>Total Charges</td><td>{total_charges_display}</td></tr>
-      <tr><td>Transport Type</td><td>{claim_data.get('transport_type') or claim_data.get('service_level') or 'N/A'}</td></tr>
-      <tr><td>Origin</td><td>{claim_data.get('origin_address') or 'N/A'}</td></tr>
-      <tr><td>Destination</td><td>{claim_data.get('destination_address') or 'N/A'}</td></tr>
+      <tr><td>Transport Type</td><td>{
+            claim_data.get("transport_type") or claim_data.get("service_level") or "N/A"
+        }</td></tr>
+      <tr><td>Origin</td><td>{claim_data.get("origin_address") or "N/A"}</td></tr>
+      <tr><td>Destination</td><td>{claim_data.get("destination_address") or "N/A"}</td></tr>
     </tbody>
   </table>
 </section>
@@ -288,10 +373,13 @@ class ClaimPacketGenerator:
   <table>
     <thead><tr><th>Signature Type</th><th>Status</th><th>Collected Date</th><th>Reference</th></tr></thead>
     <tbody>
-      {"".join(
-          f"<tr><td>{s.get('sig_type','N/A')}</td><td>{s.get('status','N/A')}</td><td>{s.get('collected_at','N/A')}</td><td>{s.get('reference_id','N/A')}</td></tr>"
-          for s in (claim_data.get("signatures") or [])
-      ) or "<tr><td colspan='4'>No signature records on file.</td></tr>"}
+      {
+            "".join(
+                f"<tr><td>{s.get('sig_type', 'N/A')}</td><td>{s.get('status', 'N/A')}</td><td>{s.get('collected_at', 'N/A')}</td><td>{s.get('reference_id', 'N/A')}</td></tr>"
+                for s in (claim_data.get("signatures") or [])
+            )
+            or "<tr><td colspan='4'>No signature records on file.</td></tr>"
+        }
     </tbody>
   </table>
 </section>
@@ -341,7 +429,10 @@ class ClaimPacketGenerator:
         story: list[Any] = []
 
         claim_id = str(claim_data.get("claim_id") or claim_data.get("id") or "N/A")
-        patient_name = f"{patient_data.get('first_name', '')} {patient_data.get('last_name', '')}".strip() or "N/A"
+        patient_name = (
+            f"{patient_data.get('first_name', '')} {patient_data.get('last_name', '')}".strip()
+            or "N/A"
+        )
         agency_name = claim_data.get("agency_name") or ""
 
         _rl_header(story, "CLAIM PACKET", s, agency_name)
@@ -354,8 +445,18 @@ class ClaimPacketGenerator:
             ("Date of Service", claim_data.get("dos") or claim_data.get("encounter_date") or "N/A"),
             ("Payer", claim_data.get("payer_name") or "N/A"),
             ("Member ID", claim_data.get("member_id") or "N/A"),
-            ("Total Charges", str(claim_data.get("total_charges") or claim_data.get("billed_amount_cents") or "N/A")),
-            ("Transport Type", claim_data.get("transport_type") or claim_data.get("service_level") or "N/A"),
+            (
+                "Total Charges",
+                str(
+                    claim_data.get("total_charges")
+                    or claim_data.get("billed_amount_cents")
+                    or "N/A"
+                ),
+            ),
+            (
+                "Transport Type",
+                claim_data.get("transport_type") or claim_data.get("service_level") or "N/A",
+            ),
             ("Origin", claim_data.get("origin_address") or "N/A"),
             ("Destination", claim_data.get("destination_address") or "N/A"),
         ]
@@ -364,28 +465,39 @@ class ClaimPacketGenerator:
         story.append(Paragraph("Section 2: Service Lines", s["h2"]))
         sl_headers = ["CPT/HCPCS", "Modifiers", "Date", "Units", "Charge"]
         sl_rows_data: list[list[str]] = []
-        for sl in (claim_data.get("service_lines") or []):
-            sl_rows_data.append([
-                sl.get("procedure_code", ""),
-                ", ".join(sl.get("modifiers") or []),
-                sl.get("dos") or claim_data.get("dos") or "",
-                str(sl.get("units", 1)),
-                f"${float(sl.get('charge', 0)):,.2f}",
-            ])
+        for sl in claim_data.get("service_lines") or []:
+            sl_rows_data.append(
+                [
+                    sl.get("procedure_code", ""),
+                    ", ".join(sl.get("modifiers") or []),
+                    sl.get("dos") or claim_data.get("dos") or "",
+                    str(sl.get("units", 1)),
+                    f"${float(sl.get('charge', 0)):,.2f}",
+                ]
+            )
         if not sl_rows_data:
             sl_rows_data = [["No service lines", "", "", "", ""]]
-        story.append(_rl_data_table(sl_headers, sl_rows_data, s, col_widths=[1.2 * inch, 1.5 * inch, 1.2 * inch, 0.7 * inch, 1.4 * inch]))
+        story.append(
+            _rl_data_table(
+                sl_headers,
+                sl_rows_data,
+                s,
+                col_widths=[1.2 * inch, 1.5 * inch, 1.2 * inch, 0.7 * inch, 1.4 * inch],
+            )
+        )
 
         story.append(Paragraph("Section 3: Patient Signatures", s["h2"]))
         sig_headers = ["Signature Type", "Status", "Collected Date", "Reference"]
         sig_rows: list[list[str]] = []
-        for sig in (claim_data.get("signatures") or []):
-            sig_rows.append([
-                sig.get("sig_type", "N/A"),
-                sig.get("status", "N/A"),
-                sig.get("collected_at", "N/A"),
-                sig.get("reference_id", "N/A"),
-            ])
+        for sig in claim_data.get("signatures") or []:
+            sig_rows.append(
+                [
+                    sig.get("sig_type", "N/A"),
+                    sig.get("status", "N/A"),
+                    sig.get("collected_at", "N/A"),
+                    sig.get("reference_id", "N/A"),
+                ]
+            )
         if not sig_rows:
             sig_rows = [["No signature records on file.", "", "", ""]]
         story.append(_rl_data_table(sig_headers, sig_rows, s))
@@ -403,12 +515,14 @@ class ClaimPacketGenerator:
         att_headers = ["Document Type", "File / S3 Key", "Received Date", "SHA256 (8 chars)"]
         att_rows: list[list[str]] = []
         for att in attachments:
-            att_rows.append([
-                att.get("doc_type", "N/A"),
-                att.get("filename") or att.get("s3_key", "N/A"),
-                att.get("received_date") or att.get("created_at", "N/A"),
-                (att.get("sha256") or "")[:8] or "N/A",
-            ])
+            att_rows.append(
+                [
+                    att.get("doc_type", "N/A"),
+                    att.get("filename") or att.get("s3_key", "N/A"),
+                    att.get("received_date") or att.get("created_at", "N/A"),
+                    (att.get("sha256") or "")[:8] or "N/A",
+                ]
+            )
         if not att_rows:
             att_rows = [["No documents attached.", "", "", ""]]
         story.append(_rl_data_table(att_headers, att_rows, s))
@@ -417,13 +531,15 @@ class ClaimPacketGenerator:
             story.append(Paragraph("Section 6: Audit Trail", s["h2"]))
             audit_headers = ["Action", "Actor", "Timestamp", "Detail"]
             audit_rows: list[list[str]] = []
-            for ev in (claim_data.get("audit_trail") or []):
-                audit_rows.append([
-                    ev.get("action", "N/A"),
-                    ev.get("actor", "N/A"),
-                    ev.get("occurred_at", "N/A"),
-                    ev.get("detail", ""),
-                ])
+            for ev in claim_data.get("audit_trail") or []:
+                audit_rows.append(
+                    [
+                        ev.get("action", "N/A"),
+                        ev.get("actor", "N/A"),
+                        ev.get("occurred_at", "N/A"),
+                        ev.get("detail", ""),
+                    ]
+                )
             if not audit_rows:
                 audit_rows = [["No audit events recorded.", "", "", ""]]
             story.append(_rl_data_table(audit_headers, audit_rows, s))
@@ -453,22 +569,22 @@ class ClaimPacketGenerator:
             for v in vitals[:5]:
                 vitals_rows += (
                     f"<tr>"
-                    f"<td>{v.get('time','')}</td>"
-                    f"<td>{v.get('bp','')}</td>"
-                    f"<td>{v.get('hr','')}</td>"
-                    f"<td>{v.get('rr','')}</td>"
-                    f"<td>{v.get('spo2','')}</td>"
-                    f"<td>{v.get('gcs','')}</td>"
+                    f"<td>{v.get('time', '')}</td>"
+                    f"<td>{v.get('bp', '')}</td>"
+                    f"<td>{v.get('hr', '')}</td>"
+                    f"<td>{v.get('rr', '')}</td>"
+                    f"<td>{v.get('spo2', '')}</td>"
+                    f"<td>{v.get('gcs', '')}</td>"
                     f"</tr>"
                 )
 
             meds_rows = ""
             for m in medications[:10]:
-                meds_rows += f"<tr><td>{m.get('name','')}</td><td>{m.get('dose','')}</td><td>{m.get('route','')}</td><td>{m.get('time','')}</td></tr>"
+                meds_rows += f"<tr><td>{m.get('name', '')}</td><td>{m.get('dose', '')}</td><td>{m.get('route', '')}</td><td>{m.get('time', '')}</td></tr>"
 
             proc_rows = ""
             for p in procedures[:10]:
-                proc_rows += f"<tr><td>{p.get('name','')}</td><td>{p.get('time','')}</td><td>{p.get('provider','')}</td></tr>"
+                proc_rows += f"<tr><td>{p.get('name', '')}</td><td>{p.get('time', '')}</td><td>{p.get('provider', '')}</td></tr>"
 
             generated_at = _now_str()
             html = f"""<!DOCTYPE html>
@@ -525,8 +641,14 @@ class ClaimPacketGenerator:
 
         if RL_AVAILABLE:
             buf = io.BytesIO()
-            doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
-                                    topMargin=0.6 * inch, bottomMargin=0.6 * inch)
+            doc = SimpleDocTemplate(
+                buf,
+                pagesize=letter,
+                leftMargin=0.75 * inch,
+                rightMargin=0.75 * inch,
+                topMargin=0.6 * inch,
+                bottomMargin=0.6 * inch,
+            )
             s = _rl_styles()
             story: list[Any] = []
             _rl_header(story, "ePCR SUMMARY PAGE", s)
@@ -545,21 +667,30 @@ class ClaimPacketGenerator:
 
             story.append(Paragraph("Vitals Summary", s["h2"]))
             v_headers = ["Time", "BP", "HR", "RR", "SpO2", "GCS"]
-            v_rows = [[str(v.get(k.lower(), "")) for k in ["time", "bp", "hr", "rr", "spo2", "gcs"]] for v in (chart_data.get("vitals") or [])]
+            v_rows = [
+                [str(v.get(k.lower(), "")) for k in ["time", "bp", "hr", "rr", "spo2", "gcs"]]
+                for v in (chart_data.get("vitals") or [])
+            ]
             if not v_rows:
                 v_rows = [["No vitals", "", "", "", "", ""]]
             story.append(_rl_data_table(v_headers, v_rows, s))
 
             story.append(Paragraph("Medications", s["h2"]))
             m_headers = ["Medication", "Dose", "Route", "Time"]
-            m_rows = [[str(m.get(k, "")) for k in ["name", "dose", "route", "time"]] for m in (chart_data.get("medications") or [])]
+            m_rows = [
+                [str(m.get(k, "")) for k in ["name", "dose", "route", "time"]]
+                for m in (chart_data.get("medications") or [])
+            ]
             if not m_rows:
                 m_rows = [["No medications", "", "", ""]]
             story.append(_rl_data_table(m_headers, m_rows, s))
 
             story.append(Paragraph("Procedures", s["h2"]))
             p_headers = ["Procedure", "Time", "Provider"]
-            p_rows = [[str(p.get(k, "")) for k in ["name", "time", "provider"]] for p in (chart_data.get("procedures") or [])]
+            p_rows = [
+                [str(p.get(k, "")) for k in ["name", "time", "provider"]]
+                for p in (chart_data.get("procedures") or [])
+            ]
             if not p_rows:
                 p_rows = [["No procedures", "", ""]]
             story.append(_rl_data_table(p_headers, p_rows, s))

@@ -15,15 +15,21 @@ from core_app.db.base import (
 from core_app.models.tenant import TenantScopedMixin
 
 
-class Vital(Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
+class Vital(
+    Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin
+):
     __tablename__ = "vitals"
     __table_args__ = (
         Index("ix_vitals_tenant_patient_taken_at", "tenant_id", "patient_id", "taken_at"),
         Index("ix_vitals_tenant_incident", "tenant_id", "incident_id"),
     )
 
-    incident_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("incidents.id"), nullable=False)
-    patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
+    incident_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("incidents.id"), nullable=False
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False
+    )
     taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     heart_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)

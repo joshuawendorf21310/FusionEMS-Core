@@ -9,6 +9,7 @@ Handles:
 - Credential expiry alerts
 - Export queue processing
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -93,12 +94,11 @@ def _seconds_until_hour(target_hour: int) -> float:
         return 0.0
     else:
         from datetime import timedelta
+
         next_run = (now + timedelta(days=1)).replace(
             hour=target_hour, minute=0, second=0, microsecond=0
         )
     return max(0.0, (next_run - now).total_seconds())
-
-
 
 
 async def _dlq_processing_loop(stop: asyncio.Event) -> None:
@@ -114,16 +114,20 @@ async def _dlq_processing_loop(stop: asyncio.Event) -> None:
                 svc = DominationService(db, get_event_publisher())
                 from core_app.api.lob_webhook_router import handle_lob_event
                 from core_app.api.stripe_webhook_router import handle_stripe_event
+
                 dlq_handlers = {
                     "lob": handle_lob_event,
                     "stripe": handle_stripe_event,
                 }
-                processed = await process_dlq_batch(handlers=dlq_handlers, svc=svc, tenant_id=__import__("uuid").UUID(int=0))
+                processed = await process_dlq_batch(
+                    handlers=dlq_handlers, svc=svc, tenant_id=__import__("uuid").UUID(int=0)
+                )
                 if processed:
                     logger.info("DLQ processed %d items", processed)
         except Exception as e:
             logger.error("DLQ processing error: %s", e)
         await asyncio.sleep(30)
+
 
 async def _generate_executive_briefing() -> None:
     logger.info("Generating daily executive briefing...")
@@ -143,6 +147,7 @@ async def _generate_executive_briefing() -> None:
         if settings.openai_api_key:
             try:
                 import openai
+
                 client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
                 resp = await client.chat.completions.create(
                     model="gpt-4o-mini",

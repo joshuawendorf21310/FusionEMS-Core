@@ -21,15 +21,40 @@ PRICING_CATALOG = {
         {"tier": "S3", "label": "76–150 users", "monthly_cents": 69900},
     ],
     "BILLING_AUTOMATION": [
-        {"tier": "B1", "label": "0–150 claims", "base_monthly_cents": 39900, "per_claim_cents": 600},
-        {"tier": "B2", "label": "151–400 claims", "base_monthly_cents": 59900, "per_claim_cents": 500},
-        {"tier": "B3", "label": "401–1000 claims", "base_monthly_cents": 99900, "per_claim_cents": 400},
-        {"tier": "B4", "label": "1001+ claims", "base_monthly_cents": 149900, "per_claim_cents": 325},
+        {
+            "tier": "B1",
+            "label": "0–150 claims",
+            "base_monthly_cents": 39900,
+            "per_claim_cents": 600,
+        },
+        {
+            "tier": "B2",
+            "label": "151–400 claims",
+            "base_monthly_cents": 59900,
+            "per_claim_cents": 500,
+        },
+        {
+            "tier": "B3",
+            "label": "401–1000 claims",
+            "base_monthly_cents": 99900,
+            "per_claim_cents": 400,
+        },
+        {
+            "tier": "B4",
+            "label": "1001+ claims",
+            "base_monthly_cents": 149900,
+            "per_claim_cents": 325,
+        },
     ],
     "ADDONS": [
         {"code": "CCT_TRANSPORT_OPS", "label": "CCT/Transport Ops", "monthly_cents": 39900},
         {"code": "HEMS_OPS", "label": "HEMS Ops", "monthly_cents": 75000},
-        {"code": "TRIP_PACK", "label": "Wisconsin TRIP Pack", "monthly_cents": 19900, "gov_only": True},
+        {
+            "code": "TRIP_PACK",
+            "label": "Wisconsin TRIP Pack",
+            "monthly_cents": 19900,
+            "gov_only": True,
+        },
     ],
 }
 

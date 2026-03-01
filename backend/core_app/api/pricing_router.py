@@ -37,7 +37,9 @@ async def roi(payload: dict[str, Any], request: Request):
 
 
 @router.post("/public/signup/start", include_in_schema=True)
-async def signup(payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)):
+async def signup(
+    payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)
+):
     import stripe as stripe_lib
 
     settings = get_settings()
@@ -65,7 +67,12 @@ async def signup(payload: dict[str, Any], request: Request, db: Session = Depend
     application_id = application["id"]
 
     if not settings.stripe_secret_key:
-        return {"status": "ok", "application_id": application_id, "checkout_url": None, "note": "stripe_not_configured"}
+        return {
+            "status": "ok",
+            "application_id": application_id,
+            "checkout_url": None,
+            "note": "stripe_not_configured",
+        }
 
     stripe_lib.api_key = settings.stripe_secret_key
 
@@ -93,7 +100,9 @@ async def signup(payload: dict[str, Any], request: Request, db: Session = Depend
         }
 
     if not quote.stripe_line_items:
-        raise HTTPException(status_code=422, detail="No billable line items for this plan configuration")
+        raise HTTPException(
+            status_code=422, detail="No billable line items for this plan configuration"
+        )
 
     agency_name = payload.get("agency_name", "New Agency")
     line_items = [
@@ -127,7 +136,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(db_session_depe
     sig = request.headers.get("Stripe-Signature", "")
     try:
         event = verify_webhook_signature(
-            cfg=StripeConfig(secret_key=settings.stripe_secret_key, webhook_secret=settings.stripe_webhook_secret or None),
+            cfg=StripeConfig(
+                secret_key=settings.stripe_secret_key,
+                webhook_secret=settings.stripe_webhook_secret or None,
+            ),
             payload=payload_bytes,
             sig_header=sig,
         )
@@ -137,7 +149,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(db_session_depe
         raise HTTPException(status_code=400, detail="invalid_signature")
 
     event_id = event.get("id")
-    metadata = (event.get("data", {}).get("object", {}).get("metadata", {}) or {})
+    metadata = event.get("data", {}).get("object", {}).get("metadata", {}) or {}
     application_id = metadata.get("application_id")
     tenant_id_meta = metadata.get("tenant_id")
 
@@ -184,14 +196,18 @@ async def _handle_onboarding_payment(
 ) -> None:
     from core_app.services.tenant_provisioning import provision_tenant_from_application
 
-    app_row = db.execute(
-        text(
-            "SELECT id, agency_name, contact_email, agency_type, annual_call_volume, "
-            "selected_modules, legal_status, status, stripe_customer_id, stripe_subscription_id "
-            "FROM onboarding_applications WHERE id = :app_id"
-        ),
-        {"app_id": application_id},
-    ).mappings().first()
+    app_row = (
+        db.execute(
+            text(
+                "SELECT id, agency_name, contact_email, agency_type, annual_call_volume, "
+                "selected_modules, legal_status, status, stripe_customer_id, stripe_subscription_id "
+                "FROM onboarding_applications WHERE id = :app_id"
+            ),
+            {"app_id": application_id},
+        )
+        .mappings()
+        .first()
+    )
 
     if app_row is None:
         logger.warning("Stripe webhook: application %s not found", application_id)
@@ -212,7 +228,9 @@ async def _handle_onboarding_payment(
     try:
         result = await provision_tenant_from_application(db, application_id, dict(app_row), event)
     except Exception as exc:
-        logger.error("provision_tenant_from_application failed for application %s: %s", application_id, exc)
+        logger.error(
+            "provision_tenant_from_application failed for application %s: %s", application_id, exc
+        )
         return
 
     stripe_obj = event.get("data", {}).get("object", {})
@@ -235,7 +253,11 @@ async def _handle_onboarding_payment(
         },
     )
     db.commit()
-    logger.info("Onboarding provisioning complete for application %s, tenant %s", application_id, result.get("tenant_id"))
+    logger.info(
+        "Onboarding provisioning complete for application %s, tenant %s",
+        application_id,
+        result.get("tenant_id"),
+    )
 
 
 async def _handle_tenant_billing_event(

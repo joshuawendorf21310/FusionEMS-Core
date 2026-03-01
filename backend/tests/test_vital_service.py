@@ -34,7 +34,9 @@ class FakePublisher:
     def __init__(self) -> None:
         self.events: list[tuple[str, uuid.UUID, uuid.UUID, dict]] = []
 
-    async def publish(self, event_name: str, tenant_id: uuid.UUID, entity_id: uuid.UUID, payload: dict) -> None:
+    async def publish(
+        self, event_name: str, tenant_id: uuid.UUID, entity_id: uuid.UUID, payload: dict
+    ) -> None:
         self.events.append((event_name, tenant_id, entity_id, payload))
 
 
@@ -61,7 +63,9 @@ class FakeVitalRepository:
         return [
             vital
             for vital in self.vitals.values()
-            if vital.tenant_id == tenant_id and vital.patient_id == patient_id and vital.deleted_at is None
+            if vital.tenant_id == tenant_id
+            and vital.patient_id == patient_id
+            and vital.deleted_at is None
         ]
 
     async def count_for_patient(self, *, tenant_id: uuid.UUID, patient_id: uuid.UUID) -> int:
@@ -103,7 +107,6 @@ class FakePatientRepository:
         return patient
 
 
-
 def _build_incident(*, tenant_id: uuid.UUID) -> Incident:
     now = datetime.now(UTC)
     return Incident(
@@ -115,7 +118,6 @@ def _build_incident(*, tenant_id: uuid.UUID) -> Incident:
         created_at=now,
         updated_at=now,
     )
-
 
 
 def _build_patient(*, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> Patient:
@@ -137,8 +139,9 @@ def _build_patient(*, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> Patient:
     )
 
 
-
-def _build_vital(*, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID, version: int = 1) -> Vital:
+def _build_vital(
+    *, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID, version: int = 1
+) -> Vital:
     now = datetime.now(UTC)
     return Vital(
         id=uuid.uuid4(),
@@ -167,7 +170,9 @@ async def test_tenant_isolation_prevents_cross_tenant_vital_fetch() -> None:
     service.patient_repository = FakePatientRepository([patient])
 
     with pytest.raises(AppError) as exc:
-        await service.get_vital(tenant_id=tenant_b, incident_id=incident.id, patient_id=patient.id, vital_id=vital.id)
+        await service.get_vital(
+            tenant_id=tenant_b, incident_id=incident.id, patient_id=patient.id, vital_id=vital.id
+        )
 
     assert exc.value.code == ErrorCodes.INCIDENT_NOT_FOUND
 
@@ -230,7 +235,9 @@ async def test_concurrency_conflict_returns_409_with_server_version() -> None:
     actor_id = uuid.uuid4()
     incident = _build_incident(tenant_id=tenant_id)
     patient = _build_patient(tenant_id=tenant_id, incident_id=incident.id)
-    vital = _build_vital(tenant_id=tenant_id, incident_id=incident.id, patient_id=patient.id, version=4)
+    vital = _build_vital(
+        tenant_id=tenant_id, incident_id=incident.id, patient_id=patient.id, version=4
+    )
 
     service = VitalService(db=FakeDB(), publisher=FakePublisher())
     service.repository = FakeVitalRepository([vital])
@@ -302,10 +309,14 @@ async def test_soft_delete_hides_vital_from_get_and_list() -> None:
         correlation_id="corr-vital-5",
     )
 
-    listed = await service.list_vitals_for_patient(tenant_id=tenant_id, incident_id=incident.id, patient_id=patient.id)
+    listed = await service.list_vitals_for_patient(
+        tenant_id=tenant_id, incident_id=incident.id, patient_id=patient.id
+    )
     assert listed.total == 0
 
     with pytest.raises(AppError) as exc:
-        await service.get_vital(tenant_id=tenant_id, incident_id=incident.id, patient_id=patient.id, vital_id=vital.id)
+        await service.get_vital(
+            tenant_id=tenant_id, incident_id=incident.id, patient_id=patient.id, vital_id=vital.id
+        )
 
     assert exc.value.code == ErrorCodes.VITAL_NOT_FOUND

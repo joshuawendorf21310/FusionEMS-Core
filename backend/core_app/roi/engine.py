@@ -6,12 +6,13 @@ from typing import Any
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
+
 @dataclass(frozen=True)
 class FeeScheduleRow:
-    service_type: str   # EMS|Fire|HEMS (HEMS treated as air medical placeholder)
-    level: str          # BLS|ALS|CCT|HEMS
-    base_rate: float    # USD
-    mileage_rate: float # USD per mile
+    service_type: str  # EMS|Fire|HEMS (HEMS treated as air medical placeholder)
+    level: str  # BLS|ALS|CCT|HEMS
+    base_rate: float  # USD
+    mileage_rate: float  # USD per mile
 
 
 def _load_fee_schedule() -> list[FeeScheduleRow]:
@@ -20,16 +21,19 @@ def _load_fee_schedule() -> list[FeeScheduleRow]:
     with path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            rows.append(FeeScheduleRow(
-                service_type=r["service_type"],
-                level=r["level"],
-                base_rate=float(r["base_rate"]),
-                mileage_rate=float(r["mileage_rate"]),
-            ))
+            rows.append(
+                FeeScheduleRow(
+                    service_type=r["service_type"],
+                    level=r["level"],
+                    base_rate=float(r["base_rate"]),
+                    mileage_rate=float(r["mileage_rate"]),
+                )
+            )
     return rows
 
 
 _FEE = _load_fee_schedule()
+
 
 def _rural_multiplier(zip_code: str) -> float:
     # Deterministic proxy. Replace with real RUCA/Rural-Urban datasets in production.
@@ -45,7 +49,11 @@ def compute_roi(inputs: dict[str, Any]) -> dict[str, Any]:
     service_type = inputs["service_type"]
     billing_pct = float(inputs["current_billing_percent"]) / 100.0
 
-    payer_mix: dict[str, float] = inputs.get("payer_mix", {}) or {"medicare": 0.4, "medicaid": 0.2, "commercial": 0.4}
+    payer_mix: dict[str, float] = inputs.get("payer_mix", {}) or {
+        "medicare": 0.4,
+        "medicaid": 0.2,
+        "commercial": 0.4,
+    }
     level_mix: dict[str, float] = inputs.get("level_mix", {}) or {"BLS": 0.5, "ALS": 0.5}
 
     rural_mult = _rural_multiplier(zip_code)

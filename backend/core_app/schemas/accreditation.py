@@ -9,12 +9,14 @@ class AccreditationItemCreate(BaseModel):
     required_docs: list[str] = Field(default_factory=list)
     score_weight: int = Field(default=1, ge=1, le=10)
 
+
 class AccreditationItemUpdate(BaseModel):
     status: str | None = None
     notes: str | None = None
     required_docs: list[str] | None = None
     score_weight: int | None = None
     version: int = Field(ge=1)
+
 
 class AccreditationDashboard(BaseModel):
     score_percent: float

@@ -171,7 +171,9 @@ async def list_work_orders(
 ):
     _check(current)
     svc = _svc(db)
-    orders = svc.repo("maintenance_work_orders").list(tenant_id=current.tenant_id, limit=min(limit, 500))
+    orders = svc.repo("maintenance_work_orders").list(
+        tenant_id=current.tenant_id, limit=min(limit, 500)
+    )
     if unit_id:
         orders = [o for o in orders if (o.get("data") or {}).get("unit_id") == unit_id]
     if status:
@@ -194,7 +196,17 @@ async def update_work_order(
         raise HTTPException(status_code=404, detail="Work order not found")
     correlation_id = getattr(request.state, "correlation_id", None)
     data = dict(order.get("data") or {})
-    for field in ("status", "title", "description", "priority", "assigned_to", "due_date", "estimated_hours", "actual_hours", "notes"):
+    for field in (
+        "status",
+        "title",
+        "description",
+        "priority",
+        "assigned_to",
+        "due_date",
+        "estimated_hours",
+        "actual_hours",
+        "notes",
+    ):
         if field in payload:
             data[field] = payload[field]
     if payload.get("status") == "completed" and not data.get("completed_at"):

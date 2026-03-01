@@ -16,7 +16,9 @@ class AiService:
             raise RuntimeError("OpenAI API key not configured")
         self.client = OpenAI(api_key=settings.openai_api_key)
 
-    def chat(self, *, system: str, user: str, max_tokens: int | None = None) -> tuple[str, dict[str, Any]]:
+    def chat(
+        self, *, system: str, user: str, max_tokens: int | None = None
+    ) -> tuple[str, dict[str, Any]]:
         get_settings()
         start = time.time()
         create_kwargs: dict[str, Any] = {
@@ -32,9 +34,10 @@ class AiService:
         meta = {
             "model": resp.model,
             "usage": usage,
-            "latency_ms": int((time.time()-start)*1000),
+            "latency_ms": int((time.time() - start) * 1000),
         }
         return content, meta
+
 
 def hash_input(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()

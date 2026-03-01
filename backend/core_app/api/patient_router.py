@@ -45,7 +45,9 @@ async def list_patients_for_incident(
     current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
     service: PatientService = Depends(patient_service_dependency),
 ) -> PatientListResponse:
-    return await service.list_patients_for_incident(tenant_id=current_user.tenant_id, incident_id=incident_id)
+    return await service.list_patients_for_incident(
+        tenant_id=current_user.tenant_id, incident_id=incident_id
+    )
 
 
 @router.get("/{patient_id}", response_model=PatientResponse)
@@ -55,7 +57,9 @@ async def get_patient(
     current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
     service: PatientService = Depends(patient_service_dependency),
 ) -> PatientResponse:
-    return await service.get_patient(tenant_id=current_user.tenant_id, incident_id=incident_id, patient_id=patient_id)
+    return await service.get_patient(
+        tenant_id=current_user.tenant_id, incident_id=incident_id, patient_id=patient_id
+    )
 
 
 @router.patch("/{patient_id}", response_model=PatientResponse)

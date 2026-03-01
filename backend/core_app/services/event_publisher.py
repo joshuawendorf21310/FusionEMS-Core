@@ -44,14 +44,33 @@ class EventPublisher(ABC):
         correlation_id: str | None = None,
     ) -> None:
         import asyncio
+
         name = event_name or event_type or (topic.split(".")[-1] if topic else "event")
         eid = entity_id if isinstance(entity_id, uuid.UUID) else uuid.uuid4()
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                loop.create_task(self.publish(name, tenant_id, eid, payload, entity_type=entity_type, correlation_id=correlation_id))
+                loop.create_task(
+                    self.publish(
+                        name,
+                        tenant_id,
+                        eid,
+                        payload,
+                        entity_type=entity_type,
+                        correlation_id=correlation_id,
+                    )
+                )
             else:
-                loop.run_until_complete(self.publish(name, tenant_id, eid, payload, entity_type=entity_type, correlation_id=correlation_id))
+                loop.run_until_complete(
+                    self.publish(
+                        name,
+                        tenant_id,
+                        eid,
+                        payload,
+                        entity_type=entity_type,
+                        correlation_id=correlation_id,
+                    )
+                )
         except Exception as exc:
             logger.error(
                 "event_publisher.publish_sync failed",
@@ -67,7 +86,9 @@ class EventPublisher(ABC):
 
 
 class NoOpEventPublisher(EventPublisher):
-    async def publish(self, event_name, tenant_id, entity_id, payload, *, entity_type=None, correlation_id=None):
+    async def publish(
+        self, event_name, tenant_id, entity_id, payload, *, entity_type=None, correlation_id=None
+    ):
         logger.warning(
             "event_publisher.noop: event dropped — no publisher configured",
             extra={

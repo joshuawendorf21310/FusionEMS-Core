@@ -18,6 +18,7 @@ from core_app.services.event_publisher import get_event_publisher
 
 try:
     import stripe as stripe_lib
+
     STRIPE_AVAILABLE = True
 except ImportError:
     STRIPE_AVAILABLE = False
@@ -34,6 +35,7 @@ def _legal_svc(db: Session) -> LegalService:
 def _get_stripe_price_ids(stage: str, aws_region: str, lookup_keys: list[str]) -> dict[str, str]:
     try:
         import boto3
+
         ssm = boto3.client("ssm", region_name=aws_region or "us-east-1")
         prefix = f"/fusionems/{stage}/stripe/prices"
         names = [f"{prefix}/{lk}" for lk in lookup_keys]
@@ -61,26 +63,32 @@ async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_ses
     if agency_type not in ("EMS", "Fire", "HEMS"):
         raise HTTPException(status_code=422, detail="agency_type must be EMS, Fire, or HEMS")
 
-    roi = compute_roi({
-        "zip_code": zip_code,
-        "annual_call_volume": annual_call_volume,
-        "service_type": agency_type,
-        "current_billing_percent": current_billing_percent,
-        "payer_mix": payer_mix,
-        "level_mix": level_mix,
-        "selected_modules": selected_modules,
-    })
+    roi = compute_roi(
+        {
+            "zip_code": zip_code,
+            "annual_call_volume": annual_call_volume,
+            "service_type": agency_type,
+            "current_billing_percent": current_billing_percent,
+            "payer_mix": payer_mix,
+            "level_mix": level_mix,
+            "selected_modules": selected_modules,
+        }
+    )
     roi_hash = hash_outputs(roi)
 
     cutoff = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
-    existing = db.execute(
-        text(
-            "SELECT id, roi_snapshot_hash, status FROM onboarding_applications "
-            "WHERE contact_email = :email AND agency_name = :agency AND status = 'started' "
-            "AND created_at >= :cutoff LIMIT 1"
-        ),
-        {"email": email, "agency": agency_name, "cutoff": cutoff},
-    ).mappings().first()
+    existing = (
+        db.execute(
+            text(
+                "SELECT id, roi_snapshot_hash, status FROM onboarding_applications "
+                "WHERE contact_email = :email AND agency_name = :agency AND status = 'started' "
+                "AND created_at >= :cutoff LIMIT 1"
+            ),
+            {"email": email, "agency": agency_name, "cutoff": cutoff},
+        )
+        .mappings()
+        .first()
+    )
 
     if existing:
         return {
@@ -90,9 +98,10 @@ async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_ses
             "next_steps": ["sign_legal", "checkout", "provisioning"],
         }
 
-    row = db.execute(
-        text(
-            """
+    row = (
+        db.execute(
+            text(
+                """
             INSERT INTO onboarding_applications (
                 contact_email, agency_name, zip_code, agency_type, annual_call_volume,
                 current_billing_percent, payer_mix, level_mix, selected_modules,
@@ -103,20 +112,23 @@ async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_ses
                 :h, 'started', 'pending'
             ) RETURNING id
             """
-        ),
-        {
-            "email": email,
-            "agency": agency_name,
-            "zip": zip_code,
-            "atype": agency_type,
-            "vol": annual_call_volume,
-            "pct": current_billing_percent,
-            "payer": json.dumps(payer_mix),
-            "level": json.dumps(level_mix),
-            "mods": json.dumps(selected_modules),
-            "h": roi_hash,
-        },
-    ).mappings().first()
+            ),
+            {
+                "email": email,
+                "agency": agency_name,
+                "zip": zip_code,
+                "atype": agency_type,
+                "vol": annual_call_volume,
+                "pct": current_billing_percent,
+                "payer": json.dumps(payer_mix),
+                "level": json.dumps(level_mix),
+                "mods": json.dumps(selected_modules),
+                "h": roi_hash,
+            },
+        )
+        .mappings()
+        .first()
+    )
     db.commit()
 
     return {
@@ -159,9 +171,10 @@ async def onboarding_apply(payload: dict[str, Any], db: Session = Depends(db_ses
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    row = db.execute(
-        text(
-            """
+    row = (
+        db.execute(
+            text(
+                """
             INSERT INTO onboarding_applications (
                 contact_email, agency_name, agency_type, zip_code,
                 plan_code, tier_code, billing_tier_code, addon_codes,
@@ -178,27 +191,30 @@ async def onboarding_apply(payload: dict[str, Any], db: Session = Depends(db_ses
                 :collector_vendor_name, :placement_method
             ) RETURNING id
             """
-        ),
-        {
-            "email": email,
-            "agency": agency_name,
-            "atype": agency_type,
-            "zip": state,
-            "plan_code": plan_code,
-            "tier_code": tier_code,
-            "billing_tier_code": billing_tier_code,
-            "addon_codes": json.dumps(addon_codes),
-            "mods": json.dumps(addon_codes),
-            "first_name": first_name,
-            "last_name": last_name,
-            "phone": phone,
-            "is_gov": is_government_entity,
-            "collections_mode": collections_mode,
-            "statement_channels": json.dumps(statement_channels),
-            "collector_vendor_name": collector_vendor_name,
-            "placement_method": placement_method,
-        },
-    ).mappings().first()
+            ),
+            {
+                "email": email,
+                "agency": agency_name,
+                "atype": agency_type,
+                "zip": state,
+                "plan_code": plan_code,
+                "tier_code": tier_code,
+                "billing_tier_code": billing_tier_code,
+                "addon_codes": json.dumps(addon_codes),
+                "mods": json.dumps(addon_codes),
+                "first_name": first_name,
+                "last_name": last_name,
+                "phone": phone,
+                "is_gov": is_government_entity,
+                "collections_mode": collections_mode,
+                "statement_channels": json.dumps(statement_channels),
+                "collector_vendor_name": collector_vendor_name,
+                "placement_method": placement_method,
+            },
+        )
+        .mappings()
+        .first()
+    )
     db.commit()
 
     return {
@@ -210,7 +226,9 @@ async def onboarding_apply(payload: dict[str, Any], db: Session = Depends(db_ses
 
 
 @router.post("/legal/packet/create")
-async def legal_packet_create(payload: dict[str, Any], db: Session = Depends(db_session_dependency)):
+async def legal_packet_create(
+    payload: dict[str, Any], db: Session = Depends(db_session_dependency)
+):
     application_id = str(payload.get("application_id", "")).strip()
     signer_name = str(payload.get("signer_name", "")).strip()
     signer_email = str(payload.get("signer_email", "")).strip()
@@ -219,18 +237,25 @@ async def legal_packet_create(payload: dict[str, Any], db: Session = Depends(db_
     if not application_id:
         raise HTTPException(status_code=422, detail="application_id is required")
 
-    app_row = db.execute(
-        text(
-            "SELECT id, agency_name, agency_type, annual_call_volume, selected_modules, "
-            "current_billing_percent, status, legal_status FROM onboarding_applications WHERE id = :app_id"
-        ),
-        {"app_id": application_id},
-    ).mappings().first()
+    app_row = (
+        db.execute(
+            text(
+                "SELECT id, agency_name, agency_type, annual_call_volume, selected_modules, "
+                "current_billing_percent, status, legal_status FROM onboarding_applications WHERE id = :app_id"
+            ),
+            {"app_id": application_id},
+        )
+        .mappings()
+        .first()
+    )
 
     if app_row is None:
         raise HTTPException(status_code=404, detail="Application not found")
     if app_row["status"] not in ("started", "legal_pending"):
-        raise HTTPException(status_code=422, detail=f"Application status '{app_row['status']}' does not allow legal packet creation")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Application status '{app_row['status']}' does not allow legal packet creation",
+        )
 
     svc = _legal_svc(db)
     existing_status = svc.get_legal_status(application_id)
@@ -331,15 +356,19 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
     if not application_id:
         raise HTTPException(status_code=422, detail="application_id is required")
 
-    app_row = db.execute(
-        text(
-            "SELECT id, agency_name, annual_call_volume, selected_modules, "
-            "plan_code, tier_code, billing_tier_code, addon_codes, "
-            "legal_status, status "
-            "FROM onboarding_applications WHERE id = :app_id"
-        ),
-        {"app_id": application_id},
-    ).mappings().first()
+    app_row = (
+        db.execute(
+            text(
+                "SELECT id, agency_name, annual_call_volume, selected_modules, "
+                "plan_code, tier_code, billing_tier_code, addon_codes, "
+                "legal_status, status "
+                "FROM onboarding_applications WHERE id = :app_id"
+            ),
+            {"app_id": application_id},
+        )
+        .mappings()
+        .first()
+    )
 
     if app_row is None:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -350,7 +379,9 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
 
     if not STRIPE_AVAILABLE or not settings.stripe_secret_key:
         db.execute(
-            text("UPDATE onboarding_applications SET status = 'payment_pending' WHERE id = :app_id"),
+            text(
+                "UPDATE onboarding_applications SET status = 'payment_pending' WHERE id = :app_id"
+            ),
             {"app_id": application_id},
         )
         db.commit()
@@ -409,7 +440,10 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
                 line_items.append(entry)
             else:
                 from core_app.pricing.catalog import ADDONS, BILLING_TIERS, SCHEDULING_TIERS
-                unit_amount = _lookup_key_to_cents(lk, SCHEDULING_TIERS, BILLING_TIERS, ADDONS, quote)
+
+                unit_amount = _lookup_key_to_cents(
+                    lk, SCHEDULING_TIERS, BILLING_TIERS, ADDONS, quote
+                )
                 entry = {
                     "price_data": {
                         "currency": "usd",
@@ -426,7 +460,9 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
                 line_items.append(entry)
 
         if not line_items:
-            raise HTTPException(status_code=422, detail="No billable line items for this plan configuration")
+            raise HTTPException(
+                status_code=422, detail="No billable line items for this plan configuration"
+            )
 
         base_url = settings.api_base_url.rstrip("/")
         session = stripe_lib.checkout.Session.create(
@@ -438,7 +474,9 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
         )
 
         db.execute(
-            text("UPDATE onboarding_applications SET status = 'payment_pending' WHERE id = :app_id"),
+            text(
+                "UPDATE onboarding_applications SET status = 'payment_pending' WHERE id = :app_id"
+            ),
             {"app_id": application_id},
         )
         db.commit()
@@ -475,13 +513,17 @@ def _lookup_key_to_cents(
 
 @router.get("/status/{application_id}")
 async def onboarding_status(application_id: str, db: Session = Depends(db_session_dependency)):
-    app_row = db.execute(
-        text(
-            "SELECT id, status, legal_status, tenant_id, provisioned_at "
-            "FROM onboarding_applications WHERE id = :app_id"
-        ),
-        {"app_id": application_id},
-    ).mappings().first()
+    app_row = (
+        db.execute(
+            text(
+                "SELECT id, status, legal_status, tenant_id, provisioned_at "
+                "FROM onboarding_applications WHERE id = :app_id"
+            ),
+            {"app_id": application_id},
+        )
+        .mappings()
+        .first()
+    )
 
     if app_row is None:
         raise HTTPException(status_code=404, detail="Application not found")

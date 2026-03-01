@@ -18,9 +18,11 @@ class RoiInput(BaseModel):
     collection_efficiency: float | None = Field(default=None, ge=0.0, le=1.0)
     write_off_rate: float | None = Field(default=None, ge=0.0, le=1.0)
 
+
 class RoiOutput(BaseModel):
     outputs: dict[str, Any]
     outputs_hash: str
+
 
 class RoiScenarioResponse(BaseModel):
     id: str

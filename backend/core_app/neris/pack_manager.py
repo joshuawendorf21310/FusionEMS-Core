@@ -22,7 +22,9 @@ PACK_S3_PREFIX = "neris/packs"
 
 
 class NERISPackManager:
-    def __init__(self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID) -> None:
+    def __init__(
+        self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID
+    ) -> None:
         self.svc = DominationService(db, publisher)
         self.tenant_id = tenant_id
         self.actor_user_id = actor_user_id
@@ -51,10 +53,19 @@ class NERISPackManager:
         )
         pack_id = str(pack["id"])
 
-        _enqueue_pack_import(pack_id=pack_id, repo=repo, ref=ref, name=name, tenant_id=str(self.tenant_id), actor_user_id=str(self.actor_user_id))
+        _enqueue_pack_import(
+            pack_id=pack_id,
+            repo=repo,
+            ref=ref,
+            name=name,
+            tenant_id=str(self.tenant_id),
+            actor_user_id=str(self.actor_user_id),
+        )
         return pack
 
-    async def activate_pack(self, pack_id: uuid.UUID, correlation_id: str | None = None) -> dict[str, Any]:
+    async def activate_pack(
+        self, pack_id: uuid.UUID, correlation_id: str | None = None
+    ) -> dict[str, Any]:
         pack = self.svc.repo("neris_packs").get(tenant_id=self.tenant_id, record_id=pack_id)
         if not pack:
             raise ValueError("pack_not_found")
@@ -112,14 +123,18 @@ class NERISPackManager:
         return None
 
 
-def _enqueue_pack_import(*, pack_id: str, repo: str, ref: str, name: str, tenant_id: str, actor_user_id: str) -> None:
+def _enqueue_pack_import(
+    *, pack_id: str, repo: str, ref: str, name: str, tenant_id: str, actor_user_id: str
+) -> None:
     import json  # noqa: E402
 
     import boto3  # noqa: E402
+
     queue_url = os.environ.get("NERIS_PACK_IMPORT_QUEUE_URL", "")
     if not queue_url:
         return
     import logging as _logging  # noqa: E402
+
     _log = _logging.getLogger(__name__)
     try:
         sqs = boto3.client("sqs")
@@ -127,15 +142,17 @@ def _enqueue_pack_import(*, pack_id: str, repo: str, ref: str, name: str, tenant
             QueueUrl=queue_url,
             MessageGroupId=pack_id,
             MessageDeduplicationId=pack_id,
-            MessageBody=json.dumps({
-                "job_type": "neris.pack.import",
-                "pack_id": pack_id,
-                "repo": repo,
-                "ref": ref,
-                "name": name,
-                "tenant_id": tenant_id,
-                "actor_user_id": actor_user_id,
-            }),
+            MessageBody=json.dumps(
+                {
+                    "job_type": "neris.pack.import",
+                    "pack_id": pack_id,
+                    "repo": repo,
+                    "ref": ref,
+                    "name": name,
+                    "tenant_id": tenant_id,
+                    "actor_user_id": actor_user_id,
+                }
+            ),
         )
     except Exception as exc:
         _log.error("neris_pack_import_enqueue_failed pack_id=%s error=%s", pack_id, exc)

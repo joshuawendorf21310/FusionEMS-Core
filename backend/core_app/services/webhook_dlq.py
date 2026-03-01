@@ -54,7 +54,11 @@ async def process_webhook_with_retry(
     except Exception as e:
         logger.warning("Webhook delivery failed for %s %s: %s — enqueuing DLQ", source, event_id, e)
         try:
-            tenant_id = uuid.UUID(payload.get("tenant_id", "")) if payload.get("tenant_id") else uuid.UUID(int=0)
+            tenant_id = (
+                uuid.UUID(payload.get("tenant_id", ""))
+                if payload.get("tenant_id")
+                else uuid.UUID(int=0)
+            )
             next_retry = datetime.now(UTC) + timedelta(seconds=RETRY_DELAYS_SECONDS[0])
             await svc.create(
                 table="webhook_dlq",
@@ -125,7 +129,11 @@ async def process_dlq_batch(
                 actor_user_id=None,
                 record_id=uuid.UUID(str(item["id"])),
                 expected_version=item.get("version", 1),
-                patch={"status": "processed", "attempts": attempts + 1, "processed_at": now.isoformat()},
+                patch={
+                    "status": "processed",
+                    "attempts": attempts + 1,
+                    "processed_at": now.isoformat(),
+                },
                 correlation_id=None,
             )
             processed += 1

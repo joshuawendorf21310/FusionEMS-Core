@@ -84,23 +84,14 @@ class CandSParser:
             return None
 
         scenario_id = (
-            data.get("scenarioId")
-            or data.get("scenario_id")
-            or data.get("id")
-            or str(uuid.uuid4())
+            data.get("scenarioId") or data.get("scenario_id") or data.get("id") or str(uuid.uuid4())
         )
         name = (
-            data.get("name")
-            or data.get("scenarioName")
-            or data.get("scenario_name")
-            or scenario_id
+            data.get("name") or data.get("scenarioName") or data.get("scenario_name") or scenario_id
         )
         summary = data.get("description") or data.get("summary") or ""
         dataset_type = (
-            data.get("dataSetType")
-            or data.get("dataset_type")
-            or data.get("DataSetType")
-            or "EMS"
+            data.get("dataSetType") or data.get("dataset_type") or data.get("DataSetType") or "EMS"
         )
         expected_result = _normalize_expected_result(
             data.get("expectedResult") or data.get("expected_result") or data.get("ExpectedResult")
@@ -112,10 +103,7 @@ class CandSParser:
             or "3.5.1"
         )
         state_code = (
-            data.get("stateCode")
-            or data.get("state_code")
-            or data.get("state")
-            or "NATIONAL"
+            data.get("stateCode") or data.get("state_code") or data.get("state") or "NATIONAL"
         )
         test_type = _detect_test_type(data)
         sections = _detect_sections_from_dict(data)
@@ -150,7 +138,9 @@ class CandSParser:
         name = _find("ScenarioName") or _find("scenarioName") or _find("Name") or scenario_id
         summary = _find("Description") or _find("Summary") or ""
         dataset_type = (_find("DataSetType") or _find("dataSetType") or "EMS").upper()
-        expected_result = _normalize_expected_result(_find("ExpectedResult") or _find("expectedResult"))
+        expected_result = _normalize_expected_result(
+            _find("ExpectedResult") or _find("expectedResult")
+        )
         nemsis_version = _find("NEMSISVersion") or _find("nemsisVersion") or "3.5.1"
         state_code = (_find("StateCode") or _find("stateCode") or "NATIONAL").upper()
         xml_str = content.decode(errors="ignore")

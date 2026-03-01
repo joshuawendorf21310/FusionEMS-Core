@@ -21,12 +21,14 @@ logger = logging.getLogger(__name__)
 try:
     import pyx12  # noqa: F401
     import pyx12.x12context  # noqa: F401
+
     PYX12_AVAILABLE = True
 except ImportError:
     PYX12_AVAILABLE = False
 
 try:
     from linuxforhealth.x12.io import X12ModelReader  # noqa: F401
+
     LFH_AVAILABLE = True
 except ImportError:
     LFH_AVAILABLE = False
@@ -169,6 +171,7 @@ class EDIService:
             import pyx12.error_handler
             import pyx12.params
             import pyx12.x12file
+
             param = pyx12.params.params()
             errh = pyx12.error_handler.errh_null()
             src = pyx12.x12file.X12Reader(io.StringIO(x12_text))
@@ -404,15 +407,19 @@ class EDIService:
 
     async def get_claim_explain(self, claim_id: str, ai_service: Any) -> dict:
         try:
-            rows = self.db.execute(
-                text(
-                    "SELECT status_code, status_description, source, effective_date, created_at "
-                    "FROM claim_status_history "
-                    "WHERE claim_id = :cid AND tenant_id = :tid "
-                    "ORDER BY created_at DESC LIMIT 10"
-                ),
-                {"cid": claim_id, "tid": str(self.tenant_id)},
-            ).mappings().all()
+            rows = (
+                self.db.execute(
+                    text(
+                        "SELECT status_code, status_description, source, effective_date, created_at "
+                        "FROM claim_status_history "
+                        "WHERE claim_id = :cid AND tenant_id = :tid "
+                        "ORDER BY created_at DESC LIMIT 10"
+                    ),
+                    {"cid": claim_id, "tid": str(self.tenant_id)},
+                )
+                .mappings()
+                .all()
+            )
             history = [dict(r) for r in rows]
         except Exception:
             history = []

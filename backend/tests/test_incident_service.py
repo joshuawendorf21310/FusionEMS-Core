@@ -32,7 +32,9 @@ class FakePublisher:
     def __init__(self) -> None:
         self.events: list[tuple[str, uuid.UUID, uuid.UUID, dict]] = []
 
-    async def publish(self, event_name: str, tenant_id: uuid.UUID, entity_id: uuid.UUID, payload: dict) -> None:
+    async def publish(
+        self, event_name: str, tenant_id: uuid.UUID, entity_id: uuid.UUID, payload: dict
+    ) -> None:
         self.events.append((event_name, tenant_id, entity_id, payload))
 
 
@@ -52,16 +54,27 @@ class FakeRepository:
         incident.updated_at = datetime.now(UTC)
         return incident
 
-    async def list_paginated(self, *, tenant_id: uuid.UUID, limit: int, offset: int) -> list[Incident]:
-        visible = [i for i in self.incidents.values() if i.tenant_id == tenant_id and i.deleted_at is None]
+    async def list_paginated(
+        self, *, tenant_id: uuid.UUID, limit: int, offset: int
+    ) -> list[Incident]:
+        visible = [
+            i for i in self.incidents.values() if i.tenant_id == tenant_id and i.deleted_at is None
+        ]
         return visible[offset : offset + limit]
 
     async def count(self, *, tenant_id: uuid.UUID) -> int:
-        return len([i for i in self.incidents.values() if i.tenant_id == tenant_id and i.deleted_at is None])
+        return len(
+            [
+                i
+                for i in self.incidents.values()
+                if i.tenant_id == tenant_id and i.deleted_at is None
+            ]
+        )
 
 
-
-def _build_incident(*, tenant_id: uuid.UUID, status: IncidentStatus = IncidentStatus.DRAFT, version: int = 1) -> Incident:
+def _build_incident(
+    *, tenant_id: uuid.UUID, status: IncidentStatus = IncidentStatus.DRAFT, version: int = 1
+) -> Incident:
     now = datetime.now(UTC)
     incident = Incident(
         id=uuid.uuid4(),
@@ -99,7 +112,9 @@ async def test_concurrency_conflict_raises_409_with_server_version() -> None:
     service = IncidentService(db=FakeDB(), publisher=FakePublisher())
     service.repository = FakeRepository([incident])
 
-    payload = IncidentUpdateRequest(version=2, dispatch_time=None, arrival_time=None, disposition=None)
+    payload = IncidentUpdateRequest(
+        version=2, dispatch_time=None, arrival_time=None, disposition=None
+    )
 
     with pytest.raises(AppError) as exc:
         await service.update_incident(

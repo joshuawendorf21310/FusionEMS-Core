@@ -58,16 +58,28 @@ class IncidentService:
             actor_user_id=actor_user_id,
             entity_id=created.id,
             action="incident_created",
-            changed_field_names=["incident_number", "dispatch_time", "arrival_time", "disposition", "status"],
+            changed_field_names=[
+                "incident_number",
+                "dispatch_time",
+                "arrival_time",
+                "disposition",
+                "status",
+            ],
             metadata={"status": created.status.value},
             correlation_id=correlation_id,
         )
         await self.db.commit()
-        await self.publisher.publish("incident.created", tenant_id, created.id, {"status": created.status.value})
+        await self.publisher.publish(
+            "incident.created", tenant_id, created.id, {"status": created.status.value}
+        )
         return IncidentResponse.model_validate(created)
 
-    async def list_incidents(self, *, tenant_id: uuid.UUID, limit: int, offset: int) -> IncidentListResponse:
-        incidents = await self.repository.list_paginated(tenant_id=tenant_id, limit=limit, offset=offset)
+    async def list_incidents(
+        self, *, tenant_id: uuid.UUID, limit: int, offset: int
+    ) -> IncidentListResponse:
+        incidents = await self.repository.list_paginated(
+            tenant_id=tenant_id, limit=limit, offset=offset
+        )
         total = await self.repository.count(tenant_id=tenant_id)
         return IncidentListResponse(
             items=[IncidentResponse.model_validate(incident) for incident in incidents],
@@ -76,7 +88,9 @@ class IncidentService:
             offset=offset,
         )
 
-    async def get_incident(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> IncidentResponse:
+    async def get_incident(
+        self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID
+    ) -> IncidentResponse:
         incident = await self._require_incident(tenant_id=tenant_id, incident_id=incident_id)
         return IncidentResponse.model_validate(incident)
 
@@ -125,7 +139,9 @@ class IncidentService:
             correlation_id=correlation_id,
         )
         await self.db.commit()
-        await self.publisher.publish("incident.updated", tenant_id, updated.id, {"version": updated.version})
+        await self.publisher.publish(
+            "incident.updated", tenant_id, updated.id, {"version": updated.version}
+        )
         return IncidentResponse.model_validate(updated)
 
     async def transition_incident_status(
@@ -144,7 +160,11 @@ class IncidentService:
         from_status = incident.status
         target_status = payload.target_status
         self._validate_transition(from_status=from_status, to_status=target_status)
-        if from_status == IncidentStatus.LOCKED and target_status == IncidentStatus.COMPLETED and actor_role != "admin":
+        if (
+            from_status == IncidentStatus.LOCKED
+            and target_status == IncidentStatus.COMPLETED
+            and actor_role != "admin"
+        ):
             raise AppError(
                 code=ErrorCodes.INCIDENT_FORBIDDEN_TRANSITION,
                 message="Only admin can transition from locked to completed.",
@@ -197,7 +217,11 @@ class IncidentService:
 
         from_status = entity.status
         self._validate_transition(from_status=from_status, to_status=transition_target)
-        if from_status == IncidentStatus.LOCKED and transition_target == IncidentStatus.COMPLETED and actor_role != "admin":
+        if (
+            from_status == IncidentStatus.LOCKED
+            and transition_target == IncidentStatus.COMPLETED
+            and actor_role != "admin"
+        ):
             raise AppError(
                 code=ErrorCodes.INCIDENT_FORBIDDEN_TRANSITION,
                 message="Only admin can transition from locked to completed.",
@@ -244,7 +268,10 @@ class IncidentService:
                 details={
                     "from_status": from_status.value,
                     "to_status": to_status.value,
-                    "allowed_targets": [status.value for status in sorted(allowed_targets, key=lambda item: item.value)],
+                    "allowed_targets": [
+                        status.value
+                        for status in sorted(allowed_targets, key=lambda item: item.value)
+                    ],
                 },
             )
 
@@ -264,7 +291,11 @@ class IncidentService:
 
     @staticmethod
     def _is_review_ready(entity: Incident) -> bool:
-        return entity.dispatch_time is not None and entity.arrival_time is not None and entity.disposition is not None
+        return (
+            entity.dispatch_time is not None
+            and entity.arrival_time is not None
+            and entity.disposition is not None
+        )
 
     @staticmethod
     def _sanitize_field_names(changed_field_names: list[str]) -> list[str]:

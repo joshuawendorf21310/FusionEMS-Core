@@ -43,7 +43,9 @@ AGING_BUCKETS = [
 ]
 
 
-def compute_ar_aging(db: Session, tenant_id: uuid.UUID, svc: DominationService | None = None) -> ArAgingReport:
+def compute_ar_aging(
+    db: Session, tenant_id: uuid.UUID, svc: DominationService | None = None
+) -> ArAgingReport:
     if svc is None:
         svc = DominationService(db, get_event_publisher())
     today = date.today()
@@ -63,7 +65,9 @@ def compute_ar_aging(db: Session, tenant_id: uuid.UUID, svc: DominationService |
         if status in ("paid", "voided", "written_off"):
             continue
 
-        billed_date_raw = data.get("billed_date") or data.get("service_date") or claim.get("created_at")
+        billed_date_raw = (
+            data.get("billed_date") or data.get("service_date") or claim.get("created_at")
+        )
         if not billed_date_raw:
             continue
 
@@ -79,7 +83,9 @@ def compute_ar_aging(db: Session, tenant_id: uuid.UUID, svc: DominationService |
         amount_cents = int(data.get("balance_cents", data.get("billed_cents", 0)) or 0)
 
         for bucket in buckets:
-            if bucket.min_days <= days_out and (bucket.max_days is None or days_out <= bucket.max_days):
+            if bucket.min_days <= days_out and (
+                bucket.max_days is None or days_out <= bucket.max_days
+            ):
                 bucket.count += 1
                 bucket.total_cents += amount_cents
                 bucket.claim_ids.append(claim.get("id", ""))
@@ -113,7 +119,9 @@ def compute_ar_aging(db: Session, tenant_id: uuid.UUID, svc: DominationService |
     )
 
 
-def compute_revenue_forecast(db: Session, tenant_id: uuid.UUID, months: int = 3, svc: DominationService | None = None) -> dict[str, Any]:
+def compute_revenue_forecast(
+    db: Session, tenant_id: uuid.UUID, months: int = 3, svc: DominationService | None = None
+) -> dict[str, Any]:
     if svc is None:
         svc = DominationService(db, get_event_publisher())
 
@@ -134,17 +142,27 @@ def compute_revenue_forecast(db: Session, tenant_id: uuid.UUID, months: int = 3,
 
     sorted_months = sorted(monthly_revenue.keys())
     recent_months = sorted_months[-6:] if len(sorted_months) >= 6 else sorted_months
-    avg_monthly = int(sum(monthly_revenue[m] for m in recent_months) / len(recent_months)) if recent_months else 0
+    avg_monthly = (
+        int(sum(monthly_revenue[m] for m in recent_months) / len(recent_months))
+        if recent_months
+        else 0
+    )
 
     today = date.today()
     forecast = []
     for i in range(1, months + 1):
         future = today + relativedelta(months=i)
-        forecast.append({
-            "month": future.strftime("%Y-%m"),
-            "projected_cents": avg_monthly,
-            "confidence": "low" if len(recent_months) < 3 else "medium" if len(recent_months) < 6 else "high",
-        })
+        forecast.append(
+            {
+                "month": future.strftime("%Y-%m"),
+                "projected_cents": avg_monthly,
+                "confidence": "low"
+                if len(recent_months) < 3
+                else "medium"
+                if len(recent_months) < 6
+                else "high",
+            }
+        )
 
     return {
         "historical_monthly": {m: monthly_revenue[m] for m in sorted_months[-12:]},

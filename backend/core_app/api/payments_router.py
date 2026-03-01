@@ -50,7 +50,9 @@ def _is_opted_out(db: Session, tenant_id: str, phone_e164: str) -> bool:
     return row is not None
 
 
-def _log_sms_out(db: Session, tenant_id: str, from_phone: str, to_phone: str, body: str, message_id: str) -> None:
+def _log_sms_out(
+    db: Session, tenant_id: str, from_phone: str, to_phone: str, body: str, message_id: str
+) -> None:
     db.execute(
         text(
             "INSERT INTO telnyx_sms_messages "
@@ -58,12 +60,20 @@ def _log_sms_out(db: Session, tenant_id: str, from_phone: str, to_phone: str, bo
             "VALUES (:mid, :tid, 'OUT', :from_, :to_, :body, 'sent', :now) "
             "ON CONFLICT (message_id) DO NOTHING"
         ),
-        {"mid": message_id, "tid": tenant_id, "from_": from_phone, "to_": to_phone, "body": body, "now": _utcnow()},
+        {
+            "mid": message_id,
+            "tid": tenant_id,
+            "from_": from_phone,
+            "to_": to_phone,
+            "body": body,
+            "now": _utcnow(),
+        },
     )
     db.commit()
 
 
 # ── POST /checkout-session ────────────────────────────────────────────────────
+
 
 class CheckoutSessionRequest(BaseModel):
     tenant_id: uuid.UUID
@@ -97,7 +107,7 @@ async def create_checkout_session(
 
     cfg = StripeConfig(secret_key=settings.stripe_secret_key)
     success_url = f"{settings.api_base_url}/pay/success?statement_id={body.statement_id}"
-    cancel_url  = f"{settings.api_base_url}/pay/cancel?statement_id={body.statement_id}"
+    cancel_url = f"{settings.api_base_url}/pay/cancel?statement_id={body.statement_id}"
 
     try:
         result = create_connect_checkout_session(
@@ -123,6 +133,7 @@ async def create_checkout_session(
 
 
 # ── POST /send-link-sms ───────────────────────────────────────────────────────
+
 
 class SendLinkSmsRequest(BaseModel):
     tenant_id: uuid.UUID
@@ -178,7 +189,9 @@ async def send_link_sms(
         _log_sms_out(db, str(body.tenant_id), from_number, body.to_phone_e164, sms_text, message_id)
         logger.info(
             "payment_sms_sent statement_id=%s to=%s message_id=%s",
-            body.statement_id, body.to_phone_e164, message_id,
+            body.statement_id,
+            body.to_phone_e164,
+            message_id,
         )
     except TelnyxApiError as exc:
         logger.error("payment_sms_failed to=%s error=%s", body.to_phone_e164, exc)

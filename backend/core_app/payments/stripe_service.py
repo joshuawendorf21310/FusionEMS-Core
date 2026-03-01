@@ -77,7 +77,9 @@ def create_connect_checkout_session(
 
     logger.info(
         "stripe_checkout_created statement_id=%s session_id=%s account=%s",
-        statement_id, session.id, connected_account_id,
+        statement_id,
+        session.id,
+        connected_account_id,
     )
     return {
         "checkout_session_id": session.id,

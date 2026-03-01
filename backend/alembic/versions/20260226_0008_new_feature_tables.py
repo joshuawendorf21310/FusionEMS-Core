@@ -4,6 +4,7 @@ Revision ID: 20260226_0008
 Revises: 20260225_0007
 Create Date: 2026-02-26
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -22,7 +23,12 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "auth_rep_sessions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("patient_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("phone", sa.String(length=32), nullable=True),
@@ -32,18 +38,35 @@ def upgrade() -> None:
         sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("status", sa.String(length=32), server_default="pending", nullable=False),
         sa.Column("attempts", sa.Integer(), server_default="0", nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_index("ix_auth_rep_sessions_patient", "auth_rep_sessions", ["tenant_id", "patient_id"])
+    op.create_index(
+        "ix_auth_rep_sessions_patient", "auth_rep_sessions", ["tenant_id", "patient_id"]
+    )
 
     # ------------------------------------------------------------------
     # authorized_reps — verified authorized representatives
     # ------------------------------------------------------------------
     op.create_table(
         "authorized_reps",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("patient_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("session_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -53,8 +76,18 @@ def upgrade() -> None:
         sa.Column("phone", sa.String(length=32), nullable=True),
         sa.Column("email", sa.String(length=320), nullable=True),
         sa.Column("status", sa.String(length=32), server_default="active", nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_authorized_reps_patient", "authorized_reps", ["tenant_id", "patient_id"])
@@ -64,7 +97,12 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "rep_documents",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("rep_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("patient_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -75,7 +113,12 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=32), server_default="pending_review", nullable=False),
         sa.Column("reviewed_by", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 
@@ -84,30 +127,52 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "track_tokens",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("token", sa.String(length=128), nullable=False, unique=True),
         sa.Column("entity_type", sa.String(length=64), nullable=False),
         sa.Column("entity_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("redirect_url", sa.Text(), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_track_tokens_token", "track_tokens", ["token"])
-    op.create_index("ix_track_tokens_entity", "track_tokens", ["tenant_id", "entity_type", "entity_id"])
+    op.create_index(
+        "ix_track_tokens_entity", "track_tokens", ["tenant_id", "entity_type", "entity_id"]
+    )
 
     # ------------------------------------------------------------------
     # track_events — each time a pixel/token is fired
     # ------------------------------------------------------------------
     op.create_table(
         "track_events",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("token_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("ip_address", sa.String(length=45), nullable=True),
         sa.Column("user_agent", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
 
     # ------------------------------------------------------------------
@@ -115,7 +180,12 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "webhook_dlq",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("webhook_type", sa.String(length=64), nullable=False),
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -123,8 +193,18 @@ def upgrade() -> None:
         sa.Column("last_error", sa.Text(), nullable=True),
         sa.Column("next_retry_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("status", sa.String(length=32), server_default="pending", nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("dead_lettered_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_webhook_dlq_status_next_retry", "webhook_dlq", ["status", "next_retry_at"])
@@ -134,22 +214,52 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "fire_preplans",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("address", sa.Text(), nullable=False),
         sa.Column("occupancy_type", sa.String(length=128), nullable=True),
         sa.Column("construction_type", sa.String(length=64), nullable=True),
         sa.Column("stories", sa.Integer(), nullable=True),
         sa.Column("square_footage", sa.Integer(), nullable=True),
-        sa.Column("hazards", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'[]'::jsonb"), nullable=False),
-        sa.Column("contacts", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'[]'::jsonb"), nullable=False),
+        sa.Column(
+            "hazards",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'[]'::jsonb"),
+            nullable=False,
+        ),
+        sa.Column(
+            "contacts",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'[]'::jsonb"),
+            nullable=False,
+        ),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("latitude", sa.Numeric(precision=10, scale=7), nullable=True),
         sa.Column("longitude", sa.Numeric(precision=10, scale=7), nullable=True),
-        sa.Column("data", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
+        sa.Column(
+            "data",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 
@@ -158,7 +268,12 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "fire_hydrants",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("hydrant_number", sa.String(length=64), nullable=True),
         sa.Column("address", sa.Text(), nullable=True),
@@ -171,9 +286,24 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=32), server_default="active", nullable=False),
         sa.Column("color_code", sa.String(length=16), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("data", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "data",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_fire_hydrants_geo", "fire_hydrants", ["tenant_id", "latitude", "longitude"])
@@ -183,7 +313,12 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "tenant_subscriptions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, unique=True),
         sa.Column("stripe_customer_id", sa.String(length=128), nullable=True),
         sa.Column("stripe_subscription_id", sa.String(length=128), nullable=True),
@@ -193,25 +328,57 @@ def upgrade() -> None:
         sa.Column("current_period_start", sa.DateTime(timezone=True), nullable=True),
         sa.Column("current_period_end", sa.DateTime(timezone=True), nullable=True),
         sa.Column("cancel_at_period_end", sa.Boolean(), server_default="false", nullable=False),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
-    op.create_index("ix_tenant_subscriptions_stripe_customer", "tenant_subscriptions", ["stripe_customer_id"])
+    op.create_index(
+        "ix_tenant_subscriptions_stripe_customer", "tenant_subscriptions", ["stripe_customer_id"]
+    )
 
     # ------------------------------------------------------------------
     # tenant_provisioning_events — audit log for provisioning actions
     # ------------------------------------------------------------------
     op.create_table(
         "tenant_provisioning_events",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("event_type", sa.String(length=64), nullable=False),
         sa.Column("actor", sa.String(length=255), nullable=True),
-        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
+        sa.Column(
+            "payload",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
         sa.Column("status", sa.String(length=32), server_default="ok", nullable=False),
         sa.Column("error_message", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
 
     # ------------------------------------------------------------------
@@ -219,7 +386,12 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.create_table(
         "lob_letters",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("case_id", postgresql.UUID(as_uuid=True), nullable=True, index=True),
         sa.Column("patient_id", postgresql.UUID(as_uuid=True), nullable=True),
@@ -229,9 +401,24 @@ def upgrade() -> None:
         sa.Column("expected_delivery_date", sa.String(length=32), nullable=True),
         sa.Column("tracking_number", sa.String(length=128), nullable=True),
         sa.Column("viewed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 

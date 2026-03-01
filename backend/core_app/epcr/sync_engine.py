@@ -44,12 +44,20 @@ class SyncEngine:
             for key in field_safe:
                 if key in field_chart and field_chart[key]:
                     existing_ids = {
-                        item.get("vital_id") or item.get("med_id") or item.get("proc_id") or item.get("assessment_id")
+                        item.get("vital_id")
+                        or item.get("med_id")
+                        or item.get("proc_id")
+                        or item.get("assessment_id")
                         for item in resolved.get(key, [])
                         if isinstance(item, dict)
                     }
                     for item in field_chart[key]:
-                        item_id = item.get("vital_id") or item.get("med_id") or item.get("proc_id") or item.get("assessment_id")
+                        item_id = (
+                            item.get("vital_id")
+                            or item.get("med_id")
+                            or item.get("proc_id")
+                            or item.get("assessment_id")
+                        )
                         if item_id not in existing_ids:
                             resolved.setdefault(key, []).append(item)
                             notes.append(f"Merged field item {item_id} into {key}")
@@ -58,12 +66,16 @@ class SyncEngine:
         merged_log_map = {e.get("event_id"): e for e in station_log}
         for e in field_log:
             merged_log_map[e.get("event_id")] = e
-        resolved["_event_log"] = sorted(merged_log_map.values(), key=lambda x: x.get("timestamp", ""))
+        resolved["_event_log"] = sorted(
+            merged_log_map.values(), key=lambda x: x.get("timestamp", "")
+        )
         resolved["sync_status"] = "synced"
         resolved["updated_at"] = datetime.now(UTC).isoformat()
         return resolved, notes
 
-    def build_sync_delta(self, local_chart: dict[str, Any], server_chart: dict[str, Any]) -> dict[str, Any]:
+    def build_sync_delta(
+        self, local_chart: dict[str, Any], server_chart: dict[str, Any]
+    ) -> dict[str, Any]:
         delta: dict[str, Any] = {}
         skip = {"_event_log", "updated_at", "sync_status"}
         for key in set(list(local_chart.keys()) + list(server_chart.keys())):
@@ -83,7 +95,13 @@ class SyncEngine:
         return result
 
     def compute_sync_hash(self, chart: dict[str, Any]) -> str:
-        exclude = {"updated_at", "sync_status", "_event_log", "completeness_score", "completeness_issues"}
+        exclude = {
+            "updated_at",
+            "sync_status",
+            "_event_log",
+            "completeness_score",
+            "completeness_issues",
+        }
         clean = {k: v for k, v in chart.items() if k not in exclude}
         serialized = json.dumps(clean, sort_keys=True, default=str)
         return hashlib.sha256(serialized.encode()).hexdigest()
@@ -103,5 +121,7 @@ class SyncEngine:
             "timestamp": datetime.now(UTC).isoformat(),
             "field_changes": field_changes,
         }
-        entry["hash"] = hashlib.sha256(json.dumps(entry, sort_keys=True, default=str).encode()).hexdigest()
+        entry["hash"] = hashlib.sha256(
+            json.dumps(entry, sort_keys=True, default=str).encode()
+        ).hexdigest()
         return entry

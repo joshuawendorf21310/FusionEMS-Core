@@ -39,8 +39,8 @@ router = APIRouter(prefix="/api/v1", tags=["Statements - Billing"])
 E164_RE = re.compile(r"^\+1[2-9]\d{9}$")
 
 
-
 # ── Schemas ───────────────────────────────────────────────────────────────────
+
 
 class MailStatementRequest(BaseModel):
     patient_name: str
@@ -73,7 +73,10 @@ class PaySmsRequest(BaseModel):
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
-def _load_statement(svc: DominationService, statement_id: uuid.UUID, tenant_id: uuid.UUID) -> dict[str, Any]:
+
+def _load_statement(
+    svc: DominationService, statement_id: uuid.UUID, tenant_id: uuid.UUID
+) -> dict[str, Any]:
     rec = svc.repo("billing_cases").get(tenant_id=tenant_id, record_id=statement_id)
     if not rec:
         raise HTTPException(status_code=404, detail="statement_not_found")
@@ -82,16 +85,24 @@ def _load_statement(svc: DominationService, statement_id: uuid.UUID, tenant_id: 
 
 def _load_tenant_stripe_account(db: Session, tenant_id: uuid.UUID) -> str:
     from sqlalchemy import text
-    row = db.execute(
-        text("SELECT data->>'stripe_connected_account_id' AS acct FROM tenants WHERE id = :tid LIMIT 1"),
-        {"tid": str(tenant_id)},
-    ).mappings().first()
+
+    row = (
+        db.execute(
+            text(
+                "SELECT data->>'stripe_connected_account_id' AS acct FROM tenants WHERE id = :tid LIMIT 1"
+            ),
+            {"tid": str(tenant_id)},
+        )
+        .mappings()
+        .first()
+    )
     if not row or not row["acct"]:
         raise HTTPException(status_code=422, detail="tenant_stripe_account_not_connected")
     return row["acct"]
 
 
 # ── POST /statements/{statement_id}/mail ─────────────────────────────────────
+
 
 @router.post("/statements/{statement_id}/mail", status_code=201)
 async def mail_statement(
@@ -205,6 +216,7 @@ async def mail_statement(
 
 # ── POST /statements/{statement_id}/pay ──────────────────────────────────────
 
+
 @router.post("/statements/{statement_id}/pay")
 async def create_payment_session(
     statement_id: uuid.UUID,
@@ -284,6 +296,7 @@ async def create_payment_session(
 
 # ── POST /statements/{statement_id}/pay/sms ──────────────────────────────────
 
+
 @router.post("/statements/{statement_id}/pay/sms", status_code=202)
 async def send_payment_sms(
     statement_id: uuid.UUID,
@@ -351,13 +364,20 @@ async def send_payment_sms(
             text=sms_text,
         )
     except Exception as exc:
-        logger.error("telnyx_sms_failed statement_id=%s phone=%s error=%s",
-                     statement_id, body.phone_number[:6] + "****", exc)
+        logger.error(
+            "telnyx_sms_failed statement_id=%s phone=%s error=%s",
+            statement_id,
+            body.phone_number[:6] + "****",
+            exc,
+        )
         raise HTTPException(status_code=502, detail=f"sms_send_failed: {exc}")
 
     logger.info(
         "payment_sms_sent statement_id=%s phone=%.6s**** amount=%s correlation_id=%s",
-        statement_id, body.phone_number, amount_fmt, correlation_id,
+        statement_id,
+        body.phone_number,
+        amount_fmt,
+        correlation_id,
     )
 
     return {

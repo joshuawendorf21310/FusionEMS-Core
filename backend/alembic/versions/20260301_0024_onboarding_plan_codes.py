@@ -10,6 +10,7 @@ Adds to onboarding_applications:
   - billing_tier_code  VARCHAR(64)   nullable (B1, B2, B3, B4)
   - addon_codes        JSONB         default '[]'
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -25,8 +26,7 @@ depends_on = None
 def _col_exists(conn, table: str, column: str) -> bool:
     result = conn.execute(
         sa.text(
-            "SELECT 1 FROM information_schema.columns "
-            "WHERE table_name = :t AND column_name = :c"
+            "SELECT 1 FROM information_schema.columns WHERE table_name = :t AND column_name = :c"
         ),
         {"t": table, "c": column},
     )

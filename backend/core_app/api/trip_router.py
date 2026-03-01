@@ -39,17 +39,22 @@ def _check(current: CurrentUser) -> None:
 def _check_trip_eligible(svc: DominationService, tenant_id: uuid.UUID) -> dict[str, Any]:
     settings_list = svc.repo("trip_settings").list(tenant_id=tenant_id, limit=5)
     if not settings_list:
-        raise HTTPException(status_code=403, detail="TRIP not configured. Set up TRIP settings first.")
+        raise HTTPException(
+            status_code=403, detail="TRIP not configured. Set up TRIP settings first."
+        )
     settings = sorted(settings_list, key=lambda x: x.get("created_at", ""), reverse=True)[0]
     d = settings.get("data") or {}
     if not d.get("is_government_entity"):
-        raise HTTPException(status_code=403, detail="TRIP is available to eligible government agencies only.")
+        raise HTTPException(
+            status_code=403, detail="TRIP is available to eligible government agencies only."
+        )
     if not d.get("trip_enrolled"):
         raise HTTPException(status_code=403, detail="TRIP enrollment not confirmed in settings.")
     return settings
 
 
 # ─── Settings ─────────────────────────────────────────────────────────────────
+
 
 @router.get("/settings")
 async def get_settings(
@@ -78,7 +83,13 @@ async def upsert_settings(
     if existing:
         rec = sorted(existing, key=lambda x: x.get("created_at", ""), reverse=True)[0]
         data = dict(rec.get("data") or {})
-        for k in ("is_government_entity", "trip_enrolled", "submission_method", "sftp_secret_ref", "notes"):
+        for k in (
+            "is_government_entity",
+            "trip_enrolled",
+            "submission_method",
+            "sftp_secret_ref",
+            "notes",
+        ):
             if k in payload:
                 data[k] = payload[k]
         updated = await svc.update(
@@ -110,6 +121,7 @@ async def upsert_settings(
 
 # ─── Debts ────────────────────────────────────────────────────────────────────
 
+
 @router.get("/debts")
 async def list_debts(
     status: str | None = None,
@@ -140,8 +152,11 @@ async def build_candidates(
     correlation_id = getattr(request.state, "correlation_id", None)
     accounts = svc.repo("ar_accounts").list(tenant_id=current.tenant_id, limit=500)
     existing_debts = svc.repo("trip_debts").list(tenant_id=current.tenant_id, limit=1000)
-    existing_account_ids = {(d.get("data") or {}).get("ar_account_id") for d in existing_debts
-                            if (d.get("data") or {}).get("status") not in ("paid", "closed")}
+    existing_account_ids = {
+        (d.get("data") or {}).get("ar_account_id")
+        for d in existing_debts
+        if (d.get("data") or {}).get("status") not in ("paid", "closed")
+    }
     created = []
     for acc in accounts:
         d = acc.get("data") or {}
@@ -186,7 +201,14 @@ async def update_debt(
         raise HTTPException(status_code=404, detail="Debt not found")
     correlation_id = getattr(request.state, "correlation_id", None)
     data = dict(debt.get("data") or {})
-    for field in ("debtor_name", "identifier_type", "identifier_value_encrypted", "balance_cents", "status", "last_error_code"):
+    for field in (
+        "debtor_name",
+        "identifier_type",
+        "identifier_value_encrypted",
+        "balance_cents",
+        "status",
+        "last_error_code",
+    ):
         if field in payload:
             data[field] = payload[field]
     updated = await svc.update(
@@ -205,6 +227,7 @@ async def update_debt(
 
 # ─── Export ───────────────────────────────────────────────────────────────────
 
+
 def _build_trip_xml(debts: list[dict], tenant_id: str) -> bytes:
     root = ET.Element("TRIPSubmission")
     root.set("xmlns", "http://dor.wisconsin.gov/trip/v1")
@@ -217,7 +240,9 @@ def _build_trip_xml(debts: list[dict], tenant_id: str) -> bytes:
         ET.SubElement(debt_el, "DebtorName").text = d.get("debtor_name", "")
         ET.SubElement(debt_el, "IdentifierType").text = d.get("identifier_type", "")
         ET.SubElement(debt_el, "IdentifierValue").text = d.get("identifier_value_encrypted", "")
-        ET.SubElement(debt_el, "Balance").text = "{:.2f}".format((d.get("balance_cents") or 0) / 100)
+        ET.SubElement(debt_el, "Balance").text = "{:.2f}".format(
+            (d.get("balance_cents") or 0) / 100
+        )
         ET.SubElement(debt_el, "AgencyDebtID").text = str(debt["id"])
         ET.SubElement(debt_el, "ARAccountID").text = d.get("ar_account_id", "")
     raw = ET.tostring(root, encoding="unicode")
@@ -237,7 +262,8 @@ async def generate_export(
     correlation_id = getattr(request.state, "correlation_id", None)
     debts = svc.repo("trip_debts").list(tenant_id=current.tenant_id, limit=500)
     exportable = [
-        d for d in debts
+        d
+        for d in debts
         if (d.get("data") or {}).get("status") == "candidate"
         and (d.get("data") or {}).get("debtor_name")
         and (d.get("data") or {}).get("identifier_type") in IDENTIFIER_TYPES
@@ -245,13 +271,17 @@ async def generate_export(
         and (d.get("data") or {}).get("balance_cents", 0) >= MIN_BALANCE_CENTS
     ]
     if not exportable:
-        raise HTTPException(status_code=422, detail="No exportable debt candidates. Build candidates first and ensure all required fields are present.")
+        raise HTTPException(
+            status_code=422,
+            detail="No exportable debt candidates. Build candidates first and ensure all required fields are present.",
+        )
     xml_bytes = _build_trip_xml(exportable, str(current.tenant_id))
     sha256 = hashlib.sha256(xml_bytes).hexdigest()
     export_id = str(uuid.uuid4())
     s3_key = f"trip/exports/{current.tenant_id}/{export_id}.xml"
     try:
         from core_app.documents.s3_storage import default_exports_bucket, put_bytes
+
         bucket = default_exports_bucket()
         if bucket:
             put_bytes(bucket=bucket, key=s3_key, content=xml_bytes, content_type="application/xml")
@@ -298,6 +328,7 @@ async def list_exports(
 
 
 # ─── Rejects ──────────────────────────────────────────────────────────────────
+
 
 @router.post("/rejects/import")
 async def import_rejects(
@@ -356,6 +387,7 @@ async def import_rejects(
 
 
 # ─── Postings ─────────────────────────────────────────────────────────────────
+
 
 @router.post("/postings/import")
 async def import_postings(
@@ -427,7 +459,9 @@ async def import_postings(
                     acc = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=ar_id)
                     if acc:
                         adata = dict(acc.get("data") or {})
-                        adata["balance_cents"] = max(0, (adata.get("balance_cents") or 0) - amount_cents)
+                        adata["balance_cents"] = max(
+                            0, (adata.get("balance_cents") or 0) - amount_cents
+                        )
                         if adata["balance_cents"] == 0:
                             adata["status"] = "closed"
                         await svc.update(

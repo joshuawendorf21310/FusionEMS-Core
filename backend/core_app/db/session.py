@@ -21,7 +21,9 @@ def _build_async_database_url(database_url: str) -> str:
 
 
 async_engine = create_async_engine(_build_async_database_url(settings.database_url), future=True)
-AsyncSessionLocal = async_sessionmaker(bind=async_engine, expire_on_commit=False, autoflush=False, class_=AsyncSession)
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine, expire_on_commit=False, autoflush=False, class_=AsyncSession
+)
 
 
 def get_db_session() -> Generator[Session, None, None]:

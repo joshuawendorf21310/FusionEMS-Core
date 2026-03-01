@@ -57,7 +57,9 @@ async def realtime_sse(
     await pubsub.psubscribe(*safe_patterns)
 
     async def event_stream() -> AsyncIterator[str]:
-        yield _sse({"eventType": "connected", "tenantId": tenant_id, "ts": datetime.now(UTC).isoformat()})
+        yield _sse(
+            {"eventType": "connected", "tenantId": tenant_id, "ts": datetime.now(UTC).isoformat()}
+        )
         last_heartbeat = 0.0
 
         try:
@@ -128,7 +130,9 @@ async def realtime_ws(websocket: WebSocket) -> None:
             if now - last_ping > 20:
                 last_ping = now
                 await _presence_ping(r, tenant_id_str, "user", str(user_id))
-                await websocket.send_text(json.dumps({"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()}))
+                await websocket.send_text(
+                    json.dumps({"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()})
+                )
 
             msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if msg and msg.get("type") == "pmessage":

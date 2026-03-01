@@ -40,7 +40,10 @@ def _load_claim_bundle(
         "first_name": patient_raw.get("first_name") or cdata.get("patient_first_name") or "",
         "last_name": patient_raw.get("last_name") or cdata.get("patient_last_name") or "",
         "dob": patient_raw.get("dob") or cdata.get("patient_dob") or "",
-        "gender": patient_raw.get("sex") or patient_raw.get("gender") or cdata.get("patient_gender") or "",
+        "gender": patient_raw.get("sex")
+        or patient_raw.get("gender")
+        or cdata.get("patient_gender")
+        or "",
     }
 
     claim_data = {
@@ -54,13 +57,15 @@ def _load_claim_bundle(
     for d in all_docs:
         dd = d.get("data") or {}
         if dd.get("owner_entity_type") == "billing_case":
-            attachments.append({
-                "doc_type": dd.get("doc_type") or "N/A",
-                "filename": dd.get("filename") or dd.get("s3_key") or "",
-                "s3_key": dd.get("s3_key") or "",
-                "received_date": str(d.get("created_at", "")),
-                "sha256": dd.get("sha256") or "",
-            })
+            attachments.append(
+                {
+                    "doc_type": dd.get("doc_type") or "N/A",
+                    "filename": dd.get("filename") or dd.get("s3_key") or "",
+                    "s3_key": dd.get("s3_key") or "",
+                    "received_date": str(d.get("created_at", "")),
+                    "sha256": dd.get("sha256") or "",
+                }
+            )
 
     return claim_data, patient_data, attachments
 
@@ -150,7 +155,8 @@ async def get_latest_claim_packet(
     repo = DominationRepository(db, table="documents")
     all_docs = repo.list_raw_by_field("doc_type", "claim_packet", limit=200)
     claim_packets = [
-        d for d in all_docs
+        d
+        for d in all_docs
         if (d.get("data") or {}).get("owner_entity_id") == str(claim_id)
         and str(d.get("tenant_id", "")) == str(current.tenant_id)
     ]
@@ -163,7 +169,9 @@ async def get_latest_claim_packet(
 
     bucket = ldata.get("bucket", "")
     s3_key = ldata.get("s3_key", "")
-    download_url = presign_get(bucket=bucket, key=s3_key, expires_seconds=300) if bucket and s3_key else None
+    download_url = (
+        presign_get(bucket=bucket, key=s3_key, expires_seconds=300) if bucket and s3_key else None
+    )
 
     return {
         "pdf_id": str(latest["id"]),

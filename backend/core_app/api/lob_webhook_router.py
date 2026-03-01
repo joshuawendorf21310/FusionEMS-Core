@@ -23,18 +23,20 @@ router = APIRouter(tags=["Webhooks - Lob"])
 
 
 # Canonical Lob event types we handle
-LOB_HANDLED_EVENTS = frozenset({
-    "address.created",
-    "address.deleted",
-    "letter.created",
-    "letter.deleted",
-    "letter.failed",
-    "letter.rejected",
-    "letter.rendered_pdf",
-    "letter.rendered_thumbnails",
-    "letter.viewed",
-    "letter.billed",
-})
+LOB_HANDLED_EVENTS = frozenset(
+    {
+        "address.created",
+        "address.deleted",
+        "letter.created",
+        "letter.deleted",
+        "letter.failed",
+        "letter.rejected",
+        "letter.rendered_pdf",
+        "letter.rendered_thumbnails",
+        "letter.viewed",
+        "letter.billed",
+    }
+)
 
 
 @router.post("/webhooks/lob", include_in_schema=True)
@@ -73,7 +75,9 @@ async def lob_webhook(
     ):
         logger.warning(
             "lob_sig_invalid correlation_id=%s sig=%.12s ts=%s",
-            correlation_id, lob_signature, lob_signature_timestamp,
+            correlation_id,
+            lob_signature,
+            lob_signature_timestamp,
         )
         raise HTTPException(status_code=400, detail="invalid_lob_signature")
 
@@ -85,15 +89,16 @@ async def lob_webhook(
 
     event_id: str = payload.get("id") or str(uuid.uuid4())
     event_type: str = (
-        payload.get("event_type", {}).get("id")
-        or payload.get("event_type")
-        or "unknown"
+        payload.get("event_type", {}).get("id") or payload.get("event_type") or "unknown"
     )
     payload_sha256 = hashlib.sha256(raw_body).hexdigest()
 
     logger.info(
         "lob_webhook_received event_id=%s event_type=%s correlation_id=%s sha256=%.16s",
-        event_id, event_type, correlation_id, payload_sha256,
+        event_id,
+        event_type,
+        correlation_id,
+        payload_sha256,
     )
 
     # ── 3. Idempotency (DB check) ─────────────────────────────────────────────

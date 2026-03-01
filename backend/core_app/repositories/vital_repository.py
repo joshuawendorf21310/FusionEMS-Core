@@ -54,17 +54,23 @@ class VitalRepository:
 
     async def count_for_patient(self, *, tenant_id: uuid.UUID, patient_id: uuid.UUID) -> int:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
-        stmt = select(func.count()).select_from(Vital).where(
-            Vital.tenant_id == scoped_tenant_id,
-            Vital.patient_id == patient_id,
-            Vital.deleted_at.is_(None),
+        stmt = (
+            select(func.count())
+            .select_from(Vital)
+            .where(
+                Vital.tenant_id == scoped_tenant_id,
+                Vital.patient_id == patient_id,
+                Vital.deleted_at.is_(None),
+            )
         )
         return int((await self.db.scalar(stmt)) or 0)
 
     async def update_fields(self, *, tenant_id: uuid.UUID, vital: Vital) -> Vital:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
         if vital.tenant_id != scoped_tenant_id:
-            raise AppError(code=ErrorCodes.VITAL_NOT_FOUND, message="Vital not found.", status_code=404)
+            raise AppError(
+                code=ErrorCodes.VITAL_NOT_FOUND, message="Vital not found.", status_code=404
+            )
         await self.db.flush()
         await self.db.refresh(vital)
         return vital
@@ -72,7 +78,9 @@ class VitalRepository:
     async def soft_delete(self, *, tenant_id: uuid.UUID, vital: Vital) -> Vital:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
         if vital.tenant_id != scoped_tenant_id:
-            raise AppError(code=ErrorCodes.VITAL_NOT_FOUND, message="Vital not found.", status_code=404)
+            raise AppError(
+                code=ErrorCodes.VITAL_NOT_FOUND, message="Vital not found.", status_code=404
+            )
         vital.deleted_at = datetime.now(UTC)
         await self.db.flush()
         await self.db.refresh(vital)

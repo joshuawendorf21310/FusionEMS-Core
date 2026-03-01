@@ -14,6 +14,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 try:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
     _engine = create_engine(DATABASE_URL) if DATABASE_URL else None
     _Session = sessionmaker(bind=_engine) if _engine else None
 except Exception:
@@ -54,30 +55,42 @@ def _run_statement_schedule(body: dict, correlation_id: str) -> dict:
         import json as _json
 
         from sqlalchemy import text
-        rows = db.execute(text("SELECT id, tenant_id, data FROM ar_accounts WHERE data->>'status' NOT IN ('closed','placed','dispute')")).fetchall()
+
+        rows = db.execute(
+            text(
+                "SELECT id, tenant_id, data FROM ar_accounts WHERE data->>'status' NOT IN ('closed','placed','dispute')"
+            )
+        ).fetchall()
         queued = 0
         for row in rows:
             data = row[2] if isinstance(row[2], dict) else _json.loads(row[2])
             if (data.get("balance_cents") or 0) <= 0:
                 continue
             stmt_id = uuid.uuid4()
-            db.execute(text("""
+            db.execute(
+                text("""
                 INSERT INTO ar_statements (id, tenant_id, version, data, created_at, updated_at)
                 VALUES (:id, :tid, 1, :data, now(), now())
-            """), {
-                "id": str(stmt_id),
-                "tid": str(row[1]),
-                "data": _json.dumps({
-                    "account_id": str(row[0]),
-                    "statement_cycle": (data.get("dunning_cycle") or 0) + 1,
-                    "delivery_method": "mail",
-                    "status": "queued",
-                    "balance_cents": data.get("balance_cents", 0),
-                }),
-            })
+            """),
+                {
+                    "id": str(stmt_id),
+                    "tid": str(row[1]),
+                    "data": _json.dumps(
+                        {
+                            "account_id": str(row[0]),
+                            "statement_cycle": (data.get("dunning_cycle") or 0) + 1,
+                            "delivery_method": "mail",
+                            "status": "queued",
+                            "balance_cents": data.get("balance_cents", 0),
+                        }
+                    ),
+                },
+            )
             queued += 1
         db.commit()
-        logger.info("ar_statement_schedule_done queued=%d correlation_id=%s", queued, correlation_id)
+        logger.info(
+            "ar_statement_schedule_done queued=%d correlation_id=%s", queued, correlation_id
+        )
         return {"queued": queued}
     except Exception as exc:
         db.rollback()
@@ -99,7 +112,11 @@ def _post_payment(body: dict, correlation_id: str) -> dict:
         import json as _json
 
         from sqlalchemy import text
-        row = db.execute(text("SELECT id, tenant_id, version, data FROM ar_accounts WHERE id = :id"), {"id": account_id}).fetchone()
+
+        row = db.execute(
+            text("SELECT id, tenant_id, version, data FROM ar_accounts WHERE id = :id"),
+            {"id": account_id},
+        ).fetchone()
         if not row:
             return {"error": "account_not_found"}
         data = row[3] if isinstance(row[3], dict) else _json.loads(row[3])
@@ -108,19 +125,31 @@ def _post_payment(body: dict, correlation_id: str) -> dict:
         if new_balance == 0:
             data["status"] = "closed"
         payment_id = uuid.uuid4()
-        db.execute(text("""
+        db.execute(
+            text("""
             INSERT INTO ar_payments (id, tenant_id, version, data, created_at, updated_at)
             VALUES (:id, :tid, 1, :data, now(), now())
-        """), {"id": str(payment_id), "tid": str(row[1]), "data": _json.dumps({
-            "account_id": account_id,
-            "amount_cents": amount_cents,
-            "method": body.get("method", "card"),
-            "processor_ref": body.get("processor_ref"),
-            "posted_at": datetime.now(UTC).isoformat(),
-        })})
-        db.execute(text("""
+        """),
+            {
+                "id": str(payment_id),
+                "tid": str(row[1]),
+                "data": _json.dumps(
+                    {
+                        "account_id": account_id,
+                        "amount_cents": amount_cents,
+                        "method": body.get("method", "card"),
+                        "processor_ref": body.get("processor_ref"),
+                        "posted_at": datetime.now(UTC).isoformat(),
+                    }
+                ),
+            },
+        )
+        db.execute(
+            text("""
             UPDATE ar_accounts SET data = :data, version = version + 1, updated_at = now() WHERE id = :id
-        """), {"data": _json.dumps(data), "id": account_id})
+        """),
+            {"data": _json.dumps(data), "id": account_id},
+        )
         db.commit()
         return {"payment_id": str(payment_id), "new_balance": new_balance}
     except Exception as exc:

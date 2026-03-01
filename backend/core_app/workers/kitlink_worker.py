@@ -29,6 +29,7 @@ QUEUE_URLS = {
 
 def _db_conn():
     import psycopg2
+
     return psycopg2.connect(DB_URL)
 
 
@@ -46,6 +47,7 @@ def _enqueue(queue_key: str, body: dict):
 # ---------------------------------------------------------------------------
 # OCR Worker
 # ---------------------------------------------------------------------------
+
 
 def handle_ocr(record: dict) -> dict:
     body = json.loads(record.get("body", "{}"))
@@ -74,7 +76,7 @@ def handle_ocr(record: dict) -> dict:
                         "text": (
                             "You are an EMS supply inventory OCR assistant. "
                             "Extract item names, quantities, lot numbers, and expiration dates from this image. "
-                            "Return a JSON array of objects: [{\"name\": str, \"qty\": int, \"lot\": str|null, \"expiry\": str|null}]. "
+                            'Return a JSON array of objects: [{"name": str, "qty": int, "lot": str|null, "expiry": str|null}]. '
                             "Return only valid JSON, no markdown."
                         ),
                     },
@@ -101,7 +103,13 @@ def handle_ocr(record: dict) -> dict:
         WHERE data->>'job_id' = %s AND tenant_id = %s AND deleted_at IS NULL
         """,
         (
-            json.dumps({"status": "needs_confirm", "ocr_result": parsed, "processed_at": datetime.now(UTC).isoformat()}),
+            json.dumps(
+                {
+                    "status": "needs_confirm",
+                    "ocr_result": parsed,
+                    "processed_at": datetime.now(UTC).isoformat(),
+                }
+            ),
             job_id,
             tenant_id,
         ),
@@ -115,6 +123,7 @@ def handle_ocr(record: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Stock Rebuild Worker
 # ---------------------------------------------------------------------------
+
 
 def handle_stock_rebuild(record: dict) -> dict:
     body = json.loads(record.get("body", "{}"))
@@ -137,7 +146,7 @@ def handle_stock_rebuild(record: dict) -> dict:
                SUM(CASE WHEN data->>'direction' = 'in' THEN (data->>'qty')::int ELSE 0 END) -
                SUM(CASE WHEN data->>'direction' = 'out' THEN (data->>'qty')::int ELSE 0 END) AS balance
         FROM inventory_transaction_lines
-        WHERE {filter_clause.lstrip('AND ')}
+        WHERE {filter_clause.lstrip("AND ")}
         GROUP BY data->>'item_id', data->>'location_id'
         """,
         params,
@@ -193,6 +202,7 @@ def handle_stock_rebuild(record: dict) -> dict:
 # Expiration Sweep Worker
 # ---------------------------------------------------------------------------
 
+
 def handle_expiration_sweep(record: dict) -> dict:
     body = json.loads(record.get("body", "{}"))
     days_ahead = int(body.get("days_ahead", 30))
@@ -216,21 +226,26 @@ def handle_expiration_sweep(record: dict) -> dict:
     for tenant_id, row_id, data in rows:
         if isinstance(data, str):
             data = json.loads(data)
-        alerts.append({
-            "tenant_id": str(tenant_id),
-            "balance_id": str(row_id),
-            "item_id": data.get("item_id"),
-            "expiration_date": data.get("expiration_date"),
-            "current_qty": data.get("current_qty"),
-        })
-        _enqueue("kitlink_anomaly", {
-            "tenant_id": str(tenant_id),
-            "event_type": "expiring_soon",
-            "balance_id": str(row_id),
-            "item_id": data.get("item_id"),
-            "expiration_date": data.get("expiration_date"),
-            "dedup_id": f"exp-sweep-{row_id}",
-        })
+        alerts.append(
+            {
+                "tenant_id": str(tenant_id),
+                "balance_id": str(row_id),
+                "item_id": data.get("item_id"),
+                "expiration_date": data.get("expiration_date"),
+                "current_qty": data.get("current_qty"),
+            }
+        )
+        _enqueue(
+            "kitlink_anomaly",
+            {
+                "tenant_id": str(tenant_id),
+                "event_type": "expiring_soon",
+                "balance_id": str(row_id),
+                "item_id": data.get("item_id"),
+                "expiration_date": data.get("expiration_date"),
+                "dedup_id": f"exp-sweep-{row_id}",
+            },
+        )
 
     cur.close()
     conn.close()
@@ -240,6 +255,7 @@ def handle_expiration_sweep(record: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Anomaly Detection Worker
 # ---------------------------------------------------------------------------
+
 
 def handle_anomaly(record: dict) -> dict:
     body = json.loads(record.get("body", "{}"))
@@ -251,42 +267,51 @@ def handle_anomaly(record: dict) -> dict:
     if event_type == "narc_count_mismatch":
         delta = abs(body.get("delta", 0))
         severity = "critical" if delta > 1 else "warning"
-        flags.append({
-            "rule": "NARC_COUNT_MISMATCH",
-            "severity": severity,
-            "detail": f"Narcotics count mismatch: delta={body.get('delta')}",
-        })
+        flags.append(
+            {
+                "rule": "NARC_COUNT_MISMATCH",
+                "severity": severity,
+                "detail": f"Narcotics count mismatch: delta={body.get('delta')}",
+            }
+        )
 
     if event_type == "missing_witness":
-        flags.append({
-            "rule": "MISSING_WITNESS",
-            "severity": "critical",
-            "detail": "Waste event recorded without required witness",
-        })
+        flags.append(
+            {
+                "rule": "MISSING_WITNESS",
+                "severity": "critical",
+                "detail": "Waste event recorded without required witness",
+            }
+        )
 
     if event_type == "seal_inconsistency":
-        flags.append({
-            "rule": "SEAL_INCONSISTENCY",
-            "severity": "warning",
-            "detail": "Seal code mismatch between scan and record",
-        })
+        flags.append(
+            {
+                "rule": "SEAL_INCONSISTENCY",
+                "severity": "warning",
+                "detail": "Seal code mismatch between scan and record",
+            }
+        )
 
     if event_type == "expiring_soon":
-        flags.append({
-            "rule": "EXPIRING_SOON",
-            "severity": "info",
-            "detail": f"Item {body.get('item_id')} expires {body.get('expiration_date')}",
-        })
+        flags.append(
+            {
+                "rule": "EXPIRING_SOON",
+                "severity": "info",
+                "detail": f"Item {body.get('item_id')} expires {body.get('expiration_date')}",
+            }
+        )
 
     if not flags:
         import openai
+
         client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
         prompt = (
             "You are an EMS narcotics chain-of-custody anomaly detector. "
             "Review this event and identify if anything needs human review. "
             "Rules: only flag 'needs_review' if there is a genuine discrepancy. Never accuse. "
             f"Event: {json.dumps(body)}. "
-            "Respond with JSON: {\"flag\": bool, \"reason\": str}."
+            'Respond with JSON: {"flag": bool, "reason": str}.'
         )
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -296,7 +321,9 @@ def handle_anomaly(record: dict) -> dict:
         try:
             ai_result = json.loads(resp.choices[0].message.content or "{}")
             if ai_result.get("flag"):
-                flags.append({"rule": "AI_REVIEW", "severity": "info", "detail": ai_result.get("reason", "")})
+                flags.append(
+                    {"rule": "AI_REVIEW", "severity": "info", "detail": ai_result.get("reason", "")}
+                )
         except Exception:
             pass
 
@@ -309,7 +336,12 @@ def handle_anomaly(record: dict) -> dict:
                 INSERT INTO kitlink_anomaly_flags (id, tenant_id, version, data, created_at, updated_at)
                 VALUES (gen_random_uuid(), %s, 1, %s::jsonb, now(), now())
                 """,
-                (tenant_id, json.dumps({**flag, "event": body, "flagged_at": datetime.now(UTC).isoformat()})),
+                (
+                    tenant_id,
+                    json.dumps(
+                        {**flag, "event": body, "flagged_at": datetime.now(UTC).isoformat()}
+                    ),
+                ),
             )
         conn.commit()
         cur.close()
@@ -322,6 +354,7 @@ def handle_anomaly(record: dict) -> dict:
 # PDF Worker
 # ---------------------------------------------------------------------------
 
+
 def handle_pdf(record: dict) -> dict:
     body = json.loads(record.get("body", "{}"))
     tenant_id = body.get("tenant_id")
@@ -332,7 +365,7 @@ def handle_pdf(record: dict) -> dict:
 <html>
 <head><title>FusionEMS KitLink Report</title></head>
 <body>
-<h1>KitLink {doc_type.replace('_', ' ').title()}</h1>
+<h1>KitLink {doc_type.replace("_", " ").title()}</h1>
 <p>Tenant: {tenant_id}</p>
 <p>Entity: {entity_id}</p>
 <p>Generated: {datetime.now(UTC).isoformat()}</p>
@@ -355,6 +388,7 @@ def handle_pdf(record: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Compliance Pack Ingest Worker
 # ---------------------------------------------------------------------------
+
 
 def handle_compliance_pack_ingest(record: dict) -> dict:
     body = json.loads(record.get("body", "{}"))

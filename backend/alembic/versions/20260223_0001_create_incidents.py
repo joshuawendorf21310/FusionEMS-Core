@@ -18,7 +18,9 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-incident_status = sa.Enum("draft", "in_progress", "ready_for_review", "completed", "locked", name="incident_status")
+incident_status = sa.Enum(
+    "draft", "in_progress", "ready_for_review", "completed", "locked", name="incident_status"
+)
 
 
 def upgrade() -> None:
@@ -32,14 +34,26 @@ def upgrade() -> None:
         sa.Column("status", incident_status, nullable=False),
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("version", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("tenant_id", "incident_number", name="uq_incidents_tenant_number"),
     )
-    op.create_index(op.f("ix_incidents_incident_number"), "incidents", ["incident_number"], unique=False)
+    op.create_index(
+        op.f("ix_incidents_incident_number"), "incidents", ["incident_number"], unique=False
+    )
     op.create_index(op.f("ix_incidents_tenant_id"), "incidents", ["tenant_id"], unique=False)
 
 

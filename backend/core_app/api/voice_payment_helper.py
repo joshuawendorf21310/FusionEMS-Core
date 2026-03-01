@@ -38,9 +38,10 @@ async def send_payment_link_for_call(
         amount_cents = 0
 
     from core_app.payments.stripe_service import StripeConfig, create_connect_checkout_session
+
     cfg = StripeConfig(secret_key=settings.stripe_secret_key)
     success_url = f"{settings.api_base_url}/pay/success?statement_id={statement_id}"
-    cancel_url  = f"{settings.api_base_url}/pay/cancel?statement_id={statement_id}"
+    cancel_url = f"{settings.api_base_url}/pay/cancel?statement_id={statement_id}"
 
     try:
         result = create_connect_checkout_session(
@@ -66,6 +67,7 @@ async def send_payment_link_for_call(
     )
 
     from core_app.telnyx.client import TelnyxApiError, send_sms
+
     try:
         resp = send_sms(
             api_key=api_key,
@@ -111,6 +113,7 @@ def _log_sms_out(
     resp: dict,
 ) -> None:
     from datetime import datetime
+
     message_id = (resp.get("data") or {}).get("id") or resp.get("id") or ""
     db.execute(
         text(

@@ -80,7 +80,11 @@ async def deploy_pwa(
         table="pwa_deployments",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "status": "deployed", "deployed_at": datetime.now(UTC).isoformat()},
+        data={
+            **body.model_dump(),
+            "status": "deployed",
+            "deployed_at": datetime.now(UTC).isoformat(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return deployment
@@ -106,7 +110,9 @@ async def rollback_pwa(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    deployment = svc.repo("pwa_deployments").get(tenant_id=current.tenant_id, record_id=deployment_id)
+    deployment = svc.repo("pwa_deployments").get(
+        tenant_id=current.tenant_id, record_id=deployment_id
+    )
     if not deployment:
         raise HTTPException(status_code=404, detail="deployment_not_found")
     updated = await svc.update(
@@ -135,7 +141,10 @@ async def version_adoption(
         version_counts[ver] = version_counts.get(ver, 0) + 1
     total = sum(version_counts.values())
     return {
-        "version_adoption": [{"version": v, "count": c, "pct": round(c / total * 100, 2) if total else 0} for v, c in version_counts.items()],
+        "version_adoption": [
+            {"version": v, "count": c, "pct": round(c / total * 100, 2) if total else 0}
+            for v, c in version_counts.items()
+        ],
         "total_devices": total,
     }
 
@@ -152,7 +161,11 @@ async def register_device(
         table="device_registrations",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "registered_at": datetime.now(UTC).isoformat(), "status": "active"},
+        data={
+            **body.model_dump(),
+            "registered_at": datetime.now(UTC).isoformat(),
+            "status": "active",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return device
@@ -300,7 +313,11 @@ async def approve_shift_swap(
         record_id=swap["id"],
         actor_user_id=current.user_id,
         expected_version=swap.get("version", 1),
-        patch={"status": "approved", "approved_by": str(current.user_id), "approved_at": datetime.now(UTC).isoformat()},
+        patch={
+            "status": "approved",
+            "approved_by": str(current.user_id),
+            "approved_at": datetime.now(UTC).isoformat(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -386,7 +403,11 @@ async def staffing_shortage(
     shifts = svc.repo("shifts").list(tenant_id=current.tenant_id, limit=10000)
     unfilled = [s for s in shifts if s.get("data", {}).get("status") == "unfilled"]
     risk = "high" if len(unfilled) > 10 else ("medium" if len(unfilled) > 3 else "low")
-    return {"unfilled_shifts": len(unfilled), "shortage_risk": risk, "as_of": datetime.now(UTC).isoformat()}
+    return {
+        "unfilled_shifts": len(unfilled),
+        "shortage_risk": risk,
+        "as_of": datetime.now(UTC).isoformat(),
+    }
 
 
 @router.get("/credentials/compliance")

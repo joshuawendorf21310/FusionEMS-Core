@@ -285,15 +285,29 @@ class Chart:
         c.created_by = d.get("created_by", "")
         c.last_modified_by = d.get("last_modified_by", "")
 
-        c.patient = _build_dataclass(PatientDemographics, d.get("patient", {})) if isinstance(d.get("patient"), dict) else PatientDemographics()
-        c.consent = _build_dataclass(ConsentRecord, d.get("consent", {})) if isinstance(d.get("consent"), dict) else ConsentRecord()
-        c.dispatch = _build_dataclass(DispatchInfo, d.get("dispatch", {})) if isinstance(d.get("dispatch"), dict) else DispatchInfo()
-        c.disposition = _build_dataclass(DispositionInfo, d.get("disposition", {})) if isinstance(d.get("disposition"), dict) else DispositionInfo()
+        c.patient = (
+            _build_dataclass(PatientDemographics, d.get("patient", {}))
+            if isinstance(d.get("patient"), dict)
+            else PatientDemographics()
+        )
+        c.consent = (
+            _build_dataclass(ConsentRecord, d.get("consent", {}))
+            if isinstance(d.get("consent"), dict)
+            else ConsentRecord()
+        )
+        c.dispatch = (
+            _build_dataclass(DispatchInfo, d.get("dispatch", {}))
+            if isinstance(d.get("dispatch"), dict)
+            else DispatchInfo()
+        )
+        c.disposition = (
+            _build_dataclass(DispositionInfo, d.get("disposition", {}))
+            if isinstance(d.get("disposition"), dict)
+            else DispositionInfo()
+        )
 
         c.vitals = [
-            _build_dataclass(VitalSet, vs)
-            for vs in d.get("vitals", [])
-            if isinstance(vs, dict)
+            _build_dataclass(VitalSet, vs) for vs in d.get("vitals", []) if isinstance(vs, dict)
         ]
         c.medications = [
             _build_dataclass(MedicationAdmin, m)

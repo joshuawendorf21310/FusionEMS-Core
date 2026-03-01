@@ -46,20 +46,22 @@ class SchedulingEngine:
             if not expires:
                 continue
             try:
-                exp_dt = dt.datetime.fromisoformat(expires.replace("Z","+00:00"))
+                exp_dt = dt.datetime.fromisoformat(expires.replace("Z", "+00:00"))
             except Exception:
                 continue
             if exp_dt <= cutoff:
                 expiring.append(c)
         return sorted(expiring, key=lambda r: r["data"].get("expires_at") or "")
 
-    def validate_crew_credentials(self, crew_member_id: uuid.UUID, role: str, at: dt.datetime | None = None) -> tuple[bool, list[str]]:
+    def validate_crew_credentials(
+        self, crew_member_id: uuid.UUID, role: str, at: dt.datetime | None = None
+    ) -> tuple[bool, list[str]]:
         at = at or self._now()
         reqs = self.repo_requirements.list(self.tenant_id, limit=500)
         required = [r["data"] for r in reqs if r["data"].get("role") == role]
         required_codes = set()
         for r in required:
-            for code in (r.get("required_codes") or []):
+            for code in r.get("required_codes") or []:
                 required_codes.add(code)
 
         creds = self.repo_credentials.list(self.tenant_id, limit=500)
@@ -75,7 +77,7 @@ class SchedulingEngine:
             expires = d.get("expires_at")
             if expires:
                 try:
-                    exp_dt = dt.datetime.fromisoformat(expires.replace("Z","+00:00"))
+                    exp_dt = dt.datetime.fromisoformat(expires.replace("Z", "+00:00"))
                     if exp_dt < at:
                         continue
                 except Exception:
@@ -87,7 +89,9 @@ class SchedulingEngine:
                 missing.append(code)
         return (len(missing) == 0, missing)
 
-    def coverage_dashboard(self, start: dt.datetime | None = None, hours: int = 24) -> dict[str, Any]:
+    def coverage_dashboard(
+        self, start: dt.datetime | None = None, hours: int = 24
+    ) -> dict[str, Any]:
         start = start or self._now().replace(minute=0, second=0, microsecond=0)
         end = start + dt.timedelta(hours=hours)
 
@@ -102,8 +106,8 @@ class SchedulingEngine:
         for inst in instances:
             d = inst["data"]
             try:
-                s = dt.datetime.fromisoformat(d.get("start_at","").replace("Z","+00:00"))
-                e = dt.datetime.fromisoformat(d.get("end_at","").replace("Z","+00:00"))
+                s = dt.datetime.fromisoformat(d.get("start_at", "").replace("Z", "+00:00"))
+                e = dt.datetime.fromisoformat(d.get("end_at", "").replace("Z", "+00:00"))
             except Exception:
                 continue
             if e <= start or s >= end:
@@ -133,11 +137,13 @@ class SchedulingEngine:
                     continue
                 have = counts.get(sid, {}).get(role, 0)
                 if have < required_count:
-                    violations.append(CoverageViolation(
-                        shift_instance_id=uuid.UUID(sid),
-                        reason="UNDER_COVERED",
-                        required={"role": role, "required": required_count, "have": have},
-                    ))
+                    violations.append(
+                        CoverageViolation(
+                            shift_instance_id=uuid.UUID(sid),
+                            reason="UNDER_COVERED",
+                            required={"role": role, "required": required_count, "have": have},
+                        )
+                    )
 
         return {
             "window": {"start": start.isoformat(), "end": end.isoformat()},

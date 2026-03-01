@@ -7,6 +7,7 @@ class FhirExportRequest(BaseModel):
     entity_type: str = Field(pattern=r"^(patient|incident|call|fire_report)$")
     entity_id: str
 
+
 class FhirExportResponse(BaseModel):
     artifact_id: str
     resource_type: str

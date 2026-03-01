@@ -102,7 +102,9 @@ async def get_roi_scenario(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("roi_funnel_scenarios").get(tenant_id=current.tenant_id, record_id=scenario_id)
+    record = svc.repo("roi_funnel_scenarios").get(
+        tenant_id=current.tenant_id, record_id=scenario_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="scenario_not_found")
     return record
@@ -117,7 +119,9 @@ async def recalculate_roi(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("roi_funnel_scenarios").get(tenant_id=current.tenant_id, record_id=scenario_id)
+    record = svc.repo("roi_funnel_scenarios").get(
+        tenant_id=current.tenant_id, record_id=scenario_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="scenario_not_found")
     existing_inputs = record.get("data", {}).get("inputs", {})
@@ -143,12 +147,20 @@ async def zip_revenue(
 ):
     svc = DominationService(db, get_event_publisher())
     all_scenarios = svc.repo("roi_funnel_scenarios").list(tenant_id=current.tenant_id, limit=10000)
-    zip_scenarios = [s for s in all_scenarios if s.get("data", {}).get("inputs", {}).get("zip_code") == zip_code]
+    zip_scenarios = [
+        s for s in all_scenarios if s.get("data", {}).get("inputs", {}).get("zip_code") == zip_code
+    ]
     if not zip_scenarios:
         return {"zip_code": zip_code, "scenarios": [], "avg_revenue_uplift_cents": 0}
-    revenues = [s.get("data", {}).get("outputs", {}).get("year1_revenue_cents", 0) for s in zip_scenarios]
+    revenues = [
+        s.get("data", {}).get("outputs", {}).get("year1_revenue_cents", 0) for s in zip_scenarios
+    ]
     avg = round(sum(revenues) / len(revenues)) if revenues else 0
-    return {"zip_code": zip_code, "scenario_count": len(zip_scenarios), "avg_revenue_uplift_cents": avg}
+    return {
+        "zip_code": zip_code,
+        "scenario_count": len(zip_scenarios),
+        "avg_revenue_uplift_cents": avg,
+    }
 
 
 @router.post("/conversion-event")
@@ -279,7 +291,11 @@ async def proposal_analytics(
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
     events = svc.repo("conversion_events").list(tenant_id=current.tenant_id, limit=10000)
-    views = [e for e in events if e.get("data", {}).get("metadata", {}).get("proposal_id") == str(proposal_id)]
+    views = [
+        e
+        for e in events
+        if e.get("data", {}).get("metadata", {}).get("proposal_id") == str(proposal_id)
+    ]
     return {"proposal_id": str(proposal_id), "view_count": len(views)}
 
 
@@ -303,7 +319,9 @@ async def pricing_simulation(
         "monthly_cents": monthly,
         "annual_cents": annual,
         "annual_savings_pct": 10 if body.contract_length_months >= 12 else 0,
-        "cost_per_transport": round(monthly / max(body.call_volume, 1), 2) if body.call_volume else None,
+        "cost_per_transport": round(monthly / max(body.call_volume, 1), 2)
+        if body.call_volume
+        else None,
     }
 
 
@@ -366,7 +384,9 @@ async def onboarding_checklist(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     checklist = svc.repo("onboarding_checklists").list(tenant_id=current.tenant_id, limit=100)
-    tenant_items = [item for item in checklist if item.get("data", {}).get("tenant_id") == str(tenant_id)]
+    tenant_items = [
+        item for item in checklist if item.get("data", {}).get("tenant_id") == str(tenant_id)
+    ]
     completed = sum(1 for item in tenant_items if item.get("data", {}).get("status") == "complete")
     return {
         "tenant_id": str(tenant_id),
@@ -410,12 +430,18 @@ async def roi_share_link(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    token = hashlib.sha256(f"{current.tenant_id}{datetime.now(UTC).isoformat()}".encode()).hexdigest()[:16]
+    token = hashlib.sha256(
+        f"{current.tenant_id}{datetime.now(UTC).isoformat()}".encode()
+    ).hexdigest()[:16]
     record = await svc.create(
         table="roi_share_links",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"scenario_id": body.get("scenario_id"), "token": token, "expires_at": body.get("expires_at")},
+        data={
+            "scenario_id": body.get("scenario_id"),
+            "token": token,
+            "expires_at": body.get("expires_at"),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {"token": token, "record": record}
@@ -490,8 +516,14 @@ async def revenue_pipeline(
     svc = DominationService(db, get_event_publisher())
     proposals = svc.repo("proposals").list(tenant_id=current.tenant_id, limit=10000)
     subs = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=10000)
-    pending_value = len([p for p in proposals if p.get("data", {}).get("status") == "pending"]) * 89900
-    active_mrr = sum(int(s.get("data", {}).get("monthly_amount_cents", 0)) for s in subs if s.get("data", {}).get("status") == "active")
+    pending_value = (
+        len([p for p in proposals if p.get("data", {}).get("status") == "pending"]) * 89900
+    )
+    active_mrr = sum(
+        int(s.get("data", {}).get("monthly_amount_cents", 0))
+        for s in subs
+        if s.get("data", {}).get("status") == "active"
+    )
     return {
         "pending_pipeline_cents": pending_value,
         "active_mrr_cents": active_mrr,

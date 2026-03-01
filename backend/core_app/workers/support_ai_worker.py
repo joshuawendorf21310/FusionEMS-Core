@@ -55,29 +55,50 @@ def process_ai_reply(message: dict[str, Any]) -> None:
         if database_url_idem:
             try:
                 import psycopg as _psycopg_idem
-                with _psycopg_idem.connect(database_url_idem) as _conn_idem, _conn_idem.cursor() as _cur_idem:
+
+                with (
+                    _psycopg_idem.connect(database_url_idem) as _conn_idem,
+                    _conn_idem.cursor() as _cur_idem,
+                ):
                     _cur_idem.execute(
                         "SELECT id FROM support_messages WHERE data->>'in_reply_to_message_id' = %s AND data->>'sender_role' = 'ai' LIMIT 1",
                         (last_msg_id,),
                     )
                     _existing_idem = _cur_idem.fetchone()
                 if _existing_idem:
-                    logger.info("support_ai_reply_skip_already_replied thread_id=%s correlation_id=%s", thread_id, correlation_id)
+                    logger.info(
+                        "support_ai_reply_skip_already_replied thread_id=%s correlation_id=%s",
+                        thread_id,
+                        correlation_id,
+                    )
                     return {"skipped": True, "reason": "already_replied"}
             except Exception as _idem_exc:
-                logger.warning("support_ai_reply_idempotency_check_failed thread_id=%s error=%s correlation_id=%s", thread_id, _idem_exc, correlation_id)
+                logger.warning(
+                    "support_ai_reply_idempotency_check_failed thread_id=%s error=%s correlation_id=%s",
+                    thread_id,
+                    _idem_exc,
+                    correlation_id,
+                )
 
     if not thread_id or not tenant_id:
-        logger.warning("support_ai_reply_missing_fields thread_id=%s tenant_id=%s correlation_id=%s", thread_id, tenant_id, correlation_id)
+        logger.warning(
+            "support_ai_reply_missing_fields thread_id=%s tenant_id=%s correlation_id=%s",
+            thread_id,
+            tenant_id,
+            correlation_id,
+        )
         return
 
     database_url = os.environ.get("DATABASE_URL", "")
     if not database_url:
-        logger.error("support_ai_reply_no_db thread_id=%s correlation_id=%s", thread_id, correlation_id)
+        logger.error(
+            "support_ai_reply_no_db thread_id=%s correlation_id=%s", thread_id, correlation_id
+        )
         return
 
     try:
         import psycopg
+
         with psycopg.connect(database_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -104,24 +125,42 @@ def process_ai_reply(message: dict[str, Any]) -> None:
                 ai = AiService()
                 response_text, meta = ai.chat(system=SYSTEM_PROMPT, user=user_prompt)
             except Exception as exc:
-                logger.error("support_ai_reply_ai_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)
+                logger.error(
+                    "support_ai_reply_ai_failed thread_id=%s error=%s correlation_id=%s",
+                    thread_id,
+                    exc,
+                    correlation_id,
+                )
                 return
 
             low_confidence = (
                 "i'm not sure" in response_text.lower() or "unclear" in response_text.lower()
             )
-            turn_count = sum(1 for row in rows if (row[1] if isinstance(row[1], dict) else json.loads(row[1])).get("sender_role") == "ai")
+            turn_count = sum(
+                1
+                for row in rows
+                if (row[1] if isinstance(row[1], dict) else json.loads(row[1])).get("sender_role")
+                == "ai"
+            )
 
             if low_confidence or turn_count >= 2:
                 content_lower = trigger_message.lower()
-                triggered_by = next((t for t in ESCALATION_TRIGGERS if t in content_lower), "ai_low_confidence")
+                triggered_by = next(
+                    (t for t in ESCALATION_TRIGGERS if t in content_lower), "ai_low_confidence"
+                )
                 with conn.cursor() as cur:
                     cur.execute(
                         "UPDATE support_threads "
                         "SET data = data || %s::jsonb, updated_at = now() "
                         "WHERE id = %s",
                         (
-                            json.dumps({"escalated": True, "status": "escalated", "escalation_reason": triggered_by}),
+                            json.dumps(
+                                {
+                                    "escalated": True,
+                                    "status": "escalated",
+                                    "escalation_reason": triggered_by,
+                                }
+                            ),
                             thread_id,
                         ),
                     )
@@ -129,12 +168,14 @@ def process_ai_reply(message: dict[str, Any]) -> None:
                         "INSERT INTO support_escalations (tenant_id, data) VALUES (%s, %s::jsonb)",
                         (
                             tenant_id,
-                            json.dumps({
-                                "thread_id": thread_id,
-                                "tenant_id": tenant_id,
-                                "trigger": triggered_by,
-                                "escalated_at": datetime.now(UTC).isoformat(),
-                            }),
+                            json.dumps(
+                                {
+                                    "thread_id": thread_id,
+                                    "tenant_id": tenant_id,
+                                    "trigger": triggered_by,
+                                    "escalated_at": datetime.now(UTC).isoformat(),
+                                }
+                            ),
                         ),
                     )
 
@@ -155,9 +196,19 @@ def process_ai_reply(message: dict[str, Any]) -> None:
                 )
             conn.commit()
 
-        logger.info("support_ai_reply_done thread_id=%s low_confidence=%s correlation_id=%s", thread_id, low_confidence, correlation_id)
+        logger.info(
+            "support_ai_reply_done thread_id=%s low_confidence=%s correlation_id=%s",
+            thread_id,
+            low_confidence,
+            correlation_id,
+        )
     except Exception as exc:
-        logger.error("support_ai_reply_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)
+        logger.error(
+            "support_ai_reply_failed thread_id=%s error=%s correlation_id=%s",
+            thread_id,
+            exc,
+            correlation_id,
+        )
 
 
 def process_ai_summarize(message: dict[str, Any]) -> None:
@@ -165,19 +216,28 @@ def process_ai_summarize(message: dict[str, Any]) -> None:
     tenant_id: str = message.get("tenant_id", "")
 
     correlation_id = message.get("correlation_id") or str(uuid.uuid4())
-    logger.info("support_ai_summarize_start thread_id=%s correlation_id=%s", thread_id, correlation_id)
+    logger.info(
+        "support_ai_summarize_start thread_id=%s correlation_id=%s", thread_id, correlation_id
+    )
 
     if not thread_id or not tenant_id:
-        logger.warning("support_ai_summarize_missing_fields thread_id=%s correlation_id=%s", thread_id, correlation_id)
+        logger.warning(
+            "support_ai_summarize_missing_fields thread_id=%s correlation_id=%s",
+            thread_id,
+            correlation_id,
+        )
         return
 
     database_url = os.environ.get("DATABASE_URL", "")
     if not database_url:
-        logger.error("support_ai_summarize_no_db thread_id=%s correlation_id=%s", thread_id, correlation_id)
+        logger.error(
+            "support_ai_summarize_no_db thread_id=%s correlation_id=%s", thread_id, correlation_id
+        )
         return
 
     try:
         import psycopg
+
         with psycopg.connect(database_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -205,7 +265,12 @@ def process_ai_summarize(message: dict[str, Any]) -> None:
                 ai = AiService()
                 summary, _ = ai.chat(system=system, user=user_prompt)
             except Exception as exc:
-                logger.error("support_ai_summarize_ai_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)
+                logger.error(
+                    "support_ai_summarize_ai_failed thread_id=%s error=%s correlation_id=%s",
+                    thread_id,
+                    exc,
+                    correlation_id,
+                )
                 return
 
             with conn.cursor() as cur:
@@ -217,6 +282,13 @@ def process_ai_summarize(message: dict[str, Any]) -> None:
                 )
             conn.commit()
 
-        logger.info("support_ai_summarize_done thread_id=%s correlation_id=%s", thread_id, correlation_id)
+        logger.info(
+            "support_ai_summarize_done thread_id=%s correlation_id=%s", thread_id, correlation_id
+        )
     except Exception as exc:
-        logger.error("support_ai_summarize_failed thread_id=%s error=%s correlation_id=%s", thread_id, exc, correlation_id)
+        logger.error(
+            "support_ai_summarize_failed thread_id=%s error=%s correlation_id=%s",
+            thread_id,
+            exc,
+            correlation_id,
+        )

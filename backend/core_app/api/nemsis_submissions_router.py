@@ -32,6 +32,7 @@ Status machine:
                       ↘ rejected (direct, no ACK)
   rejected → (new retry creates fresh row)
 """
+
 from __future__ import annotations
 
 import base64 as _b64
@@ -55,11 +56,11 @@ from core_app.services.event_publisher import get_event_publisher
 router = APIRouter(prefix="/api/v1/epcr", tags=["ePCR NEMSIS Submissions"])
 
 _VALID_TRANSITIONS: dict[str, set[str]] = {
-    "pending":      {"submitted"},
-    "submitted":    {"acknowledged", "rejected"},
+    "pending": {"submitted"},
+    "submitted": {"acknowledged", "rejected"},
     "acknowledged": {"accepted", "rejected"},
-    "accepted":     set(),
-    "rejected":     set(),
+    "accepted": set(),
+    "rejected": set(),
 }
 
 
@@ -100,7 +101,10 @@ async def create_submission(
         raise HTTPException(status_code=404, detail="Chart not found")
 
     chart_data = chart_rec.get("data", {})
-    if chart_data.get("chart_status") not in (ChartStatus.SUBMITTED.value, ChartStatus.LOCKED.value):
+    if chart_data.get("chart_status") not in (
+        ChartStatus.SUBMITTED.value,
+        ChartStatus.LOCKED.value,
+    ):
         raise HTTPException(
             status_code=422,
             detail="Chart must be in 'submitted' or 'locked' status before submitting to a state endpoint",
@@ -112,7 +116,9 @@ async def create_submission(
         raise HTTPException(status_code=422, detail="state_code is required")
 
     # Export XML
-    xml_bytes = NEMSISExporter().export_chart(chart_data, agency_info=payload.get("agency_info", {}))
+    xml_bytes = NEMSISExporter().export_chart(
+        chart_data, agency_info=payload.get("agency_info", {})
+    )
 
     sha256_hex = jcs_sha256({"xml_bytes_b64": xml_bytes.hex(), "chart_id": chart_id})
 
@@ -164,7 +170,11 @@ async def create_submission(
             "s3_key": xml_s3_key,
             "note": "submission_created",
         },
-        typed_columns={"submission_id": str(sub_rec["id"]), "chart_id": chart_id, "to_status": "pending"},
+        typed_columns={
+            "submission_id": str(sub_rec["id"]),
+            "chart_id": chart_id,
+            "to_status": "pending",
+        },
         correlation_id=corr,
     )
 
@@ -180,8 +190,14 @@ async def list_submissions(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    return _svc(db).repo("nemsis_submission_results").list_raw_by_field(
-        "chart_id", chart_id, limit=200,
+    return (
+        _svc(db)
+        .repo("nemsis_submission_results")
+        .list_raw_by_field(
+            "chart_id",
+            chart_id,
+            limit=200,
+        )
     )
 
 
@@ -202,7 +218,9 @@ async def get_submission(
         raise HTTPException(status_code=404, detail="Submission not found")
 
     history = svc.repo("nemsis_submission_status_history").list_raw_by_field(
-        "submission_id", submission_id, limit=200,
+        "submission_id",
+        submission_id,
+        limit=200,
     )
 
     return {**rec, "status_history": history}
@@ -267,9 +285,7 @@ async def accept_submission(
     if sub_rec:
         chart_id = sub_rec.get("data", {}).get("chart_id")
         if chart_id:
-            chart_rec = svc.repo("epcr_charts").get(
-                tenant_id=current.tenant_id, record_id=chart_id
-            )
+            chart_rec = svc.repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
             if chart_rec:
                 locked_data = {
                     **chart_rec.get("data", {}),
@@ -356,13 +372,17 @@ async def retry_submission(
         raise HTTPException(status_code=404, detail="Chart not found")
 
     chart_data = chart_rec.get("data", {})
-    xml_bytes = NEMSISExporter().export_chart(chart_data, agency_info=payload.get("agency_info", {}))
+    xml_bytes = NEMSISExporter().export_chart(
+        chart_data, agency_info=payload.get("agency_info", {})
+    )
     sha256_hex = jcs_sha256({"xml_bytes_b64": xml_bytes.hex(), "chart_id": chart_id})
 
     new_submission_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
 
-    xml_s3_key = f"nemsis-submissions/{current.tenant_id}/{chart_id}/{new_submission_id}/payload.xml"
+    xml_s3_key = (
+        f"nemsis-submissions/{current.tenant_id}/{chart_id}/{new_submission_id}/payload.xml"
+    )
     try:
         xml_s3_bucket, xml_s3_key = _upload_to_s3(xml_bytes, xml_s3_key, "application/xml")
     except Exception as exc:
@@ -389,7 +409,11 @@ async def retry_submission(
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data=sub_data,
-        typed_columns={"chart_id": chart_id, "state_code": orig_data.get("state_code", ""), "status": "pending"},
+        typed_columns={
+            "chart_id": chart_id,
+            "state_code": orig_data.get("state_code", ""),
+            "status": "pending",
+        },
         correlation_id=corr,
     )
 
@@ -408,7 +432,11 @@ async def retry_submission(
             "s3_bucket": xml_s3_bucket,
             "s3_key": xml_s3_key,
         },
-        typed_columns={"submission_id": str(new_rec["id"]), "chart_id": chart_id, "to_status": "pending"},
+        typed_columns={
+            "submission_id": str(new_rec["id"]),
+            "chart_id": chart_id,
+            "to_status": "pending",
+        },
         correlation_id=corr,
     )
 
@@ -511,7 +539,11 @@ async def _advance_status(
             "s3_bucket": s3_bucket,
             "s3_key": s3_key_str,
         },
-        typed_columns={"submission_id": submission_id, "chart_id": chart_id, "to_status": to_status},
+        typed_columns={
+            "submission_id": submission_id,
+            "chart_id": chart_id,
+            "to_status": to_status,
+        },
         correlation_id=corr,
         commit=False,
     )

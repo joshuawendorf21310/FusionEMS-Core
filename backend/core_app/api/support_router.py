@@ -54,17 +54,21 @@ async def list_threads(
     if status:
         status_clause = "AND data->>'status' = :status AND data->>'created_by' = :user_id "
         params["status"] = status
-    rows = db.execute(
-        text(
-            f"SELECT id, tenant_id, data, version, created_at, updated_at "
-            f"FROM support_threads "
-            f"WHERE tenant_id = :tenant_id AND deleted_at IS NULL "
-            f"AND data->>'created_by' = :user_id "
-            f"{status_clause}"
-            f"ORDER BY created_at DESC LIMIT 100"
-        ),
-        params,
-    ).mappings().all()
+    rows = (
+        db.execute(
+            text(
+                f"SELECT id, tenant_id, data, version, created_at, updated_at "
+                f"FROM support_threads "
+                f"WHERE tenant_id = :tenant_id AND deleted_at IS NULL "
+                f"AND data->>'created_by' = :user_id "
+                f"{status_clause}"
+                f"ORDER BY created_at DESC LIMIT 100"
+            ),
+            params,
+        )
+        .mappings()
+        .all()
+    )
     return [dict(r) for r in rows]
 
 
@@ -74,14 +78,18 @@ async def get_thread(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    row = db.execute(
-        text(
-            "SELECT id, tenant_id, data, version, created_at, updated_at "
-            "FROM support_threads "
-            "WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL"
-        ),
-        {"id": thread_id, "tenant_id": str(current.tenant_id)},
-    ).mappings().first()
+    row = (
+        db.execute(
+            text(
+                "SELECT id, tenant_id, data, version, created_at, updated_at "
+                "FROM support_threads "
+                "WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL"
+            ),
+            {"id": thread_id, "tenant_id": str(current.tenant_id)},
+        )
+        .mappings()
+        .first()
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Thread not found")
 
@@ -97,13 +105,17 @@ async def send_message(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    thread = db.execute(
-        text(
-            "SELECT id FROM support_threads "
-            "WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL"
-        ),
-        {"id": thread_id, "tenant_id": str(current.tenant_id)},
-    ).mappings().first()
+    thread = (
+        db.execute(
+            text(
+                "SELECT id FROM support_threads "
+                "WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL"
+            ),
+            {"id": thread_id, "tenant_id": str(current.tenant_id)},
+        )
+        .mappings()
+        .first()
+    )
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
 
@@ -122,13 +134,17 @@ async def list_messages(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    thread = db.execute(
-        text(
-            "SELECT id FROM support_threads "
-            "WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL"
-        ),
-        {"id": thread_id, "tenant_id": str(current.tenant_id)},
-    ).mappings().first()
+    thread = (
+        db.execute(
+            text(
+                "SELECT id FROM support_threads "
+                "WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL"
+            ),
+            {"id": thread_id, "tenant_id": str(current.tenant_id)},
+        )
+        .mappings()
+        .first()
+    )
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
 
@@ -155,19 +171,23 @@ async def founder_inbox(
         clauses.append("data->>'claim_id' IS NOT NULL")
 
     where = "WHERE " + " AND ".join(clauses)
-    rows = db.execute(
-        text(
-            f"SELECT id, tenant_id, data, version, created_at, updated_at "
-            f"FROM support_threads "
-            f"{where} "
-            f"ORDER BY "
-            f"  (data->>'escalated')::boolean DESC, "
-            f"  (data->>'unread_founder')::boolean DESC, "
-            f"  created_at DESC "
-            f"LIMIT 200"
-        ),
-        params,
-    ).mappings().all()
+    rows = (
+        db.execute(
+            text(
+                f"SELECT id, tenant_id, data, version, created_at, updated_at "
+                f"FROM support_threads "
+                f"{where} "
+                f"ORDER BY "
+                f"  (data->>'escalated')::boolean DESC, "
+                f"  (data->>'unread_founder')::boolean DESC, "
+                f"  created_at DESC "
+                f"LIMIT 200"
+            ),
+            params,
+        )
+        .mappings()
+        .all()
+    )
     return [dict(r) for r in rows]
 
 
@@ -177,29 +197,37 @@ async def founder_get_thread(
     current: CurrentUser = Depends(require_role("founder")),
     db: Session = Depends(db_session_dependency),
 ):
-    row = db.execute(
-        text(
-            "SELECT id, tenant_id, data, version, created_at, updated_at "
-            "FROM support_threads "
-            "WHERE id = :id AND deleted_at IS NULL"
-        ),
-        {"id": thread_id},
-    ).mappings().first()
+    row = (
+        db.execute(
+            text(
+                "SELECT id, tenant_id, data, version, created_at, updated_at "
+                "FROM support_threads "
+                "WHERE id = :id AND deleted_at IS NULL"
+            ),
+            {"id": thread_id},
+        )
+        .mappings()
+        .first()
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Thread not found")
 
     thread_data = dict(row)
     tenant_id = str(thread_data["tenant_id"])
 
-    rows_m = db.execute(
-        text(
-            "SELECT id, tenant_id, data, version, created_at, updated_at "
-            "FROM support_messages "
-            "WHERE data->>'thread_id' = :thread_id AND deleted_at IS NULL "
-            "ORDER BY created_at ASC"
-        ),
-        {"thread_id": thread_id},
-    ).mappings().all()
+    rows_m = (
+        db.execute(
+            text(
+                "SELECT id, tenant_id, data, version, created_at, updated_at "
+                "FROM support_messages "
+                "WHERE data->>'thread_id' = :thread_id AND deleted_at IS NULL "
+                "ORDER BY created_at ASC"
+            ),
+            {"thread_id": thread_id},
+        )
+        .mappings()
+        .all()
+    )
     messages = [dict(r) for r in rows_m]
 
     ai_summary = thread_data.get("data", {}).get("ai_summary")
@@ -217,10 +245,14 @@ async def founder_reply(
     current: CurrentUser = Depends(require_role("founder")),
     db: Session = Depends(db_session_dependency),
 ):
-    row = db.execute(
-        text("SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"),
-        {"id": thread_id},
-    ).mappings().first()
+    row = (
+        db.execute(
+            text("SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"),
+            {"id": thread_id},
+        )
+        .mappings()
+        .first()
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Thread not found")
 
@@ -242,21 +274,25 @@ async def founder_resolve(
     current: CurrentUser = Depends(require_role("founder")),
     db: Session = Depends(db_session_dependency),
 ):
-    result = db.execute(
-        text(
-            "UPDATE support_threads "
-            "SET data = data || CAST(:patch AS jsonb), updated_at = now() "
-            "WHERE id = :id AND deleted_at IS NULL "
-            "RETURNING id"
-        ),
-        {
-            "id": thread_id,
-            "patch": _json.dumps(
-                {"status": "resolved", "resolved_at": datetime.now(UTC).isoformat()},
-                separators=(",", ":"),
+    result = (
+        db.execute(
+            text(
+                "UPDATE support_threads "
+                "SET data = data || CAST(:patch AS jsonb), updated_at = now() "
+                "WHERE id = :id AND deleted_at IS NULL "
+                "RETURNING id"
             ),
-        },
-    ).mappings().first()
+            {
+                "id": thread_id,
+                "patch": _json.dumps(
+                    {"status": "resolved", "resolved_at": datetime.now(UTC).isoformat()},
+                    separators=(",", ":"),
+                ),
+            },
+        )
+        .mappings()
+        .first()
+    )
     if not result:
         raise HTTPException(status_code=404, detail="Thread not found")
     db.commit()
@@ -269,10 +305,14 @@ async def founder_summarize(
     current: CurrentUser = Depends(require_role("founder")),
     db: Session = Depends(db_session_dependency),
 ):
-    row = db.execute(
-        text("SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"),
-        {"id": thread_id},
-    ).mappings().first()
+    row = (
+        db.execute(
+            text("SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"),
+            {"id": thread_id},
+        )
+        .mappings()
+        .first()
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Thread not found")
 

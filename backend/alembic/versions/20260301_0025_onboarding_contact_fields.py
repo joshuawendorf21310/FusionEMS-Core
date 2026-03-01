@@ -14,6 +14,7 @@ Adds to onboarding_applications:
   - collector_vendor_name   VARCHAR(200)  nullable
   - placement_method        VARCHAR(64)   default 'portal_upload'
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -29,8 +30,7 @@ depends_on = None
 def _col_exists(conn, table: str, column: str) -> bool:
     result = conn.execute(
         sa.text(
-            "SELECT 1 FROM information_schema.columns "
-            "WHERE table_name = :t AND column_name = :c"
+            "SELECT 1 FROM information_schema.columns WHERE table_name = :t AND column_name = :c"
         ),
         {"t": table, "c": column},
     )
@@ -69,7 +69,7 @@ def upgrade() -> None:
                 "statement_channels",
                 postgresql.JSONB(astext_type=sa.Text()),
                 nullable=True,
-                server_default='\'["mail"]\'::jsonb',
+                server_default="'[\"mail\"]'::jsonb",
             ),
         )
 
@@ -79,7 +79,9 @@ def upgrade() -> None:
     if not _col_exists(conn, table, "placement_method"):
         op.add_column(
             table,
-            sa.Column("placement_method", sa.String(64), nullable=False, server_default="portal_upload"),
+            sa.Column(
+                "placement_method", sa.String(64), nullable=False, server_default="portal_upload"
+            ),
         )
 
 

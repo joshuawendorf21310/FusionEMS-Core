@@ -60,13 +60,19 @@ class SesService:
 
         try:
             response = client.send_email(**params)
-            logger.info("SES email sent to %s, MessageId=%s", message.to_addresses, response.get("MessageId"))
+            logger.info(
+                "SES email sent to %s, MessageId=%s",
+                message.to_addresses,
+                response.get("MessageId"),
+            )
             return {"message_id": response.get("MessageId"), "status": "sent"}
         except ClientError as e:
             logger.error("SES send failed: %s", e)
             raise
 
-    def send_patient_statement(self, patient_email: str, patient_name: str, portal_url: str, amount_due: str) -> dict[str, Any]:
+    def send_patient_statement(
+        self, patient_email: str, patient_name: str, portal_url: str, amount_due: str
+    ) -> dict[str, Any]:
         html = f"""
         <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#1a365d;">Your FusionEMS Statement is Ready</h2>
@@ -84,14 +90,18 @@ class SesService:
         </p>
         </body></html>
         """
-        return self.send(EmailMessage(
-            to_addresses=[patient_email],
-            subject="Your EMS Statement is Ready",
-            html_body=html,
-            text_body=f"View your statement at: {portal_url} — Amount Due: {amount_due}",
-        ))
+        return self.send(
+            EmailMessage(
+                to_addresses=[patient_email],
+                subject="Your EMS Statement is Ready",
+                html_body=html,
+                text_body=f"View your statement at: {portal_url} — Amount Due: {amount_due}",
+            )
+        )
 
-    def send_credential_expiry_alert(self, staff_email: str, staff_name: str, credential_type: str, expires_on: str) -> dict[str, Any]:
+    def send_credential_expiry_alert(
+        self, staff_email: str, staff_name: str, credential_type: str, expires_on: str
+    ) -> dict[str, Any]:
         html = f"""
         <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#c53030;">Credential Expiring Soon</h2>
@@ -100,13 +110,17 @@ class SesService:
         <p>Please renew your credential to remain eligible for assignments.</p>
         </body></html>
         """
-        return self.send(EmailMessage(
-            to_addresses=[staff_email],
-            subject=f"Action Required: {credential_type} expires {expires_on}",
-            html_body=html,
-        ))
+        return self.send(
+            EmailMessage(
+                to_addresses=[staff_email],
+                subject=f"Action Required: {credential_type} expires {expires_on}",
+                html_body=html,
+            )
+        )
 
-    def send_denial_notification(self, billing_email: str, claim_id: str, denial_reason: str, action_url: str) -> dict[str, Any]:
+    def send_denial_notification(
+        self, billing_email: str, claim_id: str, denial_reason: str, action_url: str
+    ) -> dict[str, Any]:
         html = f"""
         <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#c53030;">Claim Denial Notice</h2>
@@ -119,11 +133,13 @@ class SesService:
         </p>
         </body></html>
         """
-        return self.send(EmailMessage(
-            to_addresses=[billing_email],
-            subject=f"Claim {claim_id} Denied — Action Required",
-            html_body=html,
-        ))
+        return self.send(
+            EmailMessage(
+                to_addresses=[billing_email],
+                subject=f"Claim {claim_id} Denied — Action Required",
+                html_body=html,
+            )
+        )
 
     def send_otp(self, email: str, otp_code: str, expires_minutes: int = 10) -> dict[str, Any]:
         html = f"""
@@ -134,12 +150,14 @@ class SesService:
         <p style="color:#718096;font-size:12px;">Do not share this code with anyone.</p>
         </body></html>
         """
-        return self.send(EmailMessage(
-            to_addresses=[email],
-            subject="Your FusionEMS Verification Code",
-            html_body=html,
-            text_body=f"Your verification code: {otp_code} (expires in {expires_minutes} minutes)",
-        ))
+        return self.send(
+            EmailMessage(
+                to_addresses=[email],
+                subject="Your FusionEMS Verification Code",
+                html_body=html,
+                text_body=f"Your verification code: {otp_code} (expires in {expires_minutes} minutes)",
+            )
+        )
 
 
 _ses_instance: SesService | None = None

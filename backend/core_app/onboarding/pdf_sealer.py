@@ -8,6 +8,7 @@ try:
     from pyhanko.sign import fields, signers  # noqa: F401
     from pyhanko.sign.fields import SigFieldSpec  # noqa: F401
     from pyhanko_certvalidator import CertificateValidator  # noqa: F401
+
     PYHANKO_AVAILABLE = True
 except ImportError:
     PYHANKO_AVAILABLE = False
@@ -25,16 +26,19 @@ try:
         Table,
         TableStyle,
     )
+
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
 try:
     from pypdf import PdfReader, PdfWriter  # noqa: F401
+
     PYPDF_AVAILABLE = True
 except ImportError:
     try:
         from PyPDF2 import PdfReader, PdfWriter
+
         PYPDF_AVAILABLE = True
     except ImportError:
         PYPDF_AVAILABLE = False
@@ -235,11 +239,13 @@ def _generate_self_signed_p12(output_path: str, common_name: str, email: str) ->
             key_size=2048,
             backend=default_backend(),
         )
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, common_name or "FusionEMS Signer"),
-            x509.NameAttribute(NameOID.EMAIL_ADDRESS, email or "signer@fusionems.io"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "FusionEMS Quantum"),
-        ])
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COMMON_NAME, common_name or "FusionEMS Signer"),
+                x509.NameAttribute(NameOID.EMAIL_ADDRESS, email or "signer@fusionems.io"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "FusionEMS Quantum"),
+            ]
+        )
         now = dt.datetime.utcnow()
         cert = (
             x509.CertificateBuilder()

@@ -43,7 +43,9 @@ def _resolve_tenant_by_did(db: Session, to_number: str) -> str | None:
     return str(row.tenant_id) if row else None
 
 
-def _insert_event(db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict) -> bool:
+def _insert_event(
+    db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict
+) -> bool:
     result = db.execute(
         text(
             "INSERT INTO telnyx_events (event_id, event_type, tenant_id, received_at, raw_json) "
@@ -159,7 +161,11 @@ async def telnyx_fax_webhook(
 
     logger.info(
         "telnyx_fax event_type=%s fax_id=%s from=%s to=%s tenant_id=%s",
-        event_type, fax_id, from_number, to_number, tenant_id,
+        event_type,
+        fax_id,
+        from_number,
+        to_number,
+        tenant_id,
     )
 
     if event_type != "fax.received":
@@ -185,7 +191,9 @@ async def telnyx_fax_webhook(
             s3_key = _s3_fax_key(tenant_id or "unrouted", fax_id)
             put_bytes(bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf")
             store_status = "stored"
-            logger.info("telnyx_fax_stored fax_id=%s s3_key=%s sha256=%s", fax_id, s3_key, sha256_hex)
+            logger.info(
+                "telnyx_fax_stored fax_id=%s s3_key=%s sha256=%s", fax_id, s3_key, sha256_hex
+            )
         except TelnyxApiError as exc:
             logger.error("telnyx_fax_download_failed fax_id=%s error=%s", fax_id, exc)
             store_status = "download_failed"

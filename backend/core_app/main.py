@@ -115,14 +115,22 @@ _allowed_origins = [
     "https://api.fusionemsquantum.com",
 ]
 if settings.debug:
-    _allowed_origins.extend(["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"])
+    _allowed_origins.extend(
+        ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
+    )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Tenant-ID", "X-Correlation-ID", "X-Request-ID"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Tenant-ID",
+        "X-Correlation-ID",
+        "X-Request-ID",
+    ],
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-Correlation-ID"],
     max_age=600,
 )

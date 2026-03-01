@@ -22,7 +22,9 @@ class ProcessRequest(BaseModel):
 
 
 @router.post("/upload-url")
-async def upload_url(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user)):
+async def upload_url(
+    payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user)
+):
     """
     Returns a presigned PUT URL for uploading a document into the docs bucket.
     Client uploads directly to S3; backend stores metadata via /documents/{id}/attach.
@@ -32,22 +34,38 @@ async def upload_url(payload: dict[str, Any], request: Request, current: Current
         raise HTTPException(status_code=500, detail="docs_bucket_not_configured")
     key = f"tenants/{current.tenant_id}/uploads/{uuid.uuid4()}.bin"
     import boto3
+
     s3 = boto3.client("s3")
     url = s3.generate_presigned_url(
         "put_object",
-        Params={"Bucket": bucket, "Key": key, "ContentType": payload.get("content_type", "application/octet-stream")},
+        Params={
+            "Bucket": bucket,
+            "Key": key,
+            "ContentType": payload.get("content_type", "application/octet-stream"),
+        },
         ExpiresIn=900,
     )
-    return {"method": "PUT", "url": url, "bucket": bucket, "key": key, "headers": {"Content-Type": payload.get("content_type", "application/octet-stream")}}
+    return {
+        "method": "PUT",
+        "url": url,
+        "bucket": bucket,
+        "key": key,
+        "headers": {"Content-Type": payload.get("content_type", "application/octet-stream")},
+    }
 
 
 @router.post("/process")
-async def process(body: ProcessRequest, request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def process(
+    body: ProcessRequest,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     """
     Starts Textract OCR for a stored S3 document.
     Requires documents table record contains bucket + s3_key.
     """
-    require_role(current, ["founder","billing","admin","dispatcher","ems","fire","hems"])
+    require_role(current, ["founder", "billing", "admin", "dispatcher", "ems", "fire", "hems"])
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
@@ -75,19 +93,33 @@ async def process(body: ProcessRequest, request: Request, current: CurrentUser =
 
 
 @router.get("/{document_id}")
-async def get_doc(document_id: uuid.UUID, request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def get_doc(
+    document_id: uuid.UUID,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
     rec = svc.repo("documents").get(tenant_id=current.tenant_id, record_id=document_id)
     return rec or {"error": "not_found"}
 
 
 @router.post("/{document_id}/attach")
-async def attach(document_id: uuid.UUID, payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def attach(
+    document_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     """
     Attaches uploaded S3 object metadata to the documents table.
     payload must include bucket, key, doc_type (optional).
     """
-    require_role(current, ["founder","billing","admin","dispatcher","ems","fire","hems","facility_user"])
+    require_role(
+        current,
+        ["founder", "billing", "admin", "dispatcher", "ems", "fire", "hems", "facility_user"],
+    )
     svc = DominationService(db, get_event_publisher())
     row = await svc.create(
         table="documents",
@@ -107,18 +139,29 @@ async def attach(document_id: uuid.UUID, payload: dict[str, Any], request: Reque
 
 
 @router.post("/extractions/{extraction_id}/refresh")
-async def refresh_extraction(extraction_id: uuid.UUID, request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def refresh_extraction(
+    extraction_id: uuid.UUID,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     """
     Poll Textract job status and store results.
     """
-    require_role(current, ["founder","billing","admin"])
+    require_role(current, ["founder", "billing", "admin"])
     # Determine bucket from doc record in extraction
     ex_repo = DominationService(db, get_event_publisher()).repo("document_extractions")
     ex = ex_repo.get(tenant_id=current.tenant_id, record_id=extraction_id)
     if not ex:
         raise HTTPException(status_code=404, detail="extraction_not_found")
     doc_id = ex["data"].get("document_id")
-    doc = DominationService(db, get_event_publisher()).repo("documents").get(tenant_id=current.tenant_id, record_id=uuid.UUID(str(doc_id))) if doc_id else None
+    doc = (
+        DominationService(db, get_event_publisher())
+        .repo("documents")
+        .get(tenant_id=current.tenant_id, record_id=uuid.UUID(str(doc_id)))
+        if doc_id
+        else None
+    )
     bucket = (doc or {}).get("data", {}).get("bucket") or default_docs_bucket()
     if not bucket:
         raise HTTPException(status_code=500, detail="docs_bucket_not_configured")

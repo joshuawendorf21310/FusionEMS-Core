@@ -29,13 +29,21 @@ class StateProfile:
             if rule.condition and not rule.condition(incident_data):
                 continue
             val = _get_nested(incident_data, rule.field_path)
-            if rule.rule_type == "required" and not val or rule.rule_type == "not_empty" and val is not None and str(val).strip() == "":
-                violations.append({
-                    "field": rule.field_path,
-                    "severity": rule.severity,
-                    "message": rule.message,
-                    "rule_type": rule.rule_type,
-                })
+            if (
+                rule.rule_type == "required"
+                and not val
+                or rule.rule_type == "not_empty"
+                and val is not None
+                and str(val).strip() == ""
+            ):
+                violations.append(
+                    {
+                        "field": rule.field_path,
+                        "severity": rule.severity,
+                        "message": rule.message,
+                        "rule_type": rule.rule_type,
+                    }
+                )
         return violations
 
 

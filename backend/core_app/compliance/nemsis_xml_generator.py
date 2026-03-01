@@ -56,65 +56,89 @@ def build_nemsis_document(
     p_data = patient.get("data", patient)
 
     dob = p_data.get("date_of_birth")
-    _sub(patient_section, f"{{{NEMSIS_NS}}}ePatient.02",
-         dob if dob else NV_NOT_RECORDED,
-         {"xsi:nil": "true", "NV": NV_NOT_RECORDED} if not dob else {})
+    _sub(
+        patient_section,
+        f"{{{NEMSIS_NS}}}ePatient.02",
+        dob if dob else NV_NOT_RECORDED,
+        {"xsi:nil": "true", "NV": NV_NOT_RECORDED} if not dob else {},
+    )
 
     last = p_data.get("last_name")
-    _sub(patient_section, f"{{{NEMSIS_NS}}}ePatient.03",
-         last if last else NV_NOT_RECORDED)
+    _sub(patient_section, f"{{{NEMSIS_NS}}}ePatient.03", last if last else NV_NOT_RECORDED)
 
     first = p_data.get("first_name")
-    _sub(patient_section, f"{{{NEMSIS_NS}}}ePatient.04",
-         first if first else NV_NOT_RECORDED)
+    _sub(patient_section, f"{{{NEMSIS_NS}}}ePatient.04", first if first else NV_NOT_RECORDED)
 
     gender = p_data.get("gender")
     gender_map = {"male": "9906001", "female": "9906003", "unknown": "9906009"}
-    _sub(patient_section, f"{{{NEMSIS_NS}}}ePatient.13",
-         gender_map.get(str(gender).lower(), NV_NOT_RECORDED) if gender else NV_NOT_RECORDED)
+    _sub(
+        patient_section,
+        f"{{{NEMSIS_NS}}}ePatient.13",
+        gender_map.get(str(gender).lower(), NV_NOT_RECORDED) if gender else NV_NOT_RECORDED,
+    )
 
     incident_data = incident.get("data", incident)
 
     times_section = _sub(record, f"{{{NEMSIS_NS}}}eTimes")
     dispatch_time = incident_data.get("dispatch_time") or incident_data.get("created_at")
-    _sub(times_section, f"{{{NEMSIS_NS}}}eTimes.01",
-         _format_nemsis_time(dispatch_time) if dispatch_time else NV_NOT_RECORDED)
+    _sub(
+        times_section,
+        f"{{{NEMSIS_NS}}}eTimes.01",
+        _format_nemsis_time(dispatch_time) if dispatch_time else NV_NOT_RECORDED,
+    )
 
     scene_arrived = incident_data.get("arrived_scene_time")
-    _sub(times_section, f"{{{NEMSIS_NS}}}eTimes.06",
-         _format_nemsis_time(scene_arrived) if scene_arrived else NV_NOT_RECORDED)
+    _sub(
+        times_section,
+        f"{{{NEMSIS_NS}}}eTimes.06",
+        _format_nemsis_time(scene_arrived) if scene_arrived else NV_NOT_RECORDED,
+    )
 
     patient_contacted = incident_data.get("patient_contact_time")
-    _sub(times_section, f"{{{NEMSIS_NS}}}eTimes.07",
-         _format_nemsis_time(patient_contacted) if patient_contacted else NV_NOT_RECORDED)
+    _sub(
+        times_section,
+        f"{{{NEMSIS_NS}}}eTimes.07",
+        _format_nemsis_time(patient_contacted) if patient_contacted else NV_NOT_RECORDED,
+    )
 
     hosp_arrived = incident_data.get("arrived_destination_time")
-    _sub(times_section, f"{{{NEMSIS_NS}}}eTimes.11",
-         _format_nemsis_time(hosp_arrived) if hosp_arrived else NV_NOT_RECORDED)
+    _sub(
+        times_section,
+        f"{{{NEMSIS_NS}}}eTimes.11",
+        _format_nemsis_time(hosp_arrived) if hosp_arrived else NV_NOT_RECORDED,
+    )
 
     incident_section = _sub(record, f"{{{NEMSIS_NS}}}eIncident")
-    _sub(incident_section, f"{{{NEMSIS_NS}}}eIncident.01",
-         incident_data.get("incident_number", str(incident.get("id", ""))[:20]))
+    _sub(
+        incident_section,
+        f"{{{NEMSIS_NS}}}eIncident.01",
+        incident_data.get("incident_number", str(incident.get("id", ""))[:20]),
+    )
 
     disposition_section = _sub(record, f"{{{NEMSIS_NS}}}eDisposition")
-    _sub(disposition_section, f"{{{NEMSIS_NS}}}eDisposition.27",
-         incident_data.get("patient_disposition_code", "4227001"))
+    _sub(
+        disposition_section,
+        f"{{{NEMSIS_NS}}}eDisposition.27",
+        incident_data.get("patient_disposition_code", "4227001"),
+    )
 
     vitals_section = _sub(record, f"{{{NEMSIS_NS}}}eVitals")
     for vital in vitals[:5]:
         vg = _sub(vitals_section, f"{{{NEMSIS_NS}}}eVitals.VitalGroup")
         vdata = vital.get("data", vital)
-        _sub(vg, f"{{{NEMSIS_NS}}}eVitals.01",
-             _format_nemsis_time(vdata.get("recorded_at")) if vdata.get("recorded_at") else NV_NOT_RECORDED)
+        _sub(
+            vg,
+            f"{{{NEMSIS_NS}}}eVitals.01",
+            _format_nemsis_time(vdata.get("recorded_at"))
+            if vdata.get("recorded_at")
+            else NV_NOT_RECORDED,
+        )
         sbp = vdata.get("systolic_bp")
-        _sub(vg, f"{{{NEMSIS_NS}}}eVitals.06",
-             str(sbp) if sbp else NV_NOT_RECORDED)
+        _sub(vg, f"{{{NEMSIS_NS}}}eVitals.06", str(sbp) if sbp else NV_NOT_RECORDED)
         hr = vdata.get("heart_rate")
-        _sub(vg, f"{{{NEMSIS_NS}}}eVitals.10",
-             str(hr) if hr else NV_NOT_RECORDED)
+        _sub(vg, f"{{{NEMSIS_NS}}}eVitals.10", str(hr) if hr else NV_NOT_RECORDED)
         gcs = vdata.get("gcs_total")
-        _sub(vg, f"{{{NEMSIS_NS}}}eVitals.21",
-             str(gcs) if gcs else NV_NOT_RECORDED)
+        _sub(vg, f"{{{NEMSIS_NS}}}eVitals.21", str(gcs) if gcs else NV_NOT_RECORDED)
 
     xml_bytes = tostring(root, encoding="utf-8", xml_declaration=True)
     return xml_bytes

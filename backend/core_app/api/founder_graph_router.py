@@ -20,6 +20,7 @@ OneDrive endpoints:
   GET  /founder/graph/drive/items/{item_id}         item metadata + webUrl
   GET  /founder/graph/drive/items/{item_id}/download       stream file bytes through backend
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,7 +45,9 @@ _FOUNDER = Depends(require_role("founder"))
 
 
 def _raise_graph(exc: GraphApiError) -> None:
-    raise HTTPException(status_code=exc.status if 400 <= exc.status <= 599 else 502, detail=exc.message)
+    raise HTTPException(
+        status_code=exc.status if 400 <= exc.status <= 599 else 502, detail=exc.message
+    )
 
 
 def _raise_not_configured(exc: GraphNotConfigured) -> None:
@@ -62,7 +65,9 @@ class ReplyRequest(BaseModel):
     comment_html: str
 
 
-_ALLOWED_FOLDERS = frozenset({"inbox", "sentitems", "drafts", "deleteditems", "archive", "junkemail"})
+_ALLOWED_FOLDERS = frozenset(
+    {"inbox", "sentitems", "drafts", "deleteditems", "archive", "junkemail"}
+)
 
 
 @router.get("/mail")
@@ -73,7 +78,9 @@ async def list_messages(
     current: CurrentUser = _FOUNDER,
 ) -> dict[str, Any]:
     if folder not in _ALLOWED_FOLDERS:
-        raise HTTPException(status_code=400, detail=f"invalid_folder: must be one of {sorted(_ALLOWED_FOLDERS)}")
+        raise HTTPException(
+            status_code=400, detail=f"invalid_folder: must be one of {sorted(_ALLOWED_FOLDERS)}"
+        )
     logger.info("graph_mail_list user=%s folder=%s", current.user_id, folder)
     try:
         client = get_graph_client()
@@ -120,8 +127,12 @@ async def download_attachment(
     attachment_id: str,
     current: CurrentUser = _FOUNDER,
 ) -> Response:
-    logger.info("graph_attachment_download user=%s message_id=%s attachment_id=%s",
-                current.user_id, message_id, attachment_id)
+    logger.info(
+        "graph_attachment_download user=%s message_id=%s attachment_id=%s",
+        current.user_id,
+        message_id,
+        attachment_id,
+    )
     try:
         client = get_graph_client()
         raw = client.download_attachment(message_id, attachment_id)

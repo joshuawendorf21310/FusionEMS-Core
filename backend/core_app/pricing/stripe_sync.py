@@ -7,6 +7,7 @@ add-on in the pricing catalog, then stores the resulting Price IDs in SSM under
 Run as a one-off ECS task on every production deploy before traffic shifts:
     python -m core_app.pricing.stripe_sync --stage prod
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,24 +27,96 @@ _STAGE_PRODUCTS: list[dict[str, Any]] = [
 ]
 
 _STAGE_PRICES: list[dict[str, Any]] = [
-    {"lookup_key": "SCHEDULING_ONLY_S1_V1_MONTHLY", "product_key": "SCHEDULING_ONLY_V1", "unit_amount": 19900, "metered": False},
-    {"lookup_key": "SCHEDULING_ONLY_S2_V1_MONTHLY", "product_key": "SCHEDULING_ONLY_V1", "unit_amount": 39900, "metered": False},
-    {"lookup_key": "SCHEDULING_ONLY_S3_V1_MONTHLY", "product_key": "SCHEDULING_ONLY_V1", "unit_amount": 69900, "metered": False},
-    {"lookup_key": "CCT_TRANSPORT_OPS_V1_MONTHLY",  "product_key": "CCT_TRANSPORT_OPS_V1", "unit_amount": 39900, "metered": False},
-    {"lookup_key": "HEMS_OPS_V1_MONTHLY",           "product_key": "HEMS_OPS_V1",          "unit_amount": 75000, "metered": False},
-    {"lookup_key": "BILLING_AUTOMATION_B1_BASE_V1_MONTHLY", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 39900, "metered": False},
-    {"lookup_key": "BILLING_AUTOMATION_B2_BASE_V1_MONTHLY", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 59900, "metered": False},
-    {"lookup_key": "BILLING_AUTOMATION_B3_BASE_V1_MONTHLY", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 99900, "metered": False},
-    {"lookup_key": "BILLING_AUTOMATION_B4_BASE_V1_MONTHLY", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 149900, "metered": False},
-    {"lookup_key": "BILLING_AUTOMATION_B1_PER_CLAIM_V1", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 600, "metered": True},
-    {"lookup_key": "BILLING_AUTOMATION_B2_PER_CLAIM_V1", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 500, "metered": True},
-    {"lookup_key": "BILLING_AUTOMATION_B3_PER_CLAIM_V1", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 400, "metered": True},
-    {"lookup_key": "BILLING_AUTOMATION_B4_PER_CLAIM_V1", "product_key": "BILLING_AUTOMATION_V1", "unit_amount": 325, "metered": True},
-    {"lookup_key": "TRIP_PACK_V1_MONTHLY",          "product_key": "TRIP_PACK_V1",         "unit_amount": 19900, "metered": False},
+    {
+        "lookup_key": "SCHEDULING_ONLY_S1_V1_MONTHLY",
+        "product_key": "SCHEDULING_ONLY_V1",
+        "unit_amount": 19900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "SCHEDULING_ONLY_S2_V1_MONTHLY",
+        "product_key": "SCHEDULING_ONLY_V1",
+        "unit_amount": 39900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "SCHEDULING_ONLY_S3_V1_MONTHLY",
+        "product_key": "SCHEDULING_ONLY_V1",
+        "unit_amount": 69900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "CCT_TRANSPORT_OPS_V1_MONTHLY",
+        "product_key": "CCT_TRANSPORT_OPS_V1",
+        "unit_amount": 39900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "HEMS_OPS_V1_MONTHLY",
+        "product_key": "HEMS_OPS_V1",
+        "unit_amount": 75000,
+        "metered": False,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B1_BASE_V1_MONTHLY",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 39900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B2_BASE_V1_MONTHLY",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 59900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B3_BASE_V1_MONTHLY",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 99900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B4_BASE_V1_MONTHLY",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 149900,
+        "metered": False,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B1_PER_CLAIM_V1",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 600,
+        "metered": True,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B2_PER_CLAIM_V1",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 500,
+        "metered": True,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B3_PER_CLAIM_V1",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 400,
+        "metered": True,
+    },
+    {
+        "lookup_key": "BILLING_AUTOMATION_B4_PER_CLAIM_V1",
+        "product_key": "BILLING_AUTOMATION_V1",
+        "unit_amount": 325,
+        "metered": True,
+    },
+    {
+        "lookup_key": "TRIP_PACK_V1_MONTHLY",
+        "product_key": "TRIP_PACK_V1",
+        "unit_amount": 19900,
+        "metered": False,
+    },
 ]
 
 
-def sync_catalog(stage: str, stripe_secret_key: str, aws_region: str = "us-east-1") -> dict[str, str]:
+def sync_catalog(
+    stage: str, stripe_secret_key: str, aws_region: str = "us-east-1"
+) -> dict[str, str]:
     """Upsert all Stripe Products and Prices; store price IDs in SSM.
 
     Returns a mapping of lookup_key → Stripe Price ID.
@@ -60,7 +133,9 @@ def sync_catalog(stage: str, stripe_secret_key: str, aws_region: str = "us-east-
 
     logger.info(
         "stripe_sync_complete stage=%s products=%d prices=%d",
-        stage, len(product_ids), len(price_ids),
+        stage,
+        len(product_ids),
+        len(price_ids),
     )
     return price_ids
 
@@ -125,6 +200,7 @@ def _resolve_stripe_key(stripe_secret_key: str, stripe_secret_arn: str, aws_regi
         return stripe_secret_key
     if stripe_secret_arn:
         import boto3
+
         sm = boto3.client("secretsmanager", region_name=aws_region)
         secret = json.loads(sm.get_secret_value(SecretId=stripe_secret_arn)["SecretString"])
         return secret.get("secret_key") or secret.get("STRIPE_SECRET_KEY", "")

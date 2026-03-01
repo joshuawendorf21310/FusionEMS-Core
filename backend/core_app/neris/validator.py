@@ -22,10 +22,23 @@ class NERISValidator:
                 return rd.get("rules_json")
         return None
 
-    def validate(self, pack_id: uuid.UUID, entity_type: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    def validate(
+        self, pack_id: uuid.UUID, entity_type: str, payload: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         rules = self._get_rules(pack_id, entity_type)
         if not rules:
-            return [{"severity": "warning", "entity_type": entity_type, "rule_id": "no_rules", "path": "", "field_label": "", "ui_section": "System", "message": "No compiled rules found for this pack. Import and compile the pack first.", "suggested_fix": "Go to Compliance Studio and compile the active NERIS pack."}]
+            return [
+                {
+                    "severity": "warning",
+                    "entity_type": entity_type,
+                    "rule_id": "no_rules",
+                    "path": "",
+                    "field_label": "",
+                    "ui_section": "System",
+                    "message": "No compiled rules found for this pack. Import and compile the pack first.",
+                    "suggested_fix": "Go to Compliance Studio and compile the active NERIS pack.",
+                }
+            ]
 
         issues: list[dict[str, Any]] = []
         value_sets = rules.get("value_sets", {})
@@ -42,32 +55,41 @@ class NERISValidator:
                 if "[]" in path:
                     array_path = path.split("[]")[0].rstrip(".")
                     array_val = _get_path(payload, array_path)
-                    if required and (array_val is None or array_val == [] or not isinstance(array_val, list) or len(array_val) == 0):
-                        issues.append({
-                            "severity": "error",
-                            "entity_type": entity_type,
-                            "rule_id": f"{array_path}.required",
-                            "path": array_path,
-                            "field_label": label,
-                            "ui_section": sec_label,
-                            "message": f"At least one {label} entry is required.",
-                            "suggested_fix": f"Add at least one {label} record.",
-                        })
+                    if required and (
+                        array_val is None
+                        or array_val == []
+                        or not isinstance(array_val, list)
+                        or len(array_val) == 0
+                    ):
+                        issues.append(
+                            {
+                                "severity": "error",
+                                "entity_type": entity_type,
+                                "rule_id": f"{array_path}.required",
+                                "path": array_path,
+                                "field_label": label,
+                                "ui_section": sec_label,
+                                "message": f"At least one {label} entry is required.",
+                                "suggested_fix": f"Add at least one {label} record.",
+                            }
+                        )
                     continue
 
                 value = _get_path(payload, path)
 
                 if required and (value is None or value == "" or value == []):
-                    issues.append({
-                        "severity": "error",
-                        "entity_type": entity_type,
-                        "rule_id": f"{path}.required",
-                        "path": path,
-                        "field_label": label,
-                        "ui_section": sec_label,
-                        "message": f"{label} is required.",
-                        "suggested_fix": f"Please provide a value for {label}.",
-                    })
+                    issues.append(
+                        {
+                            "severity": "error",
+                            "entity_type": entity_type,
+                            "rule_id": f"{path}.required",
+                            "path": path,
+                            "field_label": label,
+                            "ui_section": sec_label,
+                            "message": f"{label} is required.",
+                            "suggested_fix": f"Please provide a value for {label}.",
+                        }
+                    )
                     continue
 
                 if value is None:
@@ -77,19 +99,26 @@ class NERISValidator:
                     try:
                         datetime.fromisoformat(value.replace("Z", "+00:00"))
                     except ValueError:
-                        issues.append({
-                            "severity": "error",
-                            "entity_type": entity_type,
-                            "rule_id": f"{path}.invalid_datetime",
-                            "path": path,
-                            "field_label": label,
-                            "ui_section": sec_label,
-                            "message": f"{label} must be a valid ISO 8601 datetime.",
-                            "suggested_fix": "Use format: YYYY-MM-DDTHH:MM:SS",
-                        })
+                        issues.append(
+                            {
+                                "severity": "error",
+                                "entity_type": entity_type,
+                                "rule_id": f"{path}.invalid_datetime",
+                                "path": path,
+                                "field_label": label,
+                                "ui_section": sec_label,
+                                "message": f"{label} must be a valid ISO 8601 datetime.",
+                                "suggested_fix": "Use format: YYYY-MM-DDTHH:MM:SS",
+                            }
+                        )
 
-                if ftype == "email" and isinstance(value, str) and not re.match(r"[^@]+@[^@]+\.[^@]+", value):
-                    issues.append({
+                if (
+                    ftype == "email"
+                    and isinstance(value, str)
+                    and not re.match(r"[^@]+@[^@]+\.[^@]+", value)
+                ):
+                    issues.append(
+                        {
                             "severity": "error",
                             "entity_type": entity_type,
                             "rule_id": f"{path}.invalid_email",
@@ -98,36 +127,41 @@ class NERISValidator:
                             "ui_section": sec_label,
                             "message": f"{label} must be a valid email address.",
                             "suggested_fix": "Enter a valid email address.",
-                        })
+                        }
+                    )
 
                 if ftype == "integer":
                     try:
                         int(value)
                     except (TypeError, ValueError):
-                        issues.append({
-                            "severity": "error",
-                            "entity_type": entity_type,
-                            "rule_id": f"{path}.invalid_integer",
-                            "path": path,
-                            "field_label": label,
-                            "ui_section": sec_label,
-                            "message": f"{label} must be a whole number.",
-                            "suggested_fix": "Enter a whole number (e.g. 0, 1, 2).",
-                        })
+                        issues.append(
+                            {
+                                "severity": "error",
+                                "entity_type": entity_type,
+                                "rule_id": f"{path}.invalid_integer",
+                                "path": path,
+                                "field_label": label,
+                                "ui_section": sec_label,
+                                "message": f"{label} must be a whole number.",
+                                "suggested_fix": "Enter a whole number (e.g. 0, 1, 2).",
+                            }
+                        )
 
                 if vs_code and isinstance(value, str):
                     allowed = value_sets.get(vs_code, {}).get("allowed", [])
                     if allowed and value not in allowed:
-                        issues.append({
-                            "severity": "error",
-                            "entity_type": entity_type,
-                            "rule_id": f"{path}.invalid_value",
-                            "path": path,
-                            "field_label": label,
-                            "ui_section": sec_label,
-                            "message": f"'{value}' is not a valid value for {label}. Allowed: {', '.join(allowed[:10])}{'...' if len(allowed) > 10 else ''}",
-                            "suggested_fix": f"Select one of the allowed values for {label}.",
-                        })
+                        issues.append(
+                            {
+                                "severity": "error",
+                                "entity_type": entity_type,
+                                "rule_id": f"{path}.invalid_value",
+                                "path": path,
+                                "field_label": label,
+                                "ui_section": sec_label,
+                                "message": f"'{value}' is not a valid value for {label}. Allowed: {', '.join(allowed[:10])}{'...' if len(allowed) > 10 else ''}",
+                                "suggested_fix": f"Select one of the allowed values for {label}.",
+                            }
+                        )
 
         for constraint in rules.get("constraints", []):
             ctype = constraint.get("type")
@@ -146,19 +180,28 @@ class NERISValidator:
                         a_dt = datetime.fromisoformat(a_val.replace("Z", "+00:00"))
                         b_dt = datetime.fromisoformat(b_val.replace("Z", "+00:00"))
                         violated = False
-                        if op == ">=" and not (a_dt >= b_dt) or op == "<=" and not (a_dt <= b_dt) or op == ">" and not (a_dt > b_dt):
+                        if (
+                            op == ">="
+                            and not (a_dt >= b_dt)
+                            or op == "<="
+                            and not (a_dt <= b_dt)
+                            or op == ">"
+                            and not (a_dt > b_dt)
+                        ):
                             violated = True
                         if violated:
-                            issues.append({
-                                "severity": severity,
-                                "entity_type": entity_type,
-                                "rule_id": rule_id,
-                                "path": a_path,
-                                "field_label": a_path,
-                                "ui_section": "Incident Basics",
-                                "message": message,
-                                "suggested_fix": "Check the time fields.",
-                            })
+                            issues.append(
+                                {
+                                    "severity": severity,
+                                    "entity_type": entity_type,
+                                    "rule_id": rule_id,
+                                    "path": a_path,
+                                    "field_label": a_path,
+                                    "ui_section": "Incident Basics",
+                                    "message": message,
+                                    "suggested_fix": "Check the time fields.",
+                                }
+                            )
                     except Exception:
                         pass
 
