@@ -87,18 +87,16 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
-          DEFAULT_DESIRED_COUNT="${CFN_DESIRED_COUNT_DEFAULT}"
-          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-$DEFAULT_DESIRED_COUNT}"
+          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-$CFN_DESIRED_COUNT_DEFAULT}"
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query 'Stacks[0].StackStatus' \
             --output text >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "final_desired_count=${FINAL_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "final_desired_count=${FINAL_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
           fi
+          echo "final_desired_count=${FINAL_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
 
       - name: Create initial stack deployment
         if: steps.stack_check.outputs.exists != 'true'
