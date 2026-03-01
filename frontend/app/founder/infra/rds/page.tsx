@@ -21,7 +21,11 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
   const colors = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
-      style={{ borderColor: `${colors[status]}40`, color: colors[status], background: `${colors[status]}12` }}>
+      style={{
+        borderColor: `color-mix(in srgb, ${colors[status]} 25%, transparent)`,
+        color: colors[status],
+        background: `color-mix(in srgb, ${colors[status]} 7%, transparent)`,
+      }}>
       <span className="w-1 h-1 rounded-full" style={{ background: colors[status] }} />
       {label}
     </span>

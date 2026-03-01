@@ -33,7 +33,7 @@ const PAYERS = [
 
 const AR_AGING = [
   { bucket: '0–30 days', amount: 284500, pct: 52, color: 'var(--color-status-active)' },
-  { bucket: '31–60 days', amount: 118200, pct: 22, color: 'var(--color-status-active)' },
+  { bucket: '31–60 days', amount: 118200, pct: 22, color: 'color-mix(in srgb, var(--color-status-active) 70%, var(--color-status-warning))' },
   { bucket: '61–90 days', amount: 76400, pct: 14, color: 'var(--color-status-warning)' },
   { bucket: '91–120 days', amount: 43800, pct: 8, color: 'var(--color-brand-orange-bright)' },
   { bucket: '120+ days', amount: 21600, pct: 4, color: 'var(--color-brand-red)' },

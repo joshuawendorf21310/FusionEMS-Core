@@ -483,7 +483,7 @@ export default function FounderCopilotPage() {
                 style={{
                   background: `color-mix(in srgb, ${STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)'} 13%, transparent)`,
                   color: STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)',
-                  border: `1px solid ${STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)'}44`,
+                    border: `1px solid color-mix(in srgb, ${STATUS_COLORS[activeRun.status] || 'var(--color-text-muted)'} 27%, transparent)`,
                 }}
               >
                 {activeRun.status}

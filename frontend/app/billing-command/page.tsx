@@ -46,7 +46,7 @@ export default function BillingCommandPage() {
   const fmtNum = (v: unknown) => typeof v === "number" ? v.toLocaleString() : (v != null ? String(v) : "—");
 
   const healthStatus = String(health.status ?? "");
-  const healthColor = healthStatus === "excellent" ? "var(--color-status-active)" : healthStatus === "good" ? "var(--color-status-active)" : healthStatus === "fair" ? "var(--color-status-warning)" : "var(--color-brand-red)";
+  const healthColor = healthStatus === "excellent" ? "var(--color-status-active)" : healthStatus === "good" ? "color-mix(in srgb, var(--color-status-active) 70%, var(--color-status-warning))" : healthStatus === "fair" ? "var(--color-status-warning)" : "var(--color-brand-red)";
 
   const FEATURES = [
     "Global revenue dashboard","Clean claim monitor","Denial heatmap","AR aging analysis",

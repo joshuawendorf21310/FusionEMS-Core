@@ -11,7 +11,7 @@ RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json ./
 
 # Deterministic install
-RUN npm ci --omit=dev
+RUN npm ci
 
 
 # ==========================================
