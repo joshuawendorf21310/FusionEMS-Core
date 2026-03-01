@@ -14,6 +14,7 @@
    - CFN_DOMAIN_NAME (e.g. api.example.com)
    - CFN_HOSTED_ZONE_ID
    - CFN_ACM_CERT_ARN_US_EAST_1
+   - CFN_DESIRED_COUNT (optional, defaults to 2 tasks if unset)
 
 2. Push to `main`. The workflow builds/pushes the Docker image and deploys `infra/cloudformation/root.yml`.
 

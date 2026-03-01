@@ -26,6 +26,7 @@ jobs:
       CFN_HOSTED_ZONE_ID: ${{ vars.CFN_HOSTED_ZONE_ID }}
       CFN_ARTIFACTS_BUCKET: ${{ vars.CFN_ARTIFACTS_BUCKET }}
       CFN_ALERT_EMAIL: ${{ vars.CFN_ALERT_EMAIL }}
+      CFN_DESIRED_COUNT: ${{ vars.CFN_DESIRED_COUNT }}
 
     steps:
       - uses: actions/checkout@v4
@@ -65,6 +66,80 @@ jobs:
             echo "Validating $template..."
             aws cloudformation validate-template --template-body "file://$template"
           done
+
+      # ======================================================
+      # PACKAGE TEMPLATE
+      # ======================================================
+      - name: Package CloudFormation
+        run: |
+          set -euo pipefail
+          aws cloudformation package \
+            --template-file infra/cloudformation/root.yml \
+            --s3-bucket "${CFN_ARTIFACTS_BUCKET}" \
+            --s3-prefix "cfn/${GITHUB_SHA:0:8}" \
+            --output-template-file packaged.root.yml
+
+      # ======================================================
+      # ENSURE STACK EXISTS (BOOTSTRAP ECR OUTPUTS)
+      # ======================================================
+      - name: Check stack
+        id: stack_check
+        run: |
+          set -euo pipefail
+          # Default to 2 tasks if no desired count override is provided.
+          DEFAULT_DESIRED_COUNT=2
+          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-$DEFAULT_DESIRED_COUNT}"
+          if aws cloudformation describe-stacks \
+            --stack-name "${CFN_STACK_NAME}" \
+            --query 'Stacks[0].StackStatus' \
+            --output text >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "final_desired_count=${FINAL_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve alert email
+        id: alert_email
+        run: |
+          set -euo pipefail
+          if [ -n "${CFN_ALERT_EMAIL:-}" ]; then
+            echo "value=${CFN_ALERT_EMAIL}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create initial stack deployment
+        if: steps.stack_check.outputs.exists != 'true'
+        env:
+          ALERT_EMAIL: ${{ steps.alert_email.outputs.value }}
+        run: |
+          set -euo pipefail
+
+          PARAMS=(
+            Env="${CFN_ENV}"
+            RootDomainName="${CFN_ROOT_DOMAIN_NAME}"
+            ApiDomainName="${CFN_API_DOMAIN_NAME}"
+            HostedZoneId="${CFN_HOSTED_ZONE_ID}"
+            NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
+            ImageTagFrontend="${GITHUB_SHA}"
+            ImageTagBackend="${GITHUB_SHA}"
+            # Bootstrap new stack with 0 tasks so ECR repositories exist before images are available.
+            DesiredCount=0
+          )
+
+          if [ -n "${ALERT_EMAIL}" ]; then
+            PARAMS+=(AlertEmail="${ALERT_EMAIL}")
+          fi
+
+          aws cloudformation deploy \
+            --stack-name "${CFN_STACK_NAME}" \
+            --template-file packaged.root.yml \
+            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAMS[@]}" \
+            --tags \
+              Environment="${CFN_ENV}" \
+              GitSha="${GITHUB_SHA}" \
+              DeployedAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       # ======================================================
       # RESOLVE ECR REPOS (REQUIRE STACK OUTPUTS)
@@ -130,35 +205,36 @@ jobs:
           docker push "$IMAGE"
 
       # ======================================================
-      # PACKAGE + DEPLOY
+      # DEPLOY
       # ======================================================
-      - name: Package CloudFormation
-        run: |
-          set -euo pipefail
-          aws cloudformation package \
-            --template-file infra/cloudformation/root.yml \
-            --s3-bucket "${CFN_ARTIFACTS_BUCKET}" \
-            --s3-prefix "cfn/${GITHUB_SHA:0:8}" \
-            --output-template-file packaged.root.yml
-
       - name: Deploy CloudFormation stack
+        env:
+          FINAL_DESIRED_COUNT: ${{ steps.stack_check.outputs.final_desired_count }}
+          ALERT_EMAIL: ${{ steps.alert_email.outputs.value }}
         run: |
           set -euo pipefail
+
+          PARAMS=(
+            Env="${CFN_ENV}"
+            RootDomainName="${CFN_ROOT_DOMAIN_NAME}"
+            ApiDomainName="${CFN_API_DOMAIN_NAME}"
+            HostedZoneId="${CFN_HOSTED_ZONE_ID}"
+            NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
+            ImageTagFrontend="${GITHUB_SHA}"
+            ImageTagBackend="${GITHUB_SHA}"
+            DesiredCount="${FINAL_DESIRED_COUNT}"
+          )
+
+          if [ -n "${ALERT_EMAIL}" ]; then
+            PARAMS+=(AlertEmail="${ALERT_EMAIL}")
+          fi
 
           aws cloudformation deploy \
             --stack-name "${CFN_STACK_NAME}" \
             --template-file packaged.root.yml \
             --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              Env="${CFN_ENV}" \
-              RootDomainName="${CFN_ROOT_DOMAIN_NAME}" \
-              ApiDomainName="${CFN_API_DOMAIN_NAME}" \
-              HostedZoneId="${CFN_HOSTED_ZONE_ID}" \
-              AlertEmail="${CFN_ALERT_EMAIL:-founder@fusionemsquantum.com}" \
-              NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}" \
-              ImageTagFrontend="${GITHUB_SHA}" \
-              ImageTagBackend="${GITHUB_SHA}" \
+            --parameter-overrides "${PARAMS[@]}" \
             --tags \
               Environment="${CFN_ENV}" \
               GitSha="${GITHUB_SHA}" \
