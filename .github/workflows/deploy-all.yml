@@ -1,122 +1,46 @@
-name: Deploy All (Production Orchestrator)
+name: Deploy Production
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      env:
-        description: "Environment (dev/prod)"
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - prod
-      skip_infra:
-        type: boolean
-        default: false
-      skip_bootstrap:
-        type: boolean
-        default: false
 
 permissions:
   id-token: write
   contents: read
 
-concurrency:
-  group: release-${{ inputs.env }}
-  cancel-in-progress: false
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: fusionems-core
 
 jobs:
-
-  # ==============================
-  # Infrastructure
-  # ==============================
-  deploy-infra:
-    if: ${{ inputs.skip_infra != true }}
-    uses: ./.github/workflows/deploy-infra.yml
-    with:
-      env: ${{ inputs.env }}
-    secrets: inherit
-    environment:
-      name: ${{ inputs.env }}
-
-  # ==============================
-  # Backend
-  # ==============================
-  deploy-backend:
-    needs: [deploy-infra]
-    if: >
-      ${{
-        inputs.skip_infra == true ||
-        (needs.deploy-infra.result != '' && needs.deploy-infra.result == 'success')
-      }}
-    uses: ./.github/workflows/deploy-backend.yml
-    with:
-      env: ${{ inputs.env }}
-    secrets: inherit
-    environment:
-      name: ${{ inputs.env }}
-
-  # ==============================
-  # Frontend
-  # ==============================
-  deploy-frontend:
-    needs: [deploy-backend]
-    if: ${{ needs.deploy-backend.result == 'success' }}
-    uses: ./.github/workflows/deploy-frontend.yml
-    with:
-      env: ${{ inputs.env }}
-    secrets: inherit
-    environment:
-      name: ${{ inputs.env }}
-
-  # ==============================
-  # Bootstrap
-  # ==============================
-  deploy-bootstrap:
-    needs: [deploy-frontend]
-    if: >
-      ${{
-        inputs.skip_bootstrap != true &&
-        needs.deploy-frontend.result == 'success'
-      }}
-    uses: ./.github/workflows/deploy-bootstrap.yml
-    with:
-      env: ${{ inputs.env }}
-      seed_stripe: true
-      seed_nemsis: true
-    secrets: inherit
-    environment:
-      name: ${{ inputs.env }}
-
-  # ==============================
-  # Summary
-  # ==============================
-  summary:
-    needs:
-      - deploy-infra
-      - deploy-backend
-      - deploy-frontend
-      - deploy-bootstrap
-    if: always()
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Print Summary
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::793439286972:role/fusionems-github-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy CloudFormation
         run: |
-          echo "=== Deploy All Summary ==="
-          echo "Environment: ${{ inputs.env }}"
-
-          if [ "${{ inputs.skip_infra }}" = "true" ]; then
-            echo "Infra: skipped"
-          else
-            echo "Infra: ${{ needs.deploy-infra.result }}"
-          fi
-
-          echo "Backend: ${{ needs.deploy-backend.result }}"
-          echo "Frontend: ${{ needs.deploy-frontend.result }}"
-
-          if [ "${{ inputs.skip_bootstrap }}" = "true" ]; then
-            echo "Bootstrap: skipped"
-          else
-            echo "Bootstrap: ${{ needs.deploy-bootstrap.result }}"
-          fi
+          aws cloudformation deploy \
+            --stack-name $STACK_NAME \
+            --template-file infra/cloudformation/root.yml \
+            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+            --region $AWS_REGION \
+            --parameter-overrides \
+              Env=prod \
+              AppName=fusionems-quantum \
+              RootDomainName=app.fusionemsquantum.com \
+              ApiDomainName=api.fusionemsquantum.com \
+              HostedZoneId=Z0858801IZXAHSWCPH85 \
+              ImageTagFrontend=latest \
+              ImageTagBackend=latest \
+              NestedTemplatesBucket=fusionemsquantum-cfn-artifacts-prod
