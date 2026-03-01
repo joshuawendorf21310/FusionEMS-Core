@@ -143,7 +143,7 @@ async def download_attachment(
         _raise_graph(exc)
 
 
-@router.post("/mail/send", status_code=204)
+@router.post("/mail/send", status_code=204, response_model=None)
 async def send_mail(
     body: SendMailRequest,
     current: CurrentUser = _FOUNDER,
@@ -158,7 +158,7 @@ async def send_mail(
         _raise_graph(exc)
 
 
-@router.post("/mail/{message_id}/reply", status_code=204)
+@router.post("/mail/{message_id}/reply", status_code=204, response_model=None)
 async def reply_to_message(
     message_id: str,
     body: ReplyRequest,
