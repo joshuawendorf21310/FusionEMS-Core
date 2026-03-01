@@ -91,6 +91,9 @@ Resources:
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
 
+        # ✅ FIX: compute.yml requires this parameter
+        AcmCertificateArn: !Ref AcmCertificateArnUsEast1
+
   EdgeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: ComputeStack
