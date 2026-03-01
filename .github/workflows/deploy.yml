@@ -87,10 +87,9 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
-          # Default to 2 tasks if no desired count overrides are provided.
+          # Default to 2 tasks if no desired count override is provided.
           DEFAULT_DESIRED_COUNT=2
-          # Fall back to CFN_DESIRED_COUNT_DEFAULT (or the default above) when no desired count is configured.
-          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-${CFN_DESIRED_COUNT_DEFAULT:-$DEFAULT_DESIRED_COUNT}}"
+          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-$DEFAULT_DESIRED_COUNT}"
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query 'Stacks[0].StackStatus' \
