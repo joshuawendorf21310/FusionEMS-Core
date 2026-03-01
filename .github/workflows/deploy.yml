@@ -99,12 +99,21 @@ jobs:
           fi
           echo "final_desired_count=${FINAL_DESIRED_COUNT}" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve alert email
+        id: alert_email
+        run: |
+          set -euo pipefail
+          if [ -n "${CFN_ALERT_EMAIL:-}" ]; then
+            echo "value=${CFN_ALERT_EMAIL}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create initial stack deployment
         if: steps.stack_check.outputs.exists != 'true'
+        env:
+          ALERT_EMAIL: ${{ steps.alert_email.outputs.value }}
         run: |
           set -euo pipefail
 
-          ALERT_EMAIL="${CFN_ALERT_EMAIL:-}"
           PARAMS=(
             Env="${CFN_ENV}"
             RootDomainName="${CFN_ROOT_DOMAIN_NAME}"
@@ -113,7 +122,7 @@ jobs:
             NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
             ImageTagFrontend="${GITHUB_SHA}"
             ImageTagBackend="${GITHUB_SHA}"
-            # Bootstrap initial stack with 0 tasks so ECR repositories exist before images are available.
+            # Bootstrap new stack with 0 tasks so ECR repositories exist before images are available.
             DesiredCount=0
           )
 
@@ -201,10 +210,9 @@ jobs:
       - name: Deploy CloudFormation stack
         env:
           FINAL_DESIRED_COUNT: ${{ steps.stack_check.outputs.final_desired_count }}
+          ALERT_EMAIL: ${{ steps.alert_email.outputs.value }}
         run: |
           set -euo pipefail
-
-          ALERT_EMAIL="${CFN_ALERT_EMAIL:-}"
 
           PARAMS=(
             Env="${CFN_ENV}"
