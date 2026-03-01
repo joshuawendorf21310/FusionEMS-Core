@@ -37,6 +37,8 @@ jobs:
     with:
       env: ${{ inputs.env }}
     secrets: inherit
+    environment:
+      name: ${{ inputs.env }}
 
   # ==============================
   # Backend
@@ -46,12 +48,14 @@ jobs:
     if: >
       ${{
         inputs.skip_infra == true ||
-        needs.deploy-infra.result == 'success'
+        (needs.deploy-infra.result != '' && needs.deploy-infra.result == 'success')
       }}
     uses: ./.github/workflows/deploy-backend.yml
     with:
       env: ${{ inputs.env }}
     secrets: inherit
+    environment:
+      name: ${{ inputs.env }}
 
   # ==============================
   # Frontend
@@ -63,6 +67,8 @@ jobs:
     with:
       env: ${{ inputs.env }}
     secrets: inherit
+    environment:
+      name: ${{ inputs.env }}
 
   # ==============================
   # Bootstrap
@@ -80,6 +86,8 @@ jobs:
       seed_stripe: true
       seed_nemsis: true
     secrets: inherit
+    environment:
+      name: ${{ inputs.env }}
 
   # ==============================
   # Summary
@@ -97,7 +105,18 @@ jobs:
         run: |
           echo "=== Deploy All Summary ==="
           echo "Environment: ${{ inputs.env }}"
-          echo "Infra: ${{ needs.deploy-infra.result || 'skipped' }}"
+
+          if [ "${{ inputs.skip_infra }}" = "true" ]; then
+            echo "Infra: skipped"
+          else
+            echo "Infra: ${{ needs.deploy-infra.result }}"
+          fi
+
           echo "Backend: ${{ needs.deploy-backend.result }}"
           echo "Frontend: ${{ needs.deploy-frontend.result }}"
-          echo "Bootstrap: ${{ needs.deploy-bootstrap.result || 'skipped' }}"
+
+          if [ "${{ inputs.skip_bootstrap }}" = "true" ]; then
+            echo "Bootstrap: skipped"
+          else
+            echo "Bootstrap: ${{ needs.deploy-bootstrap.result }}"
+          fi
