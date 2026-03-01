@@ -10,6 +10,11 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: fusionems-core
+  ARTIFACT_BUCKET: fusionemsquantum-cfn-artifacts-prod
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -21,24 +26,35 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::793439286972:role/fusionems-github-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate Template
+        run: |
+          aws cloudformation validate-template \
+            --template-body file://infra/cloudformation/root.yml
 
       - name: Package CloudFormation
         run: |
           aws cloudformation package \
             --template-file infra/cloudformation/root.yml \
-            --s3-bucket fusionemsquantum-cfn-artifacts-prod \
+            --s3-bucket $ARTIFACT_BUCKET \
             --output-template-file packaged.yml
 
       - name: Deploy Stack
         run: |
           aws cloudformation deploy \
             --template-file packaged.yml \
-            --stack-name fusionems-core \
+            --stack-name $STACK_NAME \
+            --region $AWS_REGION \
             --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
               Env=prod \
-              NestedTemplatesBucket=fusionemsquantum-cfn-artifacts-prod \
+              AppName=fusionems-quantum \
+              RootDomainName=app.fusionemsquantum.com \
+              ApiDomainName=api.fusionemsquantum.com \
+              HostedZoneId=Z0858801IZXAHSWCPH85 \
               ImageTagFrontend=latest \
-              ImageTagBackend=latest
+              ImageTagBackend=latest \
+              DesiredCount=2 \
+              NestedTemplatesBucket=$ARTIFACT_BUCKET
