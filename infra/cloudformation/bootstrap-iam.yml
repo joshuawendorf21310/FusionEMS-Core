@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Bootstrap IAM Stack (GitHub OIDC + Deploy Role)
+Description: FusionEMS Quantum - Bootstrap IAM Stack (GitHub Deploy Role)
 
 Parameters:
   GitHubOrg:
@@ -19,22 +19,7 @@ Parameters:
 
 Resources:
 
-# ─────────────────────────────────────────────────────────────
-# GitHub OIDC Provider
-# ─────────────────────────────────────────────────────────────
-
-  GitHubOidcProvider:
-    Type: AWS::IAM::OIDCProvider
-    Properties:
-      Url: https://token.actions.githubusercontent.com
-      ClientIdList:
-        - sts.amazonaws.com
-      ThumbprintList:
-        - 6938fd4d98bab03faadb97b34396831e3780aea1
-
-# ─────────────────────────────────────────────────────────────
-# GitHub Deploy Role (Least Privilege)
-# ─────────────────────────────────────────────────────────────
+# ================= GITHUB DEPLOY ROLE =================
 
   GitHubActionsDeployRole:
     Type: AWS::IAM::Role
@@ -46,7 +31,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Federated: !Ref GitHubOidcProvider
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
             Action:
               - sts:AssumeRoleWithWebIdentity
               - sts:TagSession
@@ -59,82 +44,11 @@ Resources:
                   - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/prod'
                   - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/tags/*'
 
-      Policies:
+      ManagedPolicyArns:
+        # Founder production mode — full admin
+        - arn:aws:iam::aws:policy/AdministratorAccess
 
-        # CloudFormation deployment permissions
-        - PolicyName: CloudFormationDeploy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudformation:CreateStack
-                  - cloudformation:UpdateStack
-                  - cloudformation:DeleteStack
-                  - cloudformation:DescribeStacks
-                  - cloudformation:DescribeStackEvents
-                  - cloudformation:GetTemplate
-                  - cloudformation:ValidateTemplate
-                  - cloudformation:CreateChangeSet
-                  - cloudformation:ExecuteChangeSet
-                  - cloudformation:DeleteChangeSet
-                  - cloudformation:DescribeChangeSet
-                Resource: '*'
-
-        # IAM management for stack-created roles only
-        - PolicyName: IAMForStackManagedRoles
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - iam:CreateRole
-                  - iam:DeleteRole
-                  - iam:GetRole
-                  - iam:UpdateRole
-                  - iam:UpdateAssumeRolePolicy
-                  - iam:PutRolePolicy
-                  - iam:DeleteRolePolicy
-                  - iam:AttachRolePolicy
-                  - iam:DetachRolePolicy
-                  - iam:TagRole
-                  - iam:UntagRole
-                  - iam:PassRole
-                Resource:
-                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/fusionems-*'
-                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/FusionEMS*'
-
-        # S3 access for artifact uploads
-        - PolicyName: ArtifactBucketAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:GetObject
-                  - s3:DeleteObject
-                Resource: !Sub 'arn:aws:s3:::${ArtifactsBucket}/*'
-
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                Resource: !Sub 'arn:aws:s3:::${ArtifactsBucket}'
-
-        # Tagging permissions
-        - PolicyName: TaggingAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - tag:TagResources
-                  - tag:UntagResources
-                Resource: '*'
-
-# ─────────────────────────────────────────────────────────────
-# Artifact Bucket (Secure)
-# ─────────────────────────────────────────────────────────────
+# ================= ARTIFACT BUCKET =================
 
   ArtifactsBucketResource:
     Type: AWS::S3::Bucket
@@ -173,14 +87,9 @@ Resources:
                 aws:SecureTransport: false
 
 Outputs:
-
   DeployRoleArn:
     Value: !GetAtt GitHubActionsDeployRole.Arn
     Description: Set as AWS_ROLE_TO_ASSUME in GitHub Secrets
 
-  OidcProviderArn:
-    Value: !Ref GitHubOidcProvider
-
   ArtifactsBucketName:
     Value: !Ref ArtifactsBucketResource
-    Description: Set as CFN_ARTIFACTS_BUCKET in GitHub
