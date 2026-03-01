@@ -29,10 +29,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify AWS role ARN is configured
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_ARN || vars.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "::error::No AWS role ARN is configured. Set one of: secrets.AWS_ROLE_TO_ASSUME, secrets.AWS_ROLE_ARN, vars.AWS_ROLE_TO_ASSUME, or vars.AWS_ROLE_ARN."
+            exit 1
+          fi
+          echo "AWS role ARN is configured (value hidden)."
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_ARN || vars.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: fusionems-core-deploy
 
