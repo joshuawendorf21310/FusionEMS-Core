@@ -87,8 +87,10 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
-          # Fall back to CFN_DESIRED_COUNT_DEFAULT (or 2 tasks if unset) when no desired count is configured.
-          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-${CFN_DESIRED_COUNT_DEFAULT:-2}}"
+          # Default to 2 tasks if no desired count overrides are provided.
+          DEFAULT_DESIRED_COUNT=2
+          # Fall back to CFN_DESIRED_COUNT_DEFAULT (or the default above) when no desired count is configured.
+          FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-${CFN_DESIRED_COUNT_DEFAULT:-$DEFAULT_DESIRED_COUNT}}"
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
             --query 'Stacks[0].StackStatus' \
@@ -113,7 +115,7 @@ jobs:
             NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
             ImageTagFrontend="${GITHUB_SHA}"
             ImageTagBackend="${GITHUB_SHA}"
-            # Bootstrap initial stack with 0 tasks so ECS services wait until the follow-up deployment.
+            # Bootstrap initial stack with 0 tasks so ECR repositories exist before images are available.
             DesiredCount=0
           )
 
