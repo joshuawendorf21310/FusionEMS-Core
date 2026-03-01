@@ -27,7 +27,7 @@ jobs:
       CFN_ARTIFACTS_BUCKET: ${{ vars.CFN_ARTIFACTS_BUCKET }}
       CFN_ALERT_EMAIL: ${{ vars.CFN_ALERT_EMAIL }}
       CFN_DESIRED_COUNT: ${{ vars.CFN_DESIRED_COUNT }}
-      CFN_DESIRED_COUNT_DEFAULT: ${{ vars.CFN_DESIRED_COUNT_DEFAULT }}
+      CFN_DESIRED_COUNT_DEFAULT: 2
 
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +87,7 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
-          DEFAULT_DESIRED_COUNT="${CFN_DESIRED_COUNT_DEFAULT:-2}"
+          DEFAULT_DESIRED_COUNT="${CFN_DESIRED_COUNT_DEFAULT}"
           FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-$DEFAULT_DESIRED_COUNT}"
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
@@ -214,14 +214,11 @@ jobs:
             NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
             ImageTagFrontend="${GITHUB_SHA}"
             ImageTagBackend="${GITHUB_SHA}"
+            DesiredCount="${FINAL_DESIRED_COUNT}"
           )
 
           if [ -n "${ALERT_EMAIL}" ]; then
             PARAMS+=(AlertEmail="${ALERT_EMAIL}")
-          fi
-
-          if [ -n "${FINAL_DESIRED_COUNT}" ]; then
-            PARAMS+=(DesiredCount="${FINAL_DESIRED_COUNT}")
           fi
 
           aws cloudformation deploy \
