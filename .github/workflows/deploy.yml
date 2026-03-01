@@ -87,7 +87,7 @@ jobs:
         id: stack_check
         run: |
           set -euo pipefail
-          # Fallback to 2 replicas when no desired count is configured.
+          # Fallback to CFN_DESIRED_COUNT_DEFAULT (or 2 if unset) when no desired count is configured.
           FINAL_DESIRED_COUNT="${CFN_DESIRED_COUNT:-${CFN_DESIRED_COUNT_DEFAULT:-2}}"
           if aws cloudformation describe-stacks \
             --stack-name "${CFN_STACK_NAME}" \
@@ -113,7 +113,7 @@ jobs:
             NestedTemplatesBucket="${CFN_ARTIFACTS_BUCKET}"
             ImageTagFrontend="${GITHUB_SHA}"
             ImageTagBackend="${GITHUB_SHA}"
-            # Bootstrap with 0 tasks so ECR repos exist before images are pushed.
+            # Bootstrap with 0 tasks so ECR repositories exist before images are pushed.
             DesiredCount=0
           )
 
