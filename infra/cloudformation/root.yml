@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Root Nested Stack (Enterprise Production-Ready, Packaged + Ordered)
+Description: FusionEMS Quantum - Root Nested Stack (Enterprise Production-Ready, Ordered + Packaged Safe)
 
 Parameters:
   Env:
@@ -21,7 +21,6 @@ Parameters:
 
   HostedZoneId:
     Type: String
-    Description: Route53 Hosted Zone ID
     Default: Z0858801IZXAHSWCPH85
 
   ImageTagFrontend:
@@ -53,7 +52,6 @@ Parameters:
 
   NestedTemplatesBucket:
     Type: String
-    Description: S3 bucket where packaged nested templates are stored
 
   GraphTenantId:
     Type: String
@@ -77,14 +75,12 @@ Conditions:
 
 Resources:
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # ACM (us-east-1 for CloudFront)
-  # ────────────────────────────────────────────────────────────────────────────
+  # ================= ACM =================
 
   AcmStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/acm.yml'
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/acm.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -92,37 +88,29 @@ Resources:
         ApiDomainName: !Ref ApiDomainName
         HostedZoneId: !Ref HostedZoneId
       Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        - { Key: Environment, Value: !Ref Env }
+        - { Key: Application, Value: !Ref AppName }
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # Network
-  # ────────────────────────────────────────────────────────────────────────────
+  # ================= Network =================
 
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/network.yml'
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/network.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
       Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        - { Key: Environment, Value: !Ref Env }
+        - { Key: Application, Value: !Ref AppName }
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # Data (RDS + Redis + Secrets)
-  # ────────────────────────────────────────────────────────────────────────────
+  # ================= Data =================
 
   DataStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/data.yml'
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/data.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -137,70 +125,32 @@ Resources:
         GraphClientSecret: !Ref GraphClientSecret
         GraphFounderEmail: !Ref GraphFounderEmail
       Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        - { Key: Environment, Value: !Ref Env }
+        - { Key: Application, Value: !Ref AppName }
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # Cognito
-  # ────────────────────────────────────────────────────────────────────────────
+  # ================= Cognito =================
 
   CognitoStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/cognito.yml'
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/cognito.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
       Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        - { Key: Environment, Value: !Ref Env }
+        - { Key: Application, Value: !Ref AppName }
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # S3 Buckets
-  # ────────────────────────────────────────────────────────────────────────────
-
-  S3Stack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/s3.yml'
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # WAF
-  # ────────────────────────────────────────────────────────────────────────────
-
-  WafStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/waf.yml'
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Billing / Queues
-  # ────────────────────────────────────────────────────────────────────────────
+  # ================= Billing =================
 
   BillingStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: DataStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/billing.yml'
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/billing.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -209,24 +159,18 @@ Resources:
         LambdaSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
         LambdaCodeS3Bucket: !Ref NestedTemplatesBucket
       Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        - { Key: Environment, Value: !Ref Env }
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # Compute (ECS + ALB)
-  # ────────────────────────────────────────────────────────────────────────────
+  # ================= Compute =================
 
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - DataStack
       - CognitoStack
-      - WafStack
       - BillingStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/compute.yml'
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/compute.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -244,45 +188,19 @@ Resources:
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
         AcmCertificateArn: !GetAtt AcmStack.Outputs.CertificateArn
-        FaxClassifyQueueUrl: !GetAtt BillingStack.Outputs.FaxClassifyQueueUrl
-        FaxMatchQueueUrl: !GetAtt BillingStack.Outputs.FaxMatchQueueUrl
-        SupportAIQueueUrl: !GetAtt BillingStack.Outputs.SupportAIQueueUrl
-        EdiGenerateQueueUrl: !GetAtt BillingStack.Outputs.EdiGenerateQueueUrl
-        PdfDocKitQueueUrl: !GetAtt BillingStack.Outputs.PdfDocKitQueueUrl
-        PdfClaimPacketQueueUrl: !GetAtt BillingStack.Outputs.PdfClaimPacketQueueUrl
-        LegalPdfQueueUrl: !GetAtt BillingStack.Outputs.LegalPdfQueueUrl
-        NERISPackImportQueueUrl: !GetAtt BillingStack.Outputs.NERISPackImportQueueUrl
-        NERISPackCompileQueueUrl: !GetAtt BillingStack.Outputs.NERISPackCompileQueueUrl
-        NERISExportQueueUrl: !GetAtt BillingStack.Outputs.NERISExportQueueUrl
-        S3BucketDocs: !GetAtt S3Stack.Outputs.DocsBucketName
-        S3BucketExports: !GetAtt S3Stack.Outputs.ExportsBucketName
-        GraphTenantId: !Ref GraphTenantId
-        GraphClientId: !Ref GraphClientId
-        GraphClientSecret: !Ref GraphClientSecret
-        GraphFounderEmail: !Ref GraphFounderEmail
       Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        - { Key: Environment, Value: !Ref Env }
+        - { Key: Application, Value: !Ref AppName }
 
-  # Associate WAF with ALB
-  WafAlbAssociation:
-    Type: AWS::WAFv2::WebACLAssociation
-    DependsOn: ComputeStack
-    Properties:
-      ResourceArn: !GetAtt ComputeStack.Outputs.AlbArn
-      WebACLArn: !GetAtt WafStack.Outputs.WebAclArn
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Edge (CloudFront + Route53)
-  # ────────────────────────────────────────────────────────────────────────────
+  # ================= Edge =================
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: ComputeStack
+    DependsOn:
+      - ComputeStack
+      - AcmStack
     Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/edge.yml'
+      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.amazonaws.com/edge.yml'
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -292,68 +210,17 @@ Resources:
         AcmCertificateArnUsEast1: !GetAtt AcmStack.Outputs.CertificateArn
         AlbDnsName: !GetAtt ComputeStack.Outputs.AlbDnsName
       Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Observability
-  # ────────────────────────────────────────────────────────────────────────────
-
-  ObservabilityStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - ComputeStack
-      - DataStack
-    Properties:
-      TemplateURL: !Sub 'https://${NestedTemplatesBucket}.s3.${AWS::Region}.amazonaws.com/observability.yml'
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        AlertEmail: !Ref AlertEmail
-        EcsClusterName: !GetAtt ComputeStack.Outputs.ClusterName
-        BackendServiceName: !GetAtt ComputeStack.Outputs.BackendServiceName
-        AlbFullName: !GetAtt ComputeStack.Outputs.AlbFullName
-        BackendTargetGroupFullName: !GetAtt ComputeStack.Outputs.BackendTargetGroupFullName
-        DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId
-        RedisClusterId: !GetAtt DataStack.Outputs.RedisReplicationGroupId
-        RootDomainName: !Ref RootDomainName
-        ApiDomainName: !Ref ApiDomainName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        - { Key: Environment, Value: !Ref Env }
 
 Outputs:
-  RootDomainName:
-    Value: !Ref RootDomainName
-
-  ApiDomainName:
-    Value: !Ref ApiDomainName
-
   CloudFrontDomain:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDomain
 
   CloudFrontDistributionId:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDistributionId
 
-  AcmCertificateArn:
-    Description: ACM certificate ARN (CloudFront)
-    Value: !GetAtt AcmStack.Outputs.CertificateArn
-
   BackendEcrRepoUri:
     Value: !GetAtt ComputeStack.Outputs.BackendEcrRepoUri
 
   FrontendEcrRepoUri:
     Value: !GetAtt ComputeStack.Outputs.FrontendEcrRepoUri
-
-  CognitoUserPoolId:
-    Value: !GetAtt CognitoStack.Outputs.UserPoolId
-
-  CognitoUserPoolClientId:
-    Value: !GetAtt CognitoStack.Outputs.UserPoolClientId
-
-  AlertTopicArn:
-    Value: !GetAtt ObservabilityStack.Outputs.AlertTopicArn
