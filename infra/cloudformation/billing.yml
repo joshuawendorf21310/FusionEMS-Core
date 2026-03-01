@@ -1,76 +1,36 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  FusionEMS Quantum — Billing Integration Stack (Production Hardened)
-  DynamoDB, SQS FIFO tuned, Lambda workers, Stripe webhook provisioner,
-  full encryption, concurrency control, alarms.
+Description: FusionEMS Quantum - Billing Stack (Production Safe)
 
 Parameters:
-
   AppName:
     Type: String
     Default: fusionems
-
   Env:
     Type: String
     AllowedValues: [dev, staging, prod]
-
   AppSecretsArn:
     Type: String
-    Description: ARN of secret containing stripe_secret_key, lob_api_key, etc.
-
   LambdaSubnets:
     Type: String
-    Description: Comma-separated private subnet IDs
-
   LambdaSecurityGroupId:
     Type: String
-
   ApiGatewayWebhookUrl:
     Type: String
-    Default: https://api.fusionemsquantum.com/webhooks/stripe
-
   LambdaCodeS3Bucket:
     Type: String
-
   WorkersCodeS3Key:
     Type: String
     Default: workers/billing_workers.zip
-
   StripeProvisionerCodeS3Key:
     Type: String
     Default: stripe/webhook_provisioner.zip
 
 Conditions:
-  IsProd: !Equals [!Ref Env, prod]
+  IsProd: !Equals [!Ref Env, 'prod']
 
 Resources:
 
-# ─────────────────────────────────────────────────────────────
-# DynamoDB
-# ─────────────────────────────────────────────────────────────
-
-  LobEventsTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      TableName: !Sub '${AppName}-${Env}-lob-events'
-      BillingMode: PAY_PER_REQUEST
-      DeletionProtectionEnabled: !If [IsProd, true, false]
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      SSESpecification:
-        SSEEnabled: true
-        SSEType: KMS
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
-      AttributeDefinitions:
-        - AttributeName: event_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: event_id
-          KeyType: HASH
+# ================= DynamoDB =================
 
   StripeEventsTable:
     Type: AWS::DynamoDB::Table
@@ -84,10 +44,6 @@ Resources:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
-        SSEType: KMS
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
       AttributeDefinitions:
         - AttributeName: event_id
           AttributeType: S
@@ -95,16 +51,14 @@ Resources:
         - AttributeName: event_id
           KeyType: HASH
 
-# ─────────────────────────────────────────────────────────────
-# SQS FIFO (Tuned)
-# ─────────────────────────────────────────────────────────────
+# ================= SQS =================
 
   StripeEventsDLQ:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub '${AppName}-${Env}-stripe-events-dlq.fifo'
       FifoQueue: true
-      MessageRetentionPeriod: 1209600
+      ContentBasedDeduplication: true
       KmsMasterKeyId: alias/aws/sqs
 
   StripeEventsQueue:
@@ -112,8 +66,7 @@ Resources:
     Properties:
       QueueName: !Sub '${AppName}-${Env}-stripe-events.fifo'
       FifoQueue: true
-      DeduplicationScope: messageGroup
-      FifoThroughputLimit: perMessageGroupId
+      ContentBasedDeduplication: true
       ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 300
       KmsMasterKeyId: alias/aws/sqs
@@ -121,14 +74,11 @@ Resources:
         deadLetterTargetArn: !GetAtt StripeEventsDLQ.Arn
         maxReceiveCount: 3
 
-# ─────────────────────────────────────────────────────────────
-# IAM Role
-# ─────────────────────────────────────────────────────────────
+# ================= Worker Role =================
 
   WorkerLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${AppName}-${Env}-worker-lambda-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -138,6 +88,7 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: WorkerPolicy
           PolicyDocument:
@@ -145,33 +96,32 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:*
-                Resource: "*"
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt StripeEventsTable.Arn
               - Effect: Allow
                 Action:
-                  - sqs:*
-                Resource: "*"
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt StripeEventsQueue.Arn
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref AppSecretsArn
 
-# ─────────────────────────────────────────────────────────────
-# Stripe Worker
-# ─────────────────────────────────────────────────────────────
+# ================= Stripe Worker =================
 
   StripeWorkerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AppName}-${Env}-stripe-worker'
       Runtime: python3.12
       Handler: core_app.workers.stripe_worker.lambda_handler
       Role: !GetAtt WorkerLambdaRole.Arn
       Timeout: 120
       MemorySize: 512
-      ReservedConcurrentExecutions: 50
-      TracingConfig:
-        Mode: Active
+      ReservedConcurrentExecutions: !If [IsProd, 50, 5]
       Code:
         S3Bucket: !Ref LambdaCodeS3Bucket
         S3Key: !Ref WorkersCodeS3Key
@@ -194,21 +144,7 @@ Resources:
       FunctionResponseTypes:
         - ReportBatchItemFailures
 
-# ─────────────────────────────────────────────────────────────
-# Stripe Webhook Secret (Protected)
-# ─────────────────────────────────────────────────────────────
-
-  StripeWebhookSecret:
-    Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      Name: !Sub '${AppName}/${Env}/StripeWebhook'
-      SecretString: '{"endpoint_id":"","signing_secret":""}'
-
-# ─────────────────────────────────────────────────────────────
-# Stripe Provisioner Lambda (S3 Packaged)
-# ─────────────────────────────────────────────────────────────
+# ================= Stripe Provisioner =================
 
   StripeProvisionerRole:
     Type: AWS::IAM::Role
@@ -220,6 +156,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: StripeProvisionerPolicy
           PolicyDocument:
@@ -229,14 +167,11 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                   - secretsmanager:PutSecretValue
-                Resource:
-                  - !Ref AppSecretsArn
-                  - !Ref StripeWebhookSecret
+                Resource: "*"
 
   StripeWebhookProvisionerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AppName}-${Env}-stripe-webhook-provisioner'
       Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt StripeProvisionerRole.Arn
@@ -250,53 +185,15 @@ Resources:
 
   StripeWebhookEndpoint:
     Type: Custom::StripeWebhookEndpoint
+    DependsOn: StripeWebhookProvisionerFunction
     Properties:
       ServiceToken: !GetAtt StripeWebhookProvisionerFunction.Arn
       AppSecretsArn: !Ref AppSecretsArn
       WebhookUrl: !Ref ApiGatewayWebhookUrl
-      WebhookSecretArn: !Ref StripeWebhookSecret
-
-# ─────────────────────────────────────────────────────────────
-# Alarms
-# ─────────────────────────────────────────────────────────────
-
-  StripeWorkerErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-stripe-worker-errors'
-      Namespace: AWS/Lambda
-      MetricName: Errors
-      Dimensions:
-        - Name: FunctionName
-          Value: !Ref StripeWorkerFunction
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-
-  StripeQueueAgeAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AppName}-${Env}-stripe-queue-age'
-      Namespace: AWS/SQS
-      MetricName: ApproximateAgeOfOldestMessage
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt StripeEventsQueue.QueueName
-      Statistic: Maximum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 600
-      ComparisonOperator: GreaterThanThreshold
 
 Outputs:
-
   StripeEventsQueueUrl:
     Value: !Ref StripeEventsQueue
-
-  StripeWebhookSecretArn:
-    Value: !Ref StripeWebhookSecret
 
   StripeWorkerFunctionName:
     Value: !Ref StripeWorkerFunction
