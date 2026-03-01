@@ -76,23 +76,18 @@ Conditions:
 Resources:
 
   # ================= ACM =================
-
   AcmStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: network.yml:
+      TemplateURL: acm.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
         HostedZoneId: !Ref HostedZoneId
-      Tags:
-        - { Key: Environment, Value: !Ref Env }
-        - { Key: Application, Value: !Ref AppName }
 
   # ================= Network =================
-
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -100,17 +95,13 @@ Resources:
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
-      Tags:
-        - { Key: Environment, Value: !Ref Env }
-        - { Key: Application, Value: !Ref AppName }
 
   # ================= Data =================
-
   DataStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-    TemplateURL: network.yml
+      TemplateURL: data.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -124,45 +115,33 @@ Resources:
         GraphClientId: !Ref GraphClientId
         GraphClientSecret: !Ref GraphClientSecret
         GraphFounderEmail: !Ref GraphFounderEmail
-      Tags:
-        - { Key: Environment, Value: !Ref Env }
-        - { Key: Application, Value: !Ref AppName }
 
   # ================= Cognito =================
-
   CognitoStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: network.yml
+      TemplateURL: cognito.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
-      Tags:
-        - { Key: Environment, Value: !Ref Env }
-        - { Key: Application, Value: !Ref AppName }
 
   # ================= Billing =================
-
   BillingStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: DataStack
     Properties:
-      TemplateURL: network.yml
+      TemplateURL: billing.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
         AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
         LambdaSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
         LambdaSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-        LambdaCodeS3Bucket: !Ref NestedTemplatesBucket
-      Tags:
-        - { Key: Environment, Value: !Ref Env }
 
   # ================= Compute =================
-
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
@@ -170,7 +149,7 @@ Resources:
       - CognitoStack
       - BillingStack
     Properties:
-      TemplateURL: network.yml
+      TemplateURL: compute.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -188,19 +167,15 @@ Resources:
         CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
         CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
         AcmCertificateArn: !GetAtt AcmStack.Outputs.CertificateArn
-      Tags:
-        - { Key: Environment, Value: !Ref Env }
-        - { Key: Application, Value: !Ref AppName }
 
   # ================= Edge =================
-
   EdgeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - ComputeStack
       - AcmStack
     Properties:
-      TemplateURL: network.yml
+      TemplateURL: edge.yml
       Parameters:
         Env: !Ref Env
         AppName: !Ref AppName
@@ -209,8 +184,6 @@ Resources:
         HostedZoneId: !Ref HostedZoneId
         AcmCertificateArnUsEast1: !GetAtt AcmStack.Outputs.CertificateArn
         AlbDnsName: !GetAtt ComputeStack.Outputs.AlbDnsName
-      Tags:
-        - { Key: Environment, Value: !Ref Env }
 
 Outputs:
   CloudFrontDomain:
