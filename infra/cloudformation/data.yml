@@ -4,18 +4,37 @@ Description: FusionEMS Quantum - Enterprise Data Stack (Production Safe)
 Parameters:
   AppName:
     Type: String
+
   Env:
     Type: String
+
   DbInstanceClass:
     Type: String
     Default: db.t4g.large
+
+  # ✅ FIX: Make username configurable and default to a non-reserved value
+  DbMasterUsername:
+    Type: String
+    Default: fusionems_admin
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9_]{0,15}$'
+    Description: RDS master username (must not be a reserved word, start with letter, max 16 chars)
+
+  DbName:
+    Type: String
+    Default: fusionems_quantum
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9_]{0,62}$'
+    Description: Initial database name
+
   RedisNodeType:
     Type: String
     Default: cache.t4g.medium
+
   VpcId:
     Type: String
+
   PrivateSubnets:
     Type: String
+
   EcsServiceSecurityGroupId:
     Type: String
 
@@ -67,7 +86,8 @@ Resources:
       Name: !Sub '${AppName}/${Env}/DB'
       KmsKeyId: !Ref DataKmsKey
       GenerateSecretString:
-        SecretStringTemplate: '{"username":"fusion","dbname":"fusionems_quantum"}'
+        # ✅ FIX: username is no longer "fusion"
+        SecretStringTemplate: !Sub '{"username":"${DbMasterUsername}","dbname":"${DbName}"}'
         GenerateStringKey: password
         PasswordLength: 40
         ExcludePunctuation: true
@@ -121,6 +141,8 @@ Resources:
         - !Ref DbSecurityGroup
       EnablePerformanceInsights: true
       PerformanceInsightsKMSKeyId: !Ref DataKmsKey
+
+      # Reads username/password/dbname from the secret
       MasterUsername: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:password}}'
       DBName: !Sub '{{resolve:secretsmanager:${DbSecret}:SecretString:dbname}}'
