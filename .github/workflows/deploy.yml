@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Python dev dependencies
         run: |
-          pip install ./backend -q
+          pip install -r backend/requirements.txt -q
           pip install -r backend/requirements-dev.txt -q
 
       - name: Ruff lint (0 errors gate)
