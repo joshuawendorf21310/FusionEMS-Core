@@ -22,10 +22,9 @@ jobs:
       ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME || 'app.fusionemsquantum.com' }}
       API_DOMAIN_NAME: ${{ vars.CFN_API_DOMAIN_NAME || vars.CFN_DOMAIN_NAME || 'api.fusionemsquantum.com' }}
       ACM_CERT_ARN_US_EAST_1: ${{ vars.CFN_ACM_CERT_ARN_US_EAST_1 }}
-      IMAGE_TAG_FRONTEND: ${{ vars.IMAGE_TAG_FRONTEND || 'latest' }}
-      IMAGE_TAG_BACKEND: ${{ vars.IMAGE_TAG_BACKEND || 'latest' }}
 
       TEMPLATE_FILE: infra/cloudformation/root.yml
+      IMAGE_TAG: ${{ github.sha }}
 
     steps:
       - name: Checkout repository
@@ -55,7 +54,7 @@ jobs:
           sam --version
           aws --version
 
-      - name: Build + Deploy (SAM if detected, else CloudFormation)
+      - name: Deploy CloudFormation infrastructure
         shell: bash
         run: |
           set -euo pipefail
@@ -72,18 +71,12 @@ jobs:
             "HostedZoneId=$HOSTED_ZONE_ID"
             "AcmCertificateArnUsEast1=$ACM_CERT_ARN_US_EAST_1"
             "NestedTemplatesBucket=$ARTIFACT_BUCKET"
-            "ImageTagFrontend=$IMAGE_TAG_FRONTEND"
-            "ImageTagBackend=$IMAGE_TAG_BACKEND"
+            "ImageTagFrontend=$IMAGE_TAG"
+            "ImageTagBackend=$IMAGE_TAG"
           )
 
-          echo "Checking whether template is SAM..."
           if grep -Eq 'Transform:\s*AWS::Serverless|AWS::Serverless::' "$TEMPLATE_FILE"; then
-            echo "SAM template detected -> using sam build + sam deploy"
-
-            # Build (creates .aws-sam/build)
             sam build --template-file "$TEMPLATE_FILE"
-
-            # Deploy (uses artifact bucket you already have)
             sam deploy \
               --template-file ".aws-sam/build/template.yaml" \
               --stack-name "$STACK_NAME" \
@@ -93,10 +86,7 @@ jobs:
               --no-fail-on-empty-changeset \
               --no-confirm-changeset \
               --parameter-overrides "${PARAMS[@]}"
-
           else
-            echo "SAM transform not detected -> using aws cloudformation package + deploy"
-
             aws cloudformation package \
               --template-file "$TEMPLATE_FILE" \
               --s3-bucket "$ARTIFACT_BUCKET" \
@@ -109,4 +99,90 @@ jobs:
               --no-fail-on-empty-changeset \
               --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
               --parameter-overrides "${PARAMS[@]}"
+          fi
+
+      - name: Get ECR repo URIs from stack outputs
+        id: ecr-uris
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKEND_REPO=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          FRONTEND_REPO=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          if [ -z "$BACKEND_REPO" ] || [ "$BACKEND_REPO" = "None" ]; then
+            AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+            BACKEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-backend"
+            FRONTEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-frontend"
+          fi
+          echo "backend_repo=$BACKEND_REPO" >> "$GITHUB_OUTPUT"
+          echo "frontend_repo=$FRONTEND_REPO" >> "$GITHUB_OUTPUT"
+          echo "Backend ECR: $BACKEND_REPO"
+          echo "Frontend ECR: $FRONTEND_REPO"
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${{ steps.ecr-uris.outputs.backend_repo }}"
+          docker build \
+            --file backend/Dockerfile \
+            --tag "$REPO:$IMAGE_TAG" \
+            --tag "$REPO:latest" \
+            backend/
+          docker push "$REPO:$IMAGE_TAG"
+          docker push "$REPO:latest"
+          echo "Pushed backend: $REPO:$IMAGE_TAG"
+
+      - name: Build and push frontend image
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${{ steps.ecr-uris.outputs.frontend_repo }}"
+          docker build \
+            --file frontend/Dockerfile \
+            --tag "$REPO:$IMAGE_TAG" \
+            --tag "$REPO:latest" \
+            --build-arg "NEXT_PUBLIC_API_BASE=https://$API_DOMAIN_NAME" \
+            --build-arg "NEXT_PUBLIC_WS_URL=wss://$API_DOMAIN_NAME/ws" \
+            --build-arg "NEXT_PUBLIC_ROOT_DOMAIN=https://$ROOT_DOMAIN_NAME" \
+            frontend/
+          docker push "$REPO:$IMAGE_TAG"
+          docker push "$REPO:latest"
+          echo "Pushed frontend: $REPO:$IMAGE_TAG"
+
+      - name: Force new ECS deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "ECS cluster not found in stack outputs — skipping service update."
+            exit 0
+          fi
+          BACKEND_SVC=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          FRONTEND_SVC=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          if [ -n "$BACKEND_SVC" ] && [ "$BACKEND_SVC" != "None" ]; then
+            aws ecs update-service --cluster "$CLUSTER" --service "$BACKEND_SVC" --force-new-deployment --no-cli-pager
+            echo "Triggered backend service update."
+          fi
+          if [ -n "$FRONTEND_SVC" ] && [ "$FRONTEND_SVC" != "None" ]; then
+            aws ecs update-service --cluster "$CLUSTER" --service "$FRONTEND_SVC" --force-new-deployment --no-cli-pager
+            echo "Triggered frontend service update."
           fi
