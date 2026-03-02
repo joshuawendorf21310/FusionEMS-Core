@@ -359,6 +359,73 @@ jobs:
 
           echo "desired_count=$DESIRED_COUNT" >> "$GITHUB_OUTPUT"
 
+      # Resolve ECR repo URIs before any docker operations.
+      # For update deploys the stack already exists so outputs are used directly.
+      # For fresh deploys the stack does not exist yet, so the fallback constructs
+      # the URI from the account ID (same naming convention as compute.yml).
+      - name: Get ECR repo URIs from stack outputs
+        id: ecr-uris
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKEND_REPO=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          FRONTEND_REPO=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          if [ -z "$BACKEND_REPO" ] || [ "$BACKEND_REPO" = "None" ]; then
+            AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+            BACKEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-backend"
+            FRONTEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-frontend"
+          fi
+          echo "backend_repo=$BACKEND_REPO" >> "$GITHUB_OUTPUT"
+          echo "frontend_repo=$FRONTEND_REPO" >> "$GITHUB_OUTPUT"
+          echo "Backend ECR: $BACKEND_REPO"
+          echo "Frontend ECR: $FRONTEND_REPO"
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # For update deploys the ECR repos already exist from the previous deploy.
+      # Push images NOW so that when CloudFormation updates the task definitions
+      # and ECS starts a rolling update, the new image tags are already present in
+      # ECR (prevents CannotPullContainerError).
+      - name: Build and push backend image
+        if: steps.pre-deploy.outputs.desired_count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${{ steps.ecr-uris.outputs.backend_repo }}"
+          docker build \
+            --file backend/Dockerfile \
+            --tag "$REPO:$IMAGE_TAG" \
+            --tag "$REPO:latest" \
+            backend/
+          docker push "$REPO:$IMAGE_TAG"
+          docker push "$REPO:latest"
+          echo "Pushed backend: $REPO:$IMAGE_TAG"
+
+      - name: Build and push frontend image
+        if: steps.pre-deploy.outputs.desired_count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${{ steps.ecr-uris.outputs.frontend_repo }}"
+          docker build \
+            --file frontend/Dockerfile \
+            --tag "$REPO:$IMAGE_TAG" \
+            --tag "$REPO:latest" \
+            --build-arg "NEXT_PUBLIC_API_BASE=https://$API_DOMAIN_NAME" \
+            --build-arg "NEXT_PUBLIC_WS_URL=wss://$API_DOMAIN_NAME/ws" \
+            --build-arg "NEXT_PUBLIC_ROOT_DOMAIN=https://$ROOT_DOMAIN_NAME" \
+            frontend/
+          docker push "$REPO:$IMAGE_TAG"
+          docker push "$REPO:latest"
+          echo "Pushed frontend: $REPO:$IMAGE_TAG"
+
       - name: Deploy CloudFormation infrastructure
         shell: bash
         run: |
@@ -438,33 +505,11 @@ jobs:
             fi
           done
 
-      - name: Get ECR repo URIs from stack outputs
-        id: ecr-uris
-        shell: bash
-        run: |
-          set -euo pipefail
-          BACKEND_REPO=$(aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" \
-            --output text 2>/dev/null || echo "")
-          FRONTEND_REPO=$(aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" \
-            --output text 2>/dev/null || echo "")
-          if [ -z "$BACKEND_REPO" ] || [ "$BACKEND_REPO" = "None" ]; then
-            AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-            BACKEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-backend"
-            FRONTEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-frontend"
-          fi
-          echo "backend_repo=$BACKEND_REPO" >> "$GITHUB_OUTPUT"
-          echo "frontend_repo=$FRONTEND_REPO" >> "$GITHUB_OUTPUT"
-          echo "Backend ECR: $BACKEND_REPO"
-          echo "Frontend ECR: $FRONTEND_REPO"
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push backend image
+      # For fresh deploys the ECR repos were just created by CloudFormation above.
+      # Push images now so that the subsequent update-service call (which scales
+      # desired count from 0 to 2) can pull them successfully.
+      - name: Build and push backend image (fresh deploy)
+        if: steps.pre-deploy.outputs.desired_count == '0'
         shell: bash
         run: |
           set -euo pipefail
@@ -478,7 +523,8 @@ jobs:
           docker push "$REPO:latest"
           echo "Pushed backend: $REPO:$IMAGE_TAG"
 
-      - name: Build and push frontend image
+      - name: Build and push frontend image (fresh deploy)
+        if: steps.pre-deploy.outputs.desired_count == '0'
         shell: bash
         run: |
           set -euo pipefail
