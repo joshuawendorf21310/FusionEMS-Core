@@ -46,11 +46,13 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub '${AppName}-${Env}-backend'
+      EmptyOnDelete: true
 
   FrontendEcrRepository:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub '${AppName}-${Env}-frontend'
+      EmptyOnDelete: true
 
 # ================= ECS =================
 
