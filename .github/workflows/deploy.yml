@@ -62,9 +62,9 @@ jobs:
       ARTIFACT_BUCKET: ${{ vars.CFN_ARTIFACT_BUCKET || 'fusionemsquantum-cfn-artifacts-prod' }}
       HOSTED_ZONE_ID: ${{ vars.CFN_HOSTED_ZONE_ID || 'Z0858801IZXAHSWCPH85' }}
       CFN_ENV: ${{ vars.CFN_ENV || 'prod' }}
-      ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME || 'fusionemsquantum.com' }}
+      ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME || 'www.fusionemsquantum.com' }}
       API_DOMAIN_NAME: ${{ vars.CFN_API_DOMAIN_NAME || vars.CFN_DOMAIN_NAME || 'api.fusionemsquantum.com' }}
-      ACM_CERT_ARN_US_EAST_1: ${{ vars.CFN_ACM_CERT_ARN_US_EAST_1 }}
+      ACM_CERT_ARN_US_EAST_1: ${{ vars.CFN_ACM_CERT_ARN_US_EAST_1 || 'arn:aws:acm:us-east-1:793439286972:certificate/8411d09e-cb0c-4967-9721-9accd7ecdecc' }}
 
       TEMPLATE_FILE: infra/cloudformation/root.yml
       IMAGE_TAG: ${{ github.sha }}
