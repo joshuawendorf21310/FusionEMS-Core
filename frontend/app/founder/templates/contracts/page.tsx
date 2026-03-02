@@ -1,9 +1,6 @@
 'use client';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useState } from 'react';
-
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -41,34 +38,6 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
   );
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
-  return (
-    <div
-      className="bg-bg-panel border border-border-DEFAULT p-4"
-      style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
-    >
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
-      {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
-    </div>
-  );
-}
-
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  return (
-    <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-      <motion.div
-        className="h-full rounded-full"
-        style={{ background: color }}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.8 }}
-      />
-    </div>
-  );
-}
-
 const TEMPLATES = [
   { id: 'msa', name: 'Master Service Agreement', desc: 'Full platform service agreement with SLA terms.', used: 4 },
   { id: 'baa', name: 'HIPAA Business Associate Agreement', desc: 'BAA for all data handling relationships.', used: 4 },
@@ -91,7 +60,7 @@ const TEMPLATE_VARS = ['{{agency_name}}', '{{start_date}}', '{{monthly_fee}}', '
 
 export default function ContractBuilderPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [previewMode, setPreviewMode] = useState(false);
+  const [_previewMode, _setPreviewMode] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   function handleCopy(v: string) {
@@ -167,7 +136,7 @@ export default function ContractBuilderPage() {
               </tr>
             </thead>
             <tbody>
-              {ACTIVE_CONTRACTS.map((c, i) => (
+              {ACTIVE_CONTRACTS.map((c, _i) => (
                 <tr key={c.id} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 font-mono text-status-info">{c.id}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.7)]">{c.agency}</td>

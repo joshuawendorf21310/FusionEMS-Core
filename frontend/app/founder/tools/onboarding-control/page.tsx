@@ -1,5 +1,4 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -131,7 +130,7 @@ interface ConfirmModalProps {
   confirmLabel: string;
   confirmColor?: string;
   children?: React.ReactNode;
-  onConfirm: (extra?: string) => void;
+  onConfirm: (_extra?: string) => void;
   onCancel: () => void;
 }
 
@@ -204,10 +203,10 @@ function DetailDrawer({
   signEvents: SignEvent[];
   loadingEvents: boolean;
   onClose: () => void;
-  onResendLegal: (app: OnboardingApp) => void;
-  onResendCheckout: (app: OnboardingApp) => void;
-  onManualProvision: (app: OnboardingApp) => void;
-  onRevoke: (app: OnboardingApp) => void;
+  onResendLegal: (_app: OnboardingApp) => void;
+  onResendCheckout: (_app: OnboardingApp) => void;
+  onManualProvision: (_app: OnboardingApp) => void;
+  onRevoke: (_app: OnboardingApp) => void;
 }) {
   const fields: { label: string; value: string }[] = [
     { label: 'Application ID', value: app.id },

@@ -1,5 +1,4 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -208,9 +207,9 @@ function IncidentList({
   loading: boolean;
   selectedId: string | null;
   statusFilter: StatusFilter;
-  onSelect: (inc: Incident) => void;
+  onSelect: (_inc: Incident) => void;
   onNew: () => void;
-  onFilterChange: (f: StatusFilter) => void;
+  onFilterChange: (_f: StatusFilter) => void;
 }) {
   const filters: { value: StatusFilter; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -284,7 +283,7 @@ function IncidentList({
 // ─── Form Section Accordion ───────────────────────────────────────────────────
 
 function FormSection({
-  id,
+  _id,
   label,
   errorCount,
   children,
@@ -362,8 +361,8 @@ function IncidentForm({
   packRules: PackRules | null;
   apparatus: ApparatusOption[];
   departmentId: string | null;
-  onSaved: (inc: Incident) => void;
-  pushToast: (msg: string, type: 'success' | 'error') => void;
+  onSaved: (_inc: Incident) => void;
+  pushToast: (_msg: string, _type: 'success' | 'error') => void;
 }) {
   const [form, setForm] = useState<IncidentForm>(makeEmptyForm());
   const [savingDraft, setSavingDraft] = useState(false);

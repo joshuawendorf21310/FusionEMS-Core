@@ -45,13 +45,13 @@ function InsuranceSection({
   accent,
   data,
   onChange,
-  hasSecondary,
+  _hasSecondary,
   onAdd,
 }: {
   title: string;
   accent: string;
   data: InsuranceFields | null;
-  onChange?: (field: keyof InsuranceFields, value: string) => void;
+  onChange?: (_field: keyof InsuranceFields, _value: string) => void;
   hasSecondary?: boolean;
   onAdd?: () => void;
 }) {

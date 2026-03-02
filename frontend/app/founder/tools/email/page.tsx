@@ -1,5 +1,5 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
+import { QuantumTableSkeleton } from '@/components/ui';
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

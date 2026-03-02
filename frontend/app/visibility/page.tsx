@@ -147,7 +147,7 @@ function Badge({ color, label }: { color: string; label: string }) {
   );
 }
 
-function RuleCard({ rule, onDelete }: { rule: Rule; onDelete: (id: string) => void }) {
+function RuleCard({ rule, onDelete }: { rule: Rule; onDelete: (_id: string) => void }) {
   const d = rule.data;
   const actionColor = d.action === "show" ? "green" : d.action === "mask" ? "yellow" : "red";
   return (
@@ -219,13 +219,13 @@ export default function VisibilityRuleMakerPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const token = typeof window !== "undefined" ? (localStorage.getItem("access_token") || "") : "";
-  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
   const api = useCallback(async (path: string, method = "GET", body?: unknown) => {
+    const t = typeof window !== "undefined" ? (localStorage.getItem("access_token") || "") : "";
+    const h = { "Content-Type": "application/json", Authorization: `Bearer ${t}` };
     const res = await fetch(`${BASE}${path}`, {
       method,
-      headers,
+      headers: h,
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) return null;

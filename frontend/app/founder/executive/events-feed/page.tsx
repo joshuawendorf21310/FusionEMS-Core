@@ -1,5 +1,4 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import React, {
   useState,
@@ -141,8 +140,8 @@ function EventRow({
   onRead,
 }: {
   event: PlatformEvent;
-  onExpand: (id: string) => void;
-  onRead: (id: string) => void;
+  onExpand: (_id: string) => void;
+  onRead: (_id: string) => void;
 }) {
   const domain = getDomain(event.event_type);
   const color = DOMAIN_COLORS[domain];

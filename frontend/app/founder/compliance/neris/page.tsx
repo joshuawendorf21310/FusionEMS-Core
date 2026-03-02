@@ -226,7 +226,7 @@ function PackDetailDrawer({
 }: {
   pack: NerisPack;
   onClose: () => void;
-  onAction: (type: 'compile' | 'activate', id: string) => void;
+  onAction: (_type: 'compile' | 'activate', _id: string) => void;
 }) {
   return (
     <div
@@ -583,7 +583,7 @@ function ValidateTab({
   onIssuesPersist,
 }: {
   activePackId: string | null;
-  onIssuesPersist: (issues: ValidationIssue[]) => void;
+  onIssuesPersist: (_issues: ValidationIssue[]) => void;
 }) {
   const [entityJson, setEntityJson] = useState('');
   const [incidentJson, setIncidentJson] = useState('');
@@ -596,7 +596,7 @@ function ValidateTab({
   const [incidentError, setIncidentError] = useState('');
   const [copilotResult, setCopilotResult] = useState<CopilotResult | null>(null);
   const [loadingCopilot, setLoadingCopilot] = useState(false);
-  const [copilotError, setCopilotError] = useState('');
+  const [_copilotError, setCopilotError] = useState('');
 
   async function validateEntity() {
     if (!activePackId) { setEntityError('No active pack. Activate a pack first.'); return; }

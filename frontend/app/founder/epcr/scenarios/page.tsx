@@ -1,5 +1,5 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
+import { QuantumTableSkeleton } from '@/components/ui';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface Scenario {

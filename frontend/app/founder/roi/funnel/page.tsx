@@ -1,9 +1,6 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useState } from 'react';
-
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (

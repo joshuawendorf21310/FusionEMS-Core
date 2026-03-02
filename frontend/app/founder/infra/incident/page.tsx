@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useState } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
-
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
     <div className="border-b border-border-subtle pb-2 mb-4">
@@ -30,19 +28,6 @@ function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'erro
   );
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
-  return (
-    <div
-      className="bg-bg-panel border border-border-DEFAULT p-4"
-      style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
-    >
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
-      {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
-    </div>
-  );
-}
-
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
@@ -50,21 +35,6 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       {children}
-    </div>
-  );
-}
-
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  return (
-    <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-      <motion.div
-        className="h-full rounded-full"
-        style={{ background: color }}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.8 }}
-      />
     </div>
   );
 }
@@ -205,7 +175,7 @@ export default function IncidentControlCenterPage() {
         <SectionHeader number="4" title="Response Playbooks" />
         <Panel>
           <div className="space-y-0">
-            {PLAYBOOKS.map((pb, i) => (
+            {PLAYBOOKS.map((pb, _i) => (
               <div
                 key={pb.id}
                 className="flex items-center justify-between gap-4 py-3 border-b border-border-subtle last:border-0"

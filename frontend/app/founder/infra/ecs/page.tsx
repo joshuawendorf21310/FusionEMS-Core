@@ -1,9 +1,6 @@
 'use client';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
+import { useState } from 'react';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -43,15 +40,6 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
     <div className={`bg-bg-panel border border-border-DEFAULT p-4 ${className ?? ''}`}
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}>
       {children}
-    </div>
-  );
-}
-
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  return (
-    <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-      <motion.div className="h-full rounded-full" style={{ background: color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }} />
     </div>
   );
 }

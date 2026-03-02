@@ -1,4 +1,4 @@
-type EventHandler = (event: RealtimeEvent) => void;
+type EventHandler = (_event: RealtimeEvent) => void;
 
 export interface RealtimeEvent {
   topic: string;

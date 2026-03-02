@@ -222,7 +222,7 @@ function SidebarSection({
   );
 }
 
-function TopBar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (v: boolean) => void }) {
+function TopBar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (_v: boolean) => void }) {
   const [search, setSearch] = useState('');
   const [aiInput, setAiInput] = useState('');
   return (

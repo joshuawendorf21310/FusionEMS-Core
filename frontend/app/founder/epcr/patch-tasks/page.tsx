@@ -1,5 +1,4 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 import { useState, useEffect, useCallback } from 'react';
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'rejected';

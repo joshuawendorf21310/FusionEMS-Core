@@ -1,5 +1,4 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -255,6 +254,7 @@ export default function HemsPage() {
       es?.close();
       if (pollInterval) clearInterval(pollInterval);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Set Readiness ───
