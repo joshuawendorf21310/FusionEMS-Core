@@ -85,8 +85,9 @@ Resources:
         MinTTL: 0
         MaxTTL: 1
         ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: false
           HeadersConfig:
-            HeaderBehavior: allViewer
+            HeaderBehavior: none
           QueryStringsConfig:
             QueryStringBehavior: all
           CookiesConfig:
@@ -101,6 +102,7 @@ Resources:
         MaxTTL: 31536000
         MinTTL: 0
         ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
           HeadersConfig:
             HeaderBehavior: none
           QueryStringsConfig:
@@ -147,18 +149,21 @@ Resources:
             ViewerProtocolPolicy: https-only
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
             CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
 
           - PathPattern: /public/*
             TargetOriginId: AlbOrigin
             ViewerProtocolPolicy: https-only
             AllowedMethods: [GET, HEAD, OPTIONS]
             CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
 
           - PathPattern: /ws/*
             TargetOriginId: AlbOrigin
             ViewerProtocolPolicy: https-only
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
             CachePolicyId: !Ref NoCachePolicy
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
 
         ViewerCertificate:
           AcmCertificateArn: !Ref AcmCertificateArnUsEast1

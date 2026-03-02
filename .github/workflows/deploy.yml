@@ -111,6 +111,24 @@ jobs:
 
           echo "Current stack status: $STACK_STATUS"
 
+          # If a previous operation is still in flight, wait up to 45 min for it to settle.
+          if [[ "$STACK_STATUS" == *"_IN_PROGRESS" ]]; then
+            echo "Stack is transitioning ($STACK_STATUS) — waiting up to 45 min for stable state..."
+            for i in $(seq 1 90); do
+              sleep 30
+              STACK_STATUS=$(aws cloudformation describe-stacks \
+                --stack-name "$STACK_NAME" \
+                --region "$AWS_REGION" \
+                --query "Stacks[0].StackStatus" \
+                --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+              echo "  poll $i/90: $STACK_STATUS"
+              if [[ "$STACK_STATUS" != *"_IN_PROGRESS" ]]; then
+                break
+              fi
+            done
+            echo "Stack settled at: $STACK_STATUS"
+          fi
+
           if [[ "$STACK_STATUS" == "ROLLBACK_COMPLETE" || "$STACK_STATUS" == "CREATE_FAILED" ]]; then
             echo "Stack is in terminal state ($STACK_STATUS). Deleting before fresh deploy..."
             aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
