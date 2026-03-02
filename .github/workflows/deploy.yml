@@ -129,13 +129,13 @@ jobs:
             echo "Stack settled at: $STACK_STATUS"
           fi
 
-          # ── ROLLBACK_FAILED: disable RDS deletion protection then delete ───
+          # ── ROLLBACK_FAILED: disable RDS deletion protection, empty ECR repos, then delete ──
           # When a CREATE rollback fails because DbInstance.DeletionProtection=true
-          # prevents CFN from deleting the RDS instance, the stack ends up in
-          # ROLLBACK_FAILED.  We must disable protection first so delete-stack
-          # can succeed.
+          # prevents CFN from deleting the RDS instance, or ECR repos contain images,
+          # the stack ends up in ROLLBACK_FAILED.  We must remediate those resources
+          # first so delete-stack can succeed.
           if [[ "$STACK_STATUS" == "ROLLBACK_FAILED" || "$STACK_STATUS" == "UPDATE_ROLLBACK_FAILED" || "$STACK_STATUS" == "DELETE_FAILED" ]]; then
-            echo "Stack is in $STACK_STATUS — disabling RDS deletion protection and retrying delete..."
+            echo "Stack is in $STACK_STATUS — disabling RDS deletion protection, emptying ECR repos, and retrying delete..."
 
             DATASTACK_ARN=$(aws cloudformation describe-stack-resource \
               --stack-name "$STACK_NAME" \
@@ -166,6 +166,40 @@ jobs:
                   && echo "  RDS instance available." \
                   || echo "  (wait timed out or instance gone — proceeding)"
               fi
+            fi
+
+            COMPUTE_STACK_ARN=$(aws cloudformation describe-stack-resource \
+              --stack-name "$STACK_NAME" \
+              --logical-resource-id ComputeStack \
+              --query "StackResourceDetail.PhysicalResourceId" \
+              --output text 2>/dev/null || echo "")
+
+            if [ -n "$COMPUTE_STACK_ARN" ] && [ "$COMPUTE_STACK_ARN" != "None" ]; then
+              for REPO_LOGICAL_ID in BackendEcrRepository FrontendEcrRepository; do
+                REPO_NAME=$(aws cloudformation describe-stack-resource \
+                  --stack-name "$COMPUTE_STACK_ARN" \
+                  --logical-resource-id "$REPO_LOGICAL_ID" \
+                  --query "StackResourceDetail.PhysicalResourceId" \
+                  --output text 2>/dev/null || echo "")
+                if [ -n "$REPO_NAME" ] && [ "$REPO_NAME" != "None" ]; then
+                  echo "  Emptying ECR repository: $REPO_NAME"
+                  IMAGES=$(aws ecr list-images \
+                    --repository-name "$REPO_NAME" \
+                    --region "$AWS_REGION" \
+                    --query 'imageIds[*]' \
+                    --output json 2>/dev/null || echo "[]")
+                  if echo "$IMAGES" | jq -e 'length > 0' > /dev/null 2>&1; then
+                    aws ecr batch-delete-image \
+                      --repository-name "$REPO_NAME" \
+                      --region "$AWS_REGION" \
+                      --image-ids "$(echo "$IMAGES" | jq -c '.')" 2>/dev/null \
+                      && echo "    Images deleted from $REPO_NAME." \
+                      || echo "    (could not delete images from $REPO_NAME — may already be empty)"
+                  else
+                    echo "    Repository $REPO_NAME is already empty."
+                  fi
+                fi
+              done
             fi
 
             echo "Deleting stack from $STACK_STATUS state..."
