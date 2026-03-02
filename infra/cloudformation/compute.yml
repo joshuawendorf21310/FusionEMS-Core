@@ -62,6 +62,7 @@ Resources:
   TaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub '${AppName}-${Env}-task-execution'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -137,7 +138,7 @@ Resources:
       Memory: '2048'
       NetworkMode: awsvpc
       RequiresCompatibilities: [FARGATE]
-      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ExecutionRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AppName}-${Env}-task-execution'
       ContainerDefinitions:
         - Name: backend
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-backend:${ImageTagBackend}'
@@ -179,7 +180,7 @@ Resources:
       Memory: '1024'
       NetworkMode: awsvpc
       RequiresCompatibilities: [FARGATE]
-      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ExecutionRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AppName}-${Env}-task-execution'
       ContainerDefinitions:
         - Name: frontend
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppName}-${Env}-frontend:${ImageTagFrontend}'
