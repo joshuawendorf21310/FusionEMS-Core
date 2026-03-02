@@ -134,7 +134,7 @@ jobs:
           # prevents CFN from deleting the RDS instance, the stack ends up in
           # ROLLBACK_FAILED.  We must disable protection first so delete-stack
           # can succeed.
-          if [[ "$STACK_STATUS" == "ROLLBACK_FAILED" || "$STACK_STATUS" == "UPDATE_ROLLBACK_FAILED" ]]; then
+          if [[ "$STACK_STATUS" == "ROLLBACK_FAILED" || "$STACK_STATUS" == "UPDATE_ROLLBACK_FAILED" || "$STACK_STATUS" == "DELETE_FAILED" ]]; then
             echo "Stack is in $STACK_STATUS — disabling RDS deletion protection and retrying delete..."
 
             DATASTACK_ARN=$(aws cloudformation describe-stack-resource \
@@ -159,7 +159,12 @@ jobs:
                   --region "$AWS_REGION" 2>/dev/null \
                   && echo "  DeletionProtection disabled." \
                   || echo "  (could not modify RDS — may already be gone)"
-                sleep 15
+                echo "  Waiting for RDS instance to reach available state..."
+                aws rds wait db-instance-available \
+                  --db-instance-identifier "$RDS_ID" \
+                  --region "$AWS_REGION" 2>/dev/null \
+                  && echo "  RDS instance available." \
+                  || echo "  (wait timed out or instance gone — proceeding)"
               fi
             fi
 
