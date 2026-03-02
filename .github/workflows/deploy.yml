@@ -261,6 +261,97 @@ jobs:
             else
               echo "KMS alias not found (clean): $KMS_ALIAS"
             fi
+
+            echo "Cleaning up orphaned Cognito UserPoolDomain that would block CognitoStack re-create..."
+            COGNITO_DOMAIN="${APP_NAME}-${CFN_ENV}-${AWS_REGION}"
+            COGNITO_UP_ID=$(aws cognito-idp describe-user-pool-domain \
+              --domain "$COGNITO_DOMAIN" \
+              --query "DomainDescription.UserPoolId" \
+              --output text 2>/dev/null || echo "")
+            if [ -n "$COGNITO_UP_ID" ] && [ "$COGNITO_UP_ID" != "None" ]; then
+              echo "  Deleting orphaned Cognito UserPoolDomain: $COGNITO_DOMAIN (pool: $COGNITO_UP_ID)"
+              aws cognito-idp delete-user-pool-domain \
+                --domain "$COGNITO_DOMAIN" \
+                --user-pool-id "$COGNITO_UP_ID" 2>/dev/null \
+                && echo "    Deleted." \
+                || echo "    (skipped — already gone or insufficient permissions)"
+            else
+              echo "  Cognito UserPoolDomain not found (clean): $COGNITO_DOMAIN"
+            fi
+
+            echo "Cleaning up orphaned CloudFront CachePolicies that would block EdgeStack re-create..."
+            CF_NO_CACHE_POLICY_NAME="${APP_NAME}-${CFN_ENV}-no-cache"
+            CF_STATIC_POLICY_NAME="${APP_NAME}-${CFN_ENV}-static"
+            for CF_POLICY_NAME in "$CF_NO_CACHE_POLICY_NAME" "$CF_STATIC_POLICY_NAME"; do
+              CF_POLICY_ID=$(aws cloudfront list-cache-policies --type custom \
+                --query "CachePolicyList.Items[?CachePolicy.CachePolicyConfig.Name=='${CF_POLICY_NAME}'].CachePolicy.Id | [0]" \
+                --output text 2>/dev/null || echo "")
+              if [ -n "$CF_POLICY_ID" ] && [ "$CF_POLICY_ID" != "None" ]; then
+                echo "  Deleting orphaned CloudFront CachePolicy: $CF_POLICY_NAME ($CF_POLICY_ID)"
+                CF_ETAG=$(aws cloudfront get-cache-policy \
+                  --id "$CF_POLICY_ID" \
+                  --query ETag --output text 2>/dev/null || echo "")
+                if [ -n "$CF_ETAG" ]; then
+                  aws cloudfront delete-cache-policy \
+                    --id "$CF_POLICY_ID" \
+                    --if-match "$CF_ETAG" 2>/dev/null \
+                    && echo "    Deleted." \
+                    || echo "    (could not delete — may still be in use)"
+                fi
+              else
+                echo "  CloudFront CachePolicy not found (clean): $CF_POLICY_NAME"
+              fi
+            done
+
+            echo "Cleaning up orphaned CloudFront ResponseHeadersPolicy that would block EdgeStack re-create..."
+            CF_RHP_NAME="${APP_NAME}-${CFN_ENV}-security-headers"
+            CF_RHP_ID=$(aws cloudfront list-response-headers-policies --type custom \
+              --query "ResponseHeadersPolicyList.Items[?ResponseHeadersPolicy.ResponseHeadersPolicyConfig.Name=='${CF_RHP_NAME}'].ResponseHeadersPolicy.Id | [0]" \
+              --output text 2>/dev/null || echo "")
+            if [ -n "$CF_RHP_ID" ] && [ "$CF_RHP_ID" != "None" ]; then
+              echo "  Deleting orphaned CloudFront ResponseHeadersPolicy: $CF_RHP_NAME ($CF_RHP_ID)"
+              CF_RHP_ETAG=$(aws cloudfront get-response-headers-policy \
+                --id "$CF_RHP_ID" \
+                --query ETag --output text 2>/dev/null || echo "")
+              if [ -n "$CF_RHP_ETAG" ]; then
+                aws cloudfront delete-response-headers-policy \
+                  --id "$CF_RHP_ID" \
+                  --if-match "$CF_RHP_ETAG" 2>/dev/null \
+                  && echo "    Deleted." \
+                  || echo "    (could not delete — may still be in use)"
+              fi
+            else
+              echo "  CloudFront ResponseHeadersPolicy not found (clean): $CF_RHP_NAME"
+            fi
+
+            echo "Cleaning up orphaned CloudFront WAF WebACL that would block EdgeStack re-create..."
+            WAF_NAME="${APP_NAME}-${CFN_ENV}-edge-waf"
+            WAF_ACL_ID=$(aws wafv2 list-web-acls \
+              --scope CLOUDFRONT \
+              --region us-east-1 \
+              --query "WebACLs[?Name=='${WAF_NAME}'].Id | [0]" \
+              --output text 2>/dev/null || echo "")
+            if [ -n "$WAF_ACL_ID" ] && [ "$WAF_ACL_ID" != "None" ]; then
+              echo "  Deleting orphaned WAF WebACL: $WAF_NAME ($WAF_ACL_ID)"
+              WAF_LOCK_TOKEN=$(aws wafv2 get-web-acl \
+                --name "$WAF_NAME" \
+                --scope CLOUDFRONT \
+                --id "$WAF_ACL_ID" \
+                --region us-east-1 \
+                --query LockToken --output text 2>/dev/null || echo "")
+              if [ -n "$WAF_LOCK_TOKEN" ]; then
+                aws wafv2 delete-web-acl \
+                  --name "$WAF_NAME" \
+                  --scope CLOUDFRONT \
+                  --id "$WAF_ACL_ID" \
+                  --lock-token "$WAF_LOCK_TOKEN" \
+                  --region us-east-1 2>/dev/null \
+                  && echo "    Deleted." \
+                  || echo "    (could not delete — may still be associated with a distribution)"
+              fi
+            else
+              echo "  CloudFront WAF WebACL not found (clean): $WAF_NAME"
+            fi
           else
             DESIRED_COUNT=2
             echo "Update deploy detected — setting DesiredCount=2."
