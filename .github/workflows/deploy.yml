@@ -111,9 +111,9 @@ jobs:
 
           echo "Current stack status: $STACK_STATUS"
 
-          # If a previous operation is still in flight, wait up to 45 min for it to settle.
+          # ── Wait out any in-flight operation before acting ──────────────────
           if [[ "$STACK_STATUS" == *"_IN_PROGRESS" ]]; then
-            echo "Stack is transitioning ($STACK_STATUS) — waiting up to 45 min for stable state..."
+            echo "Stack is transitioning ($STACK_STATUS) — polling up to 45 min for stable state..."
             for i in $(seq 1 90); do
               sleep 30
               STACK_STATUS=$(aws cloudformation describe-stacks \
@@ -129,17 +129,61 @@ jobs:
             echo "Stack settled at: $STACK_STATUS"
           fi
 
+          # ── ROLLBACK_FAILED: disable RDS deletion protection then delete ───
+          # When a CREATE rollback fails because DbInstance.DeletionProtection=true
+          # prevents CFN from deleting the RDS instance, the stack ends up in
+          # ROLLBACK_FAILED.  We must disable protection first so delete-stack
+          # can succeed.
+          if [[ "$STACK_STATUS" == "ROLLBACK_FAILED" || "$STACK_STATUS" == "UPDATE_ROLLBACK_FAILED" ]]; then
+            echo "Stack is in $STACK_STATUS — disabling RDS deletion protection and retrying delete..."
+
+            DATASTACK_ARN=$(aws cloudformation describe-stack-resource \
+              --stack-name "$STACK_NAME" \
+              --logical-resource-id DataStack \
+              --query "StackResourceDetail.PhysicalResourceId" \
+              --output text 2>/dev/null || echo "")
+
+            if [ -n "$DATASTACK_ARN" ] && [ "$DATASTACK_ARN" != "None" ]; then
+              RDS_ID=$(aws cloudformation describe-stack-resource \
+                --stack-name "$DATASTACK_ARN" \
+                --logical-resource-id DbInstance \
+                --query "StackResourceDetail.PhysicalResourceId" \
+                --output text 2>/dev/null || echo "")
+
+              if [ -n "$RDS_ID" ] && [ "$RDS_ID" != "None" ]; then
+                echo "  Disabling DeletionProtection on RDS instance: $RDS_ID"
+                aws rds modify-db-instance \
+                  --db-instance-identifier "$RDS_ID" \
+                  --no-deletion-protection \
+                  --apply-immediately \
+                  --region "$AWS_REGION" 2>/dev/null \
+                  && echo "  DeletionProtection disabled." \
+                  || echo "  (could not modify RDS — may already be gone)"
+                sleep 15
+              fi
+            fi
+
+            echo "Deleting stack from $STACK_STATUS state..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Waiting for stack deletion (RDS snapshot + ElastiCache can take ~20 min)..."
+            aws cloudformation wait stack-delete-complete \
+              --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Stack deleted."
+            STACK_STATUS="DOES_NOT_EXIST"
+          fi
+
+          # ── ROLLBACK_COMPLETE / CREATE_FAILED: straightforward delete ──────
           if [[ "$STACK_STATUS" == "ROLLBACK_COMPLETE" || "$STACK_STATUS" == "CREATE_FAILED" ]]; then
             echo "Stack is in terminal state ($STACK_STATUS). Deleting before fresh deploy..."
             aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
             echo "Waiting for stack deletion to complete..."
             aws cloudformation wait stack-delete-complete \
-              --stack-name "$STACK_NAME" \
-              --region "$AWS_REGION"
-            echo "Stack deleted. Proceeding with fresh deploy."
+              --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Stack deleted."
             STACK_STATUS="DOES_NOT_EXIST"
           fi
 
+          # ── Fresh deploy: clean up orphaned SM secrets and KMS alias ───────
           if [[ "$STACK_STATUS" == "DOES_NOT_EXIST" ]]; then
             DESIRED_COUNT=0
             echo "Fresh deploy detected — setting DesiredCount=0 (images will be pushed after CFN)."
