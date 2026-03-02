@@ -22,7 +22,10 @@ Parameters:
     Type: String
   DesiredCount:
     Type: Number
-    Default: 2
+    Default: 0
+    Description: >
+      Set to 0 for the initial deploy (ECR images do not exist yet).
+      The workflow updates services to 2 after pushing images.
   BackendContainerPort:
     Type: Number
     Default: 8000
@@ -108,6 +111,21 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref FrontendTargetGroup
 
+  BackendListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /api/*
+            - /public/*
+            - /ws/*
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
 # ================= BACKEND =================
 
   BackendTaskDefinition:
@@ -129,10 +147,11 @@ Resources:
               awslogs-group: !Sub '/${AppName}/${Env}/backend'
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
+              awslogs-create-group: 'true'
 
   BackendService:
     Type: AWS::ECS::Service
-    DependsOn: HttpsListener
+    DependsOn: BackendListenerRule
     Properties:
       Cluster: !Ref EcsCluster
       DesiredCount: !Ref DesiredCount
@@ -170,6 +189,7 @@ Resources:
               awslogs-group: !Sub '/${AppName}/${Env}/frontend'
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
+              awslogs-create-group: 'true'
 
   FrontendService:
     Type: AWS::ECS::Service
@@ -208,3 +228,6 @@ Outputs:
 
   FrontendServiceName:
     Value: !Ref FrontendService
+
+  BackendTaskDefinition:
+    Value: !Ref BackendTaskDefinition

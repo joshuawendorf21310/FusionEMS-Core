@@ -61,7 +61,7 @@ jobs:
       ARTIFACT_BUCKET: ${{ vars.CFN_ARTIFACT_BUCKET || 'fusionemsquantum-cfn-artifacts-prod' }}
       HOSTED_ZONE_ID: ${{ vars.CFN_HOSTED_ZONE_ID || 'Z0858801IZXAHSWCPH85' }}
       CFN_ENV: ${{ vars.CFN_ENV || 'prod' }}
-      ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME || 'app.fusionemsquantum.com' }}
+      ROOT_DOMAIN_NAME: ${{ vars.CFN_ROOT_DOMAIN_NAME || 'fusionemsquantum.com' }}
       API_DOMAIN_NAME: ${{ vars.CFN_API_DOMAIN_NAME || vars.CFN_DOMAIN_NAME || 'api.fusionemsquantum.com' }}
       ACM_CERT_ARN_US_EAST_1: ${{ vars.CFN_ACM_CERT_ARN_US_EAST_1 }}
 
@@ -96,6 +96,44 @@ jobs:
           sam --version
           aws --version
 
+      - name: Pre-deploy stack check and cleanup
+        id: pre-deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          STACK_STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "Stacks[0].StackStatus" \
+            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+          echo "Current stack status: $STACK_STATUS"
+
+          if [[ "$STACK_STATUS" == "ROLLBACK_COMPLETE" || "$STACK_STATUS" == "CREATE_FAILED" ]]; then
+            echo "Stack is in terminal state ($STACK_STATUS). Deleting before fresh deploy..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete \
+              --stack-name "$STACK_NAME" \
+              --region "$AWS_REGION"
+            echo "Stack deleted. Proceeding with fresh deploy."
+            STACK_STATUS="DOES_NOT_EXIST"
+          fi
+
+          # Determine desired count:
+          # - 0 on first deploy (ECR images do not exist yet; CFN must not wait for tasks)
+          # - 2 on updates (images already exist; keep services running)
+          if [[ "$STACK_STATUS" == "DOES_NOT_EXIST" ]]; then
+            DESIRED_COUNT=0
+            echo "Fresh deploy detected — setting DesiredCount=0 (images will be pushed after CFN)."
+          else
+            DESIRED_COUNT=2
+            echo "Update deploy detected — setting DesiredCount=2."
+          fi
+
+          echo "desired_count=$DESIRED_COUNT" >> "$GITHUB_OUTPUT"
+
       - name: Deploy CloudFormation infrastructure
         shell: bash
         run: |
@@ -106,6 +144,8 @@ jobs:
             exit 1
           fi
 
+          DESIRED_COUNT="${{ steps.pre-deploy.outputs.desired_count }}"
+
           PARAMS=(
             "Env=$CFN_ENV"
             "RootDomainName=$ROOT_DOMAIN_NAME"
@@ -115,6 +155,7 @@ jobs:
             "NestedTemplatesBucket=$ARTIFACT_BUCKET"
             "ImageTagFrontend=$IMAGE_TAG"
             "ImageTagBackend=$IMAGE_TAG"
+            "DesiredCount=$DESIRED_COUNT"
           )
 
           if grep -Eq 'Transform:\s*AWS::Serverless|AWS::Serverless::' "$TEMPLATE_FILE"; then
@@ -142,6 +183,35 @@ jobs:
               --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
               --parameter-overrides "${PARAMS[@]}"
           fi
+
+      - name: Dump CloudFormation events on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== CloudFormation events for root stack ==="
+          aws cloudformation describe-stack-events \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "StackEvents[?ResourceStatus!='UPDATE_IN_PROGRESS' && ResourceStatus!='CREATE_IN_PROGRESS'][ResourceType,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
+            --output table 2>/dev/null || echo "(root stack not found)"
+
+          echo ""
+          echo "=== CloudFormation events for nested stacks ==="
+          for NESTED_STACK in NetworkStack DataStack CognitoStack ComputeStack EdgeStack; do
+            NESTED_ARN=$(aws cloudformation describe-stack-resource \
+              --stack-name "$STACK_NAME" \
+              --logical-resource-id "$NESTED_STACK" \
+              --query "StackResourceDetail.PhysicalResourceId" \
+              --output text 2>/dev/null || echo "")
+            if [ -n "$NESTED_ARN" ] && [ "$NESTED_ARN" != "None" ]; then
+              echo "--- $NESTED_STACK ---"
+              aws cloudformation describe-stack-events \
+                --stack-name "$NESTED_ARN" \
+                --region "$AWS_REGION" \
+                --query "StackEvents[?ResourceStatus=='CREATE_FAILED' || ResourceStatus=='UPDATE_FAILED' || ResourceStatus=='DELETE_FAILED'][ResourceType,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
+                --output table 2>/dev/null || echo "(stack not found)"
+            fi
+          done
 
       - name: Get ECR repo URIs from stack outputs
         id: ecr-uris
@@ -315,7 +385,7 @@ jobs:
           fi
           echo "Stripe catalog sync completed successfully."
 
-      - name: Force new ECS deployment
+      - name: Force new ECS deployment (promote desired count to 2)
         shell: bash
         run: |
           set -euo pipefail
@@ -327,12 +397,14 @@ jobs:
             exit 0
           fi
           if [ -n "$BACKEND_SVC" ] && [ "$BACKEND_SVC" != "None" ]; then
-            aws ecs update-service --cluster "$CLUSTER" --service "$BACKEND_SVC" --force-new-deployment --no-cli-pager
-            echo "Triggered backend service update."
+            aws ecs update-service --cluster "$CLUSTER" --service "$BACKEND_SVC" \
+              --desired-count 2 --force-new-deployment --no-cli-pager
+            echo "Triggered backend service update (desired=2)."
           fi
           if [ -n "$FRONTEND_SVC" ] && [ "$FRONTEND_SVC" != "None" ]; then
-            aws ecs update-service --cluster "$CLUSTER" --service "$FRONTEND_SVC" --force-new-deployment --no-cli-pager
-            echo "Triggered frontend service update."
+            aws ecs update-service --cluster "$CLUSTER" --service "$FRONTEND_SVC" \
+              --desired-count 2 --force-new-deployment --no-cli-pager
+            echo "Triggered frontend service update (desired=2)."
           fi
 
       - name: Wait for ECS services to stabilize

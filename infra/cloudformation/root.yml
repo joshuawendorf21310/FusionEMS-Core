@@ -36,6 +36,14 @@ Parameters:
   NestedTemplatesBucket:
     Type: String
 
+  DesiredCount:
+    Type: Number
+    Default: 0
+    Description: >
+      ECS service desired task count.  Set to 0 for the initial deploy
+      so that CloudFormation does not wait for images that do not exist yet.
+      The workflow promotes services to 2 after Docker images are pushed.
+
 Resources:
 
   NetworkStack:
@@ -86,6 +94,7 @@ Resources:
         ImageTagFrontend: !Ref ImageTagFrontend
         ImageTagBackend: !Ref ImageTagBackend
         AcmCertificateArn: !Ref AcmCertificateArnUsEast1
+        DesiredCount: !Ref DesiredCount
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack
@@ -104,3 +113,21 @@ Resources:
 Outputs:
   CloudFrontDomain:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDomain
+
+  BackendEcrRepoUri:
+    Value: !GetAtt ComputeStack.Outputs.BackendEcrRepoUri
+
+  FrontendEcrRepoUri:
+    Value: !GetAtt ComputeStack.Outputs.FrontendEcrRepoUri
+
+  ClusterName:
+    Value: !GetAtt ComputeStack.Outputs.ClusterName
+
+  BackendServiceName:
+    Value: !GetAtt ComputeStack.Outputs.BackendServiceName
+
+  FrontendServiceName:
+    Value: !GetAtt ComputeStack.Outputs.FrontendServiceName
+
+  BackendTaskDefinition:
+    Value: !GetAtt ComputeStack.Outputs.BackendTaskDefinition
