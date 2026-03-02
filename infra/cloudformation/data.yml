@@ -139,7 +139,7 @@ Resources:
       KmsKeyId: !Ref DataKmsKey
       MultiAZ: !If [IsProd, true, false]
       BackupRetentionPeriod: 14
-      DeletionProtection: !If [IsProd, true, false]
+      DeletionProtection: false
       PubliclyAccessible: false
       DBSubnetGroupName: !Ref DbSubnetGroup
       VPCSecurityGroups:
