@@ -73,6 +73,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Guard – verify STACK_NAME and Env are safe values
+        shell: bash
+        run: |
+          if [ "$STACK_NAME" != "fusionems-core" ]; then
+            echo "::error::STACK_NAME is '$STACK_NAME' but must be exactly 'fusionems-core'. Aborting."
+            exit 1
+          fi
+          if [ "$CFN_ENV" != "prod" ]; then
+            echo "::error::Env (CFN_ENV) is '$CFN_ENV' but must be exactly 'prod'. Aborting."
+            exit 1
+          fi
+          echo "Guard passed: STACK_NAME=fusionems-core, Env=prod"
+
       - name: Verify AWS role ARN is configured
         env:
           ROLE_ARN: ${{ secrets.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_ARN || vars.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_ARN }}
