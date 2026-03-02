@@ -58,6 +58,7 @@ jobs:
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       STACK_NAME: ${{ vars.CFN_STACK_NAME || 'fusionems-core' }}
+      APP_NAME: ${{ vars.CFN_APP_NAME || 'fusionems' }}
       ARTIFACT_BUCKET: ${{ vars.CFN_ARTIFACT_BUCKET || 'fusionemsquantum-cfn-artifacts-prod' }}
       HOSTED_ZONE_ID: ${{ vars.CFN_HOSTED_ZONE_ID || 'Z0858801IZXAHSWCPH85' }}
       CFN_ENV: ${{ vars.CFN_ENV || 'prod' }}
@@ -121,12 +122,44 @@ jobs:
             STACK_STATUS="DOES_NOT_EXIST"
           fi
 
-          # Determine desired count:
-          # - 0 on first deploy (ECR images do not exist yet; CFN must not wait for tasks)
-          # - 2 on updates (images already exist; keep services running)
           if [[ "$STACK_STATUS" == "DOES_NOT_EXIST" ]]; then
             DESIRED_COUNT=0
             echo "Fresh deploy detected — setting DesiredCount=0 (images will be pushed after CFN)."
+
+            echo "Cleaning up orphaned SecretsManager secrets that would block CFN re-create..."
+            for SECRET_ID in \
+                "${APP_NAME}/${CFN_ENV}/DB" \
+                "${APP_NAME}/${CFN_ENV}/Redis" \
+                "${APP_NAME}/${CFN_ENV}/AppSecrets"; do
+              if aws secretsmanager describe-secret \
+                  --secret-id "$SECRET_ID" \
+                  --region "$AWS_REGION" \
+                  --query "Name" --output text 2>/dev/null | grep -q .; then
+                echo "  Force-deleting orphaned secret: $SECRET_ID"
+                aws secretsmanager delete-secret \
+                  --secret-id "$SECRET_ID" \
+                  --force-delete-without-recovery \
+                  --region "$AWS_REGION" 2>/dev/null \
+                  && echo "    Deleted." \
+                  || echo "    (skipped — already gone or insufficient permissions)"
+              else
+                echo "  Secret not found (clean): $SECRET_ID"
+              fi
+            done
+
+            KMS_ALIAS="alias/${APP_NAME}-${CFN_ENV}-data"
+            if aws kms describe-key \
+                --key-id "$KMS_ALIAS" \
+                --region "$AWS_REGION" \
+                --query "KeyMetadata.KeyId" --output text 2>/dev/null | grep -q .; then
+              echo "Deleting orphaned KMS alias: $KMS_ALIAS"
+              aws kms delete-alias \
+                --alias-name "$KMS_ALIAS" \
+                --region "$AWS_REGION" 2>/dev/null \
+                && echo "  Deleted." || echo "  (already gone)"
+            else
+              echo "KMS alias not found (clean): $KMS_ALIAS"
+            fi
           else
             DESIRED_COUNT=2
             echo "Update deploy detected — setting DesiredCount=2."
