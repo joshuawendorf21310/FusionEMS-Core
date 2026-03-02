@@ -38,7 +38,9 @@ class IncidentRepository:
         )
         return await self.db.scalar(stmt)
 
-    async def list_paginated(self, *, tenant_id: uuid.UUID, limit: int, offset: int) -> list[Incident]:
+    async def list_paginated(
+        self, *, tenant_id: uuid.UUID, limit: int, offset: int
+    ) -> list[Incident]:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
         stmt = (
             select(Incident)
@@ -51,9 +53,13 @@ class IncidentRepository:
 
     async def count(self, *, tenant_id: uuid.UUID) -> int:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
-        stmt = select(func.count()).select_from(Incident).where(
-            Incident.tenant_id == scoped_tenant_id,
-            Incident.deleted_at.is_(None),
+        stmt = (
+            select(func.count())
+            .select_from(Incident)
+            .where(
+                Incident.tenant_id == scoped_tenant_id,
+                Incident.deleted_at.is_(None),
+            )
         )
         return int((await self.db.scalar(stmt)) or 0)
 

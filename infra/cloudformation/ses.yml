@@ -1,62 +1,56 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - SES Stack (Email Identity + Configuration Set)
+Description: FusionEMS Quantum - Microsoft Graph Email Stack (Enterprise Secure)
 
 Parameters:
   AppName:
     Type: String
   Env:
     Type: String
-  RootDomainName:
+
+  GraphTenantId:
     Type: String
-    Default: fusionemsquantum.com
+  GraphClientId:
+    Type: String
+  GraphClientSecret:
+    Type: String
+    NoEcho: true
+  GraphFounderEmail:
+    Type: String
 
 Resources:
 
-  SesConfigurationSet:
-    Type: AWS::SES::ConfigurationSet
+  GraphEmailSecret:
+    Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub '${AppName}-${Env}-email'
+      Name: !Sub '${AppName}/${Env}/graph-email'
+      Description: Microsoft Graph credentials for Founder Dashboard email
+      SecretString: !Sub |
+        {
+          "tenant_id": "${GraphTenantId}",
+          "client_id": "${GraphClientId}",
+          "client_secret": "${GraphClientSecret}",
+          "founder_email": "${GraphFounderEmail}"
+        }
 
-  SesConfigurationSetEventDestination:
-    Type: AWS::SES::ConfigurationSetEventDestination
+  GraphEmailAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      ConfigurationSetName: !Ref SesConfigurationSet
-      EventDestination:
-        Name: CloudWatchDestination
-        Enabled: true
-        MatchingEventTypes:
-          - send
-          - bounce
-          - complaint
-          - delivery
-          - reject
-          - open
-          - click
-        CloudWatchDestination:
-          DimensionConfigurations:
-            - DimensionName: MessageTag
-              DimensionValueSource: messageTag
-              DefaultDimensionValue: none
-
-  SesEmailIdentity:
-    Type: AWS::SES::EmailIdentity
-    Properties:
-      EmailIdentity: !Ref RootDomainName
-      DkimAttributes:
-        SigningEnabled: true
-      MailFromAttributes:
-        MailFromDomain: !Sub 'mail.${RootDomainName}'
-        BehaviorOnMxFailure: USE_DEFAULT_VALUE
-      FeedbackAttributes:
-        EmailForwardingEnabled: true
-      ConfigurationSetAttributes:
-        ConfigurationSetName: !Ref SesConfigurationSet
+      ManagedPolicyName: !Sub '${AppName}-${Env}-GraphEmailAccess'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource: !Ref GraphEmailSecret
 
 Outputs:
-  ConfigurationSetName:
-    Value: !Ref SesConfigurationSet
+  GraphEmailSecretArn:
+    Value: !Ref GraphEmailSecret
     Export:
-      Name: !Sub '${AppName}-${Env}-SesConfigSet'
+      Name: !Sub '${AppName}-${Env}-GraphEmailSecretArn'
 
-  EmailIdentity:
-    Value: !Ref SesEmailIdentity
+  GraphEmailAccessPolicyArn:
+    Value: !Ref GraphEmailAccessPolicy
+    Export:
+      Name: !Sub '${AppName}-${Env}-GraphEmailAccessPolicyArn'

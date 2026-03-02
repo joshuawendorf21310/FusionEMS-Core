@@ -42,7 +42,7 @@ const CATALOG: { product: string; key: string; color: string; prices: PriceEntry
   {
     product: 'CCT Transport Ops',
     key: 'CCT_TRANSPORT_OPS_ADDON',
-    color: '#a855f7',
+    color: 'var(--color-system-compliance)',
     prices: [
       { tier: 'CCT Add-on', monthly: 399, description: 'Critical care transport dispatch + ePCR fields' },
     ],
@@ -229,7 +229,7 @@ function EstimatorTab() {
               step={10}
               value={transports}
               onChange={(e) => setTransports(Number(e.target.value))}
-              className="w-full accent-[#ff6b1a]"
+              className="w-full accent-[var(--color-brand-orange)]"
             />
             <div className="flex justify-between text-[10px] text-[rgba(255,255,255,0.3)] mt-1">
               <span>10</span><span>500</span><span>1000</span>
@@ -250,7 +250,7 @@ function EstimatorTab() {
                   type="checkbox"
                   checked={addons.includes(addon.key)}
                   onChange={() => toggleAddon(addon.key)}
-                  className="accent-[#ff6b1a]"
+                  className="accent-[var(--color-brand-orange)]"
                 />
                 <span className="text-xs text-[rgba(255,255,255,0.7)]">{addon.label}</span>
               </div>

@@ -3,14 +3,14 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
 
 router = APIRouter(prefix="/api/v1/nemsis-manager", tags=["NEMSIS 3.5.1 Dataset Manager"])
 
@@ -22,60 +22,318 @@ def _svc(db: Session) -> DominationService:
 NEMSIS_351_SCHEMA: dict[str, Any] = {
     "version": "3.5.1",
     "elements": {
-        "eRecord.01": {"label": "Patient Care Report Number", "required": True, "type": "string", "section": "eRecord"},
-        "eRecord.02": {"label": "Software Creator", "required": True, "type": "string", "section": "eRecord"},
-        "eRecord.03": {"label": "Software Name", "required": True, "type": "string", "section": "eRecord"},
-        "eRecord.04": {"label": "Software Version", "required": True, "type": "string", "section": "eRecord"},
-        "eTimes.01": {"label": "PSAP Call Date/Time", "required": True, "type": "dateTime", "section": "eTimes"},
-        "eTimes.02": {"label": "Dispatch Notified Date/Time", "required": False, "type": "dateTime", "section": "eTimes"},
-        "eTimes.03": {"label": "Unit Notified by Dispatch Date/Time", "required": True, "type": "dateTime", "section": "eTimes"},
-        "eTimes.05": {"label": "Unit En Route Date/Time", "required": True, "type": "dateTime", "section": "eTimes"},
-        "eTimes.06": {"label": "Unit Arrived on Scene Date/Time", "required": True, "type": "dateTime", "section": "eTimes"},
-        "eTimes.07": {"label": "Arrived at Patient Date/Time", "required": False, "type": "dateTime", "section": "eTimes"},
-        "eTimes.09": {"label": "Unit Left Scene Date/Time", "required": True, "type": "dateTime", "section": "eTimes"},
-        "eTimes.11": {"label": "Patient Arrived at Destination Date/Time", "required": True, "type": "dateTime", "section": "eTimes"},
-        "eTimes.13": {"label": "Unit Back in Service Date/Time", "required": True, "type": "dateTime", "section": "eTimes"},
-        "ePatient.01": {"label": "Last Name", "required": True, "type": "string", "section": "ePatient", "phi": True},
-        "ePatient.02": {"label": "First Name", "required": True, "type": "string", "section": "ePatient", "phi": True},
+        "eRecord.01": {
+            "label": "Patient Care Report Number",
+            "required": True,
+            "type": "string",
+            "section": "eRecord",
+        },
+        "eRecord.02": {
+            "label": "Software Creator",
+            "required": True,
+            "type": "string",
+            "section": "eRecord",
+        },
+        "eRecord.03": {
+            "label": "Software Name",
+            "required": True,
+            "type": "string",
+            "section": "eRecord",
+        },
+        "eRecord.04": {
+            "label": "Software Version",
+            "required": True,
+            "type": "string",
+            "section": "eRecord",
+        },
+        "eTimes.01": {
+            "label": "PSAP Call Date/Time",
+            "required": True,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.02": {
+            "label": "Dispatch Notified Date/Time",
+            "required": False,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.03": {
+            "label": "Unit Notified by Dispatch Date/Time",
+            "required": True,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.05": {
+            "label": "Unit En Route Date/Time",
+            "required": True,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.06": {
+            "label": "Unit Arrived on Scene Date/Time",
+            "required": True,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.07": {
+            "label": "Arrived at Patient Date/Time",
+            "required": False,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.09": {
+            "label": "Unit Left Scene Date/Time",
+            "required": True,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.11": {
+            "label": "Patient Arrived at Destination Date/Time",
+            "required": True,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "eTimes.13": {
+            "label": "Unit Back in Service Date/Time",
+            "required": True,
+            "type": "dateTime",
+            "section": "eTimes",
+        },
+        "ePatient.01": {
+            "label": "Last Name",
+            "required": True,
+            "type": "string",
+            "section": "ePatient",
+            "phi": True,
+        },
+        "ePatient.02": {
+            "label": "First Name",
+            "required": True,
+            "type": "string",
+            "section": "ePatient",
+            "phi": True,
+        },
         "ePatient.04": {"label": "Age", "required": True, "type": "integer", "section": "ePatient"},
-        "ePatient.05": {"label": "Age Units", "required": True, "type": "code", "section": "ePatient"},
+        "ePatient.05": {
+            "label": "Age Units",
+            "required": True,
+            "type": "code",
+            "section": "ePatient",
+        },
         "ePatient.13": {"label": "Gender", "required": True, "type": "code", "section": "ePatient"},
         "ePatient.15": {"label": "Race", "required": False, "type": "code", "section": "ePatient"},
-        "eDispatch.01": {"label": "Complaint Reported by Dispatch", "required": True, "type": "string", "section": "eDispatch"},
-        "eDispatch.02": {"label": "EMD Performed", "required": True, "type": "code", "section": "eDispatch"},
-        "eScene.01": {"label": "First EMS Unit on Scene", "required": True, "type": "code", "section": "eScene"},
-        "eScene.06": {"label": "Incident Address", "required": True, "type": "string", "section": "eScene", "phi": True},
-        "eScene.07": {"label": "Incident City", "required": True, "type": "string", "section": "eScene"},
-        "eScene.09": {"label": "Incident State", "required": True, "type": "code", "section": "eScene"},
-        "eScene.10": {"label": "Incident ZIP Code", "required": True, "type": "string", "section": "eScene"},
-        "eSituation.01": {"label": "Date/Time of Symptom Onset", "required": False, "type": "dateTime", "section": "eSituation"},
-        "eSituation.07": {"label": "Chief Complaint Anatomic Location", "required": True, "type": "code", "section": "eSituation"},
-        "eSituation.08": {"label": "Chief Complaint Organ System", "required": True, "type": "code", "section": "eSituation"},
-        "eSituation.09": {"label": "Primary Symptom", "required": True, "type": "code", "section": "eSituation"},
-        "eSituation.11": {"label": "Provider's Primary Impression", "required": True, "type": "code", "section": "eSituation"},
-        "eSituation.13": {"label": "Initial Patient Acuity", "required": True, "type": "code", "section": "eSituation"},
-        "eHistory.01": {"label": "Barriers to Patient Care", "required": True, "type": "code", "section": "eHistory"},
-        "eVitals.01": {"label": "Date/Time Vital Signs Taken", "required": True, "type": "dateTime", "section": "eVitals"},
-        "eVitals.06": {"label": "Pulse Oximetry", "required": False, "type": "integer", "section": "eVitals"},
-        "eVitals.10": {"label": "Heart Rate", "required": True, "type": "integer", "section": "eVitals"},
-        "eVitals.14": {"label": "Systolic Blood Pressure", "required": True, "type": "integer", "section": "eVitals"},
-        "eVitals.15": {"label": "Diastolic Blood Pressure", "required": True, "type": "integer", "section": "eVitals"},
-        "eVitals.16": {"label": "Method of Blood Pressure Measurement", "required": False, "type": "code", "section": "eVitals"},
-        "eVitals.18": {"label": "Respiratory Rate", "required": True, "type": "integer", "section": "eVitals"},
-        "eVitals.21": {"label": "Glasgow Coma Score Total", "required": True, "type": "integer", "section": "eVitals"},
-        "eProcedures.01": {"label": "Date/Time Procedure Performed", "required": True, "type": "dateTime", "section": "eProcedures"},
-        "eProcedures.03": {"label": "Procedure", "required": True, "type": "code", "section": "eProcedures"},
-        "eProcedures.05": {"label": "Number of Procedure Attempts", "required": True, "type": "integer", "section": "eProcedures"},
-        "eProcedures.06": {"label": "Procedure Successful", "required": True, "type": "code", "section": "eProcedures"},
-        "eMedications.01": {"label": "Date/Time Medication Administered", "required": True, "type": "dateTime", "section": "eMedications"},
-        "eMedications.03": {"label": "Medication Given", "required": True, "type": "code", "section": "eMedications"},
-        "eMedications.05": {"label": "Medication Dosage", "required": True, "type": "decimal", "section": "eMedications"},
-        "eMedications.06": {"label": "Medication Dosage Units", "required": True, "type": "code", "section": "eMedications"},
-        "eDisposition.12": {"label": "Incident/Patient Disposition", "required": True, "type": "code", "section": "eDisposition"},
-        "eDisposition.16": {"label": "Transport Disposition", "required": True, "type": "code", "section": "eDisposition"},
-        "eDisposition.21": {"label": "Destination/Transferred To Code", "required": False, "type": "code", "section": "eDisposition"},
-        "eOutcome.01": {"label": "Emergency Department Disposition", "required": False, "type": "code", "section": "eOutcome"},
-        "eNarrative.01": {"label": "Patient Care Report Narrative", "required": True, "type": "string", "section": "eNarrative"},
+        "eDispatch.01": {
+            "label": "Complaint Reported by Dispatch",
+            "required": True,
+            "type": "string",
+            "section": "eDispatch",
+        },
+        "eDispatch.02": {
+            "label": "EMD Performed",
+            "required": True,
+            "type": "code",
+            "section": "eDispatch",
+        },
+        "eScene.01": {
+            "label": "First EMS Unit on Scene",
+            "required": True,
+            "type": "code",
+            "section": "eScene",
+        },
+        "eScene.06": {
+            "label": "Incident Address",
+            "required": True,
+            "type": "string",
+            "section": "eScene",
+            "phi": True,
+        },
+        "eScene.07": {
+            "label": "Incident City",
+            "required": True,
+            "type": "string",
+            "section": "eScene",
+        },
+        "eScene.09": {
+            "label": "Incident State",
+            "required": True,
+            "type": "code",
+            "section": "eScene",
+        },
+        "eScene.10": {
+            "label": "Incident ZIP Code",
+            "required": True,
+            "type": "string",
+            "section": "eScene",
+        },
+        "eSituation.01": {
+            "label": "Date/Time of Symptom Onset",
+            "required": False,
+            "type": "dateTime",
+            "section": "eSituation",
+        },
+        "eSituation.07": {
+            "label": "Chief Complaint Anatomic Location",
+            "required": True,
+            "type": "code",
+            "section": "eSituation",
+        },
+        "eSituation.08": {
+            "label": "Chief Complaint Organ System",
+            "required": True,
+            "type": "code",
+            "section": "eSituation",
+        },
+        "eSituation.09": {
+            "label": "Primary Symptom",
+            "required": True,
+            "type": "code",
+            "section": "eSituation",
+        },
+        "eSituation.11": {
+            "label": "Provider's Primary Impression",
+            "required": True,
+            "type": "code",
+            "section": "eSituation",
+        },
+        "eSituation.13": {
+            "label": "Initial Patient Acuity",
+            "required": True,
+            "type": "code",
+            "section": "eSituation",
+        },
+        "eHistory.01": {
+            "label": "Barriers to Patient Care",
+            "required": True,
+            "type": "code",
+            "section": "eHistory",
+        },
+        "eVitals.01": {
+            "label": "Date/Time Vital Signs Taken",
+            "required": True,
+            "type": "dateTime",
+            "section": "eVitals",
+        },
+        "eVitals.06": {
+            "label": "Pulse Oximetry",
+            "required": False,
+            "type": "integer",
+            "section": "eVitals",
+        },
+        "eVitals.10": {
+            "label": "Heart Rate",
+            "required": True,
+            "type": "integer",
+            "section": "eVitals",
+        },
+        "eVitals.14": {
+            "label": "Systolic Blood Pressure",
+            "required": True,
+            "type": "integer",
+            "section": "eVitals",
+        },
+        "eVitals.15": {
+            "label": "Diastolic Blood Pressure",
+            "required": True,
+            "type": "integer",
+            "section": "eVitals",
+        },
+        "eVitals.16": {
+            "label": "Method of Blood Pressure Measurement",
+            "required": False,
+            "type": "code",
+            "section": "eVitals",
+        },
+        "eVitals.18": {
+            "label": "Respiratory Rate",
+            "required": True,
+            "type": "integer",
+            "section": "eVitals",
+        },
+        "eVitals.21": {
+            "label": "Glasgow Coma Score Total",
+            "required": True,
+            "type": "integer",
+            "section": "eVitals",
+        },
+        "eProcedures.01": {
+            "label": "Date/Time Procedure Performed",
+            "required": True,
+            "type": "dateTime",
+            "section": "eProcedures",
+        },
+        "eProcedures.03": {
+            "label": "Procedure",
+            "required": True,
+            "type": "code",
+            "section": "eProcedures",
+        },
+        "eProcedures.05": {
+            "label": "Number of Procedure Attempts",
+            "required": True,
+            "type": "integer",
+            "section": "eProcedures",
+        },
+        "eProcedures.06": {
+            "label": "Procedure Successful",
+            "required": True,
+            "type": "code",
+            "section": "eProcedures",
+        },
+        "eMedications.01": {
+            "label": "Date/Time Medication Administered",
+            "required": True,
+            "type": "dateTime",
+            "section": "eMedications",
+        },
+        "eMedications.03": {
+            "label": "Medication Given",
+            "required": True,
+            "type": "code",
+            "section": "eMedications",
+        },
+        "eMedications.05": {
+            "label": "Medication Dosage",
+            "required": True,
+            "type": "decimal",
+            "section": "eMedications",
+        },
+        "eMedications.06": {
+            "label": "Medication Dosage Units",
+            "required": True,
+            "type": "code",
+            "section": "eMedications",
+        },
+        "eDisposition.12": {
+            "label": "Incident/Patient Disposition",
+            "required": True,
+            "type": "code",
+            "section": "eDisposition",
+        },
+        "eDisposition.16": {
+            "label": "Transport Disposition",
+            "required": True,
+            "type": "code",
+            "section": "eDisposition",
+        },
+        "eDisposition.21": {
+            "label": "Destination/Transferred To Code",
+            "required": False,
+            "type": "code",
+            "section": "eDisposition",
+        },
+        "eOutcome.01": {
+            "label": "Emergency Department Disposition",
+            "required": False,
+            "type": "code",
+            "section": "eOutcome",
+        },
+        "eNarrative.01": {
+            "label": "Patient Care Report Narrative",
+            "required": True,
+            "type": "string",
+            "section": "eNarrative",
+        },
     },
 }
 
@@ -84,6 +342,7 @@ ELEMENT_SECTIONS = list({v["section"] for v in NEMSIS_351_SCHEMA["elements"].val
 
 
 # ── Schema viewer ─────────────────────────────────────────────────────────────
+
 
 @router.get("/schema")
 async def full_schema_viewer(
@@ -100,6 +359,7 @@ async def full_schema_viewer(
 
 # ── Element hierarchy browser ─────────────────────────────────────────────────
 
+
 @router.get("/schema/hierarchy")
 async def element_hierarchy(
     current: CurrentUser = Depends(get_current_user),
@@ -109,11 +369,19 @@ async def element_hierarchy(
         section = elem["section"]
         if section not in hierarchy:
             hierarchy[section] = []
-        hierarchy[section].append({"id": elem_id, "label": elem["label"], "required": elem["required"], "type": elem["type"]})
+        hierarchy[section].append(
+            {
+                "id": elem_id,
+                "label": elem["label"],
+                "required": elem["required"],
+                "type": elem["type"],
+            }
+        )
     return {"hierarchy": hierarchy, "sections": list(hierarchy.keys())}
 
 
 # ── Required vs optional field tracker ───────────────────────────────────────
+
 
 @router.get("/schema/field-requirements")
 async def field_requirements(
@@ -131,6 +399,7 @@ async def field_requirements(
 
 # ── State-specific mapping ────────────────────────────────────────────────────
 
+
 @router.get("/schema/state-mapping/{state_code}")
 async def state_mapping(
     state_code: str,
@@ -138,7 +407,9 @@ async def state_mapping(
     db: Session = Depends(db_session_dependency),
 ):
     mappings = _svc(db).repo("nemsis_state_mappings").list(tenant_id=current.tenant_id)
-    state_map = next((m for m in mappings if m.get("data", {}).get("state_code") == state_code.upper()), None)
+    state_map = next(
+        (m for m in mappings if m.get("data", {}).get("state_code") == state_code.upper()), None
+    )
     additional_required = []
     if state_map:
         additional_required = state_map.get("data", {}).get("additional_required_elements", [])
@@ -173,6 +444,7 @@ async def create_state_mapping(
 
 # ── Version comparison tool ───────────────────────────────────────────────────
 
+
 @router.post("/schema/version-compare")
 async def version_compare(
     payload: dict[str, Any],
@@ -190,6 +462,7 @@ async def version_compare(
 
 
 # ── XML validation engine ─────────────────────────────────────────────────────
+
 
 @router.post("/validate/xml")
 async def validate_xml(
@@ -215,6 +488,7 @@ async def validate_xml(
 
 
 # ── Real-time field validation ────────────────────────────────────────────────
+
 
 @router.post("/validate/field")
 async def validate_field(
@@ -250,6 +524,7 @@ async def validate_field(
 
 # ── Conditional element enforcement ──────────────────────────────────────────
 
+
 @router.post("/validate/conditional")
 async def conditional_enforcement(
     payload: dict[str, Any],
@@ -274,10 +549,15 @@ async def conditional_enforcement(
     for rule in conditional_rules:
         if rule["condition"](incident) and not rule["present"](incident):
             violations.append({"rule": rule["rule"], "missing_element": rule["required_element"]})
-    return {"violations": violations, "compliant": not violations, "rules_checked": len(conditional_rules)}
+    return {
+        "violations": violations,
+        "compliant": not violations,
+        "rules_checked": len(conditional_rules),
+    }
 
 
 # ── Data type validator ───────────────────────────────────────────────────────
+
 
 @router.post("/validate/data-types")
 async def validate_data_types(
@@ -295,16 +575,21 @@ async def validate_data_types(
             try:
                 int(value)
             except (ValueError, TypeError):
-                errors.append({"element": elem_id, "expected": "integer", "got": type(value).__name__})
+                errors.append(
+                    {"element": elem_id, "expected": "integer", "got": type(value).__name__}
+                )
         elif t == "decimal" and value is not None:
             try:
                 float(value)
             except (ValueError, TypeError):
-                errors.append({"element": elem_id, "expected": "decimal", "got": type(value).__name__})
+                errors.append(
+                    {"element": elem_id, "expected": "decimal", "got": type(value).__name__}
+                )
     return {"valid": not errors, "type_errors": errors, "fields_checked": len(fields)}
 
 
 # ── Value set validator ───────────────────────────────────────────────────────
+
 
 @router.post("/validate/value-sets")
 async def validate_value_sets(
@@ -321,15 +606,18 @@ async def validate_value_sets(
     errors = []
     for elem_id, value in fields.items():
         if elem_id in value_sets and value not in value_sets[elem_id]:
-            errors.append({
-                "element": elem_id,
-                "value": value,
-                "valid_values": value_sets[elem_id],
-            })
+            errors.append(
+                {
+                    "element": elem_id,
+                    "value": value,
+                    "valid_values": value_sets[elem_id],
+                }
+            )
     return {"valid": not errors, "value_set_errors": errors}
 
 
 # ── Narrative length checker ──────────────────────────────────────────────────
+
 
 @router.post("/validate/narrative")
 async def narrative_length_check(
@@ -356,6 +644,7 @@ async def narrative_length_check(
 
 # ── Missing required field alert ─────────────────────────────────────────────
 
+
 @router.post("/validate/missing-fields")
 async def missing_fields_alert(
     payload: dict[str, Any],
@@ -366,7 +655,11 @@ async def missing_fields_alert(
     required = set(REQUIRED_ELEMENTS)
     missing = list(required - provided_elements)
     missing_details = [
-        {"element": e, "label": NEMSIS_351_SCHEMA["elements"].get(e, {}).get("label", e), "section": NEMSIS_351_SCHEMA["elements"].get(e, {}).get("section", "")}
+        {
+            "element": e,
+            "label": NEMSIS_351_SCHEMA["elements"].get(e, {}).get("label", e),
+            "section": NEMSIS_351_SCHEMA["elements"].get(e, {}).get("section", ""),
+        }
         for e in missing
     ]
     return {
@@ -380,6 +673,7 @@ async def missing_fields_alert(
 
 # ── Invalid code detection ────────────────────────────────────────────────────
 
+
 @router.post("/validate/invalid-codes")
 async def invalid_code_detection(
     payload: dict[str, Any],
@@ -390,11 +684,14 @@ async def invalid_code_detection(
     invalid = []
     for elem_id, code in codes.items():
         if str(code).upper() in known_invalid_patterns:
-            invalid.append({"element": elem_id, "code": code, "reason": "Non-specific or placeholder code"})
+            invalid.append(
+                {"element": elem_id, "code": code, "reason": "Non-specific or placeholder code"}
+            )
     return {"invalid_codes": invalid, "has_invalid": bool(invalid)}
 
 
 # ── Auto-correct suggestion engine ───────────────────────────────────────────
+
 
 @router.post("/validate/auto-correct")
 async def auto_correct_suggestions(
@@ -405,25 +702,30 @@ async def auto_correct_suggestions(
     suggestions: list[dict[str, Any]] = []
     gender_map = {"M": "Male", "F": "Female", "U": "Unknown", "m": "Male", "f": "Female"}
     if "ePatient.13" in fields and fields["ePatient.13"] in gender_map:
-        suggestions.append({
-            "element": "ePatient.13",
-            "current": fields["ePatient.13"],
-            "suggested": gender_map[fields["ePatient.13"]],
-            "reason": "Normalize to NEMSIS value set",
-        })
+        suggestions.append(
+            {
+                "element": "ePatient.13",
+                "current": fields["ePatient.13"],
+                "suggested": gender_map[fields["ePatient.13"]],
+                "reason": "Normalize to NEMSIS value set",
+            }
+        )
     for elem_id, value in fields.items():
         elem = NEMSIS_351_SCHEMA["elements"].get(elem_id)
         if elem and elem["type"] == "dateTime" and value and "T" not in str(value):
-            suggestions.append({
-                "element": elem_id,
-                "current": value,
-                "suggested": f"{value}T00:00:00Z",
-                "reason": "Add ISO 8601 time component",
-            })
+            suggestions.append(
+                {
+                    "element": elem_id,
+                    "current": value,
+                    "suggested": f"{value}T00:00:00Z",
+                    "reason": "Add ISO 8601 time component",
+                }
+            )
     return {"suggestions": suggestions, "count": len(suggestions)}
 
 
 # ── Export preview renderer ───────────────────────────────────────────────────
+
 
 @router.post("/export/preview")
 async def export_preview(
@@ -436,7 +738,9 @@ async def export_preview(
     agency = payload.get("agency", {})
     if incident and patient:
         try:
-            xml_bytes = build_nemsis_document(incident=incident, patient=patient, vitals=vitals, agency_info=agency)
+            xml_bytes = build_nemsis_document(
+                incident=incident, patient=patient, vitals=vitals, agency_info=agency
+            )
             xml_preview = xml_bytes.decode("utf-8", errors="replace")[:2000]
             valid = True
             errors: list[str] = []
@@ -457,6 +761,7 @@ async def export_preview(
 
 
 # ── Export failure reason breakdown ──────────────────────────────────────────
+
 
 @router.get("/export/failure-analysis")
 async def export_failure_analysis(
@@ -479,6 +784,7 @@ async def export_failure_analysis(
 
 # ── Error clustering analysis ─────────────────────────────────────────────────
 
+
 @router.get("/errors/clusters")
 async def error_clusters(
     current: CurrentUser = Depends(get_current_user),
@@ -495,6 +801,7 @@ async def error_clusters(
 
 
 # ── State submission readiness score ─────────────────────────────────────────
+
 
 @router.post("/readiness-score")
 async def readiness_score(
@@ -514,11 +821,16 @@ async def readiness_score(
         "provided_required": len(provided & required),
         "missing_required": len(missing),
         "ready_for_submission": completeness == 100,
-        "score_label": "Ready" if completeness == 100 else "Needs Work" if completeness >= 80 else "Incomplete",
+        "score_label": "Ready"
+        if completeness == 100
+        else "Needs Work"
+        if completeness >= 80
+        else "Incomplete",
     }
 
 
 # ── Dataset completeness score ────────────────────────────────────────────────
+
 
 @router.post("/completeness-score")
 async def completeness_score(
@@ -542,6 +854,7 @@ async def completeness_score(
 
 # ── Field-level compliance heatmap ────────────────────────────────────────────
 
+
 @router.post("/heatmap")
 async def compliance_heatmap(
     payload: dict[str, Any],
@@ -555,11 +868,15 @@ async def compliance_heatmap(
             for elem_id in NEMSIS_351_SCHEMA["elements"]:
                 if elem_id in str(err):
                     error_counts[elem_id] = error_counts.get(elem_id, 0) + 1
-    heatmap = [{"element": k, "error_count": c, "label": NEMSIS_351_SCHEMA["elements"][k]["label"]} for k, c in sorted(error_counts.items(), key=lambda x: x[1], reverse=True)]
+    heatmap = [
+        {"element": k, "error_count": c, "label": NEMSIS_351_SCHEMA["elements"][k]["label"]}
+        for k, c in sorted(error_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
     return {"heatmap": heatmap[:30]}
 
 
 # ── Field auto-population engine ─────────────────────────────────────────────
+
 
 @router.post("/auto-populate")
 async def auto_populate(
@@ -570,7 +887,9 @@ async def auto_populate(
     suggestions: dict[str, Any] = {}
     if not incident.get("eScene.09") and incident.get("state"):
         state_codes = {"California": "CA", "Texas": "TX", "Florida": "FL", "New York": "NY"}
-        suggestions["eScene.09"] = state_codes.get(incident.get("state", ""), incident.get("state", ""))
+        suggestions["eScene.09"] = state_codes.get(
+            incident.get("state", ""), incident.get("state", "")
+        )
     if not incident.get("eRecord.03"):
         suggestions["eRecord.03"] = "FusionEMS Quantum"
     if not incident.get("eRecord.04"):
@@ -581,6 +900,7 @@ async def auto_populate(
 
 
 # ── Controlled vocabulary editor ─────────────────────────────────────────────
+
 
 @router.get("/vocabulary/{element_id}")
 async def get_vocabulary(
@@ -596,8 +916,14 @@ async def get_vocabulary(
         "eSituation.13": ["Critical", "Emergent", "Lower Acuity", "Non-Acute"],
         "eDispatch.02": ["Yes", "No", "Unknown"],
     }
-    values = elem_vocab.get("data", {}).get("values") if elem_vocab else built_in.get(element_id, [])
-    return {"element_id": element_id, "values": values, "source": "custom" if elem_vocab else "built_in"}
+    values = (
+        elem_vocab.get("data", {}).get("values") if elem_vocab else built_in.get(element_id, [])
+    )
+    return {
+        "element_id": element_id,
+        "values": values,
+        "source": "custom" if elem_vocab else "built_in",
+    }
 
 
 @router.post("/vocabulary")
@@ -622,6 +948,7 @@ async def create_vocabulary(
 
 # ── Version lock enforcement ──────────────────────────────────────────────────
 
+
 @router.get("/version-lock")
 async def version_lock_status(
     current: CurrentUser = Depends(get_current_user),
@@ -630,7 +957,9 @@ async def version_lock_status(
     locks = _svc(db).repo("nemsis_version_locks").list(tenant_id=current.tenant_id)
     active = next((lk for lk in locks if lk.get("data", {}).get("active")), None)
     return {
-        "locked_version": active.get("data", {}).get("version") if active else NEMSIS_351_SCHEMA["version"],
+        "locked_version": active.get("data", {}).get("version")
+        if active
+        else NEMSIS_351_SCHEMA["version"],
         "lock_active": bool(active),
         "current_version": NEMSIS_351_SCHEMA["version"],
     }
@@ -647,12 +976,17 @@ async def set_version_lock(
         table="nemsis_version_locks",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"version": payload.get("version", "3.5.1"), "active": True, "locked_by": str(current.user_id)},
+        data={
+            "version": payload.get("version", "3.5.1"),
+            "active": True,
+            "locked_by": str(current.user_id),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
 
 # ── Upgrade impact simulation ─────────────────────────────────────────────────
+
 
 @router.post("/upgrade-impact")
 async def upgrade_impact(
@@ -667,7 +1001,9 @@ async def upgrade_impact(
         {"element": "eRecord.04", "change": "Now required in 3.5.1"},
         {"element": "eSituation.13", "change": "Value set updated"},
     ]
-    impacted_records = len([v for v in validations if v.get("data", {}).get("status") != "validated"])
+    impacted_records = len(
+        [v for v in validations if v.get("data", {}).get("status") != "validated"]
+    )
     return {
         "from_version": from_version,
         "to_version": to_version,
@@ -678,6 +1014,7 @@ async def upgrade_impact(
 
 
 # ── Data normalization tool ───────────────────────────────────────────────────
+
 
 @router.post("/normalize")
 async def normalize_data(
@@ -693,11 +1030,16 @@ async def normalize_data(
     gender_norm = {"M": "Male", "F": "Female", "m": "Male", "f": "Female", "U": "Unknown"}
     if "ePatient.13" in normalized and normalized["ePatient.13"] in gender_norm:
         normalized["ePatient.13"] = gender_norm[normalized["ePatient.13"]]
-    changes = {k: {"from": record[k], "to": normalized[k]} for k in normalized if normalized[k] != record.get(k)}
+    changes = {
+        k: {"from": record[k], "to": normalized[k]}
+        for k in normalized
+        if normalized[k] != record.get(k)
+    }
     return {"normalized": normalized, "changes": changes, "change_count": len(changes)}
 
 
 # ── XML schema cache ──────────────────────────────────────────────────────────
+
 
 @router.get("/schema/cache-status")
 async def schema_cache_status(
@@ -708,11 +1050,12 @@ async def schema_cache_status(
         "version": NEMSIS_351_SCHEMA["version"],
         "element_count": len(NEMSIS_351_SCHEMA["elements"]),
         "cache_ttl_seconds": 3600,
-        "checksum": hashlib.md5(str(NEMSIS_351_SCHEMA).encode()).hexdigest(),
+        "checksum": hashlib.sha256(str(NEMSIS_351_SCHEMA).encode()).hexdigest(),
     }
 
 
 # ── Custom extension field manager ────────────────────────────────────────────
+
 
 @router.post("/extensions")
 async def create_extension(
@@ -747,6 +1090,7 @@ async def list_extensions(
 
 # ── Audit-ready export bundle ─────────────────────────────────────────────────
 
+
 @router.post("/audit-bundle")
 async def audit_bundle(
     payload: dict[str, Any],
@@ -770,10 +1114,16 @@ async def audit_bundle(
         },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"bundle_id": str(rec.get("id")), "status": "ready", "validation_count": len(validations), "export_count": len(exports)}
+    return {
+        "bundle_id": str(rec.get("id")),
+        "status": "ready",
+        "validation_count": len(validations),
+        "export_count": len(exports),
+    }
 
 
 # ── Field usage analytics ─────────────────────────────────────────────────────
+
 
 @router.get("/analytics/field-usage")
 async def field_usage_analytics(
@@ -783,13 +1133,14 @@ async def field_usage_analytics(
     validations = _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
     usage: dict[str, int] = {}
     for v in validations:
-        for elem_id in (v.get("data", {}).get("provided_elements") or []):
+        for elem_id in v.get("data", {}).get("provided_elements") or []:
             usage[elem_id] = usage.get(elem_id, 0) + 1
     sorted_usage = sorted(usage.items(), key=lambda x: x[1], reverse=True)
     return {"field_usage": [{"element": k, "usage_count": c} for k, c in sorted_usage[:30]]}
 
 
 # ── Deprecated field alert ────────────────────────────────────────────────────
+
 
 @router.post("/validate/deprecated-fields")
 async def deprecated_fields_alert(
@@ -803,11 +1154,14 @@ async def deprecated_fields_alert(
         "deprecated_found": found_deprecated,
         "count": len(found_deprecated),
         "warning": bool(found_deprecated),
-        "message": f"Found {len(found_deprecated)} deprecated element(s)" if found_deprecated else "No deprecated elements found",
+        "message": f"Found {len(found_deprecated)} deprecated element(s)"
+        if found_deprecated
+        else "No deprecated elements found",
     }
 
 
 # ── Timestamp integrity validation ────────────────────────────────────────────
+
 
 @router.post("/validate/timestamps")
 async def timestamp_integrity(
@@ -825,13 +1179,13 @@ async def timestamp_integrity(
         ("eTimes.11", "eTimes.13"),
     ]
     for a, b in ordered_keys:
-        if a in times and b in times:
-            if str(times[a]) > str(times[b]):
-                errors.append({"rule": f"{a} must be before {b}", "a": times[a], "b": times[b]})
+        if a in times and b in times and str(times[a]) > str(times[b]):
+            errors.append({"rule": f"{a} must be before {b}", "a": times[a], "b": times[b]})
     return {"valid": not errors, "timestamp_errors": errors}
 
 
 # ── Duplicate incident detection ──────────────────────────────────────────────
+
 
 @router.post("/validate/duplicates")
 async def duplicate_detection(
@@ -851,6 +1205,7 @@ async def duplicate_detection(
 
 
 # ── Cross-field consistency checker ──────────────────────────────────────────
+
 
 @router.post("/validate/cross-field-consistency")
 async def cross_field_consistency(
@@ -889,6 +1244,7 @@ async def cross_field_consistency(
 
 # ── Medical necessity keyword detector ───────────────────────────────────────
 
+
 @router.post("/validate/medical-necessity")
 async def medical_necessity_check(
     payload: dict[str, Any],
@@ -896,20 +1252,30 @@ async def medical_necessity_check(
 ):
     narrative = payload.get("narrative", "")
     keywords = [
-        "altered mental status", "respiratory distress", "chest pain",
-        "cardiac arrest", "stroke", "trauma", "unresponsive",
-        "hypoxia", "hypotension", "seizure",
+        "altered mental status",
+        "respiratory distress",
+        "chest pain",
+        "cardiac arrest",
+        "stroke",
+        "trauma",
+        "unresponsive",
+        "hypoxia",
+        "hypotension",
+        "seizure",
     ]
     found = [kw for kw in keywords if kw.lower() in narrative.lower()]
     return {
         "narrative_length": len(narrative),
         "medical_necessity_keywords_found": found,
         "has_medical_necessity": bool(found),
-        "recommendation": "Sufficient medical necessity documentation" if found else "Add more clinical detail to support medical necessity",
+        "recommendation": "Sufficient medical necessity documentation"
+        if found
+        else "Add more clinical detail to support medical necessity",
     }
 
 
 # ── Medication dosage validator ───────────────────────────────────────────────
+
 
 @router.post("/validate/medication-dosage")
 async def medication_dosage_validator(
@@ -936,6 +1302,7 @@ async def medication_dosage_validator(
 
 # ── Response time validation ──────────────────────────────────────────────────
 
+
 @router.post("/validate/response-times")
 async def response_time_validation(
     payload: dict[str, Any],
@@ -944,13 +1311,13 @@ async def response_time_validation(
     dispatch = payload.get("eTimes.01")
     on_scene = payload.get("eTimes.06")
     warnings = []
-    if dispatch and on_scene:
-        if str(on_scene) < str(dispatch):
-            return {"valid": False, "errors": ["Scene arrival before dispatch call"]}
+    if dispatch and on_scene and str(on_scene) < str(dispatch):
+        return {"valid": False, "errors": ["Scene arrival before dispatch call"]}
     return {"valid": True, "warnings": warnings, "dispatch": dispatch, "on_scene": on_scene}
 
 
 # ── Transport destination validation ─────────────────────────────────────────
+
 
 @router.post("/validate/transport-destination")
 async def transport_destination_validation(
@@ -969,6 +1336,7 @@ async def transport_destination_validation(
 
 
 # ── Data lineage tracking ─────────────────────────────────────────────────────
+
 
 @router.post("/lineage")
 async def create_lineage_record(
@@ -1001,11 +1369,14 @@ async def get_lineage(
     db: Session = Depends(db_session_dependency),
 ):
     lineage = _svc(db).repo("nemsis_data_lineage").list(tenant_id=current.tenant_id)
-    incident_lineage = [rec for rec in lineage if rec.get("data", {}).get("incident_id") == incident_id]
+    incident_lineage = [
+        rec for rec in lineage if rec.get("data", {}).get("incident_id") == incident_id
+    ]
     return {"incident_id": incident_id, "lineage": incident_lineage, "count": len(incident_lineage)}
 
 
 # ── Element-level audit log ───────────────────────────────────────────────────
+
 
 @router.get("/audit-log")
 async def nemsis_audit_log(
@@ -1016,6 +1387,7 @@ async def nemsis_audit_log(
 
 
 # ── Auto-generated compliance report ─────────────────────────────────────────
+
 
 @router.get("/compliance-report")
 async def compliance_report(
@@ -1041,6 +1413,7 @@ async def compliance_report(
 
 # ── Validation severity tiers ─────────────────────────────────────────────────
 
+
 @router.post("/validate/severity-tiers")
 async def severity_tiers(
     payload: dict[str, Any],
@@ -1062,6 +1435,7 @@ async def severity_tiers(
 
 # ── Error remediation suggestions ────────────────────────────────────────────
 
+
 @router.post("/remediation-suggestions")
 async def remediation_suggestions(
     payload: dict[str, Any],
@@ -1072,19 +1446,45 @@ async def remediation_suggestions(
     for err in errors:
         err_str = str(err)
         if "eNarrative.01" in err_str:
-            suggestions.append({"error": err_str, "action": "Add patient care narrative with at least 50 characters"})
+            suggestions.append(
+                {
+                    "error": err_str,
+                    "action": "Add patient care narrative with at least 50 characters",
+                }
+            )
         elif "eTimes" in err_str:
-            suggestions.append({"error": err_str, "action": "Verify timestamp sequence: dispatch -> en route -> on scene -> transport -> destination"})
+            suggestions.append(
+                {
+                    "error": err_str,
+                    "action": "Verify timestamp sequence: dispatch -> en route -> on scene -> transport -> destination",
+                }
+            )
         elif "eVitals" in err_str:
-            suggestions.append({"error": err_str, "action": "Record complete vital signs set at initial patient contact"})
+            suggestions.append(
+                {
+                    "error": err_str,
+                    "action": "Record complete vital signs set at initial patient contact",
+                }
+            )
         elif "required" in err_str.lower():
-            suggestions.append({"error": err_str, "action": "Complete all required NEMSIS 3.5.1 elements before submission"})
+            suggestions.append(
+                {
+                    "error": err_str,
+                    "action": "Complete all required NEMSIS 3.5.1 elements before submission",
+                }
+            )
         else:
-            suggestions.append({"error": err_str, "action": "Review NEMSIS 3.5.1 data dictionary for element requirements"})
+            suggestions.append(
+                {
+                    "error": err_str,
+                    "action": "Review NEMSIS 3.5.1 data dictionary for element requirements",
+                }
+            )
     return {"suggestions": suggestions, "count": len(suggestions)}
 
 
 # ── Schema update alert system ────────────────────────────────────────────────
+
 
 @router.get("/schema/update-alerts")
 async def schema_update_alerts(
@@ -1101,20 +1501,38 @@ async def schema_update_alerts(
 
 # ── Field dependency graph viewer ─────────────────────────────────────────────
 
+
 @router.get("/schema/dependency-graph")
 async def dependency_graph(
     current: CurrentUser = Depends(get_current_user),
 ):
     dependencies = [
-        {"element": "eDisposition.16", "depends_on": "eDisposition.12", "rule": "required if transport occurred"},
-        {"element": "eMedications.05", "depends_on": "eMedications.03", "rule": "required when medication given"},
-        {"element": "eProcedures.06", "depends_on": "eProcedures.03", "rule": "required when procedure performed"},
-        {"element": "eTimes.11", "depends_on": "eDisposition.16", "rule": "required when transported"},
+        {
+            "element": "eDisposition.16",
+            "depends_on": "eDisposition.12",
+            "rule": "required if transport occurred",
+        },
+        {
+            "element": "eMedications.05",
+            "depends_on": "eMedications.03",
+            "rule": "required when medication given",
+        },
+        {
+            "element": "eProcedures.06",
+            "depends_on": "eProcedures.03",
+            "rule": "required when procedure performed",
+        },
+        {
+            "element": "eTimes.11",
+            "depends_on": "eDisposition.16",
+            "rule": "required when transported",
+        },
     ]
     return {"dependencies": dependencies, "count": len(dependencies)}
 
 
 # ── Real-time export simulation ───────────────────────────────────────────────
+
 
 @router.post("/export/simulate")
 async def export_simulation(
@@ -1138,6 +1556,7 @@ async def export_simulation(
 
 
 # ── State rejection tracker ───────────────────────────────────────────────────
+
 
 @router.post("/state-rejections")
 async def create_state_rejection(
@@ -1171,11 +1590,14 @@ async def list_state_rejections(
 
 # ── Export batching control ───────────────────────────────────────────────────
 
+
 @router.post("/export/batch")
 async def create_export_batch(
     payload: dict[str, Any],
     request: Request,
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "billing", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "billing", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     return await _svc(db).create(
@@ -1202,6 +1624,7 @@ async def list_export_batches(
 
 
 # ── Dataset backup versioning ─────────────────────────────────────────────────
+
 
 @router.post("/backup")
 async def create_backup(
@@ -1234,6 +1657,7 @@ async def list_backups(
 
 # ── Export status dashboard ───────────────────────────────────────────────────
 
+
 @router.get("/export/dashboard")
 async def export_dashboard(
     current: CurrentUser = Depends(get_current_user),
@@ -1258,6 +1682,7 @@ async def export_dashboard(
 
 # ── Multi-state compatibility testing ────────────────────────────────────────
 
+
 @router.post("/multi-state-test")
 async def multi_state_test(
     payload: dict[str, Any],
@@ -1269,15 +1694,27 @@ async def multi_state_test(
     results = []
     for state in states:
         mappings = _svc(db).repo("nemsis_state_mappings").list(tenant_id=current.tenant_id)
-        state_map = next((m for m in mappings if m.get("data", {}).get("state_code") == state.upper()), None)
-        extra = state_map.get("data", {}).get("additional_required_elements", []) if state_map else []
+        state_map = next(
+            (m for m in mappings if m.get("data", {}).get("state_code") == state.upper()), None
+        )
+        extra = (
+            state_map.get("data", {}).get("additional_required_elements", []) if state_map else []
+        )
         state_required = set(REQUIRED_ELEMENTS + extra)
         missing = list(state_required - provided)
-        results.append({"state": state, "ready": not missing, "missing_count": len(missing), "missing": missing})
+        results.append(
+            {
+                "state": state,
+                "ready": not missing,
+                "missing_count": len(missing),
+                "missing": missing,
+            }
+        )
     return {"results": results, "all_states_ready": all(r["ready"] for r in results)}
 
 
 # ── Live validation API endpoint ──────────────────────────────────────────────
+
 
 @router.post("/validate/live")
 async def live_validation(
@@ -1295,7 +1732,9 @@ async def live_validation(
         "errors": errors,
         "warnings": [],
         "missing_required": missing,
-        "completeness_pct": round(len(provided & required) / len(required) * 100, 1) if required else 100,
+        "completeness_pct": round(len(provided & required) / len(required) * 100, 1)
+        if required
+        else 100,
     }
     await _svc(db).create(
         table="nemsis_validation_results",
@@ -1308,6 +1747,7 @@ async def live_validation(
 
 
 # ── Export timing scheduler ───────────────────────────────────────────────────
+
 
 @router.post("/export/schedule")
 async def schedule_export(
@@ -1340,6 +1780,7 @@ async def list_export_schedules(
 
 # ── Certification readiness monitor ──────────────────────────────────────────
 
+
 @router.get("/certification-readiness")
 async def certification_readiness(
     current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
@@ -1353,7 +1794,10 @@ async def certification_readiness(
     unresolved_rejections = len([r for r in rejections if not r.get("data", {}).get("resolved")])
     unapproved_extensions = len([e for e in extensions if not e.get("data", {}).get("approved")])
     checks = [
-        {"check": "Validation rate >= 95%", "passed": (valid_count / len(validations) * 100 >= 95) if validations else False},
+        {
+            "check": "Validation rate >= 95%",
+            "passed": (valid_count / len(validations) * 100 >= 95) if validations else False,
+        },
         {"check": "No unresolved state rejections", "passed": unresolved_rejections == 0},
         {"check": "All extensions approved", "passed": unapproved_extensions == 0},
         {"check": "Version lock active", "passed": True},
@@ -1369,6 +1813,7 @@ async def certification_readiness(
 
 # ── Data integrity scoring ────────────────────────────────────────────────────
 
+
 @router.get("/integrity-score")
 async def integrity_score(
     current: CurrentUser = Depends(get_current_user),
@@ -1380,11 +1825,27 @@ async def integrity_score(
         return {"integrity_score": 100, "grade": "A", "basis": "no_data"}
     valid = len([v for v in validations if v.get("data", {}).get("valid")])
     rate = valid / len(validations) * 100
-    grade = "A" if rate >= 95 else "B" if rate >= 85 else "C" if rate >= 75 else "D" if rate >= 60 else "F"
-    return {"integrity_score": round(rate, 1), "grade": grade, "valid_count": valid, "total": len(validations)}
+    grade = (
+        "A"
+        if rate >= 95
+        else "B"
+        if rate >= 85
+        else "C"
+        if rate >= 75
+        else "D"
+        if rate >= 60
+        else "F"
+    )
+    return {
+        "integrity_score": round(rate, 1),
+        "grade": grade,
+        "valid_count": valid,
+        "total": len(validations),
+    }
 
 
 # ── Provider-level compliance ranking ─────────────────────────────────────────
+
 
 @router.get("/provider-ranking")
 async def provider_ranking(
@@ -1402,6 +1863,7 @@ async def provider_ranking(
 
 # ── Required demographic enforcement ─────────────────────────────────────────
 
+
 @router.post("/validate/demographics")
 async def validate_demographics(
     payload: dict[str, Any],
@@ -1413,11 +1875,14 @@ async def validate_demographics(
     return {
         "valid": not missing,
         "missing_demographics": missing,
-        "demographic_completeness_pct": round((len(required_demo) - len(missing)) / len(required_demo) * 100, 1),
+        "demographic_completeness_pct": round(
+            (len(required_demo) - len(missing)) / len(required_demo) * 100, 1
+        ),
     }
 
 
 # ── Submission audit trail ────────────────────────────────────────────────────
+
 
 @router.post("/submission-audit")
 async def create_submission_audit(
@@ -1451,6 +1916,7 @@ async def list_submission_audit(
 
 # ── Reportable incident auto-flagging ────────────────────────────────────────
 
+
 @router.post("/reportable-flag")
 async def reportable_flag(
     payload: dict[str, Any],
@@ -1476,6 +1942,7 @@ async def reportable_flag(
 
 # ── Schema diff visualizer ────────────────────────────────────────────────────
 
+
 @router.get("/schema/diff")
 async def schema_diff(
     v1: str = Query("3.4.0"),
@@ -1483,14 +1950,32 @@ async def schema_diff(
     current: CurrentUser = Depends(get_current_user),
 ):
     diff = [
-        {"element": "eVitals.06", "status": "added", "in_v1": False, "in_v2": True, "notes": "Pulse oximetry added"},
-        {"element": "eScene.15", "status": "deprecated", "in_v1": True, "in_v2": False, "notes": "Removed in 3.5.1"},
-        {"element": "eRecord.04", "status": "changed", "change_detail": "Optional -> Required", "notes": "Now required"},
+        {
+            "element": "eVitals.06",
+            "status": "added",
+            "in_v1": False,
+            "in_v2": True,
+            "notes": "Pulse oximetry added",
+        },
+        {
+            "element": "eScene.15",
+            "status": "deprecated",
+            "in_v1": True,
+            "in_v2": False,
+            "notes": "Removed in 3.5.1",
+        },
+        {
+            "element": "eRecord.04",
+            "status": "changed",
+            "change_detail": "Optional -> Required",
+            "notes": "Now required",
+        },
     ]
     return {"version_a": v1, "version_b": v2, "diff": diff, "total_changes": len(diff)}
 
 
 # ── Field cardinality enforcement ─────────────────────────────────────────────
+
 
 @router.post("/validate/cardinality")
 async def cardinality_enforcement(
@@ -1511,13 +1996,24 @@ async def cardinality_enforcement(
             val = fields[elem]
             count = len(val) if isinstance(val, list) else 1
             if count < rules["min"]:
-                errors.append({"element": elem, "error": f"Minimum {rules['min']} occurrence(s) required, got {count}"})
+                errors.append(
+                    {
+                        "element": elem,
+                        "error": f"Minimum {rules['min']} occurrence(s) required, got {count}",
+                    }
+                )
             if count > rules["max"]:
-                errors.append({"element": elem, "error": f"Maximum {rules['max']} occurrence(s) allowed, got {count}"})
+                errors.append(
+                    {
+                        "element": elem,
+                        "error": f"Maximum {rules['max']} occurrence(s) allowed, got {count}",
+                    }
+                )
     return {"valid": not errors, "cardinality_errors": errors}
 
 
 # ── Required coding auto-suggest ──────────────────────────────────────────────
+
 
 @router.post("/coding-suggest")
 async def coding_suggest(
@@ -1535,11 +2031,14 @@ async def coding_suggest(
     ]
     for kw, elem, code, label in keyword_map:
         if kw.lower() in narrative.lower():
-            suggestions.append({"element": elem, "suggested_code": code, "label": label, "trigger": kw})
+            suggestions.append(
+                {"element": elem, "suggested_code": code, "label": label, "trigger": kw}
+            )
     return {"suggestions": suggestions, "count": len(suggestions)}
 
 
 # ── Certification maintenance engine ─────────────────────────────────────────
+
 
 @router.get("/certification-maintenance")
 async def certification_maintenance(
@@ -1562,6 +2061,7 @@ async def certification_maintenance(
 
 
 # ── Fail-safe export freeze ────────────────────────────────────────────────────
+
 
 @router.post("/export/freeze")
 async def export_freeze(
@@ -1596,6 +2096,7 @@ async def export_freeze_status(
 
 # ── Field redundancy detection ────────────────────────────────────────────────
 
+
 @router.post("/validate/redundancy")
 async def field_redundancy(
     payload: dict[str, Any],
@@ -1603,23 +2104,32 @@ async def field_redundancy(
 ):
     provided = payload.get("provided_elements", [])
     redundant_groups = [
-        {"elements": ["ePatient.01", "ePatient.02"], "note": "Both name components required together"},
-        {"elements": ["eVitals.14", "eVitals.15"], "note": "Both systolic and diastolic required together"},
+        {
+            "elements": ["ePatient.01", "ePatient.02"],
+            "note": "Both name components required together",
+        },
+        {
+            "elements": ["eVitals.14", "eVitals.15"],
+            "note": "Both systolic and diastolic required together",
+        },
     ]
     warnings = []
     for group in redundant_groups:
         present = [e for e in group["elements"] if e in provided]
         if len(present) > 0 and len(present) < len(group["elements"]):
             missing_from_group = [e for e in group["elements"] if e not in provided]
-            warnings.append({
-                "group": group["elements"],
-                "note": group["note"],
-                "missing": missing_from_group,
-            })
+            warnings.append(
+                {
+                    "group": group["elements"],
+                    "note": group["note"],
+                    "missing": missing_from_group,
+                }
+            )
     return {"redundancy_warnings": warnings, "count": len(warnings)}
 
 
 # ── Missing trend detection ───────────────────────────────────────────────────
+
 
 @router.get("/trends/missing-fields")
 async def missing_field_trends(
@@ -1634,10 +2144,13 @@ async def missing_field_trends(
                 if elem_id in str(err):
                     missing_counts[elem_id] = missing_counts.get(elem_id, 0) + 1
     sorted_missing = sorted(missing_counts.items(), key=lambda x: x[1], reverse=True)
-    return {"trending_missing": [{"element": k, "missing_count": c} for k, c in sorted_missing[:10]]}
+    return {
+        "trending_missing": [{"element": k, "missing_count": c} for k, c in sorted_missing[:10]]
+    }
 
 
 # ── System-of-record enforcement ─────────────────────────────────────────────
+
 
 @router.get("/system-of-record")
 async def system_of_record(

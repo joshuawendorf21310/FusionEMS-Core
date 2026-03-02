@@ -1,14 +1,27 @@
 from __future__ import annotations
-import uuid
-from datetime import datetime, timezone
 
-from core_app.services.domination_service import DominationService
+import uuid
+from datetime import UTC, datetime
+
 from core_app.ai.service import AiService
+from core_app.services.domination_service import DominationService
 
 ESCALATION_TRIGGERS = [
-    "urgent", "lawsuit", "legal action", "hipaa violation", "breach",
-    "complaint", "attorney", "sue", "fraud", "human", "speak to someone",
-    "escalate", "call me", "not working", "legal notice",
+    "urgent",
+    "lawsuit",
+    "legal action",
+    "hipaa violation",
+    "breach",
+    "complaint",
+    "attorney",
+    "sue",
+    "fraud",
+    "human",
+    "speak to someone",
+    "escalate",
+    "call me",
+    "not working",
+    "legal notice",
 ]
 
 ESCALATION_DOLLAR_THRESHOLD = 10000
@@ -34,7 +47,7 @@ class ChatService:
                 "unread_founder": True,
                 "escalated": False,
                 "message_count": 0,
-                "last_message_at": datetime.now(timezone.utc).isoformat(),
+                "last_message_at": datetime.now(UTC).isoformat(),
             },
             correlation_id=None,
         )
@@ -66,7 +79,7 @@ class ChatService:
         thread = self.svc.repo("support_threads").get(tenant_id=self.tenant_id, record_id=thread_id)
         if thread:
             current_data = thread.get("data") or {}
-            current_data["last_message_at"] = datetime.now(timezone.utc).isoformat()
+            current_data["last_message_at"] = datetime.now(UTC).isoformat()
             current_data["message_count"] = current_data.get("message_count", 0) + 1
             if sender_role == "agency":
                 current_data["unread_founder"] = True
@@ -98,14 +111,19 @@ class ChatService:
 
     def _get_thread(self, thread_id: str) -> dict | None:
         from sqlalchemy import text
-        row = self.db.execute(
-            text(
-                "SELECT id, tenant_id, data, version, created_at, updated_at "
-                "FROM support_threads "
-                "WHERE id = :id AND deleted_at IS NULL"
-            ),
-            {"id": thread_id},
-        ).mappings().first()
+
+        row = (
+            self.db.execute(
+                text(
+                    "SELECT id, tenant_id, data, version, created_at, updated_at "
+                    "FROM support_threads "
+                    "WHERE id = :id AND deleted_at IS NULL"
+                ),
+                {"id": thread_id},
+            )
+            .mappings()
+            .first()
+        )
         return dict(row) if row else None
 
     async def _check_escalation(self, thread_id: str, content: str) -> bool:
@@ -126,7 +144,7 @@ class ChatService:
             data={
                 "thread_id": str(thread_id),
                 "trigger_phrase": triggered_by,
-                "escalated_at": datetime.now(timezone.utc).isoformat(),
+                "escalated_at": datetime.now(UTC).isoformat(),
                 "resolved": False,
             },
             correlation_id=None,
@@ -157,8 +175,9 @@ class ChatService:
         return True
 
     def _queue_ai_reply(self, thread_id: str, user_message: str) -> None:
-        from sqlalchemy import text
         import json
+
+        from sqlalchemy import text
 
         messages = self.get_thread_messages(thread_id, limit=5)
         context_lines = []
@@ -175,8 +194,7 @@ class ChatService:
             "Always be professional and concise."
         )
         user_prompt = (
-            f"Thread context (last messages):\n{context_block}\n\n"
-            f"Current message: {user_message}"
+            f"Thread context (last messages):\n{context_block}\n\nCurrent message: {user_message}"
         )
 
         try:
@@ -185,13 +203,14 @@ class ChatService:
         except Exception:
             return
 
-        low_confidence = "i'm not sure" in response_text.lower() or "unclear" in response_text.lower()
-
-        turn_count = sum(
-            1 for m in messages if m.get("data", {}).get("sender_role") == "ai"
+        low_confidence = (
+            "i'm not sure" in response_text.lower() or "unclear" in response_text.lower()
         )
+
+        turn_count = sum(1 for m in messages if m.get("data", {}).get("sender_role") == "ai")
         if low_confidence or turn_count >= 2:
             import asyncio
+
             asyncio.create_task(self._check_escalation(thread_id, "escalate"))
 
         ai_data = {
@@ -200,7 +219,7 @@ class ChatService:
             "sender_id": "ai",
             "content": response_text,
             "attachments": [],
-            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "sent_at": datetime.now(UTC).isoformat(),
             "read_by_founder": False,
             "ai_meta": meta,
         }
@@ -218,21 +237,27 @@ class ChatService:
 
     def get_thread_messages(self, thread_id: str, limit: int = 50) -> list[dict]:
         from sqlalchemy import text
-        rows = self.db.execute(
-            text(
-                "SELECT id, tenant_id, data, version, created_at, updated_at "
-                "FROM support_messages "
-                "WHERE data->>'thread_id' = :thread_id AND deleted_at IS NULL "
-                "ORDER BY created_at ASC "
-                "LIMIT :limit"
-            ),
-            {"thread_id": thread_id, "limit": limit},
-        ).mappings().all()
+
+        rows = (
+            self.db.execute(
+                text(
+                    "SELECT id, tenant_id, data, version, created_at, updated_at "
+                    "FROM support_messages "
+                    "WHERE data->>'thread_id' = :thread_id AND deleted_at IS NULL "
+                    "ORDER BY created_at ASC "
+                    "LIMIT :limit"
+                ),
+                {"thread_id": thread_id, "limit": limit},
+            )
+            .mappings()
+            .all()
+        )
         return [dict(r) for r in rows]
 
     async def mark_thread_read_by_founder(self, thread_id: str) -> None:
-        from sqlalchemy import text
         import json
+
+        from sqlalchemy import text
 
         thread = self.svc.repo("support_threads").get(tenant_id=self.tenant_id, record_id=thread_id)
         if thread:

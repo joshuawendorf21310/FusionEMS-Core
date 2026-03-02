@@ -1,26 +1,53 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Cognito Stack (User Pool + App Client)
+Description: FusionEMS Quantum - Cognito Stack (Production Safe)
 
 Parameters:
   Env:
     Type: String
     AllowedValues: [dev, prod]
+
   AppName:
     Type: String
+
   RootDomainName:
     Type: String
+
   ApiDomainName:
     Type: String
     Default: api.fusionemsquantum.com
 
+Conditions:
+  IsProd: !Equals [!Ref Env, 'prod']
+
 Resources:
+
+# ================= USER POOL =================
+
   UserPool:
     Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       UserPoolName: !Sub '${AppName}-${Env}-userpool'
-      AutoVerifiedAttributes: [email]
-      UsernameAttributes: [email]
+
+      UsernameConfiguration:
+        CaseSensitive: false
+
+      AutoVerifiedAttributes:
+        - email
+
+      UsernameAttributes:
+        - email
+
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
       MfaConfiguration: OPTIONAL
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+
       Policies:
         PasswordPolicy:
           MinimumLength: 12
@@ -28,6 +55,20 @@ Resources:
           RequireUppercase: true
           RequireNumbers: true
           RequireSymbols: true
+          TemporaryPasswordValidityDays: 7
+
+      UserPoolAddOns:
+        AdvancedSecurityMode: !If [IsProd, ENFORCED, AUDIT]
+
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+
+# ================= APP CLIENT =================
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -35,33 +76,61 @@ Resources:
       ClientName: !Sub '${AppName}-${Env}-appclient'
       UserPoolId: !Ref UserPool
       GenerateSecret: false
-      SupportedIdentityProviders: [COGNITO]
+      PreventUserExistenceErrors: ENABLED
+
       AllowedOAuthFlowsUserPoolClient: true
-      AllowedOAuthFlows: [code]
-      AllowedOAuthScopes: [openid, email, profile]
+      AllowedOAuthFlows:
+        - code
+
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+
       CallbackURLs:
         - !Sub 'https://${RootDomainName}/auth/callback'
         - !Sub 'https://${ApiDomainName}/api/v1/auth/microsoft/callback'
         - !Sub 'https://${RootDomainName}/api/v1/auth/microsoft/callback'
+
       LogoutURLs:
         - !Sub 'https://${RootDomainName}/'
+
+      SupportedIdentityProviders:
+        - COGNITO
+
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
 
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+# ================= HOSTED UI DOMAIN =================
+
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
-      Domain: !Sub '${AppName}-${Env}'
+      # add region to prevent collision
+      Domain: !Sub '${AppName}-${Env}-${AWS::Region}'
       UserPoolId: !Ref UserPool
+
+# ================= OUTPUTS =================
 
 Outputs:
   UserPoolId:
     Value: !Ref UserPool
+
   UserPoolClientId:
     Value: !Ref UserPoolClient
+
   UserPoolIssuer:
     Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
+
   UserPoolDomainName:
-    Value: !Sub '${AppName}-${Env}'
-    Description: Cognito hosted UI domain prefix
+    Value: !Sub '${AppName}-${Env}-${AWS::Region}'

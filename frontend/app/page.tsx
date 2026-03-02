@@ -12,16 +12,16 @@ type SystemRow = {
 
 function accentFor(key: string): string {
   const m: Record<string,string> = {
-    fusionbilling: "#22d3ee",
-    fusionems: "#fb923c",
-    fusionfire: "#ef4444",
-    fusionhems: "#f59e0b",
-    fusionfleet: "#3b82f6",
-    fusioncompliance: "#a855f7",
-    fusionai: "#ffffff",
-    fusioncad: "#94a3b8"
+    fusionbilling: "var(--color-status-info)",
+    fusionems: "var(--color-brand-orange-bright)",
+    fusionfire: "var(--color-brand-red)",
+    fusionhems: "var(--color-status-warning)",
+    fusionfleet: "var(--color-system-fleet)",
+    fusioncompliance: "var(--color-system-compliance)",
+    fusionai: "var(--color-text-primary)",
+    fusioncad: "var(--color-text-muted)"
   };
-  return m[key] ?? "#94a3b8";
+  return m[key] ?? "var(--color-text-muted)";
 }
 
 export default async function Page() {

@@ -1,18 +1,19 @@
 from __future__ import annotations
-import uuid
-import json
+
 import hashlib
+import json
+import os
 import time
-from datetime import datetime, timezone
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from core_app.database import get_db
+from core_app.db.session import get_db_session as get_db
 from core_app.repositories.domination_repository import DominationRepository
-import os
 
 router = APIRouter(prefix="/api/v1/founder/compliance", tags=["founder-compliance"])
 
@@ -90,64 +91,113 @@ def _ingest_pack(pack_id: str, tenant_id: uuid.UUID, db: Session) -> dict:
     if existing:
         if existing["data"].get("pack_hash") == pack_hash:
             return {"pack_id": pack_id, "status": "already_ingested", "id": str(existing["id"])}
-        repo.update("compliance_packs", system_tid, existing["id"], {
-            **existing["data"],
-            "pack_hash": pack_hash,
-            "ingested_at": datetime.now(timezone.utc).isoformat(),
-            "status": "staged",
-        })
+        repo.update(
+            "compliance_packs",
+            system_tid,
+            existing["id"],
+            {
+                **existing["data"],
+                "pack_hash": pack_hash,
+                "ingested_at": datetime.now(UTC).isoformat(),
+                "status": "staged",
+            },
+        )
         pack_row_id = str(existing["id"])
     else:
-        row = repo.create("compliance_packs", system_tid, {
-            "pack_id": pack_id,
-            "name": pack_json.get("name", pack_id),
-            "jurisdiction": pack_json.get("jurisdiction"),
-            "effective_date": pack_json.get("effective_date"),
-            "pack_hash": pack_hash,
-            "status": "staged",
-            "ingested_at": datetime.now(timezone.utc).isoformat(),
-        })
+        row = repo.create(
+            "compliance_packs",
+            system_tid,
+            {
+                "pack_id": pack_id,
+                "name": pack_json.get("name", pack_id),
+                "jurisdiction": pack_json.get("jurisdiction"),
+                "effective_date": pack_json.get("effective_date"),
+                "pack_hash": pack_hash,
+                "status": "staged",
+                "ingested_at": datetime.now(UTC).isoformat(),
+            },
+        )
         pack_row_id = str(row["id"])
 
-    repo.create("compliance_pack_versions", system_tid, {
-        "pack_id": pack_id,
-        "pack_hash": pack_hash,
-        "pack_json": pack_json,
-        "versioned_at": datetime.now(timezone.utc).isoformat(),
-    })
+    repo.create(
+        "compliance_pack_versions",
+        system_tid,
+        {
+            "pack_id": pack_id,
+            "pack_hash": pack_hash,
+            "pack_json": pack_json,
+            "versioned_at": datetime.now(UTC).isoformat(),
+        },
+    )
 
     for rule in pack_json.get("global_rules", []):
         existing_rules = repo.list("compliance_rules", system_tid)
-        er = next((r for r in existing_rules if r["data"].get("pack_id") == pack_id and r["data"].get("rule_id") == rule["rule_id"]), None)
+        er = next(
+            (
+                r
+                for r in existing_rules
+                if r["data"].get("pack_id") == pack_id
+                and r["data"].get("rule_id") == rule["rule_id"]
+            ),
+            None,
+        )
         if not er:
-            repo.create("compliance_rules", system_tid, {
-                "pack_id": pack_id,
-                "pack_row_id": pack_row_id,
-                **rule,
-            })
+            repo.create(
+                "compliance_rules",
+                system_tid,
+                {
+                    "pack_id": pack_id,
+                    "pack_row_id": pack_row_id,
+                    **rule,
+                },
+            )
 
     for report in pack_json.get("reports", []):
         existing_reports = repo.list("compliance_reports", system_tid)
-        er = next((r for r in existing_reports if r["data"].get("pack_id") == pack_id and r["data"].get("report_id") == report["report_id"]), None)
+        er = next(
+            (
+                r
+                for r in existing_reports
+                if r["data"].get("pack_id") == pack_id
+                and r["data"].get("report_id") == report["report_id"]
+            ),
+            None,
+        )
         if not er:
-            repo.create("compliance_reports", system_tid, {
-                "pack_id": pack_id,
-                "pack_row_id": pack_row_id,
-                **report,
-            })
+            repo.create(
+                "compliance_reports",
+                system_tid,
+                {
+                    "pack_id": pack_id,
+                    "pack_row_id": pack_row_id,
+                    **report,
+                },
+            )
 
     for checklist in pack_json.get("checklists", []):
         for item in checklist.get("items", []):
             existing_templates = repo.list("compliance_check_templates", system_tid)
-            et = next((r for r in existing_templates if r["data"].get("pack_id") == pack_id and r["data"].get("check_id") == item["item_id"]), None)
+            et = next(
+                (
+                    r
+                    for r in existing_templates
+                    if r["data"].get("pack_id") == pack_id
+                    and r["data"].get("check_id") == item["item_id"]
+                ),
+                None,
+            )
             if not et:
-                repo.create("compliance_check_templates", system_tid, {
-                    "pack_id": pack_id,
-                    "checklist_id": checklist["checklist_id"],
-                    "check_id": item["item_id"],
-                    "label": item["label"],
-                    "type": item.get("type", "attestation"),
-                })
+                repo.create(
+                    "compliance_check_templates",
+                    system_tid,
+                    {
+                        "pack_id": pack_id,
+                        "checklist_id": checklist["checklist_id"],
+                        "check_id": item["item_id"],
+                        "label": item["label"],
+                        "type": item.get("type", "attestation"),
+                    },
+                )
 
     return {"pack_id": pack_id, "status": "ingested", "id": pack_row_id}
 
@@ -163,32 +213,42 @@ def _get_tenant_config(tenant_id: uuid.UUID, db: Session) -> dict:
 def _update_tenant_config(tenant_id: uuid.UUID, patch: dict, actor: str, db: Session) -> dict:
     repo = _repo(db)
     rows = repo.list("tenant_compliance_config", tenant_id)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     if rows:
         existing = rows[0]
         new_data = {**existing["data"], **patch, "updated_at": now, "updated_by": actor}
         repo.update("tenant_compliance_config", tenant_id, existing["id"], new_data)
         return new_data
-    data = {**patch, "updated_at": now, "updated_by": actor, "active_pack_ids": patch.get("active_pack_ids", [])}
+    data = {
+        **patch,
+        "updated_at": now,
+        "updated_by": actor,
+        "active_pack_ids": patch.get("active_pack_ids", []),
+    }
     repo.create("tenant_compliance_config", tenant_id, data)
     return data
 
 
 def _emit_audit(action: str, tenant_id: str, actor: str, before: list, after: list, db: Session):
     repo = _repo(db)
-    repo.create("compliance_packs", uuid.UUID("00000000-0000-0000-0000-000000000001"), {
-        "audit_action": action,
-        "tenant_id": tenant_id,
-        "actor": actor,
-        "before_pack_ids": before,
-        "after_pack_ids": after,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    repo.create(
+        "compliance_packs",
+        uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        {
+            "audit_action": action,
+            "tenant_id": tenant_id,
+            "actor": actor,
+            "before_pack_ids": before,
+            "after_pack_ids": after,
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/packs/index")
 def get_pack_index():
@@ -232,10 +292,15 @@ def apply_pack_set(
         ingested.append(result)
 
     new_active = list(set(before + pack_ids))
-    _update_tenant_config(tid, {
-        "active_pack_ids": new_active,
-        "active_set_id": set_id,
-    }, actor, db)
+    _update_tenant_config(
+        tid,
+        {
+            "active_pack_ids": new_active,
+            "active_set_id": set_id,
+        },
+        actor,
+        db,
+    )
 
     _emit_audit("packset.applied", tenant_id, actor, before, new_active, db)
 
@@ -326,12 +391,14 @@ def tenant_compliance_status(tenant_id: str, db: Session = Depends(get_db)):
     active_details = []
     for pid in active_pack_ids:
         p = pack_map.get(pid, {})
-        active_details.append({
-            "pack_id": pid,
-            "name": p.get("name", pid),
-            "jurisdiction": p.get("jurisdiction"),
-            "status": p.get("status", "staged"),
-        })
+        active_details.append(
+            {
+                "pack_id": pid,
+                "name": p.get("name", pid),
+                "jurisdiction": p.get("jurisdiction"),
+                "status": p.get("status", "staged"),
+            }
+        )
 
     return {
         "tenant_id": tenant_id,

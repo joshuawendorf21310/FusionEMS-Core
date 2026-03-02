@@ -34,5 +34,9 @@ def parse_835(x12_text: str) -> dict[str, Any]:
                 amt = float(parts[3])
             except Exception:
                 amt = 0.0
-            denials.append(EraDenial(claim_id=current_claim_id, group_code=group, reason_code=reason, amount=amt))
+            denials.append(
+                EraDenial(
+                    claim_id=current_claim_id, group_code=group, reason_code=reason, amount=amt
+                )
+            )
     return {"denials": [d.__dict__ for d in denials]}

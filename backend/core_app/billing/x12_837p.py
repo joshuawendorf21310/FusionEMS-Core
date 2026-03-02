@@ -51,34 +51,135 @@ def build_837p_ambulance(
     env = X12Envelope(isa_control=isa_ctrl, gs_control=gs_ctrl, st_control=st_ctrl)
 
     segments: list[str] = []
-    segments.append(_seg("ISA", "00", "          ", "00", "          ", "ZZ", submitter_id.ljust(15)[:15], "ZZ", receiver_id.ljust(15)[:15], isa_date, isa_time, "^", "00501", isa_ctrl, "0", "T", ":"))
-    segments.append(_seg("GS", "HC", submitter_id, receiver_id, gs_date, gs_time, gs_ctrl, "X", "005010X222A1"))
+    segments.append(
+        _seg(
+            "ISA",
+            "00",
+            "          ",
+            "00",
+            "          ",
+            "ZZ",
+            submitter_id.ljust(15)[:15],
+            "ZZ",
+            receiver_id.ljust(15)[:15],
+            isa_date,
+            isa_time,
+            "^",
+            "00501",
+            isa_ctrl,
+            "0",
+            "T",
+            ":",
+        )
+    )
+    segments.append(
+        _seg("GS", "HC", submitter_id, receiver_id, gs_date, gs_time, gs_ctrl, "X", "005010X222A1")
+    )
     segments.append(_seg("ST", "837", st_ctrl, "005010X222A1"))
-    segments.append(_seg("BHT", "0019", "00", claim.get("claim_id", st_ctrl), gs_date, gs_time, "CH"))
+    segments.append(
+        _seg("BHT", "0019", "00", claim.get("claim_id", st_ctrl), gs_date, gs_time, "CH")
+    )
 
-    segments.append(_seg("NM1", "41", "2", claim.get("submitter_name", "FUSIONEMSQUANTUM"), "", "", "", "", "46", submitter_id))
-    segments.append(_seg("PER", "IC", claim.get("submitter_contact", "BILLING"), "TE", claim.get("submitter_phone", "0000000000")))
+    segments.append(
+        _seg(
+            "NM1",
+            "41",
+            "2",
+            claim.get("submitter_name", "FUSIONEMSQUANTUM"),
+            "",
+            "",
+            "",
+            "",
+            "46",
+            submitter_id,
+        )
+    )
+    segments.append(
+        _seg(
+            "PER",
+            "IC",
+            claim.get("submitter_contact", "BILLING"),
+            "TE",
+            claim.get("submitter_phone", "0000000000"),
+        )
+    )
 
-    segments.append(_seg("NM1", "40", "2", claim.get("receiver_name", "OFFICEALLY"), "", "", "", "", "46", receiver_id))
+    segments.append(
+        _seg(
+            "NM1",
+            "40",
+            "2",
+            claim.get("receiver_name", "OFFICEALLY"),
+            "",
+            "",
+            "",
+            "",
+            "46",
+            receiver_id,
+        )
+    )
 
     segments.append(_seg("HL", "1", "", "20", "1"))
-    segments.append(_seg("NM1", "85", "2", claim.get("billing_name", "FUSIONEMSQUANTUM"), "", "", "", "", "XX", billing_npi))
+    segments.append(
+        _seg(
+            "NM1",
+            "85",
+            "2",
+            claim.get("billing_name", "FUSIONEMSQUANTUM"),
+            "",
+            "",
+            "",
+            "",
+            "XX",
+            billing_npi,
+        )
+    )
     segments.append(_seg("N3", claim.get("billing_address1", "UNKNOWN")))
-    segments.append(_seg("N4", claim.get("billing_city", "UNKNOWN"), claim.get("billing_state", "WI"), claim.get("billing_zip", "00000")))
+    segments.append(
+        _seg(
+            "N4",
+            claim.get("billing_city", "UNKNOWN"),
+            claim.get("billing_state", "WI"),
+            claim.get("billing_zip", "00000"),
+        )
+    )
     segments.append(_seg("REF", "EI", billing_tax_id))
 
     segments.append(_seg("HL", "2", "1", "22", "0"))
     segments.append(_seg("SBR", "P", "18", "", "", "", "", "", claim.get("insurance_type", "CI")))
-    segments.append(_seg("NM1", "IL", "1", patient.get("last_name", "UNKNOWN"), patient.get("first_name", "UNKNOWN"), patient.get("middle_name", ""), "", "", "MI", claim.get("member_id", "UNKNOWN")))
+    segments.append(
+        _seg(
+            "NM1",
+            "IL",
+            "1",
+            patient.get("last_name", "UNKNOWN"),
+            patient.get("first_name", "UNKNOWN"),
+            patient.get("middle_name", ""),
+            "",
+            "",
+            "MI",
+            claim.get("member_id", "UNKNOWN"),
+        )
+    )
     segments.append(_seg("DMG", "D8", patient.get("dob", "19000101"), patient.get("sex", "U")))
 
     total_charge = sum(int(float(sl.get("charge", 0)) * 100) for sl in service_lines)
-    segments.append(_seg("CLM", claim.get("claim_id", st_ctrl), f"{total_charge/100:.2f}", "", "11:B:1", "Y", "A", "Y", "Y"))
+    segments.append(
+        _seg(
+            "CLM",
+            claim.get("claim_id", st_ctrl),
+            f"{total_charge / 100:.2f}",
+            "",
+            "11:B:1",
+            "Y",
+            "A",
+            "Y",
+            "Y",
+        )
+    )
     segments.append(_seg("DTP", "431", "D8", claim.get("dos", gs_date)))
 
-    lx = 0
-    for sl in service_lines:
-        lx += 1
+    for lx, sl in enumerate(service_lines, start=1):
         proc = sl.get("procedure_code", "A0429")
         charge = float(sl.get("charge", 0))
         units = str(sl.get("units", 1))

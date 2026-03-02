@@ -25,29 +25,29 @@ export function RevenueChart({ data, className = '' }: RevenueChartProps) {
         <AreaChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
           <defs>
             <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3182ce" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#3182ce" stopOpacity={0} />
+              <stop offset="5%" stopColor={CHART_ACCENT} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={CHART_ACCENT} stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
           <XAxis
             dataKey="month"
-            tick={{ fill: '#64748b', fontSize: 11 }}
+            tick={{ fill: CHART_TICK, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fill: '#64748b', fontSize: 11 }}
+            tick={{ fill: CHART_TICK, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `$${(v / 100).toLocaleString()}`}
           />
           <Tooltip
             contentStyle={{
-              background: '#0f1720',
+              background: CHART_TOOLTIP_BG,
               border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              color: '#e2e8f0',
+              borderRadius: 4,
+              color: CHART_TOOLTIP_TEXT,
               fontSize: 12,
             }}
             formatter={(v: number) => [`$${(v / 100).toLocaleString()}`, 'Revenue']}
@@ -55,7 +55,7 @@ export function RevenueChart({ data, className = '' }: RevenueChartProps) {
           <Area
             type="monotone"
             dataKey="revenue"
-            stroke="#3182ce"
+            stroke={CHART_ACCENT}
             strokeWidth={2}
             fill="url(#revGrad)"
             dot={false}
@@ -71,7 +71,17 @@ interface AgingChartProps {
   className?: string;
 }
 
-const AGING_COLORS = ['#48bb78', '#68d391', '#f6ad55', '#f6874a', '#fc6b52'];
+const CHART_ACCENT = 'var(--color-brand-orange)';
+const CHART_TICK = 'var(--color-text-muted)';
+const CHART_TOOLTIP_BG = 'var(--color-bg-input)';
+const CHART_TOOLTIP_TEXT = 'var(--color-text-primary)';
+const AGING_COLORS = [
+  'var(--color-status-active)',
+  'var(--color-status-warning)',
+  'var(--color-brand-orange)',
+  'var(--color-brand-orange-bright)',
+  'var(--color-brand-red)',
+];
 
 export function AgingChart({ data, className = '' }: AgingChartProps) {
   return (
@@ -81,22 +91,22 @@ export function AgingChart({ data, className = '' }: AgingChartProps) {
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
           <XAxis
             dataKey="label"
-            tick={{ fill: '#64748b', fontSize: 11 }}
+            tick={{ fill: CHART_TICK, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fill: '#64748b', fontSize: 11 }}
+            tick={{ fill: CHART_TICK, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `$${(v / 100 / 1000).toFixed(0)}k`}
           />
           <Tooltip
             contentStyle={{
-              background: '#0f1720',
+              background: CHART_TOOLTIP_BG,
               border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              color: '#e2e8f0',
+              borderRadius: 4,
+              color: CHART_TOOLTIP_TEXT,
               fontSize: 12,
             }}
             formatter={(v: number, _: string, props: { payload?: { count: number } }) => [

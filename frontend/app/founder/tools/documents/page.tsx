@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -112,7 +112,7 @@ export default function DocumentsVaultPage() {
           ].map((s) => (
             <Panel key={s.label} className="flex flex-col gap-1">
               <span className="text-[10px] text-[rgba(255,255,255,0.4)] uppercase tracking-wider">{s.label}</span>
-              <span className="text-2xl font-bold" style={{ color: s.value === '2' || s.value === '1' ? '#ff9800' : 'rgba(255,255,255,0.9)' }}>
+              <span className="text-2xl font-bold" style={{ color: s.value === '2' || s.value === '1' ? 'var(--color-status-warning)' : 'rgba(255,255,255,0.9)' }}>
                 {s.value}
               </span>
               <Badge label={s.status} status={s.status} />
@@ -179,7 +179,7 @@ export default function DocumentsVaultPage() {
                             className="text-[10px] font-semibold px-2 py-0.5 rounded-sm transition-all hover:brightness-110"
                             style={{
                               background: a === 'View' ? 'rgba(41,182,246,0.1)' : 'rgba(255,107,26,0.1)',
-                              color: a === 'View' ? '#29b6f6' : '#ff6b1a',
+                              color: a === 'View' ? 'var(--color-status-info)' : 'var(--color-brand-orange)',
                               border: `1px solid ${a === 'View' ? 'rgba(41,182,246,0.25)' : 'rgba(255,107,26,0.25)'}`,
                             }}
                           >
@@ -220,7 +220,7 @@ export default function DocumentsVaultPage() {
               </div>
               <button
                 className="text-[10px] font-bold px-3 py-1.5 rounded-sm uppercase tracking-wider transition-all hover:brightness-110"
-                style={{ background: '#ff6b1a', color: '#000' }}
+                style={{ background: 'var(--color-brand-orange)', color: '#000' }}
               >
                 Send for Signature
               </button>

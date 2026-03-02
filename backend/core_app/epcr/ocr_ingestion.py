@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -49,7 +49,7 @@ class EPCROcrService:
             "review_items": review_items,
             "review_count": len([v for v in parsed_fields.values() if v["value"]]),
             "status": "completed",
-            "processed_at": datetime.now(timezone.utc).isoformat(),
+            "processed_at": datetime.now(UTC).isoformat(),
         }
 
     def _parse_facesheet_fields(self, text: str) -> dict[str, Any]:
@@ -57,7 +57,11 @@ class EPCROcrService:
             for pattern in patterns:
                 m = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
                 if m:
-                    val = m.group(1).strip() if m.lastindex and m.lastindex >= 1 else m.group(0).strip()
+                    val = (
+                        m.group(1).strip()
+                        if m.lastindex and m.lastindex >= 1
+                        else m.group(0).strip()
+                    )
                     return val, 0.8
             for pattern in patterns:
                 m = re.search(pattern.split(r"\s")[0], text, re.IGNORECASE)
@@ -124,9 +128,7 @@ class EPCROcrService:
 
         parsed_fields = self._parse_transport_fields(raw_text)
         review_items = [
-            {"field": k, "value": v, "confidence": None}
-            for k, v in parsed_fields.items()
-            if v
+            {"field": k, "value": v, "confidence": None} for k, v in parsed_fields.items() if v
         ]
         return {
             "ocr_job_id": str(uuid.uuid4()),
@@ -137,7 +139,7 @@ class EPCROcrService:
             "review_count": len([v for v in parsed_fields.values() if v]),
             "status": "completed",
             "paperwork_type": "transport",
-            "processed_at": datetime.now(timezone.utc).isoformat(),
+            "processed_at": datetime.now(UTC).isoformat(),
         }
 
     def _parse_transport_fields(self, text: str) -> dict[str, Any]:
@@ -158,15 +160,23 @@ class EPCROcrService:
 
         prior_meds: list[dict[str, Any]] = []
         for m in _DRUG_PATTERN.finditer(text):
-            prior_meds.append({"value": m.group(0).strip(), "confidence": 0.8, "flagged_prior": True})
+            prior_meds.append(
+                {"value": m.group(0).strip(), "confidence": 0.8, "flagged_prior": True}
+            )
 
         prior_vitals: list[dict[str, Any]] = []
         for m in _BP_PATTERN.finditer(text):
-            prior_vitals.append({"value": f"BP {m.group(1)}", "confidence": 0.8, "flagged_prior": True})
+            prior_vitals.append(
+                {"value": f"BP {m.group(1)}", "confidence": 0.8, "flagged_prior": True}
+            )
         for m in _HR_PATTERN.finditer(text):
-            prior_vitals.append({"value": f"HR {m.group(1)}", "confidence": 0.8, "flagged_prior": True})
+            prior_vitals.append(
+                {"value": f"HR {m.group(1)}", "confidence": 0.8, "flagged_prior": True}
+            )
         for m in _SPO2_PATTERN.finditer(text):
-            prior_vitals.append({"value": f"SpO2 {m.group(1)}%", "confidence": 0.8, "flagged_prior": True})
+            prior_vitals.append(
+                {"value": f"SpO2 {m.group(1)}%", "confidence": 0.8, "flagged_prior": True}
+            )
 
         prior_procs: list[dict[str, Any]] = []
         seen_procs: set[str] = set()
@@ -174,7 +184,9 @@ class EPCROcrService:
             val = m.group(0).strip().lower()
             if val not in seen_procs:
                 seen_procs.add(val)
-                prior_procs.append({"value": m.group(0).strip(), "confidence": 0.8, "flagged_prior": True})
+                prior_procs.append(
+                    {"value": m.group(0).strip(), "confidence": 0.8, "flagged_prior": True}
+                )
 
         return {
             "prior_medications": prior_meds,
@@ -186,7 +198,7 @@ class EPCROcrService:
         lines: list[str] = []
         next_token: str | None = None
 
-        for attempt in range(_TEXTRACT_MAX_POLLS):
+        for _attempt in range(_TEXTRACT_MAX_POLLS):
             time.sleep(_TEXTRACT_POLL_INTERVAL_S)
             try:
                 kwargs: dict[str, Any] = {"JobId": job_id}

@@ -8,7 +8,12 @@ from core_app.models.audit_log import AuditLog
 from core_app.models.patient import Patient
 from core_app.repositories.incident_repository import IncidentRepository
 from core_app.repositories.patient_repository import PatientRepository
-from core_app.schemas.patient import PatientCreateRequest, PatientListResponse, PatientResponse, PatientUpdateRequest
+from core_app.schemas.patient import (
+    PatientCreateRequest,
+    PatientListResponse,
+    PatientResponse,
+    PatientUpdateRequest,
+)
 from core_app.services.event_publisher import EventPublisher
 
 SENSITIVE_PATIENT_AUDIT_FIELDS = {
@@ -71,17 +76,30 @@ class PatientService:
         )
         await self.db.commit()
         await self.publisher.publish(
-            "patient.created", tenant_id, created.id, {"incident_id": str(incident_id), "version": created.version}
+            "patient.created",
+            tenant_id,
+            created.id,
+            {"incident_id": str(incident_id), "version": created.version},
         )
         return PatientResponse.model_validate(created)
 
-    async def list_patients_for_incident(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> PatientListResponse:
+    async def list_patients_for_incident(
+        self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID
+    ) -> PatientListResponse:
         await self._require_incident(tenant_id=tenant_id, incident_id=incident_id)
-        patients = await self.repository.list_for_incident(tenant_id=tenant_id, incident_id=incident_id)
-        total = await self.repository.count_for_incident(tenant_id=tenant_id, incident_id=incident_id)
-        return PatientListResponse(items=[PatientResponse.model_validate(p) for p in patients], total=total)
+        patients = await self.repository.list_for_incident(
+            tenant_id=tenant_id, incident_id=incident_id
+        )
+        total = await self.repository.count_for_incident(
+            tenant_id=tenant_id, incident_id=incident_id
+        )
+        return PatientListResponse(
+            items=[PatientResponse.model_validate(p) for p in patients], total=total
+        )
 
-    async def get_patient(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID) -> PatientResponse:
+    async def get_patient(
+        self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID
+    ) -> PatientResponse:
         patient = await self._require_patient(tenant_id=tenant_id, patient_id=patient_id)
         self._validate_incident_link(patient=patient, incident_id=incident_id)
         return PatientResponse.model_validate(patient)
@@ -129,12 +147,17 @@ class PatientService:
         )
         await self.db.commit()
         await self.publisher.publish(
-            "patient.updated", tenant_id, updated.id, {"incident_id": str(incident_id), "version": updated.version}
+            "patient.updated",
+            tenant_id,
+            updated.id,
+            {"incident_id": str(incident_id), "version": updated.version},
         )
         return PatientResponse.model_validate(updated)
 
     async def _require_incident(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> None:
-        incident = await self.incident_repository.get_by_id(tenant_id=tenant_id, incident_id=incident_id)
+        incident = await self.incident_repository.get_by_id(
+            tenant_id=tenant_id, incident_id=incident_id
+        )
         if incident is None:
             raise AppError(
                 code=ErrorCodes.INCIDENT_NOT_FOUND,
@@ -161,7 +184,10 @@ class PatientService:
                 code=ErrorCodes.PATIENT_INCIDENT_MISMATCH,
                 message="Patient does not belong to incident.",
                 status_code=409,
-                details={"patient_incident_id": str(patient.incident_id), "incident_id": str(incident_id)},
+                details={
+                    "patient_incident_id": str(patient.incident_id),
+                    "incident_id": str(incident_id),
+                },
             )
 
     @staticmethod

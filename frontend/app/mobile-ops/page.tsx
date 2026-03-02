@@ -11,15 +11,15 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
       className="bg-bg-panel border border-border-DEFAULT p-4"
       style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">{label}</div>
-      <div className="text-2xl font-bold" style={{ color: color ?? "#fff" }}>{value}</div>
+      <div className="text-2xl font-bold" style={{ color: color ?? "var(--color-text-primary)" }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.35)] mt-1">{sub}</div>}
     </motion.div>
   );
 }
 
 function StatusDot({ status }: { status: string }) {
-  const colors: Record<string, string> = { active: "#4caf50", healthy: "#4caf50", deployed: "#4caf50", logged_out: "#94a3b8", wiped: "#e53935", pending: "#ff9800", failed: "#e53935" };
-  return <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colors[status] ?? "#94a3b8" }} />;
+  const colors: Record<string, string> = { active: "var(--color-status-active)", healthy: "var(--color-status-active)", deployed: "var(--color-status-active)", logged_out: "var(--color-text-muted)", wiped: "var(--color-brand-red)", pending: "var(--color-status-warning)", failed: "var(--color-brand-red)" };
+  return <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colors[status] ?? "var(--color-text-muted)" }} />;
 }
 
 const FEATURES = [
@@ -75,9 +75,9 @@ export default function MobileOpsPage() {
   const fmtPct = (v: unknown) => typeof v === "number" ? `${v}%` : "—";
 
   const syncStatus = String(syncHealth.health ?? "unknown");
-  const syncColor = syncStatus === "healthy" ? "#4caf50" : "#e53935";
+  const syncColor = syncStatus === "healthy" ? "var(--color-status-active)" : "var(--color-brand-red)";
   const shortageRisk = String(shortage.shortage_risk ?? "");
-  const shortageColor = shortageRisk === "high" ? "#e53935" : shortageRisk === "medium" ? "#ff9800" : "#4caf50";
+  const shortageColor = shortageRisk === "high" ? "var(--color-brand-red)" : shortageRisk === "medium" ? "var(--color-status-warning)" : "var(--color-status-active)";
 
   return (
     <div className="p-5 space-y-6 min-h-screen">
@@ -88,12 +88,12 @@ export default function MobileOpsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        <KpiCard label="PWA Deployments" value={fmtN(deployments.total)} color="#22d3ee" />
+        <KpiCard label="PWA Deployments" value={fmtN(deployments.total)} color="var(--color-status-info)" />
         <KpiCard label="Registered Devices" value={fmtN(devices.total)} />
-        <KpiCard label="Active Devices" value={fmtN(adoptionKpis.active_devices)} color="#4caf50" />
-        <KpiCard label="Adoption Rate" value={fmtPct(adoptionKpis.adoption_rate_pct)} color="#22d3ee" />
-        <KpiCard label="Push Sent" value={fmtN(pushAnalytics.sent)} color="#3b82f6" />
-        <KpiCard label="Push Read Rate" value={fmtPct(pushAnalytics.read_rate_pct)} color="#22d3ee" />
+        <KpiCard label="Active Devices" value={fmtN(adoptionKpis.active_devices)} color="var(--color-status-active)" />
+        <KpiCard label="Adoption Rate" value={fmtPct(adoptionKpis.adoption_rate_pct)} color="var(--color-status-info)" />
+        <KpiCard label="Push Sent" value={fmtN(pushAnalytics.sent)} color="var(--color-system-fleet)" />
+        <KpiCard label="Push Read Rate" value={fmtPct(pushAnalytics.read_rate_pct)} color="var(--color-status-info)" />
         <KpiCard label="Sync Health" value={syncStatus.toUpperCase()} color={syncColor} />
         <KpiCard label="Shortage Risk" value={shortageRisk.toUpperCase() || "—"} color={shortageColor} />
       </div>
@@ -135,10 +135,10 @@ export default function MobileOpsPage() {
         <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Credential Compliance</div>
           {[
-            { label: "Total Credentials", value: fmtN(credCompliance.total_credentials), color: "#fff" },
-            { label: "Compliant", value: fmtN(credCompliance.compliant), color: "#4caf50" },
-            { label: "Expiring Soon", value: fmtN(credCompliance.expiring_soon), color: "#ff9800" },
-            { label: "Expired", value: fmtN(credCompliance.expired), color: "#e53935" },
+            { label: "Total Credentials", value: fmtN(credCompliance.total_credentials), color: "var(--color-text-primary)" },
+            { label: "Compliant", value: fmtN(credCompliance.compliant), color: "var(--color-status-active)" },
+            { label: "Expiring Soon", value: fmtN(credCompliance.expiring_soon), color: "var(--color-status-warning)" },
+            { label: "Expired", value: fmtN(credCompliance.expired), color: "var(--color-brand-red)" },
           ].map(item => (
             <div key={item.label} className="flex justify-between py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0 text-[11px]">
               <span className="text-[rgba(255,255,255,0.5)]">{item.label}</span>
@@ -148,9 +148,9 @@ export default function MobileOpsPage() {
           <div className="mt-3">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-2">Sync Health</div>
             {[
-              { label: "Pending Jobs", value: fmtN(syncHealth.pending), color: "#ff9800" },
-              { label: "Failed Jobs", value: fmtN(syncHealth.failed), color: "#e53935" },
-              { label: "Completed", value: fmtN(syncHealth.completed), color: "#4caf50" },
+              { label: "Pending Jobs", value: fmtN(syncHealth.pending), color: "var(--color-status-warning)" },
+              { label: "Failed Jobs", value: fmtN(syncHealth.failed), color: "var(--color-brand-red)" },
+              { label: "Completed", value: fmtN(syncHealth.completed), color: "var(--color-status-active)" },
             ].map(item => (
               <div key={item.label} className="flex justify-between py-1 text-[11px]">
                 <span className="text-[rgba(255,255,255,0.5)]">{item.label}</span>
@@ -188,11 +188,11 @@ export default function MobileOpsPage() {
         <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Push Notification Analytics</div>
           {[
-            { label: "Total Notifications", value: fmtN(pushAnalytics.total), color: "#fff" },
-            { label: "Sent", value: fmtN(pushAnalytics.sent), color: "#3b82f6" },
-            { label: "Failed", value: fmtN(pushAnalytics.failed), color: "#e53935" },
-            { label: "Read", value: fmtN(pushAnalytics.read), color: "#4caf50" },
-            { label: "Read Rate", value: fmtPct(pushAnalytics.read_rate_pct), color: "#22d3ee" },
+            { label: "Total Notifications", value: fmtN(pushAnalytics.total), color: "var(--color-text-primary)" },
+            { label: "Sent", value: fmtN(pushAnalytics.sent), color: "var(--color-system-fleet)" },
+            { label: "Failed", value: fmtN(pushAnalytics.failed), color: "var(--color-brand-red)" },
+            { label: "Read", value: fmtN(pushAnalytics.read), color: "var(--color-status-active)" },
+            { label: "Read Rate", value: fmtPct(pushAnalytics.read_rate_pct), color: "var(--color-status-info)" },
           ].map(item => (
             <div key={item.label} className="flex justify-between py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0 text-[11px]">
               <span className="text-[rgba(255,255,255,0.5)]">{item.label}</span>

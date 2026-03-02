@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import io
+import logging
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -10,13 +11,13 @@ from typing import Any
 import requests
 
 from core_app.core.config import get_settings
-import logging
 
 logger = logging.getLogger(__name__)
 
 LOB_API_BASE = "https://api.lob.com/v1"
 
 # ── Config ────────────────────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class LobConfig:
@@ -40,6 +41,7 @@ def _get_lob_config() -> LobConfig:
 
 
 # ── Signature verification ────────────────────────────────────────────────────
+
 
 def verify_lob_webhook_signature(
     *,
@@ -73,6 +75,7 @@ def verify_lob_webhook_signature(
         return False
 
     import base64
+
     signed_payload = f"{ts}.{base64.b64encode(raw_body).decode()}"
     expected = hmac.new(
         webhook_secret.encode("utf-8"),
@@ -83,6 +86,7 @@ def verify_lob_webhook_signature(
 
 
 # ── Letter creation ───────────────────────────────────────────────────────────
+
 
 def send_statement_letter(
     *,
@@ -115,19 +119,19 @@ def send_statement_letter(
     files = {"file": ("statement.pdf", io.BytesIO(pdf_bytes), "application/pdf")}
     data = {
         "description": description,
-        "to[name]":         to_address.get("name", ""),
+        "to[name]": to_address.get("name", ""),
         "to[address_line1]": to_address.get("line1", ""),
         "to[address_line2]": to_address.get("line2", ""),
-        "to[address_city]":  to_address.get("city", ""),
+        "to[address_city]": to_address.get("city", ""),
         "to[address_state]": to_address.get("state", ""),
-        "to[address_zip]":   to_address.get("zip", ""),
+        "to[address_zip]": to_address.get("zip", ""),
         "to[address_country]": to_address.get("country", "US"),
-        "from[name]":          from_address.get("name", ""),
+        "from[name]": from_address.get("name", ""),
         "from[address_line1]": from_address.get("line1", ""),
         "from[address_line2]": from_address.get("line2", ""),
-        "from[address_city]":  from_address.get("city", ""),
+        "from[address_city]": from_address.get("city", ""),
         "from[address_state]": from_address.get("state", ""),
-        "from[address_zip]":   from_address.get("zip", ""),
+        "from[address_zip]": from_address.get("zip", ""),
         "from[address_country]": from_address.get("country", "US"),
         "color": str(color).lower(),
         "double_sided": str(double_sided).lower(),
@@ -147,7 +151,9 @@ def send_statement_letter(
     result = resp.json()
     logger.info(
         "lob_letter_created statement_id=%s lob_letter_id=%s outbound_sha256=%.16s",
-        statement_id, result.get("id"), outbound_sha256,
+        statement_id,
+        result.get("id"),
+        outbound_sha256,
     )
     return result
 

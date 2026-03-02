@@ -5,6 +5,7 @@ Handles background jobs enqueued by trip_router:
   trip.export.generate_xml     — generate XML export and upload to S3
   trip.posting.apply_payments  — parse posting file and update debt statuses
 """
+
 from __future__ import annotations
 
 import json
@@ -20,6 +21,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 try:
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import sessionmaker
+
     _engine = create_engine(DATABASE_URL) if DATABASE_URL else None
     _Session = sessionmaker(bind=_engine) if _engine else None
 except Exception:
@@ -44,14 +46,18 @@ def _handle_debt_candidate_build(body: dict, correlation_id: str) -> dict:
 
     db = _get_db()
     try:
-        rows = db.execute(
-            text("""
+        rows = (
+            db.execute(
+                text("""
                 SELECT id, version, data FROM trip_debts
                 WHERE tenant_id = :tid AND deleted_at IS NULL
                   AND (data->>'status' IS NULL OR data->>'status' NOT IN ('exported','resolved','cancelled'))
             """),
-            {"tid": tenant_id},
-        ).mappings().all()
+                {"tid": tenant_id},
+            )
+            .mappings()
+            .all()
+        )
 
         updated = 0
         for row in rows:
@@ -73,12 +79,22 @@ def _handle_debt_candidate_build(body: dict, correlation_id: str) -> dict:
                     SET data = CAST(:data AS jsonb), version = version + 1, updated_at = now()
                     WHERE id = :id AND version = :ver AND tenant_id = :tid
                 """),
-                {"data": json.dumps(data), "id": str(row["id"]), "ver": row["version"], "tid": tenant_id},
+                {
+                    "data": json.dumps(data),
+                    "id": str(row["id"]),
+                    "ver": row["version"],
+                    "tid": tenant_id,
+                },
             )
             updated += 1
 
         db.commit()
-        logger.info("trip_debt_candidate_build tenant=%s updated=%d correlation_id=%s", tenant_id, updated, correlation_id)
+        logger.info(
+            "trip_debt_candidate_build tenant=%s updated=%d correlation_id=%s",
+            tenant_id,
+            updated,
+            correlation_id,
+        )
         return {"status": "ok", "updated": updated}
     finally:
         db.close()
@@ -93,25 +109,33 @@ def _handle_export_generate_xml(body: dict, correlation_id: str) -> dict:
 
     db = _get_db()
     try:
-        rows = db.execute(
-            text("""
+        rows = (
+            db.execute(
+                text("""
                 SELECT id, version, data FROM trip_debts
                 WHERE tenant_id = :tid AND deleted_at IS NULL
                   AND data->>'status' = 'candidate'
             """),
-            {"tid": tenant_id},
-        ).mappings().all()
+                {"tid": tenant_id},
+            )
+            .mappings()
+            .all()
+        )
 
         if not rows:
-            logger.warning("trip_export_generate_xml no candidates tenant=%s export_id=%s", tenant_id, export_id)
+            logger.warning(
+                "trip_export_generate_xml no candidates tenant=%s export_id=%s",
+                tenant_id,
+                export_id,
+            )
             return {"status": "skipped", "reason": "no_candidates"}
 
         lines = ['<?xml version="1.0" encoding="UTF-8"?>', "<TRIPExport>"]
         for row in rows:
             d = row["data"] or {}
             lines.append(
-                f'  <Debt id="{row["id"]}" balance="{d.get("balance_cents",0)}" '
-                f'debtor="{d.get("debtor_name","")}" />'
+                f'  <Debt id="{row["id"]}" balance="{d.get("balance_cents", 0)}" '
+                f'debtor="{d.get("debtor_name", "")}" />'
             )
         lines.append("</TRIPExport>")
         xml_bytes = "\n".join(lines).encode("utf-8")
@@ -121,8 +145,11 @@ def _handle_export_generate_xml(body: dict, correlation_id: str) -> dict:
         if bucket:
             try:
                 import boto3
+
                 s3 = boto3.client("s3")
-                s3.put_object(Bucket=bucket, Key=s3_key, Body=xml_bytes, ContentType="application/xml")
+                s3.put_object(
+                    Bucket=bucket, Key=s3_key, Body=xml_bytes, ContentType="application/xml"
+                )
                 logger.info("trip_export_uploaded s3_key=%s", s3_key)
             except Exception as s3_err:
                 logger.error("trip_export_s3_upload_failed s3_key=%s error=%s", s3_key, s3_err)
@@ -133,8 +160,13 @@ def _handle_export_generate_xml(body: dict, correlation_id: str) -> dict:
                 SET data = data || CAST(:patch AS jsonb), version = version + 1, updated_at = now()
                 WHERE tenant_id = :tid AND id = :eid
             """),
-            {"patch": json.dumps({"status": "ready", "s3_xml_key": s3_key, "record_count": len(rows)}),
-             "tid": tenant_id, "eid": export_id},
+            {
+                "patch": json.dumps(
+                    {"status": "ready", "s3_xml_key": s3_key, "record_count": len(rows)}
+                ),
+                "tid": tenant_id,
+                "eid": export_id,
+            },
         )
         db.commit()
         return {"status": "ok", "s3_key": s3_key, "record_count": len(rows)}
@@ -151,10 +183,16 @@ def _handle_posting_apply_payments(body: dict, correlation_id: str) -> dict:
 
     db = _get_db()
     try:
-        posting_row = db.execute(
-            text("SELECT data FROM trip_postings WHERE tenant_id = :tid AND id = :pid AND deleted_at IS NULL LIMIT 1"),
-            {"tid": tenant_id, "pid": posting_id},
-        ).mappings().first()
+        posting_row = (
+            db.execute(
+                text(
+                    "SELECT data FROM trip_postings WHERE tenant_id = :tid AND id = :pid AND deleted_at IS NULL LIMIT 1"
+                ),
+                {"tid": tenant_id, "pid": posting_id},
+            )
+            .mappings()
+            .first()
+        )
 
         if not posting_row:
             raise ValueError(f"posting {posting_id} not found")
@@ -168,10 +206,16 @@ def _handle_posting_apply_payments(body: dict, correlation_id: str) -> dict:
             paid_cents = int(payment.get("paid_cents", 0))
             if not debt_id:
                 continue
-            debt_row = db.execute(
-                text("SELECT id, version, data FROM trip_debts WHERE tenant_id = :tid AND id = :did AND deleted_at IS NULL LIMIT 1"),
-                {"tid": tenant_id, "did": debt_id},
-            ).mappings().first()
+            debt_row = (
+                db.execute(
+                    text(
+                        "SELECT id, version, data FROM trip_debts WHERE tenant_id = :tid AND id = :did AND deleted_at IS NULL LIMIT 1"
+                    ),
+                    {"tid": tenant_id, "did": debt_id},
+                )
+                .mappings()
+                .first()
+            )
             if not debt_row:
                 continue
             d = dict(debt_row["data"] or {})
@@ -186,7 +230,12 @@ def _handle_posting_apply_payments(body: dict, correlation_id: str) -> dict:
                     SET data = CAST(:data AS jsonb), version = version + 1, updated_at = now()
                     WHERE id = :id AND version = :ver AND tenant_id = :tid
                 """),
-                {"data": json.dumps(d), "id": str(debt_row["id"]), "ver": debt_row["version"], "tid": tenant_id},
+                {
+                    "data": json.dumps(d),
+                    "id": str(debt_row["id"]),
+                    "ver": debt_row["version"],
+                    "tid": tenant_id,
+                },
             )
             applied += 1
 
@@ -196,10 +245,16 @@ def _handle_posting_apply_payments(body: dict, correlation_id: str) -> dict:
                 SET data = data || CAST(:patch AS jsonb), version = version + 1, updated_at = now()
                 WHERE tenant_id = :tid AND id = :pid
             """),
-            {"patch": json.dumps({"status": "applied", "applied_count": applied}), "tid": tenant_id, "pid": posting_id},
+            {
+                "patch": json.dumps({"status": "applied", "applied_count": applied}),
+                "tid": tenant_id,
+                "pid": posting_id,
+            },
         )
         db.commit()
-        logger.info("trip_posting_applied tenant=%s posting=%s applied=%d", tenant_id, posting_id, applied)
+        logger.info(
+            "trip_posting_applied tenant=%s posting=%s applied=%d", tenant_id, posting_id, applied
+        )
         return {"status": "ok", "applied": applied}
     finally:
         db.close()

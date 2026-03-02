@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 const LINKS = [
-  { href: '/founder/ai/policies', label: 'AI Policies', desc: 'Configure AI behavior rules, guardrails, and output constraints', color: '#a855f7' },
-  { href: '/founder/ai/prompt-editor', label: 'Prompt Editor', desc: 'Edit and version system prompts for each AI use case', color: '#a855f7' },
-  { href: '/founder/ai/thresholds', label: 'Confidence Thresholds', desc: 'Set minimum confidence scores for AI auto-actions', color: '#a855f7' },
-  { href: '/founder/ai/review-queue', label: 'AI Review Queue', desc: 'Human-in-the-loop review for low-confidence AI decisions', color: '#a855f7' },
+  { href: '/founder/ai/policies', label: 'AI Policies', desc: 'Configure AI behavior rules, guardrails, and output constraints', color: 'var(--color-system-compliance)' },
+  { href: '/founder/ai/prompt-editor', label: 'Prompt Editor', desc: 'Edit and version system prompts for each AI use case', color: 'var(--color-system-compliance)' },
+  { href: '/founder/ai/thresholds', label: 'Confidence Thresholds', desc: 'Set minimum confidence scores for AI auto-actions', color: 'var(--color-system-compliance)' },
+  { href: '/founder/ai/review-queue', label: 'AI Review Queue', desc: 'Human-in-the-loop review for low-confidence AI decisions', color: 'var(--color-system-compliance)' },
 ];
 
 export default function AIPage() {

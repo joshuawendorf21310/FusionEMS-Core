@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
-const DOMAIN_COLOR = '#3b82f6';
+const DOMAIN_COLOR = 'var(--color-system-fleet)';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -51,7 +51,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <Panel>
       <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1">{label}</div>
-      <div className="text-2xl font-black" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-2xl font-black" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </Panel>
   );
@@ -93,7 +93,7 @@ const syncCategories = [
   { label: 'ePCR Records', synced: 412, max: 420, unit: 'records', color: DOMAIN_COLOR },
   { label: 'Vitals', synced: 1840, max: 1850, unit: 'entries', color: 'var(--color-system-billing)' },
   { label: 'Protocols', synced: 100, max: 100, unit: 'current', color: 'var(--q-green)' },
-  { label: 'Maps', synced: 95, max: 100, unit: 'cached', color: '#a855f7' },
+  { label: 'Maps', synced: 95, max: 100, unit: 'cached', color: 'var(--color-system-compliance)' },
 ];
 
 const notifications = [
@@ -125,7 +125,7 @@ const devices = [
   { name: 'Galaxy A54 — S. Nguyen', battery: 78, os: 'Android 12', app: 'v2.4.1', status: 'ok' as const },
 ];
 
-const batteryColor = (b: number) => b > 50 ? '#4caf50' : b > 20 ? '#ff9800' : '#e53935';
+const batteryColor = (b: number) => b > 50 ? 'var(--color-status-active)' : b > 20 ? 'var(--color-status-warning)' : 'var(--color-brand-red)';
 
 export default function CrewLinkPage() {
   return (
@@ -147,9 +147,9 @@ export default function CrewLinkPage() {
         <SectionHeader number="MOD 1" title="Mobile Deployment Status" sub="Live device fleet telemetry" />
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard label="Active Devices" value={47} color={DOMAIN_COLOR} />
-          <StatCard label="Online Now" value={31} color="#4caf50" />
-          <StatCard label="Offline" value={16} color="#e53935" />
-          <StatCard label="PWA Version" value="v2.4.1" color="#22d3ee" />
+          <StatCard label="Online Now" value={31} color="var(--color-status-active)" />
+          <StatCard label="Offline" value={16} color="var(--color-brand-red)" />
+          <StatCard label="PWA Version" value="v2.4.1" color="var(--color-status-info)" />
           <StatCard label="Last Sync" value="2min ago" color="rgba(255,255,255,0.55)" />
         </div>
       </motion.div>
@@ -271,10 +271,10 @@ export default function CrewLinkPage() {
       <motion.div custom={6} variants={fadeUp} initial="hidden" animate="visible" className="mb-8">
         <SectionHeader number="MOD 7" title="App Performance Metrics" sub="Aggregate application health indicators" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Crash Rate" value="0.02%" sub="Last 30 days" color="#4caf50" />
+          <StatCard label="Crash Rate" value="0.02%" sub="Last 30 days" color="var(--color-status-active)" />
           <StatCard label="Avg Load Time" value="1.2s" sub="P95 baseline" color={DOMAIN_COLOR} />
-          <StatCard label="API Success Rate" value="99.8%" sub="Backend calls" color="#22d3ee" />
-          <StatCard label="Session Duration" value="42min" sub="Avg per crew" color="#a855f7" />
+          <StatCard label="API Success Rate" value="99.8%" sub="Backend calls" color="var(--color-status-info)" />
+          <StatCard label="Session Duration" value="42min" sub="Avg per crew" color="var(--color-system-compliance)" />
         </div>
       </motion.div>
 

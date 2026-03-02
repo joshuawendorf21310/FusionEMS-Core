@@ -4,11 +4,17 @@ from datetime import datetime
 from sqlalchemy import DateTime, Enum, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core_app.db.base import Base, SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin, VersionMixin
+from core_app.db.base import (
+    Base,
+    SoftDeleteMixin,
+    TimestampMixin,
+    UUIDPrimaryKeyMixin,
+    VersionMixin,
+)
 from core_app.models.tenant import TenantScopedMixin
 
 
-class IncidentStatus(str, enum.Enum):
+class IncidentStatus(enum.StrEnum):
     DRAFT = "draft"
     IN_PROGRESS = "in_progress"
     READY_FOR_REVIEW = "ready_for_review"
@@ -29,9 +35,13 @@ def allowed_transition_targets(from_status: IncidentStatus) -> set[IncidentStatu
     return ALLOWED_INCIDENT_TRANSITIONS.get(from_status, set())
 
 
-class Incident(Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
+class Incident(
+    Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, SoftDeleteMixin, VersionMixin
+):
     __tablename__ = "incidents"
-    __table_args__ = (UniqueConstraint("tenant_id", "incident_number", name="uq_incidents_tenant_number"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "incident_number", name="uq_incidents_tenant_number"),
+    )
 
     incident_number: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     dispatch_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -1,15 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Root Nested Stack (Enterprise Production-Ready)
+Description: FusionEMS Quantum - Root Stack
 
 Parameters:
   Env:
     Type: String
     AllowedValues: [dev, prod]
-    Default: dev
+    Default: prod
 
   AppName:
     Type: String
-    Default: fusionems-quantum
+    Default: fusionems
 
   RootDomainName:
     Type: String
@@ -21,120 +21,53 @@ Parameters:
 
   HostedZoneId:
     Type: String
-    Description: Route53 Hosted Zone ID
-    Default: Z0858801IZXAHSWCPH85
 
-  AcmCertificateArnRegional:
+  AcmCertificateArnUsEast1:
     Type: String
-    Description: ACM certificate ARN in deployment region (for ALB)
 
-  ImageTag:
+  ImageTagFrontend:
     Type: String
     Default: latest
 
-  DesiredCount:
-    Type: Number
-    Default: 2
-
-  DbInstanceClass:
+  ImageTagBackend:
     Type: String
-    Default: db.t4g.medium
-
-  DbMultiAZ:
-    Type: String
-    Default: 'false'
-    AllowedValues: ['true', 'false']
-
-  RedisNodeType:
-    Type: String
-    Default: cache.t4g.small
-
-  AlertEmail:
-    Type: String
-    Default: founder@fusionemsquantum.com
+    Default: latest
 
   NestedTemplatesBucket:
     Type: String
-    Description: S3 bucket where packaged nested templates are stored
 
-  GraphTenantId:
-    Type: String
-    Default: ''
-    Description: Azure AD tenant ID for Microsoft Graph
-
-  GraphClientId:
-    Type: String
-    Default: ''
-    Description: Entra app client ID
-
-  GraphClientSecret:
-    Type: String
-    NoEcho: true
-    Default: ''
-    Description: Entra app client secret
-
-  GraphFounderEmail:
-    Type: String
-    Default: ''
-    Description: Founder mailbox UPN for Graph API calls
+  DesiredCount:
+    Type: Number
+    Default: 0
+    Description: >
+      ECS service desired task count.  Set to 0 for the initial deploy
+      so that CloudFormation does not wait for images that do not exist yet.
+      The workflow promotes services to 2 after Docker images are pushed.
 
 Resources:
-
-  AcmStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: acm.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        RootDomainName: !Ref RootDomainName
-        ApiDomainName: !Ref ApiDomainName
-        HostedZoneId: !Ref HostedZoneId
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
 
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: network.yml
       Parameters:
-        Env: !Ref Env
         AppName: !Ref AppName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
+        Env: !Ref Env
 
   DataStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
     Properties:
       TemplateURL: data.yml
       Parameters:
-        Env: !Ref Env
         AppName: !Ref AppName
-        DbInstanceClass: !Ref DbInstanceClass
-        DbMultiAZ: !Ref DbMultiAZ
-        RedisNodeType: !Ref RedisNodeType
+        Env: !Ref Env
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-        GraphTenantId: !Ref GraphTenantId
-        GraphClientId: !Ref GraphClientId
-        GraphClientSecret: !Ref GraphClientSecret
-        GraphFounderEmail: !Ref GraphFounderEmail
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
 
   CognitoStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: NetworkStack
     Properties:
       TemplateURL: cognito.yml
       Parameters:
@@ -142,128 +75,30 @@ Resources:
         AppName: !Ref AppName
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  S3Stack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: s3.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-
-  WafStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: waf.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-
-  SesStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: ses.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        RootDomainName: !Ref RootDomainName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-
-  AlertTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: !Sub '${AppName}-${Env}-alerts'
-      DisplayName: !Sub 'FusionEMS ${Env} Alerts'
-
-  AlertTopicSubscription:
-    Type: AWS::SNS::Subscription
-    Properties:
-      TopicArn: !Ref AlertTopic
-      Protocol: email
-      Endpoint: !Ref AlertEmail
-
-  BillingStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: billing.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
-        LambdaSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
-        LambdaSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-        LambdaCodeS3Bucket: !Ref NestedTemplatesBucket
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
 
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - WafStack
+      - DataStack
+      - CognitoStack
     Properties:
       TemplateURL: compute.yml
       Parameters:
-        Env: !Ref Env
         AppName: !Ref AppName
+        Env: !Ref Env
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PublicSubnets: !GetAtt NetworkStack.Outputs.PublicSubnets
         PrivateSubnets: !GetAtt NetworkStack.Outputs.PrivateSubnets
         AlbSecurityGroupId: !GetAtt NetworkStack.Outputs.AlbSecurityGroupId
         EcsServiceSecurityGroupId: !GetAtt NetworkStack.Outputs.EcsServiceSecurityGroupId
-        ImageTag: !Ref ImageTag
+        ImageTagFrontend: !Ref ImageTagFrontend
+        ImageTagBackend: !Ref ImageTagBackend
+        AcmCertificateArn: !Ref AcmCertificateArnUsEast1
         DesiredCount: !Ref DesiredCount
-        DbSecretArn: !GetAtt DataStack.Outputs.DbSecretArn
-        AppSecretsArn: !GetAtt DataStack.Outputs.AppSecretsArn
-        RedisPrimaryEndpoint: !GetAtt DataStack.Outputs.RedisPrimaryEndpoint
-        CognitoUserPoolId: !GetAtt CognitoStack.Outputs.UserPoolId
-        CognitoClientId: !GetAtt CognitoStack.Outputs.UserPoolClientId
-        AcmCertificateArn: !Ref AcmCertificateArnRegional
-        FaxClassifyQueueUrl: !GetAtt BillingStack.Outputs.FaxClassifyQueueUrl
-        FaxMatchQueueUrl: !GetAtt BillingStack.Outputs.FaxMatchQueueUrl
-        SupportAIQueueUrl: !GetAtt BillingStack.Outputs.SupportAIQueueUrl
-        EdiGenerateQueueUrl: !GetAtt BillingStack.Outputs.EdiGenerateQueueUrl
-        PdfDocKitQueueUrl: !GetAtt BillingStack.Outputs.PdfDocKitQueueUrl
-        PdfClaimPacketQueueUrl: !GetAtt BillingStack.Outputs.PdfClaimPacketQueueUrl
-        LegalPdfQueueUrl: !GetAtt BillingStack.Outputs.LegalPdfQueueUrl
-        NERISPackImportQueueUrl: !GetAtt BillingStack.Outputs.NERISPackImportQueueUrl
-        NERISPackCompileQueueUrl: !GetAtt BillingStack.Outputs.NERISPackCompileQueueUrl
-        NERISExportQueueUrl: !GetAtt BillingStack.Outputs.NERISExportQueueUrl
-        S3BucketDocs: !GetAtt S3Stack.Outputs.DocsBucketName
-        S3BucketExports: !GetAtt S3Stack.Outputs.ExportsBucketName
-        GraphTenantId: !Ref GraphTenantId
-        GraphClientId: !Ref GraphClientId
-        GraphClientSecret: !Ref GraphClientSecret
-        GraphFounderEmail: !Ref GraphFounderEmail
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  WafAlbAssociation:
-    Type: AWS::WAFv2::WebACLAssociation
-    Properties:
-      ResourceArn: !GetAtt ComputeStack.Outputs.AlbArn
-      WebACLArn: !GetAtt WafStack.Outputs.WebAclArn
 
   EdgeStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: ComputeStack
     Properties:
       TemplateURL: edge.yml
       Parameters:
@@ -272,52 +107,12 @@ Resources:
         RootDomainName: !Ref RootDomainName
         ApiDomainName: !Ref ApiDomainName
         HostedZoneId: !Ref HostedZoneId
-        AcmCertificateArnUsEast1: !GetAtt AcmStack.Outputs.CertificateArn
+        AcmCertificateArnUsEast1: !Ref AcmCertificateArnUsEast1
         AlbDnsName: !GetAtt ComputeStack.Outputs.AlbDnsName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
-
-  ObservabilityStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: observability.yml
-      Parameters:
-        Env: !Ref Env
-        AppName: !Ref AppName
-        AlertEmail: !Ref AlertEmail
-        EcsClusterName: !GetAtt ComputeStack.Outputs.ClusterName
-        BackendServiceName: !GetAtt ComputeStack.Outputs.BackendServiceName
-        AlbFullName: !GetAtt ComputeStack.Outputs.AlbFullName
-        BackendTargetGroupFullName: !GetAtt ComputeStack.Outputs.BackendTargetGroupFullName
-        DbInstanceId: !GetAtt DataStack.Outputs.DbInstanceId
-        RedisClusterId: !GetAtt DataStack.Outputs.RedisReplicationGroupId
-        RootDomainName: !Ref RootDomainName
-        ApiDomainName: !Ref ApiDomainName
-      Tags:
-        - Key: Environment
-          Value: !Ref Env
-        - Key: Application
-          Value: !Ref AppName
 
 Outputs:
-  RootDomainName:
-    Value: !Ref RootDomainName
-
-  ApiDomainName:
-    Value: !Ref ApiDomainName
-
   CloudFrontDomain:
     Value: !GetAtt EdgeStack.Outputs.CloudFrontDomain
-
-  CloudFrontDistributionId:
-    Value: !GetAtt EdgeStack.Outputs.CloudFrontDistributionId
-
-  AcmCertificateArn:
-    Description: ACM certificate ARN in us-east-1 (auto-provisioned)
-    Value: !GetAtt AcmStack.Outputs.CertificateArn
 
   BackendEcrRepoUri:
     Value: !GetAtt ComputeStack.Outputs.BackendEcrRepoUri
@@ -325,11 +120,14 @@ Outputs:
   FrontendEcrRepoUri:
     Value: !GetAtt ComputeStack.Outputs.FrontendEcrRepoUri
 
-  CognitoUserPoolId:
-    Value: !GetAtt CognitoStack.Outputs.UserPoolId
+  ClusterName:
+    Value: !GetAtt ComputeStack.Outputs.ClusterName
 
-  CognitoUserPoolClientId:
-    Value: !GetAtt CognitoStack.Outputs.UserPoolClientId
+  BackendServiceName:
+    Value: !GetAtt ComputeStack.Outputs.BackendServiceName
 
-  AlertTopicArn:
-    Value: !Ref AlertTopic
+  FrontendServiceName:
+    Value: !GetAtt ComputeStack.Outputs.FrontendServiceName
+
+  BackendTaskDefinition:
+    Value: !GetAtt ComputeStack.Outputs.BackendTaskDefinition

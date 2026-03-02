@@ -34,6 +34,7 @@ def status(db: Session = Depends(db_session_dependency)) -> dict:
     if settings.redis_url:
         try:
             import redis
+
             r = redis.from_url(settings.redis_url, socket_connect_timeout=2)
             r.ping()
             checks["redis"] = "connected"

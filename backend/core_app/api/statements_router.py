@@ -3,19 +3,31 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
-from core_app.billing.statement_pdf import StatementContext, generate_billing_statement_pdf, TEMPLATE_VERSION
+from core_app.billing.statement_pdf import (
+    TEMPLATE_VERSION,
+    StatementContext,
+    generate_billing_statement_pdf,
+)
 from core_app.core.config import get_settings
 from core_app.fax.telnyx_service import TelnyxConfig, send_sms
-from core_app.integrations.lob_service import send_statement_letter, _get_lob_config, LobNotConfigured
-from core_app.payments.stripe_service import StripeConfig, StripeNotConfigured, create_connect_checkout_session
+from core_app.integrations.lob_service import (
+    LobNotConfigured,
+    _get_lob_config,
+    send_statement_letter,
+)
+from core_app.payments.stripe_service import (
+    StripeConfig,
+    StripeNotConfigured,
+    create_connect_checkout_session,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -27,8 +39,8 @@ router = APIRouter(prefix="/api/v1", tags=["Statements - Billing"])
 E164_RE = re.compile(r"^\+1[2-9]\d{9}$")
 
 
-
 # ── Schemas ───────────────────────────────────────────────────────────────────
+
 
 class MailStatementRequest(BaseModel):
     patient_name: str
@@ -40,11 +52,11 @@ class MailStatementRequest(BaseModel):
     service_lines: list[dict[str, Any]]
     amount_due_cents: int
     amount_paid_cents: int = 0
-    patient_account_ref: Optional[str] = None
+    patient_account_ref: str | None = None
 
 
 class PayStatementRequest(BaseModel):
-    patient_account_ref: Optional[str] = None
+    patient_account_ref: str | None = None
 
 
 class PaySmsRequest(BaseModel):
@@ -61,7 +73,10 @@ class PaySmsRequest(BaseModel):
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
-def _load_statement(svc: DominationService, statement_id: uuid.UUID, tenant_id: uuid.UUID) -> dict[str, Any]:
+
+def _load_statement(
+    svc: DominationService, statement_id: uuid.UUID, tenant_id: uuid.UUID
+) -> dict[str, Any]:
     rec = svc.repo("billing_cases").get(tenant_id=tenant_id, record_id=statement_id)
     if not rec:
         raise HTTPException(status_code=404, detail="statement_not_found")
@@ -70,16 +85,24 @@ def _load_statement(svc: DominationService, statement_id: uuid.UUID, tenant_id: 
 
 def _load_tenant_stripe_account(db: Session, tenant_id: uuid.UUID) -> str:
     from sqlalchemy import text
-    row = db.execute(
-        text("SELECT data->>'stripe_connected_account_id' AS acct FROM tenants WHERE id = :tid LIMIT 1"),
-        {"tid": str(tenant_id)},
-    ).mappings().first()
+
+    row = (
+        db.execute(
+            text(
+                "SELECT data->>'stripe_connected_account_id' AS acct FROM tenants WHERE id = :tid LIMIT 1"
+            ),
+            {"tid": str(tenant_id)},
+        )
+        .mappings()
+        .first()
+    )
     if not row or not row["acct"]:
         raise HTTPException(status_code=422, detail="tenant_stripe_account_not_connected")
     return row["acct"]
 
 
 # ── POST /statements/{statement_id}/mail ─────────────────────────────────────
+
 
 @router.post("/statements/{statement_id}/mail", status_code=201)
 async def mail_statement(
@@ -166,7 +189,7 @@ async def mail_statement(
             "template_version": TEMPLATE_VERSION,
             "lob_response": lob_resp,
             "status": "created",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         },
         correlation_id=correlation_id,
@@ -192,6 +215,7 @@ async def mail_statement(
 
 
 # ── POST /statements/{statement_id}/pay ──────────────────────────────────────
+
 
 @router.post("/statements/{statement_id}/pay")
 async def create_payment_session(
@@ -256,7 +280,7 @@ async def create_payment_session(
             "connected_account_id": connected_account_id,
             "amount_cents": amount_due_cents,
             "status": "pending",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         },
         correlation_id=correlation_id,
@@ -271,6 +295,7 @@ async def create_payment_session(
 
 
 # ── POST /statements/{statement_id}/pay/sms ──────────────────────────────────
+
 
 @router.post("/statements/{statement_id}/pay/sms", status_code=202)
 async def send_payment_sms(
@@ -339,13 +364,20 @@ async def send_payment_sms(
             text=sms_text,
         )
     except Exception as exc:
-        logger.error("telnyx_sms_failed statement_id=%s phone=%s error=%s",
-                     statement_id, body.phone_number[:6] + "****", exc)
+        logger.error(
+            "telnyx_sms_failed statement_id=%s phone=%s error=%s",
+            statement_id,
+            body.phone_number[:6] + "****",
+            exc,
+        )
         raise HTTPException(status_code=502, detail=f"sms_send_failed: {exc}")
 
     logger.info(
         "payment_sms_sent statement_id=%s phone=%.6s**** amount=%s correlation_id=%s",
-        statement_id, body.phone_number, amount_fmt, correlation_id,
+        statement_id,
+        body.phone_number,
+        amount_fmt,
+        correlation_id,
     )
 
     return {

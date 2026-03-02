@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - S3 Stack (Buckets with encryption, lifecycle, versioning)
+Description: FusionEMS Quantum - S3 Stack (Hardened Buckets with KMS, TLS enforcement, lifecycle, versioning)
 
 Parameters:
   AppName:
@@ -9,17 +9,47 @@ Parameters:
 
 Resources:
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # KMS Key (shared across buckets)
+  # ────────────────────────────────────────────────────────────────────────────
+
+  AppS3KmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub '${AppName}-${Env} S3 encryption key'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowAccountRoot
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+  AppS3KmsAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${AppName}-${Env}-s3'
+      TargetKeyId: !Ref AppS3KmsKey
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Common Bucket Policy (deny non-TLS)
+  # ────────────────────────────────────────────────────────────────────────────
+
   DocsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${AppName}-${Env}-docs'
+      VersioningConfiguration:
+        Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref AppS3KmsKey
             BucketKeyEnabled: true
-      VersioningConfiguration:
-        Status: Enabled
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -37,17 +67,38 @@ Resources:
             NoncurrentVersionExpiration:
               NoncurrentDays: 90
 
+  DocsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DocsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceTLS
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub '${DocsBucket.Arn}'
+              - !Sub '${DocsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ────────────────────────────────────────────────────────────────────────────
+
   ExportsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${AppName}-${Env}-exports'
+      VersioningConfiguration:
+        Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref AppS3KmsKey
             BucketKeyEnabled: true
-      VersioningConfiguration:
-        Status: Enabled
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -64,14 +115,37 @@ Resources:
               - TransitionInDays: 30
                 StorageClass: INTELLIGENT_TIERING
 
+  ExportsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ExportsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceTLS
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub '${ExportsBucket.Arn}'
+              - !Sub '${ExportsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ────────────────────────────────────────────────────────────────────────────
+
   ProposalsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${AppName}-${Env}-proposals'
+      VersioningConfiguration:
+        Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref AppS3KmsKey
             BucketKeyEnabled: true
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -84,17 +158,38 @@ Resources:
             Status: Enabled
             ExpirationInDays: 730
 
+  ProposalsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProposalsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceTLS
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub '${ProposalsBucket.Arn}'
+              - !Sub '${ProposalsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ────────────────────────────────────────────────────────────────────────────
+
   AuditBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${AppName}-${Env}-audit'
+      VersioningConfiguration:
+        Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref AppS3KmsKey
             BucketKeyEnabled: true
-      VersioningConfiguration:
-        Status: Enabled
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -109,10 +204,32 @@ Resources:
                 StorageClass: GLACIER
             ExpirationInDays: 2555
 
+  AuditBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AuditBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceTLS
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub '${AuditBucket.Arn}'
+              - !Sub '${AuditBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ────────────────────────────────────────────────────────────────────────────
+
   CfnArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${AppName}-${Env}-cfn-artifacts'
+      VersioningConfiguration:
+        Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -148,3 +265,8 @@ Outputs:
     Value: !Ref AuditBucket
     Export:
       Name: !Sub '${AppName}-${Env}-AuditBucket'
+
+  S3KmsKeyArn:
+    Value: !GetAtt AppS3KmsKey.Arn
+    Export:
+      Name: !Sub '${AppName}-${Env}-S3KmsKeyArn'

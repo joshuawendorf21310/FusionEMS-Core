@@ -2,118 +2,196 @@ package fusionems
 
 import future.keywords.in
 
-# ── Defaults ─────────────────────────────────────────────────────────────────
+# =============================================================================
+# DEFAULTS
+# =============================================================================
+
 default allow = false
+default deny = []
 
-# ── Public paths (no auth required) ──────────────────────────────────────────
+# Normalize
+method := upper(input.method)
+
+# Safe path helpers
+path_len := count(input.path)
+
+path0 := input.path[0] if path_len > 0
+path1 := input.path[1] if path_len > 1
+path2 := input.path[2] if path_len > 2
+
+# =============================================================================
+# PUBLIC (NO AUTH REQUIRED)
+# =============================================================================
+
 allow {
-    input.path[0] == "healthz"
+    path0 in {"healthz", "health", "track", "public"}
 }
 
+# Webhooks are validated at application layer (HMAC)
 allow {
-    input.path[0] == "health"
+    path0 == "api"
+    path1 == "v1"
+    path2 == "webhooks"
 }
 
-allow {
-    input.path[0] == "track"
-}
+# =============================================================================
+# AUTHENTICATED ACCESS
+# =============================================================================
 
-allow {
-    input.path[0] == "public"
-}
-
-# Webhooks inbound paths are verified by HMAC in application layer
-allow {
-    input.path[0] == "api"
-    input.path[1] == "v1"
-    input.path[2] == "webhooks"
-}
-
-# ── Authenticated requests ────────────────────────────────────────────────────
 allow {
     is_authenticated
+    not deny[_]
+    founder_override
+}
+
+allow {
+    is_authenticated
+    not deny[_]
     tenant_matches
     role_allows_method
 }
 
-# ── Founder role: unrestricted access ────────────────────────────────────────
-allow {
-    is_authenticated
+# =============================================================================
+# FOUNDER OVERRIDE
+# =============================================================================
+
+founder_override {
     input.user.role == "founder"
 }
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# =============================================================================
+# AUTH HELPERS
+# =============================================================================
+
 is_authenticated {
     input.user.sub != ""
     input.user.tenant_id != ""
 }
 
-# Tenant isolation: the user's tenant must match the resource tenant
-tenant_matches {
-    input.user.tenant_id == input.resource.tenant_id
-}
+# =============================================================================
+# TENANT ISOLATION
+# =============================================================================
 
-# Allow when no resource tenant is specified (non-tenant-scoped endpoints)
 tenant_matches {
     not input.resource.tenant_id
 }
 
-# ── Role-based method control ─────────────────────────────────────────────────
+tenant_matches {
+    input.resource.tenant_id != ""
+    input.user.tenant_id == input.resource.tenant_id
+}
+
+# =============================================================================
+# ROLE-BASED METHOD CONTROL
+# =============================================================================
+
 role_allows_method {
     input.user.role in {"agency_admin", "supervisor"}
-    input.method in {"GET", "POST", "PUT", "PATCH", "DELETE"}
+    method in {"GET", "POST", "PUT", "PATCH", "DELETE"}
 }
 
 role_allows_method {
     input.user.role in {"billing", "billing_admin"}
-    input.method in {"GET", "POST", "PUT", "PATCH"}
+    method in {"GET", "POST", "PUT", "PATCH"}
     billing_path
 }
 
 role_allows_method {
     input.user.role == "ems_crew"
-    input.method in {"GET", "POST", "PUT", "PATCH"}
+    method in {"GET", "POST", "PUT", "PATCH"}
     ems_crew_path
 }
 
 role_allows_method {
     input.user.role == "patient"
-    input.method in {"GET", "POST"}
+    method in {"GET", "POST"}
     patient_path
 }
 
 role_allows_method {
     input.user.role == "readonly"
-    input.method == "GET"
+    method == "GET"
 }
 
-# ── Path sets ─────────────────────────────────────────────────────────────────
+# Internal system services (queues, cron, webhooks, etc.)
+role_allows_method {
+    input.user.role == "system"
+}
+
+# =============================================================================
+# PATH SCOPES
+# =============================================================================
+
 billing_path {
-    input.path[2] in {"billing", "claims", "payments", "exports", "reports", "ar-aging", "revenue-forecast"}
+    path2 in {
+        "billing",
+        "claims",
+        "payments",
+        "exports",
+        "reports",
+        "ar-aging",
+        "revenue-forecast"
+    }
 }
 
 ems_crew_path {
-    input.path[2] in {"incidents", "patients", "vitals", "cad", "transportlink", "nemsis", "scheduling", "fleet", "mdt"}
+    path2 in {
+        "incidents",
+        "patients",
+        "vitals",
+        "cad",
+        "transportlink",
+        "nemsis",
+        "scheduling",
+        "fleet",
+        "mdt"
+    }
 }
 
 patient_path {
-    input.path[2] in {"portal", "statements", "auth-rep", "tracking"}
+    path2 in {
+        "portal",
+        "statements",
+        "auth-rep",
+        "tracking"
+    }
 }
 
-# ── Deny rules (explicit blocks regardless of role) ───────────────────────────
-# Block cross-tenant data access
+# =============================================================================
+# EXPLICIT DENY RULES (ALWAYS TAKE PRECEDENCE)
+# =============================================================================
+
+# Cross-tenant access block
 deny[msg] {
     is_authenticated
     input.resource.tenant_id != ""
     input.user.tenant_id != input.resource.tenant_id
     input.user.role != "founder"
-    msg := sprintf("cross-tenant access denied: user tenant %v != resource tenant %v", [input.user.tenant_id, input.resource.tenant_id])
+    msg := sprintf(
+        "cross-tenant access denied (user=%v resource=%v)",
+        [input.user.tenant_id, input.resource.tenant_id]
+    )
 }
 
-# Block non-founders from founder endpoints
+# Founder endpoints restricted
 deny[msg] {
     is_authenticated
-    input.path[2] == "founder"
+    path2 == "founder"
     input.user.role != "founder"
     msg := "founder endpoint requires founder role"
+}
+
+# Block write attempts from readonly role
+deny[msg] {
+    input.user.role == "readonly"
+    method != "GET"
+    msg := "readonly role cannot modify resources"
+}
+
+# Prevent unauthenticated access to protected routes
+deny[msg] {
+    not is_authenticated
+    not path0 in {"healthz", "health", "track", "public"}
+    not (path0 == "api" and path1 == "v1" and path2 == "webhooks")
+    msg := "authentication required"
 }

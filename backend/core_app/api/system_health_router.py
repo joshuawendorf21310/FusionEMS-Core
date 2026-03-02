@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -57,7 +57,7 @@ class RecoverySimRequest(BaseModel):
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _metric_status(value: float | None, threshold: float) -> str:
@@ -101,23 +101,39 @@ async def service_health(
     require_role(current, ["founder", "admin"])
     s = get_settings()
 
-    ecs_cpu = get_cw_metric_avg(
-        "AWS/ECS", "CPUUtilization",
-        _ecs_dimensions(s.ecs_cluster_name, s.ecs_backend_service),
-    ) if s.ecs_cluster_name else None
+    ecs_cpu = (
+        get_cw_metric_avg(
+            "AWS/ECS",
+            "CPUUtilization",
+            _ecs_dimensions(s.ecs_cluster_name, s.ecs_backend_service),
+        )
+        if s.ecs_cluster_name
+        else None
+    )
 
-    rds_conns = get_cw_metric_avg(
-        "AWS/RDS", "DatabaseConnections",
-        [{"Name": "DBInstanceIdentifier", "Value": s.rds_instance_id}],
-    ) if s.rds_instance_id else None
+    rds_conns = (
+        get_cw_metric_avg(
+            "AWS/RDS",
+            "DatabaseConnections",
+            [{"Name": "DBInstanceIdentifier", "Value": s.rds_instance_id}],
+        )
+        if s.rds_instance_id
+        else None
+    )
 
-    redis_latency = get_cw_metric_avg(
-        "AWS/ElastiCache", "EngineCPUUtilization",
-        [{"Name": "ReplicationGroupId", "Value": s.redis_cluster_id}],
-    ) if s.redis_cluster_id else None
+    redis_latency = (
+        get_cw_metric_avg(
+            "AWS/ElastiCache",
+            "EngineCPUUtilization",
+            [{"Name": "ReplicationGroupId", "Value": s.redis_cluster_id}],
+        )
+        if s.redis_cluster_id
+        else None
+    )
 
     cf_error = get_cw_metric_avg(
-        "AWS/CloudFront", "5xxErrorRate",
+        "AWS/CloudFront",
+        "5xxErrorRate",
         [{"Name": "DistributionId", "Value": "GLOBAL"}, {"Name": "Region", "Value": "Global"}],
         minutes=15,
     )
@@ -128,10 +144,30 @@ async def service_health(
         return "degraded" if val >= threshold else "healthy"
 
     services = [
-        {"service": "ecs", "status": _svc_status(ecs_cpu, 80), "metric": "cpu_pct", "value": ecs_cpu or 0},
-        {"service": "rds", "status": _svc_status(rds_conns, 400), "metric": "connections", "value": rds_conns or 0},
-        {"service": "redis", "status": _svc_status(redis_latency, 90), "metric": "engine_cpu_pct", "value": redis_latency or 0},
-        {"service": "cloudfront", "status": _svc_status(cf_error, 5), "metric": "5xx_error_rate", "value": cf_error or 0},
+        {
+            "service": "ecs",
+            "status": _svc_status(ecs_cpu, 80),
+            "metric": "cpu_pct",
+            "value": ecs_cpu or 0,
+        },
+        {
+            "service": "rds",
+            "status": _svc_status(rds_conns, 400),
+            "metric": "connections",
+            "value": rds_conns or 0,
+        },
+        {
+            "service": "redis",
+            "status": _svc_status(redis_latency, 90),
+            "metric": "engine_cpu_pct",
+            "value": redis_latency or 0,
+        },
+        {
+            "service": "cloudfront",
+            "status": _svc_status(cf_error, 5),
+            "metric": "5xx_error_rate",
+            "value": cf_error or 0,
+        },
     ]
     return {"services": services, "as_of": _now_iso()}
 
@@ -145,7 +181,8 @@ async def cpu_metrics(
     value = None
     if s.ecs_cluster_name:
         value = get_cw_metric_avg(
-            "AWS/ECS", "CPUUtilization",
+            "AWS/ECS",
+            "CPUUtilization",
             _ecs_dimensions(s.ecs_cluster_name, s.ecs_backend_service),
         )
     threshold = 80
@@ -167,7 +204,8 @@ async def memory_metrics(
     value = None
     if s.ecs_cluster_name:
         value = get_cw_metric_avg(
-            "AWS/ECS", "MemoryUtilization",
+            "AWS/ECS",
+            "MemoryUtilization",
             _ecs_dimensions(s.ecs_cluster_name, s.ecs_backend_service),
         )
     threshold = 85
@@ -189,7 +227,8 @@ async def api_latency(
     value = None
     if s.ecs_cluster_name:
         value = get_cw_metric_avg(
-            "AWS/ApplicationELB", "TargetResponseTime",
+            "AWS/ApplicationELB",
+            "TargetResponseTime",
             [{"Name": "LoadBalancer", "Value": s.ecs_cluster_name}],
             minutes=10,
         )
@@ -361,9 +400,15 @@ async def backup_status(
 ):
     require_role(current, ["founder", "admin"])
     s = get_settings()
-    rds = get_rds_backup_status(s.rds_instance_id) if s.rds_instance_id else {
-        "status": "unconfigured", "last_backup": None, "retention_days": 0,
-    }
+    rds = (
+        get_rds_backup_status(s.rds_instance_id)
+        if s.rds_instance_id
+        else {
+            "status": "unconfigured",
+            "last_backup": None,
+            "retention_days": 0,
+        }
+    )
     return {"rds_backup": rds, "as_of": _now_iso()}
 
 
@@ -409,7 +454,9 @@ async def cost_budget(
         "monthly_budget_usd": budget,
         "estimated_spend_usd": spend,
         "remaining_usd": round(budget - spend, 2) if isinstance(spend, (int, float)) else None,
-        "utilization_pct": round(spend / budget * 100, 1) if isinstance(spend, (int, float)) else None,
+        "utilization_pct": round(spend / budget * 100, 1)
+        if isinstance(spend, (int, float))
+        else None,
         "alert_threshold_pct": 80,
         "as_of": _now_iso(),
     }
@@ -434,6 +481,7 @@ async def security_vulnerabilities(
     findings: dict = {"critical": 0, "high": 0, "medium": 0, "low": 0, "status": "unavailable"}
     try:
         import boto3
+
         s = get_settings()
         sh = boto3.client("securityhub", region_name=s.aws_region or "us-east-1")
         resp = sh.get_findings(
@@ -457,9 +505,15 @@ async def iam_drift(
     current: CurrentUser = Depends(get_current_user),
 ):
     require_role(current, ["founder"])
-    result = {"last_check": _now_iso(), "drift_detected": False, "policies_checked": 0, "status": "unavailable"}
+    result = {
+        "last_check": _now_iso(),
+        "drift_detected": False,
+        "policies_checked": 0,
+        "status": "unavailable",
+    }
     try:
         import boto3
+
         s = get_settings()
         config_client = boto3.client("config", region_name=s.aws_region or "us-east-1")
         resp = config_client.get_compliance_summary_by_resource_type(
@@ -489,18 +543,25 @@ async def key_rotation(
     require_role(current, ["founder", "admin"])
     s = get_settings()
     keys = []
-    for name, secret_id in [("JWT_SECRET_KEY", s.secrets_jwt_arn), ("STRIPE_WEBHOOK_SECRET", s.secrets_stripe_arn)]:
+    for name, secret_id in [
+        ("JWT_SECRET_KEY", s.secrets_jwt_arn),
+        ("STRIPE_WEBHOOK_SECRET", s.secrets_stripe_arn),
+    ]:
         if secret_id:
             meta = get_secret_metadata(secret_id)
             if meta:
-                keys.append({
-                    "name": name,
-                    "last_rotated": meta.get("last_rotated"),
-                    "last_changed": meta.get("last_changed"),
-                    "status": "rotated" if meta.get("last_rotated") else "manual",
-                })
+                keys.append(
+                    {
+                        "name": name,
+                        "last_rotated": meta.get("last_rotated"),
+                        "last_changed": meta.get("last_changed"),
+                        "status": "rotated" if meta.get("last_rotated") else "manual",
+                    }
+                )
                 continue
-        keys.append({"name": name, "last_rotated": None, "last_changed": None, "status": "unconfigured"})
+        keys.append(
+            {"name": name, "last_rotated": None, "last_changed": None, "status": "unconfigured"}
+        )
     return {"keys": keys, "as_of": _now_iso()}
 
 
@@ -568,11 +629,13 @@ async def cache_hit_ratio(
     value = None
     if s.redis_cluster_id:
         hits = get_cw_metric_avg(
-            "AWS/ElastiCache", "CacheHits",
+            "AWS/ElastiCache",
+            "CacheHits",
             [{"Name": "ReplicationGroupId", "Value": s.redis_cluster_id}],
         )
         misses = get_cw_metric_avg(
-            "AWS/ElastiCache", "CacheMisses",
+            "AWS/ElastiCache",
+            "CacheMisses",
             [{"Name": "ReplicationGroupId", "Value": s.redis_cluster_id}],
         )
         if hits is not None and misses is not None and (hits + misses) > 0:
@@ -596,14 +659,23 @@ async def network_latency(
     latency_ms = None
     if s.ecs_cluster_name:
         val = get_cw_metric_avg(
-            "AWS/ApplicationELB", "TargetResponseTime",
+            "AWS/ApplicationELB",
+            "TargetResponseTime",
             [{"Name": "LoadBalancer", "Value": s.ecs_cluster_name}],
             minutes=10,
         )
         if val is not None:
             latency_ms = round(val * 1000, 2)
     return {
-        "regions": [{"region": region, "latency_ms": latency_ms or 0, "status": _metric_status(latency_ms, 200) if latency_ms is not None else "unavailable"}],
+        "regions": [
+            {
+                "region": region,
+                "latency_ms": latency_ms or 0,
+                "status": _metric_status(latency_ms, 200)
+                if latency_ms is not None
+                else "unavailable",
+            }
+        ],
         "as_of": _now_iso(),
     }
 
@@ -643,7 +715,18 @@ async def monitoring_coverage(
     current: CurrentUser = Depends(get_current_user),
 ):
     require_role(current, ["founder", "admin"])
-    monitored_services = ["ecs", "rds", "redis", "cloudfront", "api", "stripe", "cognito", "sqs", "s3", "waf"]
+    monitored_services = [
+        "ecs",
+        "rds",
+        "redis",
+        "cloudfront",
+        "api",
+        "stripe",
+        "cognito",
+        "sqs",
+        "s3",
+        "waf",
+    ]
     total_services = 10
     return {
         "monitored_services": monitored_services,
@@ -661,7 +744,9 @@ async def uptime_executive_report(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     alerts = svc.repo("system_alerts").list(tenant_id=current.tenant_id, limit=10000)
-    all_incidents = [a for a in alerts if a.get("data", {}).get("severity") in ("critical", "error")]
+    all_incidents = [
+        a for a in alerts if a.get("data", {}).get("severity") in ("critical", "error")
+    ]
     total_incidents = len(all_incidents)
     resolved = [a for a in all_incidents if a.get("data", {}).get("status") == "resolved"]
     critical = [a for a in alerts if a.get("data", {}).get("severity") == "critical"]
@@ -724,12 +809,14 @@ async def resource_forecast(
     mem_avg = None
     if s.ecs_cluster_name:
         cpu_avg = get_cw_metric_avg(
-            "AWS/ECS", "CPUUtilization",
+            "AWS/ECS",
+            "CPUUtilization",
             _ecs_dimensions(s.ecs_cluster_name, s.ecs_backend_service),
             minutes=1440,
         )
         mem_avg = get_cw_metric_avg(
-            "AWS/ECS", "MemoryUtilization",
+            "AWS/ECS",
+            "MemoryUtilization",
             _ecs_dimensions(s.ecs_cluster_name, s.ecs_backend_service),
             minutes=1440,
         )
@@ -740,7 +827,11 @@ async def resource_forecast(
         recommendation = "consider_scaling_up"
     return {
         "forecast": [
-            {"month": "next_month", "estimated_cpu_pct": forecast_cpu, "estimated_memory_pct": forecast_mem},
+            {
+                "month": "next_month",
+                "estimated_cpu_pct": forecast_cpu,
+                "estimated_memory_pct": forecast_mem,
+            },
         ],
         "recommendation": recommendation,
         "as_of": _now_iso(),
@@ -755,7 +846,14 @@ async def resilience_score(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     alerts = svc.repo("system_alerts").list(tenant_id=current.tenant_id, limit=10000)
-    critical = len([a for a in alerts if a.get("data", {}).get("severity") == "critical" and a.get("data", {}).get("status") == "active"])
+    critical = len(
+        [
+            a
+            for a in alerts
+            if a.get("data", {}).get("severity") == "critical"
+            and a.get("data", {}).get("status") == "active"
+        ]
+    )
     score = max(0, 100 - (critical * 10))
     return {
         "resilience_score": score,

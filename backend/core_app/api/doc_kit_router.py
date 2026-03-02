@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.core.config import get_settings
-from core_app.documents.s3_storage import put_bytes, presign_get, default_docs_bucket
+from core_app.documents.s3_storage import default_docs_bucket, presign_get, put_bytes
 from core_app.fax.cover_sheet import CoverSheetGenerator
 from core_app.repositories.domination_repository import DominationRepository
 from core_app.schemas.auth import CurrentUser
@@ -19,11 +19,11 @@ router = APIRouter(prefix="/api/v1", tags=["Doc Kit"])
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _timestamp_slug() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def _resolve_tenant_info(svc: DominationService, tenant_id: uuid.UUID) -> dict:
@@ -51,8 +51,16 @@ async def generate_agency_doc_kit(
     tenant_data = _resolve_tenant_info(svc, current.tenant_id)
     agency_name = tenant_data.get("agency_name") or tenant_data.get("name") or "Unknown Agency"
     fax_number = tenant_data.get("billing_fax") or tenant_data.get("fax_number") or "N/A"
-    inbound_email = tenant_data.get("billing_email") or tenant_data.get("email") or "billing@fusionemsquantum.com"
-    upload_url = tenant_data.get("portal_url") or settings.api_base_url or "https://portal.fusionemsquantum.com"
+    inbound_email = (
+        tenant_data.get("billing_email")
+        or tenant_data.get("email")
+        or "billing@fusionemsquantum.com"
+    )
+    upload_url = (
+        tenant_data.get("portal_url")
+        or settings.api_base_url
+        or "https://portal.fusionemsquantum.com"
+    )
 
     gen = CoverSheetGenerator()
     pdf_bytes = gen.generate_agency_doc_kit(
@@ -182,7 +190,8 @@ async def get_latest_claim_cover_sheet(
     repo = DominationRepository(db, table="documents")
     all_docs = repo.list_raw_by_field("doc_type", "claim_cover_sheet", limit=200)
     claim_docs = [
-        d for d in all_docs
+        d
+        for d in all_docs
         if (d.get("data") or {}).get("owner_entity_id") == str(claim_id)
         and str(d.get("tenant_id", "")) == str(current.tenant_id)
     ]
@@ -195,7 +204,9 @@ async def get_latest_claim_cover_sheet(
 
     bucket = ldata.get("bucket", "")
     s3_key = ldata.get("s3_key", "")
-    download_url = presign_get(bucket=bucket, key=s3_key, expires_seconds=300) if bucket and s3_key else None
+    download_url = (
+        presign_get(bucket=bucket, key=s3_key, expires_seconds=300) if bucket and s3_key else None
+    )
 
     return {
         "pdf_id": str(latest["id"]),

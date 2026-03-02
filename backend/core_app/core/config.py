@@ -56,8 +56,12 @@ class Settings(BaseSettings):
     # Microsoft Graph (application permissions - client credentials flow)
     graph_tenant_id: str = Field(default="", description="Azure AD tenant ID")
     graph_client_id: str = Field(default="", description="Entra app client ID")
-    graph_client_secret: str = Field(default="", description="Entra app client secret (from Secrets Manager)")
-    graph_founder_email: str = Field(default="", description="Founder mailbox UPN - used for all Graph calls")
+    graph_client_secret: str = Field(
+        default="", description="Entra app client secret (from Secrets Manager)"
+    )
+    graph_founder_email: str = Field(
+        default="", description="Founder mailbox UPN - used for all Graph calls"
+    )
 
     # Microsoft Entra user login (authorization code flow)
     microsoft_redirect_uri: str = Field(
@@ -82,12 +86,18 @@ class Settings(BaseSettings):
     rds_instance_id: str = Field(default="", description="RDS DB instance identifier")
     redis_cluster_id: str = Field(default="", description="ElastiCache replication group ID")
     secrets_jwt_arn: str = Field(default="", description="Secrets Manager ARN/name for JWT secret")
-    secrets_stripe_arn: str = Field(default="", description="Secrets Manager ARN/name for Stripe webhook secret")
+    secrets_stripe_arn: str = Field(
+        default="", description="Secrets Manager ARN/name for Stripe webhook secret"
+    )
 
     # Telnyx webhook verification + IVR
-    telnyx_public_key: str = Field(default="", description="Base64-encoded Ed25519 public key from Telnyx portal")
+    telnyx_public_key: str = Field(
+        default="", description="Base64-encoded Ed25519 public key from Telnyx portal"
+    )
     telnyx_webhook_tolerance_seconds: int = Field(default=300)
-    ivr_audio_base_url: str = Field(default="", description="S3 or CDN base URL for pre-generated IVR WAV prompts")
+    ivr_audio_base_url: str = Field(
+        default="", description="S3 or CDN base URL for pre-generated IVR WAV prompts"
+    )
     s3_bucket_audio: str = Field(default="")
     fax_classify_queue_url: str = Field(default="")
 
@@ -116,7 +126,9 @@ class Settings(BaseSettings):
     tenants_table: str = Field(default="")
 
     # GitHub integration (Founder Copilot)
-    github_token: str = Field(default="", description="GitHub PAT or Actions token for workflow dispatch")
+    github_token: str = Field(
+        default="", description="GitHub PAT or Actions token for workflow dispatch"
+    )
     github_owner: str = Field(default="", description="GitHub org or username")
     github_repo: str = Field(default="FusionEMS-Core", description="GitHub repository name")
 
@@ -131,41 +143,37 @@ class Settings(BaseSettings):
         env = self.environment.lower()
         if env in ("production", "prod", "staging"):
             _REQUIRED: list[tuple[str, str]] = [
-                ("database_url",                    "DATABASE_URL"),
-                ("jwt_secret_key",                  "JWT_SECRET_KEY"),
-                ("stripe_secret_key",               "STRIPE_SECRET_KEY"),
-                ("stripe_webhook_secret",           "STRIPE_WEBHOOK_SECRET"),
-                ("lob_api_key",                     "LOB_API_KEY"),
-                ("lob_webhook_secret",              "LOB_WEBHOOK_SECRET"),
-                ("telnyx_api_key",                  "TELNYX_API_KEY"),
-                ("telnyx_from_number",              "TELNYX_FROM_NUMBER"),
-                ("telnyx_public_key",               "TELNYX_PUBLIC_KEY"),
-                ("ivr_audio_base_url",              "IVR_AUDIO_BASE_URL"),
-                ("fax_classify_queue_url",          "FAX_CLASSIFY_QUEUE_URL"),
-                ("aws_region",                      "AWS_REGION"),
-                ("system_tenant_id",                "SYSTEM_TENANT_ID"),
-                ("lob_events_queue_url",            "LOB_EVENTS_QUEUE_URL"),
-                ("stripe_events_queue_url",         "STRIPE_EVENTS_QUEUE_URL"),
-                ("neris_pack_import_queue_url",      "NERIS_PACK_IMPORT_QUEUE_URL"),
-                ("neris_pack_compile_queue_url",     "NERIS_PACK_COMPILE_QUEUE_URL"),
-                ("neris_export_queue_url",           "NERIS_EXPORT_QUEUE_URL"),
-                ("statements_table",                "STATEMENTS_TABLE"),
-                ("lob_events_table",                "LOB_EVENTS_TABLE"),
-                ("stripe_events_table",             "STRIPE_EVENTS_TABLE"),
-                ("tenants_table",                   "TENANTS_TABLE"),
-                ("graph_tenant_id",                 "GRAPH_TENANT_ID"),
-                ("graph_client_id",                 "GRAPH_CLIENT_ID"),
-                ("graph_client_secret",             "GRAPH_CLIENT_SECRET"),
-                ("graph_founder_email",             "GRAPH_FOUNDER_EMAIL"),
-                ("microsoft_redirect_uri",          "MICROSOFT_REDIRECT_URI"),
-                ("microsoft_post_login_url",        "MICROSOFT_POST_LOGIN_URL"),
-                ("microsoft_post_logout_url",       "MICROSOFT_POST_LOGOUT_URL"),
+                ("database_url", "DATABASE_URL"),
+                ("jwt_secret_key", "JWT_SECRET_KEY"),
+                ("stripe_secret_key", "STRIPE_SECRET_KEY"),
+                ("stripe_webhook_secret", "STRIPE_WEBHOOK_SECRET"),
+                ("lob_api_key", "LOB_API_KEY"),
+                ("lob_webhook_secret", "LOB_WEBHOOK_SECRET"),
+                ("telnyx_api_key", "TELNYX_API_KEY"),
+                ("telnyx_from_number", "TELNYX_FROM_NUMBER"),
+                ("telnyx_public_key", "TELNYX_PUBLIC_KEY"),
+                ("ivr_audio_base_url", "IVR_AUDIO_BASE_URL"),
+                ("fax_classify_queue_url", "FAX_CLASSIFY_QUEUE_URL"),
+                ("aws_region", "AWS_REGION"),
+                ("system_tenant_id", "SYSTEM_TENANT_ID"),
+                ("lob_events_queue_url", "LOB_EVENTS_QUEUE_URL"),
+                ("stripe_events_queue_url", "STRIPE_EVENTS_QUEUE_URL"),
+                ("neris_pack_import_queue_url", "NERIS_PACK_IMPORT_QUEUE_URL"),
+                ("neris_pack_compile_queue_url", "NERIS_PACK_COMPILE_QUEUE_URL"),
+                ("neris_export_queue_url", "NERIS_EXPORT_QUEUE_URL"),
+                ("statements_table", "STATEMENTS_TABLE"),
+                ("lob_events_table", "LOB_EVENTS_TABLE"),
+                ("stripe_events_table", "STRIPE_EVENTS_TABLE"),
+                ("tenants_table", "TENANTS_TABLE"),
+                ("graph_tenant_id", "GRAPH_TENANT_ID"),
+                ("graph_client_id", "GRAPH_CLIENT_ID"),
+                ("graph_client_secret", "GRAPH_CLIENT_SECRET"),
+                ("graph_founder_email", "GRAPH_FOUNDER_EMAIL"),
+                ("microsoft_redirect_uri", "MICROSOFT_REDIRECT_URI"),
+                ("microsoft_post_login_url", "MICROSOFT_POST_LOGIN_URL"),
+                ("microsoft_post_logout_url", "MICROSOFT_POST_LOGOUT_URL"),
             ]
-            missing = [
-                env_name
-                for attr, env_name in _REQUIRED
-                if not getattr(self, attr, "")
-            ]
+            missing = [env_name for attr, env_name in _REQUIRED if not getattr(self, attr, "")]
             if missing:
                 raise ValueError(
                     f"The following required environment variables are not set "
@@ -188,9 +196,7 @@ class Settings(BaseSettings):
     @classmethod
     def _validate_graph_founder_email(cls, v: str) -> str:
         if v and "@" not in v:
-            raise ValueError(
-                f"GRAPH_FOUNDER_EMAIL must be a valid UPN (email address), got: {v!r}"
-            )
+            raise ValueError(f"GRAPH_FOUNDER_EMAIL must be a valid UPN (email address), got: {v!r}")
         return v
 
     @field_validator("system_tenant_id")
@@ -199,12 +205,11 @@ class Settings(BaseSettings):
         if not v:
             return v
         import uuid as _uuid
+
         try:
             _uuid.UUID(v)
         except ValueError as exc:
-            raise ValueError(
-                f"SYSTEM_TENANT_ID must be a valid UUID, got: {v!r}"
-            ) from exc
+            raise ValueError(f"SYSTEM_TENANT_ID must be a valid UUID, got: {v!r}") from exc
         return v
 
 

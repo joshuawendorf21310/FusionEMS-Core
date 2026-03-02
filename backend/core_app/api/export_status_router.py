@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import uuid
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api/v1/export-status", tags=["ExportStatus"])
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _tenant(current: CurrentUser) -> str:
@@ -44,11 +45,21 @@ async def export_queue_monitor(
 ):
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     queued = [j for j in jobs if _data(j).get("status") == "queued"]
     processing = [j for j in jobs if _data(j).get("status") == "processing"]
-    completed_today = [j for j in jobs if _data(j).get("status") == "completed" and (_data(j).get("completed_at") or "").startswith(today)]
-    failed_today = [j for j in jobs if _data(j).get("status") == "failed" and (_data(j).get("failed_at") or _data(j).get("updated_at") or "").startswith(today)]
+    completed_today = [
+        j
+        for j in jobs
+        if _data(j).get("status") == "completed"
+        and (_data(j).get("completed_at") or "").startswith(today)
+    ]
+    failed_today = [
+        j
+        for j in jobs
+        if _data(j).get("status") == "failed"
+        and (_data(j).get("failed_at") or _data(j).get("updated_at") or "").startswith(today)
+    ]
     queue_items = [
         {
             "job_id": str(j.get("id", "")),
@@ -128,10 +139,20 @@ async def create_batch_schedule(
         table="export_schedules",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"status": "scheduled", "run_at": payload.get("run_at"), "state": payload.get("state"), **payload},
+        data={
+            "status": "scheduled",
+            "run_at": payload.get("run_at"),
+            "state": payload.get("state"),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"batch_id": str(record.get("id", "")), "status": "scheduled", "run_at": payload.get("run_at"), "state": payload.get("state")}
+    return {
+        "batch_id": str(record.get("id", "")),
+        "status": "scheduled",
+        "run_at": payload.get("run_at"),
+        "state": payload.get("state"),
+    }
 
 
 @router.post("/retry/{job_id}")
@@ -267,7 +288,12 @@ async def fire_incident_normalization(
         table="export_fire_normalizations",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"incident_id": payload.get("incident_id"), "type": payload.get("type", "STRUCTURE_FIRE"), "normalized_at": _now(), **payload},
+        data={
+            "incident_id": payload.get("incident_id"),
+            "type": payload.get("type", "STRUCTURE_FIRE"),
+            "normalized_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -292,7 +318,12 @@ async def timestamp_alignment_validator(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "timestamp_alignment", "incident_id": payload.get("incident_id"), "checked_at": _now(), **payload},
+        data={
+            "type": "timestamp_alignment",
+            "incident_id": payload.get("incident_id"),
+            "checked_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -337,7 +368,14 @@ async def export_latency_tracker(
             "samples": len(latencies),
             "period": "all",
         }
-    return {"avg_latency_ms": 0, "p95_latency_ms": 0, "p99_latency_ms": 0, "max_latency_ms": 0, "samples": 0, "period": "all"}
+    return {
+        "avg_latency_ms": 0,
+        "p95_latency_ms": 0,
+        "p99_latency_ms": 0,
+        "max_latency_ms": 0,
+        "samples": 0,
+        "period": "all",
+    }
 
 
 @router.get("/performance-score")
@@ -355,18 +393,38 @@ async def export_performance_score(
         d = _data(j)
         s, c = d.get("started_at"), d.get("completed_at")
         if s and c:
-            try:
-                latencies.append(int((datetime.fromisoformat(c.replace("Z", "+00:00")) - datetime.fromisoformat(s.replace("Z", "+00:00"))).total_seconds() * 1000))
-            except (ValueError, TypeError):
-                pass
+            with contextlib.suppress(ValueError, TypeError):
+                latencies.append(
+                    int(
+                        (
+                            datetime.fromisoformat(c.replace("Z", "+00:00"))
+                            - datetime.fromisoformat(s.replace("Z", "+00:00"))
+                        ).total_seconds()
+                        * 1000
+                    )
+                )
     avg_latency = round(sum(latencies) / len(latencies)) if latencies else 0
     sla_records = svc.repo("export_sla").list(tenant_id=current.tenant_id, limit=100)
     sla_adherence = 100.0
     if sla_records:
         breached = sum(1 for s in sla_records if _data(s).get("breached"))
         sla_adherence = round((1 - breached / len(sla_records)) * 100, 1)
-    score = round((success_rate * 0.4) + (min(100, max(0, 100 - avg_latency / 50)) * 0.2) + (sla_adherence * 0.4))
-    grade = "A" if score >= 90 else "B" if score >= 80 else "C" if score >= 70 else "D" if score >= 60 else "F"
+    score = round(
+        (success_rate * 0.4)
+        + (min(100, max(0, 100 - avg_latency / 50)) * 0.2)
+        + (sla_adherence * 0.4)
+    )
+    grade = (
+        "A"
+        if score >= 90
+        else "B"
+        if score >= 80
+        else "C"
+        if score >= 70
+        else "D"
+        if score >= 60
+        else "F"
+    )
     return {
         "score": score,
         "grade": grade,
@@ -389,7 +447,11 @@ async def missing_field_export_block(
     required = ["patient_dob", "incident_address", "dispatch_time", "unit_id"]
     provided = list(payload.get("fields", {}).keys())
     missing = [f for f in required if f not in provided]
-    return {"blocked": len(missing) > 0, "missing_fields": missing, "incident_id": payload.get("incident_id")}
+    return {
+        "blocked": len(missing) > 0,
+        "missing_fields": missing,
+        "incident_id": payload.get("incident_id"),
+    }
 
 
 @router.get("/state-rules/{state_code}")
@@ -402,11 +464,19 @@ async def state_rule_enforcement(
     rules = svc.repo("export_state_rules").list(tenant_id=current.tenant_id, limit=1000)
     state_rules = [r for r in rules if _data(r).get("state", "").upper() == state_code.upper()]
     items = [
-        {"rule_id": _data(r).get("rule_id", str(r.get("id", ""))), "description": _data(r).get("description"), "enforced": _data(r).get("enforced", True)}
+        {
+            "rule_id": _data(r).get("rule_id", str(r.get("id", ""))),
+            "description": _data(r).get("description"),
+            "enforced": _data(r).get("enforced", True),
+        }
         for r in state_rules
     ]
-    violations_list = svc.repo("export_rule_violations").list(tenant_id=current.tenant_id, limit=1000)
-    violations = [v for v in violations_list if _data(v).get("state", "").upper() == state_code.upper()]
+    violations_list = svc.repo("export_rule_violations").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
+    violations = [
+        v for v in violations_list if _data(v).get("state", "").upper() == state_code.upper()
+    ]
     return {
         "state": state_code.upper(),
         "rules": items,
@@ -424,7 +494,11 @@ async def auto_repair_suggestions(
     repairs = svc.repo("export_auto_repairs").list(tenant_id=current.tenant_id, limit=1000)
     job_repairs = [r for r in repairs if _data(r).get("job_id") == job_id]
     suggestions = [
-        {"field": _data(r).get("field"), "action": _data(r).get("action"), "confidence": _data(r).get("confidence", 0)}
+        {
+            "field": _data(r).get("field"),
+            "action": _data(r).get("action"),
+            "confidence": _data(r).get("confidence", 0),
+        }
         for r in job_repairs
     ]
     auto_repaired = sum(1 for r in job_repairs if _data(r).get("applied"))
@@ -468,11 +542,21 @@ async def cross_state_submission(
             table="export_jobs",
             tenant_id=current.tenant_id,
             actor_user_id=current.user_id,
-            data={"incident_id": payload.get("incident_id"), "state": state, "status": "queued", "created_at": _now()},
+            data={
+                "incident_id": payload.get("incident_id"),
+                "state": state,
+                "status": "queued",
+                "created_at": _now(),
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
         job_ids[state] = str(record.get("id", ""))
-    return {"incident_id": payload.get("incident_id"), "submitted_to": states, "job_ids": job_ids, "status": "queued"}
+    return {
+        "incident_id": payload.get("incident_id"),
+        "submitted_to": states,
+        "job_ids": job_ids,
+        "status": "queued",
+    }
 
 
 @router.post("/compress")
@@ -489,7 +573,14 @@ async def data_bundle_compression(
         table="export_bundles",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"original_size_kb": original_kb, "compressed_size_kb": compressed_kb, "compression_ratio": 0.42, "format": "gzip", "created_at": _now(), **payload},
+        data={
+            "original_size_kb": original_kb,
+            "compressed_size_kb": compressed_kb,
+            "compression_ratio": 0.42,
+            "format": "gzip",
+            "created_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {
@@ -571,10 +662,19 @@ async def approve_export(
             record_id=match["id"],
             actor_user_id=current.user_id,
             expected_version=match.get("version", 1),
-            patch={"status": "approved", "approved_by": str(current.user_id), "approved_at": _now()},
+            patch={
+                "status": "approved",
+                "approved_by": str(current.user_id),
+                "approved_at": _now(),
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
-    return {"job_id": job_id, "approved_by": str(current.user_id), "status": "approved", "approved_at": _now()}
+    return {
+        "job_id": job_id,
+        "approved_by": str(current.user_id),
+        "status": "approved",
+        "approved_at": _now(),
+    }
 
 
 @router.get("/locked/{job_id}")
@@ -585,10 +685,18 @@ async def locked_export_protection(
 ):
     svc = _svc(db)
     locks = svc.repo("export_locks").list(tenant_id=current.tenant_id, limit=10000)
-    match = next((lnk for lnk in locks if _data(lnk).get("job_id") == job_id and _data(lnk).get("locked")), None)
+    match = next(
+        (lnk for lnk in locks if _data(lnk).get("job_id") == job_id and _data(lnk).get("locked")),
+        None,
+    )
     if match:
         d = _data(match)
-        return {"job_id": job_id, "locked": True, "lock_reason": d.get("reason"), "locked_by": d.get("locked_by")}
+        return {
+            "job_id": job_id,
+            "locked": True,
+            "lock_reason": d.get("reason"),
+            "locked_by": d.get("locked_by"),
+        }
     return {"job_id": job_id, "locked": False, "lock_reason": None, "locked_by": None}
 
 
@@ -605,11 +713,23 @@ async def lock_export(
         table="export_locks",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"job_id": job_id, "locked": True, "locked_by": str(current.user_id), "reason": payload.get("reason"), "locked_at": _now()},
+        data={
+            "job_id": job_id,
+            "locked": True,
+            "locked_by": str(current.user_id),
+            "reason": payload.get("reason"),
+            "locked_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
-    return {"job_id": job_id, "locked": True, "locked_by": d.get("locked_by"), "reason": d.get("reason"), "locked_at": d.get("locked_at")}
+    return {
+        "job_id": job_id,
+        "locked": True,
+        "locked_by": d.get("locked_by"),
+        "reason": d.get("reason"),
+        "locked_at": d.get("locked_at"),
+    }
 
 
 @router.get("/rbac/permissions")
@@ -645,7 +765,11 @@ async def export_sla_monitor(
     breached = sum(1 for j in jobs if _data(j).get("sla_breached"))
     total = len(jobs) or 1
     breach_rate = round(breached / total * 100, 2)
-    deadlines = [_data(j).get("sla_deadline") for j in jobs if _data(j).get("sla_deadline") and _data(j).get("status") in ("queued", "processing")]
+    deadlines = [
+        _data(j).get("sla_deadline")
+        for j in jobs
+        if _data(j).get("sla_deadline") and _data(j).get("status") in ("queued", "processing")
+    ]
     next_deadline = min(deadlines) if deadlines else None
     return {
         "sla_target_hours": sla_target,
@@ -667,7 +791,9 @@ async def reconciliation_report(
     acknowledged = sum(1 for j in jobs if _data(j).get("state_acknowledged"))
     unreconciled = submitted - acknowledged
     rate = round((acknowledged / submitted * 100) if submitted else 0, 1)
-    unreconciled_ids = [str(j.get("id", "")) for j in jobs if not _data(j).get("state_acknowledged")]
+    unreconciled_ids = [
+        str(j.get("id", "")) for j in jobs if not _data(j).get("state_acknowledged")
+    ]
     return {
         "period": "all",
         "submitted": submitted,
@@ -687,7 +813,15 @@ async def duplicate_export_detection(
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
     incident_id = payload.get("incident_id")
-    dup = next((j for j in jobs if _data(j).get("incident_id") == incident_id and _data(j).get("status") in ("completed", "queued", "processing")), None)
+    dup = next(
+        (
+            j
+            for j in jobs
+            if _data(j).get("incident_id") == incident_id
+            and _data(j).get("status") in ("completed", "queued", "processing")
+        ),
+        None,
+    )
     return {
         "incident_id": incident_id,
         "duplicate_found": dup is not None,
@@ -731,17 +865,24 @@ async def version_compatibility_tracker(
 ):
     svc = _svc(db)
     versions = svc.repo("export_schema_versions").list(tenant_id=current.tenant_id, limit=100)
-    current_schema = _data(versions[0]).get("current_schema", "NEMSIS-3.5.0") if versions else "NEMSIS-3.5.0"
+    current_schema = (
+        _data(versions[0]).get("current_schema", "NEMSIS-3.5.0") if versions else "NEMSIS-3.5.0"
+    )
     state_schemas = [
         {
             "state": _data(v).get("state"),
             "required": _data(v).get("required_schema"),
-            "compatible": _data(v).get("required_schema") == current_schema or _data(v).get("compatible", True),
+            "compatible": _data(v).get("required_schema") == current_schema
+            or _data(v).get("compatible", True),
         }
         for v in versions
     ]
     incompatible = [s["state"] for s in state_schemas if not s["compatible"]]
-    return {"current_schema": current_schema, "state_schemas": state_schemas, "incompatible_states": incompatible}
+    return {
+        "current_schema": current_schema,
+        "state_schemas": state_schemas,
+        "incompatible_states": incompatible,
+    }
 
 
 @router.get("/calendar")
@@ -776,19 +917,26 @@ async def export_failure_clustering(
         d = _data(j)
         reason = d.get("reason_code", "UNKNOWN")
         if reason not in groups:
-            groups[reason] = {"reason": reason, "count": 0, "states": set(), "first_seen": d.get("failed_at") or d.get("created_at")}
+            groups[reason] = {
+                "reason": reason,
+                "count": 0,
+                "states": set(),
+                "first_seen": d.get("failed_at") or d.get("created_at"),
+            }
         groups[reason]["count"] += 1
         if d.get("state"):
             groups[reason]["states"].add(d["state"])
     clusters = []
     for i, (reason, g) in enumerate(groups.items()):
-        clusters.append({
-            "cluster_id": f"c{i + 1}",
-            "reason": g["reason"],
-            "count": g["count"],
-            "states": sorted(g["states"]),
-            "first_seen": g["first_seen"],
-        })
+        clusters.append(
+            {
+                "cluster_id": f"c{i + 1}",
+                "reason": reason,
+                "count": g["count"],
+                "states": sorted(g["states"]),
+                "first_seen": g["first_seen"],
+            }
+        )
     return {"clusters": clusters}
 
 
@@ -804,11 +952,21 @@ async def automated_status_email(
         table="export_notifications",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "status_email", "recipient": payload.get("email"), "job_id": payload.get("job_id"), "sent_at": _now()},
+        data={
+            "type": "status_email",
+            "recipient": payload.get("email"),
+            "job_id": payload.get("job_id"),
+            "sent_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
-    return {"queued": True, "recipient": d.get("recipient"), "job_id": d.get("job_id"), "sent_at": d.get("sent_at")}
+    return {
+        "queued": True,
+        "recipient": d.get("recipient"),
+        "job_id": d.get("job_id"),
+        "sent_at": d.get("sent_at"),
+    }
 
 
 @router.post("/integrity-hash")
@@ -821,15 +979,25 @@ async def export_file_integrity_hash(
     svc = _svc(db)
     content = str(payload.get("content", "")).encode()
     sha = hashlib.sha256(content).hexdigest()
-    md5 = hashlib.md5(content).hexdigest()
+    checksum = hashlib.sha256(content).hexdigest()
     await svc.create(
         table="export_integrity_hashes",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"job_id": payload.get("job_id"), "sha256": sha, "md5": md5, "generated_at": _now()},
+        data={
+            "job_id": payload.get("job_id"),
+            "sha256": sha,
+            "checksum": checksum,
+            "generated_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"job_id": payload.get("job_id"), "sha256": sha, "md5": md5, "generated_at": _now()}
+    return {
+        "job_id": payload.get("job_id"),
+        "sha256": sha,
+        "checksum": checksum,
+        "generated_at": _now(),
+    }
 
 
 @router.post("/proof")
@@ -849,7 +1017,12 @@ async def submission_proof_storage(
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
-    return {"proof_id": str(record.get("id", "")), "job_id": d.get("job_id"), "stored_at": d.get("stored_at"), "s3_key": d.get("s3_key")}
+    return {
+        "proof_id": str(record.get("id", "")),
+        "job_id": d.get("job_id"),
+        "stored_at": d.get("stored_at"),
+        "s3_key": d.get("s3_key"),
+    }
 
 
 @router.get("/state-confirmations")
@@ -859,9 +1032,13 @@ async def state_confirmation_archive(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    confirmations = svc.repo("export_state_confirmations").list(tenant_id=current.tenant_id, limit=1000)
+    confirmations = svc.repo("export_state_confirmations").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     if state:
-        confirmations = [c for c in confirmations if _data(c).get("state", "").upper() == state.upper()]
+        confirmations = [
+            c for c in confirmations if _data(c).get("state", "").upper() == state.upper()
+        ]
     items = [
         {
             "conf_id": str(c.get("id", "")),
@@ -883,7 +1060,11 @@ async def fire_data_mapping_editor(
     svc = _svc(db)
     mappings = svc.repo("export_fire_mappings").list(tenant_id=current.tenant_id, limit=500)
     items = [
-        {"source_field": _data(m).get("source_field"), "target_field": _data(m).get("target_field"), "transform": _data(m).get("transform")}
+        {
+            "source_field": _data(m).get("source_field"),
+            "target_field": _data(m).get("target_field"),
+            "transform": _data(m).get("transform"),
+        }
         for m in mappings
     ]
     return {"mappings": items}
@@ -947,7 +1128,14 @@ async def niers_compliance_heatmap(
     heatmap = []
     for st, v in by_state.items():
         total = v["incidents"] or 1
-        heatmap.append({"state": st, "compliance_pct": round((1 - v["issues"] / total) * 100, 1), "incidents": v["incidents"], "issues": v["issues"]})
+        heatmap.append(
+            {
+                "state": st,
+                "compliance_pct": round((1 - v["issues"] / total) * 100, 1),
+                "incidents": v["incidents"],
+                "issues": v["issues"],
+            }
+        )
     return {"heatmap": heatmap}
 
 
@@ -987,7 +1175,12 @@ async def fire_classification_validator(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "fire_classify", "nfirs_code": payload.get("nfirs_code"), "validated_at": _now(), **payload},
+        data={
+            "type": "fire_classify",
+            "nfirs_code": payload.get("nfirs_code"),
+            "validated_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1013,7 +1206,12 @@ async def narrative_cross_check(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "narrative_crosscheck", "incident_id": payload.get("incident_id"), "narrative_length": len(narrative), "checked_at": _now()},
+        data={
+            "type": "narrative_crosscheck",
+            "incident_id": payload.get("incident_id"),
+            "narrative_length": len(narrative),
+            "checked_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1036,7 +1234,12 @@ async def submission_freeze_status(
     active = next((f for f in freezes if _data(f).get("frozen")), None)
     if active:
         d = _data(active)
-        return {"frozen": True, "frozen_by": d.get("frozen_by"), "reason": d.get("reason"), "frozen_at": d.get("frozen_at")}
+        return {
+            "frozen": True,
+            "frozen_by": d.get("frozen_by"),
+            "reason": d.get("reason"),
+            "frozen_at": d.get("frozen_at"),
+        }
     return {"frozen": False, "frozen_by": None, "reason": None, "frozen_at": None}
 
 
@@ -1052,11 +1255,21 @@ async def activate_freeze(
         table="export_freezes",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"frozen": True, "frozen_by": str(current.user_id), "reason": payload.get("reason"), "frozen_at": _now()},
+        data={
+            "frozen": True,
+            "frozen_by": str(current.user_id),
+            "reason": payload.get("reason"),
+            "frozen_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
-    return {"frozen": True, "frozen_by": d.get("frozen_by"), "reason": d.get("reason"), "frozen_at": d.get("frozen_at")}
+    return {
+        "frozen": True,
+        "frozen_by": d.get("frozen_by"),
+        "reason": d.get("reason"),
+        "frozen_at": d.get("frozen_at"),
+    }
 
 
 @router.delete("/freeze")
@@ -1113,9 +1326,14 @@ async def secure_transfer_monitor(
 ):
     svc = _svc(db)
     transfers = svc.repo("export_transfers").list(tenant_id=current.tenant_id, limit=1000)
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     active = [t for t in transfers if _data(t).get("status") == "in_progress"]
-    completed_today = [t for t in transfers if _data(t).get("status") == "completed" and (_data(t).get("completed_at") or "").startswith(today)]
+    completed_today = [
+        t
+        for t in transfers
+        if _data(t).get("status") == "completed"
+        and (_data(t).get("completed_at") or "").startswith(today)
+    ]
     items = [
         {
             "transfer_id": str(t.get("id", "")),
@@ -1142,13 +1360,25 @@ async def timeout_detection(
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
     timeouts = [j for j in jobs if _data(j).get("reason_code") == "TIMEOUT"]
-    today = datetime.now(timezone.utc).date().isoformat()
-    timeouts_24h = [j for j in timeouts if (_data(j).get("failed_at") or _data(j).get("created_at") or "").startswith(today)]
+    today = datetime.now(UTC).date().isoformat()
+    timeouts_24h = [
+        j
+        for j in timeouts
+        if (_data(j).get("failed_at") or _data(j).get("created_at") or "").startswith(today)
+    ]
     incidents = [
-        {"job_id": str(j.get("id", "")), "incident_id": _data(j).get("incident_id"), "timed_out_at": _data(j).get("failed_at")}
+        {
+            "job_id": str(j.get("id", "")),
+            "incident_id": _data(j).get("incident_id"),
+            "timed_out_at": _data(j).get("failed_at"),
+        }
         for j in timeouts_24h
     ]
-    return {"timeouts_last_24h": len(timeouts_24h), "timeout_threshold_sec": 30, "incidents": incidents}
+    return {
+        "timeouts_last_24h": len(timeouts_24h),
+        "timeout_threshold_sec": 30,
+        "incidents": incidents,
+    }
 
 
 @router.get("/error-rate")
@@ -1158,14 +1388,22 @@ async def error_rate_analytics(
 ):
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     today_jobs = [j for j in jobs if (_data(j).get("created_at") or "").startswith(today)]
     total_today = len(today_jobs) or 1
     errors_today = [j for j in today_jobs if _data(j).get("status") == "failed"]
     error_rate = round(len(errors_today) / total_today * 100, 2)
     reasons = Counter(_data(j).get("reason_code", "UNKNOWN") for j in errors_today)
-    prev_rate = round(sum(1 for j in jobs if _data(j).get("status") == "failed") / (len(jobs) or 1) * 100, 2)
-    trend = "improving" if error_rate < prev_rate else "worsening" if error_rate > prev_rate else "stable"
+    prev_rate = round(
+        sum(1 for j in jobs if _data(j).get("status") == "failed") / (len(jobs) or 1) * 100, 2
+    )
+    trend = (
+        "improving"
+        if error_rate < prev_rate
+        else "worsening"
+        if error_rate > prev_rate
+        else "stable"
+    )
     return {
         "error_rate_pct": error_rate,
         "errors_today": len(errors_today),
@@ -1219,7 +1457,9 @@ async def export_throughput_monitor(
         if len(ts) >= 13:
             hour = ts[11:13]
             hours_by_count[hour] = hours_by_count.get(hour, 0) + 1
-    peak_hour = max(hours_by_count, key=hours_by_count.get, default="00") if hours_by_count else "00"
+    peak_hour = (
+        max(hours_by_count, key=hours_by_count.get, default="00") if hours_by_count else "00"
+    )
     peak_rate = hours_by_count.get(peak_hour, 0)
     exports_per_hour = round(total / 24, 1) if total else 0
     return {
@@ -1239,11 +1479,19 @@ async def queue_prioritization(
     svc = _svc(db)
     rules = svc.repo("export_priority_rules").list(tenant_id=current.tenant_id, limit=100)
     items = [
-        {"priority": _data(r).get("priority"), "condition": _data(r).get("condition"), "boost": _data(r).get("boost", 0)}
+        {
+            "priority": _data(r).get("priority"),
+            "condition": _data(r).get("condition"),
+            "boost": _data(r).get("boost", 0),
+        }
         for r in rules
     ]
     jobs = _jobs(svc, current.tenant_id)
-    high_priority = sum(1 for j in jobs if _data(j).get("priority", 0) > 50 and _data(j).get("status") in ("queued", "processing"))
+    high_priority = sum(
+        1
+        for j in jobs
+        if _data(j).get("priority", 0) > 50 and _data(j).get("status") in ("queued", "processing")
+    )
     return {"rules": items, "current_high_priority": high_priority}
 
 
@@ -1268,7 +1516,12 @@ async def update_queue_priority(
             patch={"priority": payload.get("priority")},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
-    return {"updated": True, "job_id": job_id, "new_priority": payload.get("priority"), "updated_at": _now()}
+    return {
+        "updated": True,
+        "job_id": job_id,
+        "new_priority": payload.get("priority"),
+        "updated_at": _now(),
+    }
 
 
 @router.get("/state-outages")
@@ -1324,7 +1577,7 @@ async def retry_backoff_logic(
     job = next((j for j in jobs if str(j.get("id", "")) == job_id), None)
     d = _data(job) if job else {}
     attempt = d.get("attempt", 1)
-    backoff = min(2 ** attempt * 30, 3600)
+    backoff = min(2**attempt * 30, 3600)
     return {
         "job_id": job_id,
         "attempt": attempt,
@@ -1342,11 +1595,17 @@ async def export_archive_lifecycle(
     svc = _svc(db)
     archives = svc.repo("export_archives").list(tenant_id=current.tenant_id, limit=10000)
     pending_deletion = sum(1 for a in archives if _data(a).get("pending_deletion"))
-    created_dates = [_data(a).get("created_at", "")[:10] for a in archives if _data(a).get("created_at")]
+    created_dates = [
+        _data(a).get("created_at", "")[:10] for a in archives if _data(a).get("created_at")
+    ]
     oldest = min(created_dates) if created_dates else None
     policies = svc.repo("export_retention_policies").list(tenant_id=current.tenant_id, limit=10)
     retention_days = _data(policies[0]).get("retention_days", 2555) if policies else 2555
-    policy = _data(policies[0]).get("policy", "7-year HIPAA compliant retention") if policies else "7-year HIPAA compliant retention"
+    policy = (
+        _data(policies[0]).get("policy", "7-year HIPAA compliant retention")
+        if policies
+        else "7-year HIPAA compliant retention"
+    )
     return {
         "retention_days": retention_days,
         "archived_count": len(archives),
@@ -1419,7 +1678,12 @@ async def dataset_version_enforcement(
             "compliant": enforced == tenant_ver,
             "last_version_check": d.get("last_check", _now()),
         }
-    return {"enforced_version": "NEMSIS-3.5.0", "tenant_version": "NEMSIS-3.5.0", "compliant": True, "last_version_check": _now()}
+    return {
+        "enforced_version": "NEMSIS-3.5.0",
+        "tenant_version": "NEMSIS-3.5.0",
+        "compliant": True,
+        "last_version_check": _now(),
+    }
 
 
 @router.get("/preview/{job_id}")
@@ -1486,7 +1750,12 @@ async def export_anomaly_detection(
     svc = _svc(db)
     anomalies = svc.repo("export_anomalies").list(tenant_id=current.tenant_id, limit=1000)
     items = [_data(a) for a in anomalies]
-    return {"anomalies_detected": len(items), "anomalies": items, "model": "statistical_z_score", "checked_at": _now()}
+    return {
+        "anomalies_detected": len(items),
+        "anomalies": items,
+        "model": "statistical_z_score",
+        "checked_at": _now(),
+    }
 
 
 @router.post("/certificate")
@@ -1502,11 +1771,22 @@ async def submission_certificate_storage(
         table="export_certificates",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"job_id": job_id, "state": payload.get("state"), "issued_at": _now(), "s3_key": f"certs/{job_id}.cert"},
+        data={
+            "job_id": job_id,
+            "state": payload.get("state"),
+            "issued_at": _now(),
+            "s3_key": f"certs/{job_id}.cert",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
-    return {"cert_id": str(record.get("id", "")), "job_id": d.get("job_id"), "state": d.get("state"), "issued_at": d.get("issued_at"), "s3_key": d.get("s3_key")}
+    return {
+        "cert_id": str(record.get("id", "")),
+        "job_id": d.get("job_id"),
+        "state": d.get("state"),
+        "issued_at": d.get("issued_at"),
+        "s3_key": d.get("s3_key"),
+    }
 
 
 @router.get("/state-api-status")
@@ -1540,7 +1820,12 @@ async def scheduled_export_validation(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "scheduled_validate", "batch_id": payload.get("batch_id"), "validated_at": _now(), **payload},
+        data={
+            "type": "scheduled_validate",
+            "batch_id": payload.get("batch_id"),
+            "validated_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1562,7 +1847,14 @@ async def duplicate_incident_block(
     svc = _svc(db)
     incident_id = payload.get("incident_id")
     jobs = _jobs(svc, current.tenant_id)
-    dup = next((j for j in jobs if _data(j).get("incident_id") == incident_id and _data(j).get("status") == "completed"), None)
+    dup = next(
+        (
+            j
+            for j in jobs
+            if _data(j).get("incident_id") == incident_id and _data(j).get("status") == "completed"
+        ),
+        None,
+    )
     return {
         "incident_id": incident_id,
         "blocked": dup is not None,
@@ -1580,7 +1872,11 @@ async def incomplete_record_block(
     required = ["patient_dob", "incident_address", "dispatch_time", "unit_id", "narrative"]
     provided = list(payload.get("record", {}).keys())
     missing = [f for f in required if f not in provided]
-    return {"blocked": len(missing) > 0, "missing": missing, "incident_id": payload.get("incident_id")}
+    return {
+        "blocked": len(missing) > 0,
+        "missing": missing,
+        "incident_id": payload.get("incident_id"),
+    }
 
 
 @router.get("/cost")
@@ -1623,7 +1919,13 @@ async def large_batch_throttle(
         }
     jobs = _jobs(svc, current.tenant_id)
     queued = [j for j in jobs if _data(j).get("status") == "queued"]
-    return {"max_batch_size": 500, "throttle_above": 200, "throttle_delay_ms": 500, "current_batch_size": len(queued), "throttled": len(queued) > 200}
+    return {
+        "max_batch_size": 500,
+        "throttle_above": 200,
+        "throttle_delay_ms": 500,
+        "current_batch_size": len(queued),
+        "throttled": len(queued) > 200,
+    }
 
 
 @router.put("/throttle-config")
@@ -1663,7 +1965,9 @@ async def incident_reconciliation_log(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    all_entries = svc.repo("export_reconciliation_log").list(tenant_id=current.tenant_id, limit=10000)
+    all_entries = svc.repo("export_reconciliation_log").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     entries = all_entries[:limit]
     items = [
         {
@@ -1708,7 +2012,12 @@ async def file_naming_convention_enforcer(
 ):
     filename = payload.get("filename", "")
     valid = filename.startswith("NEMSIS_") and filename.endswith(".xml")
-    return {"filename": filename, "valid": valid, "expected_pattern": "NEMSIS_{TENANT}_{DATE}.xml", "checked_at": _now()}
+    return {
+        "filename": filename,
+        "valid": valid,
+        "expected_pattern": "NEMSIS_{TENANT}_{DATE}.xml",
+        "checked_at": _now(),
+    }
 
 
 @router.post("/timestamp-signature")
@@ -1723,7 +2032,12 @@ async def timestamp_signature_check(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "timestamp_signature", "incident_id": payload.get("incident_id"), "signed_at": _now(), "algorithm": "HMAC-SHA256"},
+        data={
+            "type": "timestamp_signature",
+            "incident_id": payload.get("incident_id"),
+            "signed_at": _now(),
+            "algorithm": "HMAC-SHA256",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1753,7 +2067,12 @@ async def schema_version_alert(
             "update_required": current_ver != latest,
             "alerts": [_data(a) for a in alerts],
         }
-    return {"current_version": "NEMSIS-3.5.0", "latest_available": "NEMSIS-3.5.0", "update_required": False, "alerts": [_data(a) for a in alerts]}
+    return {
+        "current_version": "NEMSIS-3.5.0",
+        "latest_available": "NEMSIS-3.5.0",
+        "update_required": False,
+        "alerts": [_data(a) for a in alerts],
+    }
 
 
 @router.get("/timeout-escalations")
@@ -1764,9 +2083,13 @@ async def export_timeout_escalation(
     svc = _svc(db)
     escalations = svc.repo("export_escalations").list(tenant_id=current.tenant_id, limit=1000)
     timeout_esc = [e for e in escalations if _data(e).get("type") == "timeout"]
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     last_24h = [e for e in timeout_esc if (_data(e).get("escalated_at") or "").startswith(today)]
-    return {"escalations": [_data(e) for e in timeout_esc], "total": len(timeout_esc), "last_24h": len(last_24h)}
+    return {
+        "escalations": [_data(e) for e in timeout_esc],
+        "total": len(timeout_esc),
+        "last_24h": len(last_24h),
+    }
 
 
 @router.post("/timeout-escalate/{job_id}")
@@ -1781,11 +2104,21 @@ async def escalate_timeout(
         table="export_escalations",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "timeout", "job_id": job_id, "escalated_at": _now(), "escalated_by": str(current.user_id)},
+        data={
+            "type": "timeout",
+            "job_id": job_id,
+            "escalated_at": _now(),
+            "escalated_by": str(current.user_id),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
-    return {"escalated": True, "job_id": job_id, "escalated_at": d.get("escalated_at"), "notified": d.get("notified", [])}
+    return {
+        "escalated": True,
+        "job_id": job_id,
+        "escalated_at": d.get("escalated_at"),
+        "notified": d.get("notified", []),
+    }
 
 
 @router.get("/retry-dashboard")
@@ -1796,7 +2129,12 @@ async def submission_retry_dashboard(
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
     retrying = [j for j in jobs if _data(j).get("status") == "retry_queued"]
-    max_reached = [j for j in jobs if _data(j).get("attempt", 0) >= _data(j).get("max_attempts", 5) and _data(j).get("status") == "failed"]
+    max_reached = [
+        j
+        for j in jobs
+        if _data(j).get("attempt", 0) >= _data(j).get("max_attempts", 5)
+        and _data(j).get("status") == "failed"
+    ]
     queue = [
         {
             "job_id": str(j.get("id", "")),
@@ -1806,7 +2144,11 @@ async def submission_retry_dashboard(
         }
         for j in retrying
     ]
-    return {"retrying": len(retrying), "retry_queue": queue, "max_retries_reached": len(max_reached)}
+    return {
+        "retrying": len(retrying),
+        "retry_queue": queue,
+        "max_retries_reached": len(max_reached),
+    }
 
 
 @router.get("/failed-priority")
@@ -1840,8 +2182,7 @@ async def export_dependency_map(
     deps = svc.repo("export_dependencies").list(tenant_id=current.tenant_id, limit=10000)
     job_deps = [d for d in deps if _data(d).get("job_id") == job_id]
     items = [
-        {"dep": _data(d).get("dep"), "status": _data(d).get("status", "resolved")}
-        for d in job_deps
+        {"dep": _data(d).get("dep"), "status": _data(d).get("status", "resolved")} for d in job_deps
     ]
     all_resolved = all(i["status"] == "resolved" for i in items) if items else True
     return {"job_id": job_id, "dependencies": items, "all_resolved": all_resolved}
@@ -1859,7 +2200,12 @@ async def cross_dataset_consistency_checker(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "cross_dataset", "incident_id": payload.get("incident_id"), "checked_at": _now(), **payload},
+        data={
+            "type": "cross_dataset",
+            "incident_id": payload.get("incident_id"),
+            "checked_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1915,7 +2261,15 @@ async def per_state_compliance_summary(
     for st, v in by_state.items():
         total = v["exports"] or 1
         pct = round((1 - v["failures"] / total) * 100, 1)
-        summary.append({"state": st, "compliance_pct": pct, "exports": v["exports"], "failures": v["failures"], "status": "compliant" if pct >= 95 else "attention"})
+        summary.append(
+            {
+                "state": st,
+                "compliance_pct": pct,
+                "exports": v["exports"],
+                "failures": v["failures"],
+                "status": "compliant" if pct >= 95 else "attention",
+            }
+        )
     return {"summary": summary}
 
 
@@ -2028,10 +2382,21 @@ async def state_rejection_clustering(
         d = _data(a)
         key = f"{d.get('state', '')}:{d.get('reason', '')}"
         if key not in groups:
-            groups[key] = {"state": d.get("state"), "reason": d.get("reason"), "count": 0, "pattern": d.get("pattern", "")}
+            groups[key] = {
+                "state": d.get("state"),
+                "reason": d.get("reason"),
+                "count": 0,
+                "pattern": d.get("pattern", ""),
+            }
         groups[key]["count"] += 1
     clusters = [
-        {"cluster_id": f"r{i + 1}", "state": g["state"], "reason": g["reason"], "count": g["count"], "pattern": g["pattern"]}
+        {
+            "cluster_id": f"r{i + 1}",
+            "state": g["state"],
+            "reason": g["reason"],
+            "count": g["count"],
+            "pattern": g["pattern"],
+        }
         for i, g in enumerate(groups.values())
     ]
     return {"clusters": clusters}
@@ -2061,7 +2426,11 @@ async def data_truncation_alert(
 ):
     fields = payload.get("fields", {})
     truncated = [k for k, v in fields.items() if isinstance(v, str) and len(v) > 255]
-    return {"incident_id": payload.get("incident_id"), "truncated_fields": truncated, "alert": len(truncated) > 0}
+    return {
+        "incident_id": payload.get("incident_id"),
+        "truncated_fields": truncated,
+        "alert": len(truncated) > 0,
+    }
 
 
 @router.get("/audit-freeze-status")
@@ -2074,8 +2443,18 @@ async def export_freeze_during_audit(
     active = next((f for f in freezes if _data(f).get("audit_in_progress")), None)
     if active:
         d = _data(active)
-        return {"audit_in_progress": True, "exports_frozen": True, "audit_started_at": d.get("audit_started_at"), "estimated_completion": d.get("estimated_completion")}
-    return {"audit_in_progress": False, "exports_frozen": False, "audit_started_at": None, "estimated_completion": None}
+        return {
+            "audit_in_progress": True,
+            "exports_frozen": True,
+            "audit_started_at": d.get("audit_started_at"),
+            "estimated_completion": d.get("estimated_completion"),
+        }
+    return {
+        "audit_in_progress": False,
+        "exports_frozen": False,
+        "audit_started_at": None,
+        "estimated_completion": None,
+    }
 
 
 @router.post("/audit-freeze")
@@ -2090,10 +2469,20 @@ async def activate_audit_freeze(
         table="export_audit_freezes",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"audit_in_progress": True, "frozen_by": str(current.user_id), "reason": payload.get("reason"), "audit_started_at": _now()},
+        data={
+            "audit_in_progress": True,
+            "frozen_by": str(current.user_id),
+            "reason": payload.get("reason"),
+            "audit_started_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"audit_freeze_activated": True, "by": str(current.user_id), "reason": payload.get("reason"), "at": _now()}
+    return {
+        "audit_freeze_activated": True,
+        "by": str(current.user_id),
+        "reason": payload.get("reason"),
+        "at": _now(),
+    }
 
 
 @router.get("/archive/retention-policy")
@@ -2112,7 +2501,13 @@ async def archive_retention_policy(
             "last_purge": d.get("last_purge"),
             "next_purge": d.get("next_purge"),
         }
-    return {"retention_years": 7, "policy": "HIPAA_7_YEAR", "auto_delete_after_days": 2555, "last_purge": None, "next_purge": None}
+    return {
+        "retention_years": 7,
+        "policy": "HIPAA_7_YEAR",
+        "auto_delete_after_days": 2555,
+        "last_purge": None,
+        "next_purge": None,
+    }
 
 
 @router.post("/checksum-validate")
@@ -2124,7 +2519,12 @@ async def file_checksum_validation(
     content = str(payload.get("content", "")).encode()
     computed = hashlib.sha256(content).hexdigest()
     provided = payload.get("expected_sha256", computed)
-    return {"job_id": payload.get("job_id"), "valid": computed == provided, "computed_sha256": computed, "provided_sha256": provided}
+    return {
+        "job_id": payload.get("job_id"),
+        "valid": computed == provided,
+        "computed_sha256": computed,
+        "provided_sha256": provided,
+    }
 
 
 @router.get("/state-sla")
@@ -2154,7 +2554,11 @@ async def submission_approval_workflow(
     svc = _svc(db)
     steps = svc.repo("export_approval_workflows").list(tenant_id=current.tenant_id, limit=100)
     items = [
-        {"step": _data(s).get("step"), "name": _data(s).get("name"), "status": _data(s).get("status")}
+        {
+            "step": _data(s).get("step"),
+            "name": _data(s).get("name"),
+            "status": _data(s).get("status"),
+        }
         for s in steps
     ]
     return {"workflow": items}
@@ -2178,7 +2582,11 @@ async def data_correction_loop(
             record_id=job["id"],
             actor_user_id=current.user_id,
             expected_version=job.get("version", 1),
-            patch={"corrections": payload.get("corrections", []), "corrected_at": _now(), "status": "corrected"},
+            patch={
+                "corrections": payload.get("corrections", []),
+                "corrected_at": _now(),
+                "status": "corrected",
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
     return {
@@ -2197,12 +2605,19 @@ async def batch_size_optimization(
 ):
     svc = _svc(db)
     schedules = svc.repo("export_schedules").list(tenant_id=current.tenant_id, limit=1000)
-    batch_sizes = [_data(s).get("record_count", 0) for s in schedules if _data(s).get("record_count")]
+    batch_sizes = [
+        _data(s).get("record_count", 0) for s in schedules if _data(s).get("record_count")
+    ]
     avg_batch = round(sum(batch_sizes) / len(batch_sizes)) if batch_sizes else 0
     configs = svc.repo("export_throttle_config").list(tenant_id=current.tenant_id, limit=10)
     max_safe = _data(configs[0]).get("max_batch_size", 500) if configs else 500
     recommended = min(max(avg_batch * 2, 50), max_safe)
-    return {"recommended_batch_size": recommended, "current_avg_batch": avg_batch, "reason": "Derived from historical batch data and throttle limits", "max_safe_batch": max_safe}
+    return {
+        "recommended_batch_size": recommended,
+        "current_avg_batch": avg_batch,
+        "reason": "Derived from historical batch data and throttle limits",
+        "max_safe_batch": max_safe,
+    }
 
 
 @router.get("/integrity-dashboard")
@@ -2238,7 +2653,12 @@ async def multi_version_export_simulator(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "simulator", "incident_id": payload.get("incident_id"), "simulated_at": _now(), **payload},
+        data={
+            "type": "simulator",
+            "incident_id": payload.get("incident_id"),
+            "simulated_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -2258,7 +2678,11 @@ async def duplicate_fire_report_detection(
     svc = _svc(db)
     incident_id = payload.get("incident_id")
     jobs = _jobs(svc, current.tenant_id)
-    fire_jobs = [j for j in jobs if _data(j).get("incident_id") == incident_id and _data(j).get("type") == "fire"]
+    fire_jobs = [
+        j
+        for j in jobs
+        if _data(j).get("incident_id") == incident_id and _data(j).get("type") == "fire"
+    ]
     dup = fire_jobs[0] if len(fire_jobs) > 1 else None
     return {
         "incident_id": incident_id,
@@ -2286,7 +2710,11 @@ async def export_rollback_support(
             record_id=job["id"],
             actor_user_id=current.user_id,
             expected_version=job.get("version", 1),
-            patch={"status": "draft", "rolled_back_by": str(current.user_id), "rolled_back_at": _now()},
+            patch={
+                "status": "draft",
+                "rolled_back_by": str(current.user_id),
+                "rolled_back_at": _now(),
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
     return {
@@ -2312,8 +2740,18 @@ async def compliance_escalation_triggers(
     outages = svc.repo("export_state_outages").list(tenant_id=current.tenant_id, limit=10)
     active_outages = [o for o in outages if _data(o).get("status") == "outage"]
     triggers = [
-        {"trigger": "FAILURE_RATE_ABOVE_5PCT", "active": failure_rate > 5.0, "threshold": 5.0, "current": failure_rate},
-        {"trigger": "SLA_BREACH_IMMINENT", "active": False, "threshold_hours": 4, "current_hours_remaining": None},
+        {
+            "trigger": "FAILURE_RATE_ABOVE_5PCT",
+            "active": failure_rate > 5.0,
+            "threshold": 5.0,
+            "current": failure_rate,
+        },
+        {
+            "trigger": "SLA_BREACH_IMMINENT",
+            "active": False,
+            "threshold_hours": 4,
+            "current_hours_remaining": None,
+        },
         {"trigger": "STATE_OUTAGE_DETECTED", "active": len(active_outages) > 0},
     ]
     return {"triggers": triggers}
@@ -2381,7 +2819,11 @@ async def export_exception_reporting(
         }
         for e in exceptions
     ]
-    return {"total_exceptions": len(all_exceptions), "returned": len(exceptions), "exceptions": items}
+    return {
+        "total_exceptions": len(all_exceptions),
+        "returned": len(exceptions),
+        "exceptions": items,
+    }
 
 
 @router.get("/national-readiness")
@@ -2395,7 +2837,17 @@ async def national_reporting_readiness_engine(
     failed = sum(1 for j in jobs if _data(j).get("status") == "failed")
     ready = total - failed
     score = round(ready / total * 100)
-    grade = "A" if score >= 90 else "B" if score >= 80 else "C" if score >= 70 else "D" if score >= 60 else "F"
+    grade = (
+        "A"
+        if score >= 90
+        else "B"
+        if score >= 80
+        else "C"
+        if score >= 70
+        else "D"
+        if score >= 60
+        else "F"
+    )
     states = {_data(j).get("state") for j in jobs if _data(j).get("state")}
     blockers = svc.repo("export_submission_blockers").list(tenant_id=current.tenant_id, limit=100)
     return {

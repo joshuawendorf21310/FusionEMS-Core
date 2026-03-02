@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import stripe
-from fastapi import APIRouter, Header, HTTPException, Request, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency
@@ -20,13 +20,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Webhooks - Stripe"])
 
 
-STRIPE_HANDLED_EVENTS = frozenset({
-    "checkout.session.completed",
-    "payment_intent.succeeded",
-    "payment_intent.payment_failed",
-    "charge.refunded",
-    "charge.dispute.created",
-})
+STRIPE_HANDLED_EVENTS = frozenset(
+    {
+        "checkout.session.completed",
+        "payment_intent.succeeded",
+        "payment_intent.payment_failed",
+        "charge.refunded",
+        "charge.dispute.created",
+    }
+)
 
 
 @router.post("/webhooks/stripe", include_in_schema=True)
@@ -73,7 +75,9 @@ async def stripe_webhook(
     except stripe.error.SignatureVerificationError as exc:
         logger.warning(
             "stripe_sig_invalid correlation_id=%s sig=%.20s error=%s",
-            correlation_id, stripe_signature, exc,
+            correlation_id,
+            stripe_signature,
+            exc,
         )
         raise HTTPException(status_code=400, detail="invalid_stripe_signature")
 
@@ -83,7 +87,10 @@ async def stripe_webhook(
 
     logger.info(
         "stripe_webhook_received event_id=%s event_type=%s account=%s correlation_id=%s",
-        event_id, event_type, connected_account_id, correlation_id,
+        event_id,
+        event_type,
+        connected_account_id,
+        correlation_id,
     )
 
     # ── Idempotency ───────────────────────────────────────────────────────────
@@ -106,7 +113,7 @@ async def stripe_webhook(
             "event_type": event_type,
             "connected_account_id": connected_account_id,
             "payload": event,
-            "received_at": datetime.now(timezone.utc).isoformat(),
+            "received_at": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         },
         correlation_id=correlation_id,
@@ -129,7 +136,7 @@ async def stripe_webhook(
             "connected_account_id": connected_account_id,
             "payload": event,
             "correlation_id": correlation_id,
-            "received_at": datetime.now(timezone.utc).isoformat(),
+            "received_at": datetime.now(UTC).isoformat(),
         },
         deduplication_id=event_id,
     )

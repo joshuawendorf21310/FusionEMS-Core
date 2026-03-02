@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from core_app.ai.service import AiService
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import EventPublisher
-
 
 SYSTEM_PROMPT = """You are an expert EMS scheduling advisor for QuantumEMS.
 You analyze historical call volume, crew fatigue data, overtime projections, unit readiness scores, and credential gaps.
@@ -26,7 +25,14 @@ Rules:
 
 DRAFT_SCHEMA = {
     "summary": "string — 1-2 sentences",
-    "risk_windows": [{"start": "ISO datetime", "end": "ISO datetime", "reason": "string", "severity": "low|medium|high"}],
+    "risk_windows": [
+        {
+            "start": "ISO datetime",
+            "end": "ISO datetime",
+            "reason": "string",
+            "severity": "low|medium|high",
+        }
+    ],
     "coverage_gaps": [{"shift_instance_id": "uuid", "gap_reason": "string"}],
     "suggestions": [{"action": "string", "detail": "string", "priority": "low|medium|high"}],
     "overtime_risk_crew": ["crew_member_id strings"],
@@ -36,7 +42,9 @@ DRAFT_SCHEMA = {
 
 
 class AISchedulingAdvisor:
-    def __init__(self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID) -> None:
+    def __init__(
+        self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID
+    ) -> None:
         self.svc = DominationService(db, publisher)
         self.tenant_id = tenant_id
         self.actor_user_id = actor_user_id
@@ -47,17 +55,13 @@ class AISchedulingAdvisor:
         assignments = self.svc.repo("crew_assignments").list(tenant_id=self.tenant_id, limit=500)
         creds = self.svc.repo("credentials").list(tenant_id=self.tenant_id, limit=500)
         readiness = self.svc.repo("readiness_scores").list(tenant_id=self.tenant_id, limit=100)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         assigned_ids = {(a.get("data") or {}).get("shift_instance_id") for a in assignments}
-        upcoming_uncovered = [
-            s for s in shifts
-            if str(s["id"]) not in assigned_ids
-        ][:20]
+        upcoming_uncovered = [s for s in shifts if str(s["id"]) not in assigned_ids][:20]
 
         expiring_soon = [
-            c for c in creds
-            if (c.get("data") or {}).get("expires_at", "2099-01-01") < "2026-03-13"
+            c for c in creds if (c.get("data") or {}).get("expires_at", "2099-01-01") < "2026-03-13"
         ][:10]
 
         latest_readiness = {}
@@ -95,8 +99,13 @@ class AISchedulingAdvisor:
                 draft = json.loads(raw)
             except json.JSONDecodeError:
                 import re
+
                 m = re.search(r"\{.*\}", raw, re.DOTALL)
-                draft = json.loads(m.group(0)) if m else {"summary": raw, "suggestions": [], "confidence": 0.3}
+                draft = (
+                    json.loads(m.group(0))
+                    if m
+                    else {"summary": raw, "suggestions": [], "confidence": 0.3}
+                )
         except Exception as exc:
             draft = {
                 "summary": f"AI advisor unavailable: {exc}",
@@ -121,7 +130,7 @@ class AISchedulingAdvisor:
                 "status": "pending_review",
                 "reviewed_by": None,
                 "approved": None,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             },
             correlation_id=correlation_id,
         )
@@ -130,14 +139,16 @@ class AISchedulingAdvisor:
     async def approve_draft(
         self, draft_id: uuid.UUID, correlation_id: str | None = None
     ) -> dict[str, Any]:
-        record = self.svc.repo("ai_scheduling_drafts").get(tenant_id=self.tenant_id, record_id=draft_id)
+        record = self.svc.repo("ai_scheduling_drafts").get(
+            tenant_id=self.tenant_id, record_id=draft_id
+        )
         if not record:
             raise ValueError("draft_not_found")
         data = dict(record.get("data") or {})
         data["status"] = "approved"
         data["approved"] = True
         data["reviewed_by"] = str(self.actor_user_id)
-        data["reviewed_at"] = datetime.now(timezone.utc).isoformat()
+        data["reviewed_at"] = datetime.now(UTC).isoformat()
         updated = await self.svc.update(
             table="ai_scheduling_drafts",
             tenant_id=self.tenant_id,
@@ -185,5 +196,5 @@ class AISchedulingAdvisor:
             "total_shift_count": len(shifts),
             "overtime_risk_count": len(overtime_risk),
             "fatigue_risk_count": len(fatigue_risk),
-            "simulated_at": datetime.now(timezone.utc).isoformat(),
+            "simulated_at": datetime.now(UTC).isoformat(),
         }

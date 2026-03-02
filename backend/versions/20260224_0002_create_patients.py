@@ -5,17 +5,18 @@ Revises: 20260223_0001
 Create Date: 2026-02-24 00:00:00.000000
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "20260224_0002"
-down_revision: Union[str, None] = "20260223_0001"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260223_0001"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 patient_gender = sa.Enum("female", "male", "non_binary", "other", "unknown", name="patient_gender")
@@ -35,16 +36,30 @@ def upgrade() -> None:
         sa.Column("external_identifier", sa.String(length=64), nullable=True),
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("version", sa.Integer(), server_default=sa.text("1"), nullable=False),
         sa.ForeignKeyConstraint(["incident_id"], ["incidents.id"]),
         sa.PrimaryKeyConstraint("id"),
-        sa.CheckConstraint("date_of_birth IS NOT NULL OR age_years IS NOT NULL", name="ck_patients_dob_or_age"),
+        sa.CheckConstraint(
+            "date_of_birth IS NOT NULL OR age_years IS NOT NULL", name="ck_patients_dob_or_age"
+        ),
     )
     op.create_index(op.f("ix_patients_tenant_id"), "patients", ["tenant_id"], unique=False)
-    op.create_index("ix_patients_tenant_incident", "patients", ["tenant_id", "incident_id"], unique=False)
+    op.create_index(
+        "ix_patients_tenant_incident", "patients", ["tenant_id", "incident_id"], unique=False
+    )
     op.create_index("ix_patients_tenant_gender", "patients", ["tenant_id", "gender"], unique=False)
 
     op.execute(

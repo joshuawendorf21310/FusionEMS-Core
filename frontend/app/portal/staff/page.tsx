@@ -4,7 +4,7 @@ import AppShell from '@/components/AppShell';
 
 const PANEL_STYLE = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: 'var(--color-bg-panel, #0f1720)',
+  background: 'var(--color-bg-panel, var(--color-bg-input))',
   border: '1px solid rgba(255,255,255,0.08)',
 };
 
@@ -55,12 +55,12 @@ const PRIORITY_STYLE: Record<Priority, React.CSSProperties> = {
   HIGH: {
     background: 'rgba(220,38,38,0.15)',
     border: '1px solid rgba(220,38,38,0.35)',
-    color: '#f87171',
+    color: 'var(--color-brand-red)',
   },
   MED: {
     background: 'rgba(234,179,8,0.12)',
     border: '1px solid rgba(234,179,8,0.3)',
-    color: '#fde047',
+    color: 'var(--color-status-warning)',
   },
   LOW: {
     background: 'rgba(255,255,255,0.06)',
@@ -98,7 +98,7 @@ function StatCard({ label, value, sub }: StatCardProps) {
   return (
     <div style={{ ...PANEL_STYLE, padding: '18px 20px', flex: 1, minWidth: 0 }}>
       <p style={{ ...LABEL_STYLE, margin: '0 0 8px' }}>{label}</p>
-      <p style={{ color: '#fff', fontSize: '1.75rem', fontWeight: 700, margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
+      <p style={{ color: 'var(--color-text-primary)', fontSize: '1.75rem', fontWeight: 700, margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
       {sub && <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', margin: 0 }}>{sub}</p>}
     </div>
   );
@@ -107,10 +107,10 @@ function StatCard({ label, value, sub }: StatCardProps) {
 export default function StaffDashboardPage() {
   return (
     <AppShell>
-      <div style={{ background: 'var(--color-bg-base, #0b0f14)', minHeight: 'calc(100vh - 120px)' }}>
+      <div style={{ background: 'var(--color-bg-base, var(--color-bg-base))', minHeight: 'calc(100vh - 120px)' }}>
         {/* Page header */}
         <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 4px' }}>
+          <h1 style={{ color: 'var(--color-text-primary)', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 4px' }}>
             Staff Dashboard
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem', margin: 0 }}>
@@ -165,7 +165,7 @@ export default function StaffDashboardPage() {
                         background: i % 2 === 1 ? 'rgba(255,255,255,0.015)' : undefined,
                       }}
                     >
-                      <td style={{ padding: '12px 16px', color: '#fff', fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', color: 'var(--color-text-primary)', fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {claim.id}
                       </td>
                       <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>

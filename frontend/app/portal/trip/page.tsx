@@ -44,9 +44,9 @@ function OverviewTab() {
 
       <div className="grid grid-cols-4 gap-3">
         <StatCard label="Total Enrolled Debts" value="0" />
-        <StatCard label="Total Balance" value="$0.00" accent="#22d3ee" />
-        <StatCard label="Collected via TRIP" value="$0.00" accent="#4caf50" />
-        <StatCard label="Open Rejects" value="0" accent="#f59e0b" />
+        <StatCard label="Total Balance" value="$0.00" accent="var(--color-status-info)" />
+        <StatCard label="Collected via TRIP" value="$0.00" accent="var(--color-status-active)" />
+        <StatCard label="Open Rejects" value="0" accent="var(--color-status-warning)" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -138,8 +138,8 @@ function PostingsTab() {
         </button>
       </div>
       <div className="grid grid-cols-4 gap-3 mb-6">
-        <StatCard label="Reconciled" value="0" accent="#4caf50" />
-        <StatCard label="Unmatched" value="0" accent="#f59e0b" />
+        <StatCard label="Reconciled" value="0" accent="var(--color-status-active)" />
+        <StatCard label="Unmatched" value="0" accent="var(--color-status-warning)" />
         <StatCard label="Total Amount" value="$0.00" />
         <StatCard label="Last Import" value="—" />
       </div>

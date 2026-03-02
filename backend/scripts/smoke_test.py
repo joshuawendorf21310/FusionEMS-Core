@@ -1,6 +1,8 @@
 import os
-import requests
 import sys
+
+import requests
+
 base = os.environ.get("BASE_URL")
 if not base:
     print("BASE_URL required")

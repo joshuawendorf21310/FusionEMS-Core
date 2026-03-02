@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ async def enqueue_webhook(
             "payload": payload,
             "attempts": 0,
             "status": "pending",
-            "next_retry_at": datetime.now(timezone.utc).isoformat(),
+            "next_retry_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=None,
     )
@@ -53,8 +54,12 @@ async def process_webhook_with_retry(
     except Exception as e:
         logger.warning("Webhook delivery failed for %s %s: %s — enqueuing DLQ", source, event_id, e)
         try:
-            tenant_id = uuid.UUID(payload.get("tenant_id", "")) if payload.get("tenant_id") else uuid.UUID(int=0)
-            next_retry = datetime.now(timezone.utc) + timedelta(seconds=RETRY_DELAYS_SECONDS[0])
+            tenant_id = (
+                uuid.UUID(payload.get("tenant_id", ""))
+                if payload.get("tenant_id")
+                else uuid.UUID(int=0)
+            )
+            next_retry = datetime.now(UTC) + timedelta(seconds=RETRY_DELAYS_SECONDS[0])
             await svc.create(
                 table="webhook_dlq",
                 tenant_id=tenant_id,
@@ -83,9 +88,9 @@ async def process_dlq_batch(
     batch_size: int = 50,
 ) -> int:
     """Process pending DLQ items. Called from background worker."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     processed = 0
 
     try:
@@ -124,7 +129,11 @@ async def process_dlq_batch(
                 actor_user_id=None,
                 record_id=uuid.UUID(str(item["id"])),
                 expected_version=item.get("version", 1),
-                patch={"status": "processed", "attempts": attempts + 1, "processed_at": now.isoformat()},
+                patch={
+                    "status": "processed",
+                    "attempts": attempts + 1,
+                    "processed_at": now.isoformat(),
+                },
                 correlation_id=None,
             )
             processed += 1

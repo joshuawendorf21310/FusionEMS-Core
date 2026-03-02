@@ -6,17 +6,17 @@ Architecture:
   - All calls reference the founder mailbox explicitly — never /me endpoints
   - Token is never persisted to database or exposed to the frontend
 """
+
 from __future__ import annotations
 
+import json as _json
 import logging
 import threading
 import time
-from typing import Any
-
-import urllib.request
-import urllib.parse
 import urllib.error
-import json as _json
+import urllib.parse
+import urllib.request
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,10 @@ class _TokenCache:
 
     def is_valid(self) -> bool:
         with self._lock:
-            return bool(self._access_token) and time.monotonic() < self._expires_at - _REFRESH_BUFFER_SECONDS
+            return (
+                bool(self._access_token)
+                and time.monotonic() < self._expires_at - _REFRESH_BUFFER_SECONDS
+            )
 
     def set(self, access_token: str, expires_in: int) -> None:
         with self._lock:
@@ -64,12 +67,14 @@ _cache = _TokenCache()
 
 def _acquire_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     url = _TOKEN_URL_TEMPLATE.format(tenant_id=tenant_id)
-    body = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "scope": _SCOPE,
-    }).encode("utf-8")
+    body = urllib.parse.urlencode(
+        {
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "scope": _SCOPE,
+        }
+    ).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
     try:
@@ -78,7 +83,9 @@ def _acquire_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     except urllib.error.HTTPError as exc:
         body_text = exc.read().decode("utf-8", errors="replace")
         logger.error("graph_token_acquisition_failed status=%d body=%.200s", exc.code, body_text)
-        raise GraphApiError(exc.code if 400 <= exc.code <= 599 else 502, "graph_token_acquisition_failed") from exc
+        raise GraphApiError(
+            exc.code if 400 <= exc.code <= 599 else 502, "graph_token_acquisition_failed"
+        ) from exc
 
     access_token: str = data.get("access_token", "")
     expires_in: int = int(data.get("expires_in", 3600))
@@ -137,9 +144,13 @@ def _graph_request_bytes(method: str, path: str, token: str) -> bytes:
 
 
 class GraphClient:
-    def __init__(self, tenant_id: str, client_id: str, client_secret: str, founder_email: str) -> None:
+    def __init__(
+        self, tenant_id: str, client_id: str, client_secret: str, founder_email: str
+    ) -> None:
         if not all([tenant_id, client_id, client_secret, founder_email]):
-            raise GraphNotConfigured("GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET, and GRAPH_FOUNDER_EMAIL must all be set")
+            raise GraphNotConfigured(
+                "GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET, and GRAPH_FOUNDER_EMAIL must all be set"
+            )
         self._tenant_id = tenant_id
         self._client_id = client_id
         self._client_secret = client_secret
@@ -165,10 +176,14 @@ class GraphClient:
     def get_message(self, message_id: str) -> dict[str, Any]:
         token = self._token()
         path = f"/users/{self._mailbox()}/messages/{message_id}"
-        params = {"$select": "id,subject,from,toRecipients,ccRecipients,receivedDateTime,isRead,body,hasAttachments"}
+        params = {
+            "$select": "id,subject,from,toRecipients,ccRecipients,receivedDateTime,isRead,body,hasAttachments"
+        }
         return _graph_request("GET", path, token, params=params)
 
-    def send_mail(self, to: list[str], subject: str, body_html: str, cc: list[str] | None = None) -> None:
+    def send_mail(
+        self, to: list[str], subject: str, body_html: str, cc: list[str] | None = None
+    ) -> None:
         token = self._token()
         path = f"/users/{self._mailbox()}/sendMail"
         to_recipients = [{"emailAddress": {"address": addr}} for addr in to]
@@ -205,19 +220,25 @@ class GraphClient:
     def list_drive_root(self) -> dict[str, Any]:
         token = self._token()
         path = f"/users/{self._mailbox()}/drive/root/children"
-        params = {"$select": "id,name,size,lastModifiedDateTime,file,folder,webUrl,@microsoft.graph.downloadUrl"}
+        params = {
+            "$select": "id,name,size,lastModifiedDateTime,file,folder,webUrl,@microsoft.graph.downloadUrl"
+        }
         return _graph_request("GET", path, token, params=params)
 
     def list_drive_folder(self, item_id: str) -> dict[str, Any]:
         token = self._token()
         path = f"/users/{self._mailbox()}/drive/items/{item_id}/children"
-        params = {"$select": "id,name,size,lastModifiedDateTime,file,folder,webUrl,@microsoft.graph.downloadUrl"}
+        params = {
+            "$select": "id,name,size,lastModifiedDateTime,file,folder,webUrl,@microsoft.graph.downloadUrl"
+        }
         return _graph_request("GET", path, token, params=params)
 
     def get_drive_item(self, item_id: str) -> dict[str, Any]:
         token = self._token()
         path = f"/users/{self._mailbox()}/drive/items/{item_id}"
-        params = {"$select": "id,name,size,lastModifiedDateTime,file,folder,webUrl,@microsoft.graph.downloadUrl"}
+        params = {
+            "$select": "id,name,size,lastModifiedDateTime,file,folder,webUrl,@microsoft.graph.downloadUrl"
+        }
         return _graph_request("GET", path, token, params=params)
 
     def get_drive_item_download_url(self, item_id: str) -> str:
@@ -239,8 +260,11 @@ class GraphClient:
 
 def get_graph_client() -> GraphClient:
     from core_app.core.config import get_settings
+
     s = get_settings()
-    if not all([s.graph_tenant_id, s.graph_client_id, s.graph_client_secret, s.graph_founder_email]):
+    if not all(
+        [s.graph_tenant_id, s.graph_client_id, s.graph_client_secret, s.graph_founder_email]
+    ):
         raise GraphNotConfigured(
             "Microsoft Graph is not configured. Set GRAPH_TENANT_ID, GRAPH_CLIENT_ID, "
             "GRAPH_CLIENT_SECRET, and GRAPH_FOUNDER_EMAIL."

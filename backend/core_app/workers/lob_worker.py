@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import UTC
 from typing import Any
 
 import boto3
@@ -12,29 +13,29 @@ logger = logging.getLogger(__name__)
 # ── Statement status machine ──────────────────────────────────────────────────
 # Allowed forward transitions only; out-of-order events are dropped gracefully.
 LOB_STATUS_TRANSITIONS: dict[str, str] = {
-    "letter.created":             "lob_created",
-    "letter.rendered_pdf":        "lob_rendered",
+    "letter.created": "lob_created",
+    "letter.rendered_pdf": "lob_rendered",
     "letter.rendered_thumbnails": "lob_rendered",
-    "letter.billed":              "lob_billed",
-    "letter.viewed":              "lob_viewed",
-    "letter.failed":              "lob_failed",
-    "letter.rejected":            "lob_rejected",
-    "letter.deleted":             "lob_deleted",
-    "address.created":            None,
-    "address.deleted":            None,
+    "letter.billed": "lob_billed",
+    "letter.viewed": "lob_viewed",
+    "letter.failed": "lob_failed",
+    "letter.rejected": "lob_rejected",
+    "letter.deleted": "lob_deleted",
+    "address.created": None,
+    "address.deleted": None,
 }
 
 STATUS_RANK: dict[str, int] = {
-    "lob_created":   10,
-    "lob_rendered":  20,
-    "lob_billed":    30,
-    "lob_viewed":    40,
-    "lob_failed":     5,
-    "lob_rejected":   5,
-    "lob_deleted":    5,
-    "paid":         100,
-    "refunded":     110,
-    "disputed":     120,
+    "lob_created": 10,
+    "lob_rendered": 20,
+    "lob_billed": 30,
+    "lob_viewed": 40,
+    "lob_failed": 5,
+    "lob_rejected": 5,
+    "lob_deleted": 5,
+    "paid": 100,
+    "refunded": 110,
+    "disputed": 120,
 }
 
 
@@ -79,21 +80,24 @@ def _require_env(name: str) -> str:
     return val
 
 
-STATEMENTS_TABLE    = os.environ.get("STATEMENTS_TABLE") or ""
-LOB_EVENTS_TABLE    = os.environ.get("LOB_EVENTS_TABLE") or ""
+STATEMENTS_TABLE = os.environ.get("STATEMENTS_TABLE") or ""
+LOB_EVENTS_TABLE = os.environ.get("LOB_EVENTS_TABLE") or ""
 
 
 # ── Core worker logic ─────────────────────────────────────────────────────────
 
+
 def process_lob_event(message_body: dict[str, Any]) -> None:
-    event_id:    str = message_body["event_id"]
-    event_type:  str = message_body["event_type"]
-    payload:     dict[str, Any] = message_body.get("payload", {})
+    event_id: str = message_body["event_id"]
+    event_type: str = message_body["event_type"]
+    payload: dict[str, Any] = message_body.get("payload", {})
     correlation_id: str = message_body.get("correlation_id", "")
 
     logger.info(
         "lob_worker_processing event_id=%s event_type=%s correlation_id=%s",
-        event_id, event_type, correlation_id,
+        event_id,
+        event_type,
+        correlation_id,
     )
 
     # Idempotency: check DynamoDB lob_events table
@@ -103,13 +107,15 @@ def process_lob_event(message_body: dict[str, Any]) -> None:
         logger.info("lob_worker_duplicate event_id=%s", event_id)
         return
 
-    events_table.put_item(Item={
-        "event_id": event_id,
-        "event_type": event_type,
-        "payload": json.dumps(payload, default=str),
-        "correlation_id": correlation_id,
-        "processed": False,
-    })
+    events_table.put_item(
+        Item={
+            "event_id": event_id,
+            "event_type": event_type,
+            "payload": json.dumps(payload, default=str),
+            "correlation_id": correlation_id,
+            "processed": False,
+        }
+    )
 
     # Extract the Lob letter id and statement_id from payload
     body = payload.get("body") or payload
@@ -163,7 +169,9 @@ def _update_statement_lob_status(
     if _rank(new_status) <= _rank(current_status):
         logger.info(
             "lob_worker_status_skip statement_id=%s current=%s new=%s",
-            statement_id, current_status, new_status,
+            statement_id,
+            current_status,
+            new_status,
         )
         return
 
@@ -175,16 +183,19 @@ def _update_statement_lob_status(
         ),
         ConditionExpression="attribute_not_exists(lob_status) OR lob_status = :cs",
         ExpressionAttributeValues={
-            ":s":   new_status,
+            ":s": new_status,
             ":lid": lob_letter_id or item.get("lob_letter_id", ""),
-            ":et":  event_type,
+            ":et": event_type,
             ":now": _utcnow(),
-            ":cs":  current_status,
+            ":cs": current_status,
         },
     )
     logger.info(
         "lob_worker_status_updated statement_id=%s %s -> %s correlation_id=%s",
-        statement_id, current_status, new_status, correlation_id,
+        statement_id,
+        current_status,
+        new_status,
+        correlation_id,
     )
 
 
@@ -206,7 +217,9 @@ def _attach_rendered_pdf(
     )
     logger.info(
         "lob_worker_pdf_attached statement_id=%s url=%.40s correlation_id=%s",
-        statement_id, pdf_url, correlation_id,
+        statement_id,
+        pdf_url,
+        correlation_id,
     )
 
 
@@ -228,16 +241,20 @@ def _attach_thumbnails(
     )
     logger.info(
         "lob_worker_thumbnails_attached statement_id=%s count=%d correlation_id=%s",
-        statement_id, len(thumbnails), correlation_id,
+        statement_id,
+        len(thumbnails),
+        correlation_id,
     )
 
 
 def _utcnow() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+
+    return datetime.now(UTC).isoformat()
 
 
 # ── Lambda handler ────────────────────────────────────────────────────────────
+
 
 def lambda_handler(event: dict[str, Any], context: Any) -> None:
     for record in event.get("Records", []):
@@ -247,6 +264,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> None:
         except Exception as exc:
             logger.exception(
                 "lob_worker_record_failed message_id=%s error=%s",
-                record.get("messageId", ""), exc,
+                record.get("messageId", ""),
+                exc,
             )
             raise

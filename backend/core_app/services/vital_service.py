@@ -52,7 +52,9 @@ class VitalService:
         payload: VitalCreateRequest,
         correlation_id: str | None,
     ) -> VitalResponse:
-        patient = await self._require_context(tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id)
+        patient = await self._require_context(
+            tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id
+        )
         self._validate_vital_values(payload)
         vital = Vital(
             tenant_id=tenant_id,
@@ -107,16 +109,27 @@ class VitalService:
     async def list_vitals_for_patient(
         self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID
     ) -> VitalListResponse:
-        await self._require_context(tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id)
+        await self._require_context(
+            tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id
+        )
         vitals = await self.repository.list_for_patient(tenant_id=tenant_id, patient_id=patient_id)
         total = await self.repository.count_for_patient(tenant_id=tenant_id, patient_id=patient_id)
         filtered = [v for v in vitals if v.incident_id == incident_id]
-        return VitalListResponse(items=[VitalResponse.model_validate(v) for v in filtered], total=total)
+        return VitalListResponse(
+            items=[VitalResponse.model_validate(v) for v in filtered], total=total
+        )
 
     async def get_vital(
-        self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID, vital_id: uuid.UUID
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        incident_id: uuid.UUID,
+        patient_id: uuid.UUID,
+        vital_id: uuid.UUID,
     ) -> VitalResponse:
-        await self._require_context(tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id)
+        await self._require_context(
+            tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id
+        )
         vital = await self._require_vital(tenant_id=tenant_id, vital_id=vital_id)
         self._validate_vital_link(vital=vital, incident_id=incident_id, patient_id=patient_id)
         return VitalResponse.model_validate(vital)
@@ -132,7 +145,9 @@ class VitalService:
         payload: VitalUpdateRequest,
         correlation_id: str | None,
     ) -> VitalResponse:
-        await self._require_context(tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id)
+        await self._require_context(
+            tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id
+        )
         vital = await self._require_vital(tenant_id=tenant_id, vital_id=vital_id)
         self._validate_vital_link(vital=vital, incident_id=incident_id, patient_id=patient_id)
         self._enforce_version(vital=vital, version=payload.version)
@@ -184,7 +199,9 @@ class VitalService:
         payload: VitalDeleteRequest,
         correlation_id: str | None,
     ) -> None:
-        await self._require_context(tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id)
+        await self._require_context(
+            tenant_id=tenant_id, incident_id=incident_id, patient_id=patient_id
+        )
         vital = await self._require_vital(tenant_id=tenant_id, vital_id=vital_id)
         self._validate_vital_link(vital=vital, incident_id=incident_id, patient_id=patient_id)
         self._enforce_version(vital=vital, version=payload.version)
@@ -213,8 +230,12 @@ class VitalService:
             },
         )
 
-    async def _require_context(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID) -> Patient:
-        incident = await self.incident_repository.get_by_id(tenant_id=tenant_id, incident_id=incident_id)
+    async def _require_context(
+        self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID, patient_id: uuid.UUID
+    ) -> Patient:
+        incident = await self.incident_repository.get_by_id(
+            tenant_id=tenant_id, incident_id=incident_id
+        )
         if incident is None:
             raise AppError(
                 code=ErrorCodes.INCIDENT_NOT_FOUND,
@@ -222,7 +243,9 @@ class VitalService:
                 status_code=404,
                 details={"incident_id": str(incident_id)},
             )
-        patient = await self.patient_repository.get_by_id(tenant_id=tenant_id, patient_id=patient_id)
+        patient = await self.patient_repository.get_by_id(
+            tenant_id=tenant_id, patient_id=patient_id
+        )
         if patient is None:
             raise AppError(
                 code=ErrorCodes.PATIENT_NOT_FOUND,
@@ -235,7 +258,10 @@ class VitalService:
                 code=ErrorCodes.PATIENT_INCIDENT_MISMATCH,
                 message="Patient does not belong to incident.",
                 status_code=409,
-                details={"patient_incident_id": str(patient.incident_id), "incident_id": str(incident_id)},
+                details={
+                    "patient_incident_id": str(patient.incident_id),
+                    "incident_id": str(incident_id),
+                },
             )
         return patient
 
@@ -251,13 +277,18 @@ class VitalService:
         return vital
 
     @staticmethod
-    def _validate_vital_link(*, vital: Vital, incident_id: uuid.UUID, patient_id: uuid.UUID) -> None:
+    def _validate_vital_link(
+        *, vital: Vital, incident_id: uuid.UUID, patient_id: uuid.UUID
+    ) -> None:
         if vital.incident_id != incident_id:
             raise AppError(
                 code=ErrorCodes.VITAL_INCIDENT_MISMATCH,
                 message="Vital does not belong to incident.",
                 status_code=409,
-                details={"vital_incident_id": str(vital.incident_id), "incident_id": str(incident_id)},
+                details={
+                    "vital_incident_id": str(vital.incident_id),
+                    "incident_id": str(incident_id),
+                },
             )
         if vital.patient_id != patient_id:
             raise AppError(
@@ -295,7 +326,10 @@ class VitalService:
 
     @staticmethod
     def _sanitize_field_names(changed_field_names: list[str]) -> list[str]:
-        return [f"{field_name}_redacted" if field_name in SENSITIVE_VITAL_AUDIT_FIELDS else field_name for field_name in changed_field_names]
+        return [
+            f"{field_name}_redacted" if field_name in SENSITIVE_VITAL_AUDIT_FIELDS else field_name
+            for field_name in changed_field_names
+        ]
 
     async def _write_audit_log(
         self,

@@ -1,103 +1,95 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - Bootstrap IAM Stack (GitHub OIDC + Deploy Role)
-# Deploy this stack ONCE manually before using GitHub Actions
-# aws cloudformation deploy --stack-name fusionems-bootstrap-iam --template-file infra/cloudformation/bootstrap-iam.yml \
-#   --capabilities CAPABILITY_NAMED_IAM \
-#   --parameter-overrides GitHubOrg=YOUR_ORG GitHubRepo=FusionEMS-Core
+Description: FusionEMS Quantum - Bootstrap IAM Stack (GitHub Deploy Role)
 
 Parameters:
   GitHubOrg:
     Type: String
-    Description: GitHub organization or username
+
   GitHubRepo:
     Type: String
     Default: FusionEMS-Core
-    Description: GitHub repository name
+
+  RoleName:
+    Type: String
+    Default: FusionEMSQuantum-GitHubDeployRole
+
   ArtifactsBucket:
     Type: String
-    Description: S3 bucket for CloudFormation artifacts (must exist or be created)
-    Default: fusionems-cfn-artifacts
+    Default: fusionemsquantum-cfn-artifacts-prod
 
 Resources:
 
-  GitHubOidcProvider:
-    Type: AWS::IAM::OIDCProvider
-    Properties:
-      Url: https://token.actions.githubusercontent.com
-      ClientIdList:
-        - sts.amazonaws.com
-      ThumbprintList:
-        - 6938fd4d98bab03faadb97b34396831e3780aea1
-        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+# ================= GITHUB DEPLOY ROLE =================
 
   GitHubActionsDeployRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: fusionems-github-deploy-role
+      RoleName: !Ref RoleName
+      MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
-              Federated: !Ref GitHubOidcProvider
-            Action: sts:AssumeRoleWithWebIdentity
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+              - sts:TagSession
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
-                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOrg}/${GitHubRepo}:*'
+                token.actions.githubusercontent.com:sub:
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/main'
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/prod'
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/tags/*'
+
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/PowerUserAccess
-      Policies:
-        - PolicyName: IamPermissionsForDeploy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - iam:CreateRole
-                  - iam:DeleteRole
-                  - iam:PutRolePolicy
-                  - iam:DeleteRolePolicy
-                  - iam:AttachRolePolicy
-                  - iam:DetachRolePolicy
-                  - iam:GetRole
-                  - iam:PassRole
-                  - iam:CreateInstanceProfile
-                  - iam:DeleteInstanceProfile
-                  - iam:AddRoleToInstanceProfile
-                  - iam:RemoveRoleFromInstanceProfile
-                  - iam:CreateOpenIDConnectProvider
-                  - iam:GetOpenIDConnectProvider
-                  - iam:TagRole
-                  - iam:UntagRole
-                  - iam:UpdateRoleDescription
-                Resource: '*'
+        # Founder production mode — full admin
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+# ================= ARTIFACT BUCKET =================
 
   ArtifactsBucketResource:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Ref ArtifactsBucket
+      VersioningConfiguration:
+        Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
         IgnorePublicAcls: true
+        BlockPublicPolicy: true
         RestrictPublicBuckets: true
-      VersioningConfiguration:
-        Status: Enabled
+
+  ArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArtifactsBucketResource
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceTLS
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${ArtifactsBucket}'
+              - !Sub 'arn:aws:s3:::${ArtifactsBucket}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
 
 Outputs:
   DeployRoleArn:
     Value: !GetAtt GitHubActionsDeployRole.Arn
-    Description: Add this as AWS_ROLE_TO_ASSUME secret in GitHub repository settings
-
-  OidcProviderArn:
-    Value: !Ref GitHubOidcProvider
+    Description: Set as AWS_ROLE_TO_ASSUME in GitHub Secrets
 
   ArtifactsBucketName:
     Value: !Ref ArtifactsBucketResource
-    Description: Add this as CFN_ARTIFACTS_BUCKET variable in GitHub repository settings

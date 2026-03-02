@@ -4,6 +4,7 @@ Revision ID: 20260227_0013
 Revises: 20260227_0012
 Create Date: 2026-02-27
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -38,12 +39,27 @@ _TABLES = [
 def _standard_table(name: str) -> None:
     op.create_table(
         name,
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("data", postgresql.JSONB(), nullable=False, server_default="{}"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index(f"ix_{name}_tenant_id", name, ["tenant_id"])
@@ -57,10 +73,7 @@ def upgrade() -> None:
     for tbl in _TABLES:
         _standard_table(tbl)
 
-    op.execute(
-        "CREATE INDEX ix_platform_events_cursor "
-        "ON platform_events(tenant_id, created_at)"
-    )
+    op.execute("CREATE INDEX ix_platform_events_cursor ON platform_events(tenant_id, created_at)")
 
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_billing_cases_data_trgm "
@@ -97,8 +110,7 @@ def upgrade() -> None:
         "ON onboarding_applications(contact_email)"
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_onboarding_apps_status "
-        "ON onboarding_applications(status)"
+        "CREATE INDEX IF NOT EXISTS ix_onboarding_apps_status ON onboarding_applications(status)"
     )
 
 

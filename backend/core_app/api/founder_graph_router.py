@@ -20,10 +20,11 @@ OneDrive endpoints:
   GET  /founder/graph/drive/items/{item_id}         item metadata + webUrl
   GET  /founder/graph/drive/items/{item_id}/download       stream file bytes through backend
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
@@ -44,7 +45,9 @@ _FOUNDER = Depends(require_role("founder"))
 
 
 def _raise_graph(exc: GraphApiError) -> None:
-    raise HTTPException(status_code=exc.status if 400 <= exc.status <= 599 else 502, detail=exc.message)
+    raise HTTPException(
+        status_code=exc.status if 400 <= exc.status <= 599 else 502, detail=exc.message
+    )
 
 
 def _raise_not_configured(exc: GraphNotConfigured) -> None:
@@ -55,14 +58,16 @@ class SendMailRequest(BaseModel):
     to: list[str]
     subject: str
     body_html: str
-    cc: Optional[list[str]] = None
+    cc: list[str] | None = None
 
 
 class ReplyRequest(BaseModel):
     comment_html: str
 
 
-_ALLOWED_FOLDERS = frozenset({"inbox", "sentitems", "drafts", "deleteditems", "archive", "junkemail"})
+_ALLOWED_FOLDERS = frozenset(
+    {"inbox", "sentitems", "drafts", "deleteditems", "archive", "junkemail"}
+)
 
 
 @router.get("/mail")
@@ -73,7 +78,9 @@ async def list_messages(
     current: CurrentUser = _FOUNDER,
 ) -> dict[str, Any]:
     if folder not in _ALLOWED_FOLDERS:
-        raise HTTPException(status_code=400, detail=f"invalid_folder: must be one of {sorted(_ALLOWED_FOLDERS)}")
+        raise HTTPException(
+            status_code=400, detail=f"invalid_folder: must be one of {sorted(_ALLOWED_FOLDERS)}"
+        )
     logger.info("graph_mail_list user=%s folder=%s", current.user_id, folder)
     try:
         client = get_graph_client()
@@ -120,8 +127,12 @@ async def download_attachment(
     attachment_id: str,
     current: CurrentUser = _FOUNDER,
 ) -> Response:
-    logger.info("graph_attachment_download user=%s message_id=%s attachment_id=%s",
-                current.user_id, message_id, attachment_id)
+    logger.info(
+        "graph_attachment_download user=%s message_id=%s attachment_id=%s",
+        current.user_id,
+        message_id,
+        attachment_id,
+    )
     try:
         client = get_graph_client()
         raw = client.download_attachment(message_id, attachment_id)
@@ -132,7 +143,7 @@ async def download_attachment(
         _raise_graph(exc)
 
 
-@router.post("/mail/send", status_code=204)
+@router.post("/mail/send", status_code=204, response_model=None)
 async def send_mail(
     body: SendMailRequest,
     current: CurrentUser = _FOUNDER,
@@ -147,7 +158,7 @@ async def send_mail(
         _raise_graph(exc)
 
 
-@router.post("/mail/{message_id}/reply", status_code=204)
+@router.post("/mail/{message_id}/reply", status_code=204, response_model=None)
 async def reply_to_message(
     message_id: str,
     body: ReplyRequest,

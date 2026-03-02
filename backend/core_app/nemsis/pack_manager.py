@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core_app.core.config import get_settings
@@ -164,7 +164,7 @@ class PackManager:
             expected_version=int(pack.get("version", 1)),
             patch={
                 "status": "active",
-                "activated_at": datetime.now(timezone.utc).isoformat(),
+                "activated_at": datetime.now(UTC).isoformat(),
                 "activated_by": str(actor_user_id),
             },
             correlation_id=correlation_id,
@@ -219,14 +219,18 @@ class PackManager:
         )
 
     def list_pack_files(self, pack_id: str) -> list[dict[str, Any]]:
-        return self._svc.repo("nemsis_pack_files").list_raw_by_field(
-            "pack_id", pack_id, limit=500
-        )
+        return self._svc.repo("nemsis_pack_files").list_raw_by_field("pack_id", pack_id, limit=500)
 
     def get_pack_completeness(self, pack_id: str) -> dict[str, Any]:
         pack = self.get_pack(pack_id)
         if pack is None:
-            return {"complete": False, "present": [], "missing": [], "detail": {}, "error": "Pack not found"}
+            return {
+                "complete": False,
+                "present": [],
+                "missing": [],
+                "detail": {},
+                "error": "Pack not found",
+            }
 
         pack_type = pack.get("data", {}).get("pack_type", "bundle")
         required_roles = REQUIRED_ROLES_BY_PACK_TYPE.get(pack_type, [])

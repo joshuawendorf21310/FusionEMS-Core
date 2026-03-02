@@ -19,7 +19,9 @@ from core_app.services.incident_service import IncidentService
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
-def incident_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -> IncidentService:
+def incident_service_dependency(
+    db: AsyncSession = Depends(get_async_db_session),
+) -> IncidentService:
     return IncidentService(db=db, publisher=get_event_publisher())
 
 
@@ -45,7 +47,9 @@ async def list_incidents(
     current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
     service: IncidentService = Depends(incident_service_dependency),
 ) -> IncidentListResponse:
-    return await service.list_incidents(tenant_id=current_user.tenant_id, limit=limit, offset=offset)
+    return await service.list_incidents(
+        tenant_id=current_user.tenant_id, limit=limit, offset=offset
+    )
 
 
 @router.get("/{incident_id}", response_model=IncidentResponse)

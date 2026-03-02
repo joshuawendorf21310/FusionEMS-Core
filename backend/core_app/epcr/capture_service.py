@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core_app.documents.s3_storage import put_bytes
@@ -27,6 +27,7 @@ class CaptureService:
 
         try:
             from PIL import Image, ImageEnhance
+
             img = Image.open(io.BytesIO(content)).convert("L")
             img = ImageEnhance.Contrast(img).enhance(2.0)
             img = img.crop(img.getbbox())
@@ -49,7 +50,7 @@ class CaptureService:
             "size_bytes": len(content),
             "sha256": sha256,
             "enhanced": enhanced,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "attachment_type": "rhythm_strip",
         }
 
@@ -69,6 +70,7 @@ class CaptureService:
         try:
             import pytesseract
             from PIL import Image
+
             img = Image.open(io.BytesIO(content))
             text = pytesseract.image_to_string(img)
             extracted_fields = _parse_pump_text(text)
@@ -83,7 +85,7 @@ class CaptureService:
             "size_bytes": len(content),
             "sha256": sha256,
             "enhanced": False,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "attachment_type": "pump_screen",
             "extracted_fields": extracted_fields,
         }
@@ -104,6 +106,7 @@ class CaptureService:
         try:
             import pytesseract
             from PIL import Image
+
             img = Image.open(io.BytesIO(content))
             text = pytesseract.image_to_string(img)
             extracted_fields = _parse_vent_text(text)
@@ -118,7 +121,7 @@ class CaptureService:
             "size_bytes": len(content),
             "sha256": sha256,
             "enhanced": False,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "attachment_type": "vent_screen",
             "extracted_fields": extracted_fields,
         }
@@ -140,8 +143,11 @@ class CaptureService:
 
 def _parse_pump_text(text: str) -> dict[str, Any]:
     import re
+
     fields: dict[str, Any] = {}
-    drug_m = re.search(r"\b([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+(?:infusion|drip|gtt)\b", text, re.IGNORECASE)
+    drug_m = re.search(
+        r"\b([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+(?:infusion|drip|gtt)\b", text, re.IGNORECASE
+    )
     if drug_m:
         fields["drug_name"] = drug_m.group(1).strip()
     conc_m = re.search(r"(\d+[\.,]?\d*)\s*(?:mg|mcg|g)/(?:\d+\s*)?mL", text, re.IGNORECASE)
@@ -150,7 +156,9 @@ def _parse_pump_text(text: str) -> dict[str, Any]:
     rate_m = re.search(r"(?:Rate|mL/hr|mL/h)[:\s]*(\d+[\.,]?\d*)", text, re.IGNORECASE)
     if rate_m:
         fields["rate"] = rate_m.group(1).strip()
-    vol_m = re.search(r"(?:VTBI|Vol(?:ume)?\s+Infused)[:\s]*(\d+[\.,]?\d*)\s*mL", text, re.IGNORECASE)
+    vol_m = re.search(
+        r"(?:VTBI|Vol(?:ume)?\s+Infused)[:\s]*(\d+[\.,]?\d*)\s*mL", text, re.IGNORECASE
+    )
     if vol_m:
         fields["volume_infused"] = vol_m.group(1).strip()
     return fields
@@ -158,6 +166,7 @@ def _parse_pump_text(text: str) -> dict[str, Any]:
 
 def _parse_vent_text(text: str) -> dict[str, Any]:
     import re
+
     fields: dict[str, Any] = {}
     mode_m = re.search(r"(?:Mode|Vent\s+Mode)[:\s]*([A-Z/]+(?:\s+[A-Za-z]+)?)", text, re.IGNORECASE)
     if mode_m:
@@ -168,7 +177,9 @@ def _parse_vent_text(text: str) -> dict[str, Any]:
     peep_m = re.search(r"PEEP[:\s]*(\d+[\.,]?\d*)", text, re.IGNORECASE)
     if peep_m:
         fields["peep"] = peep_m.group(1).strip()
-    tv_m = re.search(r"(?:TV|Tidal\s+Vol(?:ume)?)[:\s]*(\d+[\.,]?\d*)\s*(?:mL)?", text, re.IGNORECASE)
+    tv_m = re.search(
+        r"(?:TV|Tidal\s+Vol(?:ume)?)[:\s]*(\d+[\.,]?\d*)\s*(?:mL)?", text, re.IGNORECASE
+    )
     if tv_m:
         fields["tidal_volume"] = tv_m.group(1).strip()
     rate_m = re.search(r"(?:Rate|RR|Resp\s+Rate)[:\s]*(\d+)", text, re.IGNORECASE)

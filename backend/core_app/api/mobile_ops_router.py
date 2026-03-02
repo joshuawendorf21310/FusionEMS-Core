@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -80,7 +80,11 @@ async def deploy_pwa(
         table="pwa_deployments",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "status": "deployed", "deployed_at": datetime.now(timezone.utc).isoformat()},
+        data={
+            **body.model_dump(),
+            "status": "deployed",
+            "deployed_at": datetime.now(UTC).isoformat(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return deployment
@@ -106,7 +110,9 @@ async def rollback_pwa(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    deployment = svc.repo("pwa_deployments").get(tenant_id=current.tenant_id, record_id=deployment_id)
+    deployment = svc.repo("pwa_deployments").get(
+        tenant_id=current.tenant_id, record_id=deployment_id
+    )
     if not deployment:
         raise HTTPException(status_code=404, detail="deployment_not_found")
     updated = await svc.update(
@@ -115,7 +121,7 @@ async def rollback_pwa(
         record_id=deployment["id"],
         actor_user_id=current.user_id,
         expected_version=deployment.get("version", 1),
-        patch={"status": "rolled_back", "rolled_back_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "rolled_back", "rolled_back_at": datetime.now(UTC).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -135,7 +141,10 @@ async def version_adoption(
         version_counts[ver] = version_counts.get(ver, 0) + 1
     total = sum(version_counts.values())
     return {
-        "version_adoption": [{"version": v, "count": c, "pct": round(c / total * 100, 2) if total else 0} for v, c in version_counts.items()],
+        "version_adoption": [
+            {"version": v, "count": c, "pct": round(c / total * 100, 2) if total else 0}
+            for v, c in version_counts.items()
+        ],
         "total_devices": total,
     }
 
@@ -152,7 +161,11 @@ async def register_device(
         table="device_registrations",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "registered_at": datetime.now(timezone.utc).isoformat(), "status": "active"},
+        data={
+            **body.model_dump(),
+            "registered_at": datetime.now(UTC).isoformat(),
+            "status": "active",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return device
@@ -188,7 +201,7 @@ async def remote_logout(
         record_id=target["id"],
         actor_user_id=current.user_id,
         expected_version=target.get("version", 1),
-        patch={"status": "logged_out", "logged_out_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "logged_out", "logged_out_at": datetime.now(UTC).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -213,7 +226,7 @@ async def secure_wipe(
         record_id=target["id"],
         actor_user_id=current.user_id,
         expected_version=target.get("version", 1),
-        patch={"status": "wiped", "wiped_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "wiped", "wiped_at": datetime.now(UTC).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -232,7 +245,7 @@ async def send_push_notification(
         table="push_notifications",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "sent_at": datetime.now(timezone.utc).isoformat(), "status": "queued"},
+        data={**body.model_dump(), "sent_at": datetime.now(UTC).isoformat(), "status": "queued"},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return notif
@@ -300,7 +313,11 @@ async def approve_shift_swap(
         record_id=swap["id"],
         actor_user_id=current.user_id,
         expected_version=swap.get("version", 1),
-        patch={"status": "approved", "approved_by": str(current.user_id), "approved_at": datetime.now(timezone.utc).isoformat()},
+        patch={
+            "status": "approved",
+            "approved_by": str(current.user_id),
+            "approved_at": datetime.now(UTC).isoformat(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -321,7 +338,7 @@ async def ocr_capture(
         data={
             "document_type": body.document_type,
             "device_id": body.device_id,
-            "capture_time": body.capture_time or datetime.now(timezone.utc).isoformat(),
+            "capture_time": body.capture_time or datetime.now(UTC).isoformat(),
             "status": "pending_processing",
             "has_image": bool(body.image_data_base64),
         },
@@ -343,7 +360,7 @@ async def send_mobile_alert(
         table="mobile_alerts",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "sent_at": datetime.now(timezone.utc).isoformat(), "status": "sent"},
+        data={**body.model_dump(), "sent_at": datetime.now(UTC).isoformat(), "status": "sent"},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return alert
@@ -386,7 +403,11 @@ async def staffing_shortage(
     shifts = svc.repo("shifts").list(tenant_id=current.tenant_id, limit=10000)
     unfilled = [s for s in shifts if s.get("data", {}).get("status") == "unfilled"]
     risk = "high" if len(unfilled) > 10 else ("medium" if len(unfilled) > 3 else "low")
-    return {"unfilled_shifts": len(unfilled), "shortage_risk": risk, "as_of": datetime.now(timezone.utc).isoformat()}
+    return {
+        "unfilled_shifts": len(unfilled),
+        "shortage_risk": risk,
+        "as_of": datetime.now(UTC).isoformat(),
+    }
 
 
 @router.get("/credentials/compliance")
@@ -420,7 +441,7 @@ async def mobile_performance(
         "total_sessions": len(sessions),
         "total_errors": len(errors),
         "error_rate_pct": round(len(errors) / max(len(sessions), 1) * 100, 2),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -464,7 +485,7 @@ async def sync_health(
         "failed": failed,
         "completed": completed,
         "health": "degraded" if failed > 0 else "healthy",
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -483,7 +504,7 @@ async def mobile_adoption_kpis(
         "active_devices": len(active),
         "pwa_installs": len(installs),
         "adoption_rate_pct": round(len(active) / max(len(devices), 1) * 100, 2),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -500,7 +521,7 @@ async def update_manifest(
         table="pwa_manifest_updates",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body, "updated_at": datetime.now(timezone.utc).isoformat()},
+        data={**body, "updated_at": datetime.now(UTC).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return record
@@ -519,5 +540,5 @@ async def incident_response_time(
         "total_incidents": len(incidents),
         "acknowledged": len(acknowledged),
         "acknowledgment_rate_pct": round(len(acknowledged) / max(len(incidents), 1) * 100, 2),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }

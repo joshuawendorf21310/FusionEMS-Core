@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 
 const PANEL_STYLE = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: 'var(--color-bg-panel, #0f1720)',
+  background: 'var(--color-bg-panel, var(--color-bg-input))',
   border: '1px solid rgba(255,255,255,0.08)',
 };
 
 const BTN_PRIMARY: React.CSSProperties = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: '#ff6b1a',
-  color: '#fff',
+  background: 'var(--color-brand-orange)',
+  color: 'var(--color-text-primary)',
   fontWeight: 600,
   fontSize: '0.9375rem',
   padding: '11px 24px',
@@ -44,7 +44,7 @@ export default function RepSignPage() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.fillStyle = '#0e161f';
+    ctx.fillStyle = 'var(--color-bg-input)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }, []);
 
@@ -78,7 +78,7 @@ export default function RepSignPage() {
     ctx.beginPath();
     ctx.moveTo(lastPos.current.x, lastPos.current.y);
     ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = 'var(--color-text-primary)';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -98,7 +98,7 @@ export default function RepSignPage() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.fillStyle = '#0e161f';
+    ctx.fillStyle = 'var(--color-bg-input)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     setHasSig(false);
   }
@@ -144,7 +144,7 @@ export default function RepSignPage() {
 
   return (
     <div
-      style={{ background: 'var(--color-bg-base, #0b0f14)', minHeight: '100vh' }}
+      style={{ background: 'var(--color-bg-base, var(--color-bg-base))', minHeight: '100vh' }}
       className="flex items-center justify-center px-4 py-12"
     >
       <div style={{ width: '100%', maxWidth: '600px' }}>
@@ -163,12 +163,12 @@ export default function RepSignPage() {
               marginBottom: '18px',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-orange)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
             </svg>
           </div>
-          <h1 style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
+          <h1 style={{ color: 'var(--color-text-primary)', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
             Sign Authorization Agreement
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.875rem', margin: 0 }}>
@@ -309,8 +309,8 @@ export default function RepSignPage() {
               style={{
                 width: '18px',
                 height: '18px',
-                border: `1px solid ${agreed ? '#ff6b1a' : 'rgba(255,255,255,0.2)'}`,
-                background: agreed ? '#ff6b1a' : 'transparent',
+                border: `1px solid ${agreed ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.2)'}`,
+                background: agreed ? 'var(--color-brand-orange)' : 'transparent',
                 clipPath: 'polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 0 100%)',
                 flexShrink: 0,
                 display: 'flex',
@@ -320,7 +320,7 @@ export default function RepSignPage() {
               }}
             >
               {agreed && (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-primary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
@@ -337,7 +337,7 @@ export default function RepSignPage() {
               background: 'rgba(220,38,38,0.12)',
               border: '1px solid rgba(220,38,38,0.35)',
               clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-              color: '#f87171',
+              color: 'var(--color-brand-red)',
               fontSize: '0.8125rem',
               padding: '10px 12px',
               marginBottom: '16px',

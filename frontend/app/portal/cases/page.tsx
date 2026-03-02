@@ -78,7 +78,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
@@ -110,9 +110,9 @@ function truncateId(id: string): string {
 }
 
 const TRANSPORT_STYLE: Record<TransportMode, { label: string; color: string; bg: string }> = {
-  ground:    { label: 'GROUND',     color: '#42a5f5', bg: 'rgba(66,165,245,0.12)'   },
+  ground:    { label: 'GROUND',     color: 'var(--color-status-info)', bg: 'rgba(66,165,245,0.12)'   },
   rotor:     { label: 'ROTOR',      color: 'var(--q-orange)', bg: 'rgba(255,107,26,0.12)'   },
-  fixed_wing:{ label: 'FIXED WING', color: '#ce93d8', bg: 'rgba(206,147,216,0.12)'  },
+  fixed_wing:{ label: 'FIXED WING', color: 'var(--color-system-compliance)', bg: 'rgba(206,147,216,0.12)'  },
 };
 
 const STATUS_FLOW: Record<string, string> = {
@@ -126,13 +126,13 @@ const STATUS_FLOW: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   created:     'rgba(255,255,255,0.5)',
-  assigned:    '#42a5f5',
-  en_route:    '#ff9800',
-  on_scene:    '#ff6b1a',
-  transporting:'#ce93d8',
-  arrived:     '#22d3ee',
-  completed:   '#4caf50',
-  cancelled:   '#e53935',
+  assigned:    'var(--color-status-info)',
+  en_route:    'var(--color-status-warning)',
+  on_scene:    'var(--color-brand-orange)',
+  transporting:'var(--color-system-compliance)',
+  arrived:     'var(--color-status-info)',
+  completed:   'var(--color-status-active)',
+  cancelled:   'var(--color-brand-red)',
 };
 
 function statusColor(s: string): string {
@@ -363,7 +363,7 @@ export default function CasesPage() {
                 type="checkbox"
                 checked={cmsGate[key] as boolean}
                 onChange={(e) => setCmsGate((p) => ({ ...p, [key]: e.target.checked }))}
-                className="w-3.5 h-3.5 accent-[#ff6b1a] cursor-pointer"
+                className="w-3.5 h-3.5 accent-[var(--color-brand-orange)] cursor-pointer"
               />
               <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</span>
             </label>
@@ -393,8 +393,8 @@ export default function CasesPage() {
             onClick={() => setActiveTab(tab.id)}
             className="px-4 py-2.5 text-xs font-semibold transition-colors"
             style={{
-              color: activeTab === tab.id ? '#ff6b1a' : 'rgba(255,255,255,0.4)',
-              borderBottom: activeTab === tab.id ? '2px solid #ff6b1a' : '2px solid transparent',
+              color: activeTab === tab.id ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.4)',
+              borderBottom: activeTab === tab.id ? '2px solid var(--color-brand-orange)' : '2px solid transparent',
             }}
           >
             {tab.label}
@@ -429,7 +429,7 @@ export default function CasesPage() {
                     {/* Row */}
                     <div
                       className="px-3 py-2.5 flex flex-wrap items-center gap-2 cursor-pointer"
-                      style={{ background: '#0b0f14' }}
+                      style={{ background: 'var(--color-bg-base)' }}
                       onClick={() => setExpandedId(isExpanded ? null : c.case_id)}
                     >
                       <span
@@ -447,7 +447,7 @@ export default function CasesPage() {
                       />
                       <Badge
                         label={c.priority.toUpperCase()}
-                        color={c.priority === 'emergent' ? '#e53935' : c.priority === 'urgent' ? '#ff9800' : 'rgba(255,255,255,0.5)'}
+                        color={c.priority === 'emergent' ? 'var(--color-brand-red)' : c.priority === 'urgent' ? 'var(--color-status-warning)' : 'rgba(255,255,255,0.5)'}
                         bg={c.priority === 'emergent' ? 'rgba(229,57,53,0.1)' : c.priority === 'urgent' ? 'rgba(255,152,0,0.1)' : 'rgba(255,255,255,0.06)'}
                       />
                       <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
@@ -462,7 +462,7 @@ export default function CasesPage() {
                     {isExpanded && (
                       <div
                         className="px-4 py-3 space-y-3"
-                        style={{ background: '#0d1117', borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                        style={{ background: 'var(--color-bg-input)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
                       >
                         {/* Linked IDs */}
                         <div className="flex flex-wrap gap-4">
@@ -499,7 +499,7 @@ export default function CasesPage() {
                                 <div key={i} className="relative">
                                   <div
                                     className="absolute -left-[13px] top-1 w-2 h-2 rounded-full"
-                                    style={{ background: '#ff6b1a' }}
+                                    style={{ background: 'var(--color-brand-orange)' }}
                                   />
                                   <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
                                     {fmtTs(ev.timestamp)}
@@ -539,7 +539,7 @@ export default function CasesPage() {
           <div className="space-y-4">
             <div
               className="p-4 rounded-sm"
-              style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 New Transport Case
@@ -596,7 +596,7 @@ export default function CasesPage() {
                 onClick={submitNewCase}
                 disabled={newCaseBusy}
                 className="px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40"
-                style={{ background: '#ff6b1a', color: '#fff' }}
+                style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
               >
                 {newCaseBusy ? 'Creating...' : 'Create Case'}
               </button>
@@ -606,7 +606,7 @@ export default function CasesPage() {
             {showCmsAfterNew && createdCaseId && (
               <div
                 className="p-4 rounded-sm"
-                style={{ background: '#0b0f14', border: '1px solid rgba(255,107,26,0.2)' }}
+                style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,107,26,0.2)' }}
               >
                 <p className="text-xs font-semibold mb-1" style={{ color: 'var(--q-orange)' }}>
                   CMS Gate — Case {createdCaseId}
@@ -622,7 +622,7 @@ export default function CasesPage() {
                   }}
                   disabled={cmsBusy}
                   className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40"
-                  style={{ background: '#ff6b1a', color: '#fff' }}
+                  style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
                 >
                   {cmsBusy ? 'Evaluating...' : 'Evaluate CMS Gate'}
                 </button>
@@ -637,7 +637,7 @@ export default function CasesPage() {
           <div className="space-y-4">
             <div
               className="p-4 rounded-sm"
-              style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 CMS Gate Evaluation
@@ -661,7 +661,7 @@ export default function CasesPage() {
                 onClick={evaluateCms}
                 disabled={cmsBusy}
                 className="mt-4 px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40"
-                style={{ background: '#ff6b1a', color: '#fff' }}
+                style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
               >
                 {cmsBusy ? 'Evaluating...' : 'Evaluate CMS Gate'}
               </button>
@@ -712,13 +712,13 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
       {/* Score + pass/fail */}
       <div
         className="p-4 rounded-sm"
-        style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+        style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div className="flex items-center gap-3 mb-3">
           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Score</span>
           <span
             className="text-lg font-bold tabular-nums"
-            style={{ color: result.score >= 70 ? '#4caf50' : result.score >= 40 ? '#ff9800' : '#e53935' }}
+            style={{ color: result.score >= 70 ? 'var(--color-status-active)' : result.score >= 40 ? 'var(--color-status-warning)' : 'var(--color-brand-red)' }}
           >
             {result.score}
           </span>
@@ -726,7 +726,7 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
           <span
             className="px-2 py-0.5 text-[10px] font-semibold uppercase rounded-sm"
             style={{
-              color: result.passed ? '#4caf50' : '#e53935',
+              color: result.passed ? 'var(--color-status-active)' : 'var(--color-brand-red)',
               background: result.passed ? 'rgba(76,175,80,0.12)' : 'rgba(229,57,53,0.12)',
               border: `1px solid ${result.passed ? 'rgba(76,175,80,0.3)' : 'rgba(229,57,53,0.3)'}`,
             }}
@@ -744,7 +744,7 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
             className="h-full rounded-full transition-all"
             style={{
               width: `${Math.min(result.score, 100)}%`,
-              background: result.score >= 70 ? '#4caf50' : result.score >= 40 ? '#ff9800' : '#e53935',
+              background: result.score >= 70 ? 'var(--color-status-active)' : result.score >= 40 ? 'var(--color-status-warning)' : 'var(--color-brand-red)',
             }}
           />
         </div>
@@ -776,7 +776,7 @@ function CmsResultPanel({ result }: { result: CMSGateResult }) {
                       <span
                         className="px-1.5 py-0.5 text-[9px] font-semibold uppercase rounded-sm"
                         style={{
-                          color: g.passed ? '#4caf50' : '#e53935',
+                          color: g.passed ? 'var(--color-status-active)' : 'var(--color-brand-red)',
                           background: g.passed ? 'rgba(76,175,80,0.1)' : 'rgba(229,57,53,0.1)',
                         }}
                       >

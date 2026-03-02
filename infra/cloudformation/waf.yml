@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: FusionEMS Quantum - WAF Stack (WAFv2 WebACL for ALB)
+Description: FusionEMS Quantum - WAF Stack (Deployment-Time Webhook IP Allowlisting)
 
 Parameters:
   AppName:
@@ -7,39 +7,147 @@ Parameters:
   Env:
     Type: String
 
+  StripeWebhookCidrs:
+    Type: CommaDelimitedList
+    Description: Comma-delimited list of Stripe webhook IPv4 CIDRs
+
+  TelnyxWebhookCidrs:
+    Type: CommaDelimitedList
+    Description: Comma-delimited list of Telnyx webhook IPv4 CIDRs
+
 Resources:
+
+  ##############################################
+  # IP SETS (Created at Deployment)
+  ##############################################
+
+  StripeWebhookIpSet:
+    Type: AWS::WAFv2::IPSet
+    Properties:
+      Name: !Sub '${AppName}-${Env}-stripe-webhooks'
+      Scope: REGIONAL
+      IPAddressVersion: IPV4
+      Addresses: !Ref StripeWebhookCidrs
+
+  TelnyxWebhookIpSet:
+    Type: AWS::WAFv2::IPSet
+    Properties:
+      Name: !Sub '${AppName}-${Env}-telnyx-webhooks'
+      Scope: REGIONAL
+      IPAddressVersion: IPV4
+      Addresses: !Ref TelnyxWebhookCidrs
+
+  ##############################################
+  # WEB ACL
+  ##############################################
 
   WebACL:
     Type: AWS::WAFv2::WebACL
     Properties:
       Name: !Sub '${AppName}-${Env}-waf'
       Scope: REGIONAL
-      Description: WAF for FusionEMS ALB
       DefaultAction:
         Allow: {}
       VisibilityConfig:
         SampledRequestsEnabled: true
         CloudWatchMetricsEnabled: true
         MetricName: !Sub '${AppName}-${Env}-waf'
+
       Rules:
-        - Name: AWSManagedRulesCommonRuleSet
+
+        #########################################
+        # Allow Stripe Webhooks
+        #########################################
+
+        - Name: AllowStripeWebhooks
           Priority: 1
-          OverrideAction:
-            None: {}
+          Action:
+            Allow: {}
+          Statement:
+            AndStatement:
+              Statements:
+                - IPSetReferenceStatement:
+                    Arn: !GetAtt StripeWebhookIpSet.Arn
+                - ByteMatchStatement:
+                    SearchString: /api/v1/webhooks
+                    FieldToMatch:
+                      UriPath: {}
+                    TextTransformations:
+                      - Priority: 0
+                        Type: NONE
+                    PositionalConstraint: STARTS_WITH
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AllowStripeWebhooks
+
+        #########################################
+        # Allow Telnyx Webhooks
+        #########################################
+
+        - Name: AllowTelnyxWebhooks
+          Priority: 2
+          Action:
+            Allow: {}
+          Statement:
+            AndStatement:
+              Statements:
+                - IPSetReferenceStatement:
+                    Arn: !GetAtt TelnyxWebhookIpSet.Arn
+                - ByteMatchStatement:
+                    SearchString: /api/v1/webhooks
+                    FieldToMatch:
+                      UriPath: {}
+                    TextTransformations:
+                      - Priority: 0
+                        Type: NONE
+                    PositionalConstraint: STARTS_WITH
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AllowTelnyxWebhooks
+
+        #########################################
+        # Block All Other Webhook Traffic
+        #########################################
+
+        - Name: BlockNonAllowlistedWebhookTraffic
+          Priority: 3
+          Action:
+            Block: {}
+          Statement:
+            ByteMatchStatement:
+              SearchString: /api/v1/webhooks
+              FieldToMatch:
+                UriPath: {}
+              TextTransformations:
+                - Priority: 0
+                  Type: NONE
+              PositionalConstraint: STARTS_WITH
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: BlockNonAllowlistedWebhookTraffic
+
+        #########################################
+        # AWS Managed Protections
+        #########################################
+
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 10
+          OverrideAction: { None: {} }
           Statement:
             ManagedRuleGroupStatement:
               VendorName: AWS
               Name: AWSManagedRulesCommonRuleSet
-              ExcludedRules: []
           VisibilityConfig:
             SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
-            MetricName: AWSManagedRulesCommonRuleSet
+            MetricName: CommonRuleSet
 
         - Name: AWSManagedRulesKnownBadInputsRuleSet
-          Priority: 2
-          OverrideAction:
-            None: {}
+          Priority: 11
+          OverrideAction: { None: {} }
           Statement:
             ManagedRuleGroupStatement:
               VendorName: AWS
@@ -47,12 +155,11 @@ Resources:
           VisibilityConfig:
             SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
-            MetricName: AWSManagedRulesKnownBadInputsRuleSet
+            MetricName: KnownBadInputs
 
         - Name: AWSManagedRulesSQLiRuleSet
-          Priority: 3
-          OverrideAction:
-            None: {}
+          Priority: 12
+          OverrideAction: { None: {} }
           Statement:
             ManagedRuleGroupStatement:
               VendorName: AWS
@@ -60,42 +167,24 @@ Resources:
           VisibilityConfig:
             SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
-            MetricName: AWSManagedRulesSQLiRuleSet
+            MetricName: SQLi
 
-        - Name: RateLimitRule
-          Priority: 4
+        #########################################
+        # Global Rate Limit
+        #########################################
+
+        - Name: GlobalRateLimit
+          Priority: 20
           Action:
             Block: {}
           Statement:
             RateBasedStatement:
-              Limit: 2000
+              Limit: 1500
               AggregateKeyType: IP
           VisibilityConfig:
             SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
-            MetricName: RateLimitRule
-
-        - Name: WebhookRateLimit
-          Priority: 5
-          Action:
-            Block: {}
-          Statement:
-            RateBasedStatement:
-              Limit: 500
-              AggregateKeyType: IP
-              ScopeDownStatement:
-                ByteMatchStatement:
-                  SearchString: /api/v1/webhooks
-                  FieldToMatch:
-                    UriPath: {}
-                  TextTransformations:
-                    - Priority: 0
-                      Type: NONE
-                  PositionalConstraint: STARTS_WITH
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: WebhookRateLimit
+            MetricName: GlobalRateLimit
 
 Outputs:
   WebAclArn:

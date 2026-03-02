@@ -4,6 +4,7 @@ Revision ID: 20260227_0014
 Revises: 20260227_0013
 Create Date: 2026-02-27
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -37,12 +38,27 @@ _TABLES = [
 def _standard_table(name: str) -> None:
     op.create_table(
         name,
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("data", postgresql.JSONB(), nullable=False, server_default="{}"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.create_index(f"ix_{name}_tenant_id", name, ["tenant_id"])
 
@@ -54,29 +70,21 @@ def upgrade() -> None:
         _standard_table(tbl)
 
     # ── NERIS Pack system: additional indexes ─────────────────────────────────
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_neris_packs_tenant "
-        "ON neris_packs(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_neris_packs_tenant ON neris_packs(tenant_id)")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_neris_packs_status "
         "ON neris_packs USING gin((data->>'status') gin_trgm_ops)"
     )
 
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_neris_pack_files_tenant "
-        "ON neris_pack_files(tenant_id)"
+        "CREATE INDEX IF NOT EXISTS ix_neris_pack_files_tenant ON neris_pack_files(tenant_id)"
     )
 
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_neris_vsd_tenant "
-        "ON neris_value_set_definitions(tenant_id)"
+        "CREATE INDEX IF NOT EXISTS ix_neris_vsd_tenant ON neris_value_set_definitions(tenant_id)"
     )
 
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_neris_vsi_tenant "
-        "ON neris_value_set_items(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_neris_vsi_tenant ON neris_value_set_items(tenant_id)")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_neris_vsi_def_id "
         "ON neris_value_set_items USING gin((data->>'definition_id') gin_trgm_ops)"
@@ -88,48 +96,32 @@ def upgrade() -> None:
     )
 
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_neris_onboarding_tenant "
-        "ON neris_onboarding(tenant_id)"
+        "CREATE INDEX IF NOT EXISTS ix_neris_onboarding_tenant ON neris_onboarding(tenant_id)"
     )
 
     # ── Wisconsin Department config: additional indexes ───────────────────────
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fire_departments_tenant "
-        "ON fire_departments(tenant_id)"
+        "CREATE INDEX IF NOT EXISTS ix_fire_departments_tenant ON fire_departments(tenant_id)"
     )
 
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fire_stations_tenant "
-        "ON fire_stations(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_fire_stations_tenant ON fire_stations(tenant_id)")
 
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fire_apparatus_tenant "
-        "ON fire_apparatus(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_fire_apparatus_tenant ON fire_apparatus(tenant_id)")
 
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fire_personnel_tenant "
-        "ON fire_personnel(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_fire_personnel_tenant ON fire_personnel(tenant_id)")
 
     # ── Fire Incidents (RMS): additional indexes ──────────────────────────────
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fire_incidents_tenant "
-        "ON fire_incidents(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_fire_incidents_tenant ON fire_incidents(tenant_id)")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_fire_incidents_dept "
         "ON fire_incidents USING gin((data->>'department_id') gin_trgm_ops)"
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fire_incidents_status "
-        "ON fire_incidents((data->>'status'))"
+        "CREATE INDEX IF NOT EXISTS ix_fire_incidents_status ON fire_incidents((data->>'status'))"
     )
 
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fire_incident_units_tenant "
-        "ON fire_incident_units(tenant_id)"
+        "CREATE INDEX IF NOT EXISTS ix_fire_incident_units_tenant ON fire_incident_units(tenant_id)"
     )
 
     op.execute(

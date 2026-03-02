@@ -21,7 +21,7 @@ function KpiCard({
   color?: string;
   href?: string;
 }) {
-  const trendColor = trend === 'up' ? '#4caf50' : trend === 'down' ? '#e53935' : 'rgba(255,255,255,0.38)';
+  const trendColor = trend === 'up' ? 'var(--color-status-active)' : trend === 'down' ? 'var(--color-brand-red)' : 'rgba(255,255,255,0.38)';
   const trendIcon = trend === 'up' ? '▲' : trend === 'down' ? '▼' : '—';
   const inner = (
     <div
@@ -58,7 +58,7 @@ function SectionHeader({ title, sub, number }: { title: string; sub?: string; nu
 }
 
 function RiskCard({ label, items }: { label: string; items: { text: string; level: 'ok' | 'warn' | 'crit' }[] }) {
-  const levelColor = { ok: '#4caf50', warn: '#ff9800', crit: '#e53935' };
+  const levelColor = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', crit: 'var(--color-brand-red)' };
   return (
     <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">{label}</div>
@@ -76,8 +76,8 @@ function RiskCard({ label, items }: { label: string; items: { text: string; leve
 
 function DenialHeatCell({ value, max }: { value: number; max: number }) {
   const intensity = max > 0 ? value / max : 0;
-  const bg = intensity > 0.8 ? '#9c1b1b' : intensity > 0.5 ? '#b84a0f' : intensity > 0.25 ? '#ff9800' : '#1a2535';
-  const text = intensity > 0.5 ? '#fff' : 'rgba(255,255,255,0.65)';
+  const bg = intensity > 0.8 ? 'var(--color-brand-red)' : intensity > 0.5 ? 'var(--color-brand-orange)' : intensity > 0.25 ? 'var(--color-status-warning)' : 'var(--color-bg-panel)';
+  const text = intensity > 0.5 ? 'var(--color-text-primary)' : 'rgba(255,255,255,0.65)';
   return (
     <div
       className="flex items-center justify-center h-10 text-xs font-semibold transition-colors"
@@ -89,7 +89,7 @@ function DenialHeatCell({ value, max }: { value: number; max: number }) {
 }
 
 function ActionItemRow({ rank, text, category, urgency }: { rank: number; text: string; category: string; urgency: 'high' | 'medium' | 'low' }) {
-  const urgencyColor = { high: '#e53935', medium: '#ff9800', low: '#4caf50' };
+  const urgencyColor = { high: 'var(--color-brand-red)', medium: 'var(--color-status-warning)', low: 'var(--color-status-active)' };
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-[rgba(255,255,255,0.05)] last:border-0">
       <span className="text-[10px] font-bold text-orange-dim font-mono w-5">{rank}</span>
@@ -110,7 +110,7 @@ function GrowthVelocityBar({ label, value, max }: { label: string; value: number
       <div className="flex-1 h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
         <motion.div
           className="h-full rounded-full"
-          style={{ background: '#ff6b1a' }}
+          style={{ background: 'var(--color-brand-orange)' }}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -193,8 +193,8 @@ export default function FounderExecutivePage() {
       <div>
         <SectionHeader number="1–4" title="Global Revenue Snapshot" sub="MRR · ARR · Tenants · AR Overview" />
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          <KpiCard label="MRR" value={mrrDisplay} sub="Monthly Recurring" trend="up" color="#22d3ee" href="/founder/revenue/stripe" />
-          <KpiCard label="ARR" value={arrDisplay} sub="Annual Run Rate" trend="up" color="#22d3ee" href="/founder/revenue/forecast" />
+          <KpiCard label="MRR" value={mrrDisplay} sub="Monthly Recurring" trend="up" color="var(--color-status-info)" href="/founder/revenue/stripe" />
+          <KpiCard label="ARR" value={arrDisplay} sub="Annual Run Rate" trend="up" color="var(--color-status-info)" href="/founder/revenue/forecast" />
           <KpiCard label="Active Tenants" value={String(tenantCount)} sub="Billing accounts" href="/founder/revenue/billing-intelligence" />
           <KpiCard
             label="Total AR"
@@ -215,10 +215,10 @@ export default function FounderExecutivePage() {
 
       {/* MODULE 3 · Clean Claim Rate + MODULE 6 · Export Success Rate */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Clean Claim Rate" value="94.2%" sub="+1.1% vs last month" trend="up" color="#4caf50" />
-        <KpiCard label="Export Success Rate" value="98.7%" sub="Last 30 days" trend="up" color="#4caf50" />
-        <KpiCard label="Compliance Score" value="97 / 100" sub="NEMSIS + CMS + DEA" trend="flat" color="#29b6f6" />
-        <KpiCard label="AI Utilization" value="83%" sub="of interactions AI-handled" trend="up" color="#a855f7" />
+        <KpiCard label="Clean Claim Rate" value="94.2%" sub="+1.1% vs last month" trend="up" color="var(--color-status-active)" />
+        <KpiCard label="Export Success Rate" value="98.7%" sub="Last 30 days" trend="up" color="var(--color-status-active)" />
+        <KpiCard label="Compliance Score" value="97 / 100" sub="NEMSIS + CMS + DEA" trend="flat" color="var(--color-status-info)" />
+        <KpiCard label="AI Utilization" value="83%" sub="of interactions AI-handled" trend="up" color="var(--color-system-compliance)" />
       </div>
 
       {/* MODULE 5 · Denial Rate Heatmap */}
@@ -249,7 +249,7 @@ export default function FounderExecutivePage() {
           </table>
           <div className="flex items-center gap-3 mt-3 text-[10px] text-[rgba(255,255,255,0.35)]">
             <span>Low</span>
-            {['#1a2535','#ff9800','#b84a0f','#9c1b1b'].map((c) => (
+            {['var(--color-bg-panel)','var(--color-status-warning)','var(--color-brand-orange)','var(--color-brand-red)'].map((c) => (
               <span key={c} className="w-6 h-3 inline-block rounded-sm" style={{ background: c }} />
             ))}
             <span>High</span>
@@ -365,15 +365,15 @@ export default function FounderExecutivePage() {
           {[
             { href: '/founder', label: 'Executive', color: 'var(--q-orange)', mod: '1' },
             { href: '/founder/revenue/billing-intelligence', label: 'Revenue & Billing', color: 'var(--color-system-billing)', mod: '2' },
-            { href: '/founder/ai/policies', label: 'AI Governance', color: '#a855f7', mod: '3' },
+            { href: '/founder/ai/policies', label: 'AI Governance', color: 'var(--color-system-compliance)', mod: '3' },
             { href: '/founder/comms/inbox', label: 'Communications', color: 'var(--q-green)', mod: '4' },
             { href: '/founder/comms/phone-system', label: 'AI Voice & Alerts', color: 'var(--q-green)', mod: '4B' },
             { href: '/founder/compliance/nemsis', label: 'Compliance', color: 'var(--q-yellow)', mod: '5' },
             { href: '/founder/security/role-builder', label: 'Visibility & Sec.', color: 'var(--q-red)', mod: '6' },
             { href: '/founder/templates/proposals', label: 'Templates', color: 'var(--color-status-info)', mod: '7' },
             { href: '/founder/roi/analytics', label: 'ROI & Sales', color: 'var(--q-yellow)', mod: '8' },
-            { href: '/founder/pwa/crewlink', label: 'PWA & Mobile', color: '#3b82f6', mod: '9' },
-            { href: '/founder/infra/ecs', label: 'Infrastructure', color: '#94a3b8', mod: '10' },
+            { href: '/founder/pwa/crewlink', label: 'PWA & Mobile', color: 'var(--color-system-fleet)', mod: '9' },
+            { href: '/founder/infra/ecs', label: 'Infrastructure', color: 'var(--color-text-muted)', mod: '10' },
             { href: '/founder/tools/calendar', label: 'Founder Tools', color: 'var(--q-orange)', mod: '11' },
           ].map((d) => (
             <Link

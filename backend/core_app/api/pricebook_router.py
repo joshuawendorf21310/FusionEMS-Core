@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,15 +21,40 @@ PRICING_CATALOG = {
         {"tier": "S3", "label": "76–150 users", "monthly_cents": 69900},
     ],
     "BILLING_AUTOMATION": [
-        {"tier": "B1", "label": "0–150 claims", "base_monthly_cents": 39900, "per_claim_cents": 600},
-        {"tier": "B2", "label": "151–400 claims", "base_monthly_cents": 59900, "per_claim_cents": 500},
-        {"tier": "B3", "label": "401–1000 claims", "base_monthly_cents": 99900, "per_claim_cents": 400},
-        {"tier": "B4", "label": "1001+ claims", "base_monthly_cents": 149900, "per_claim_cents": 325},
+        {
+            "tier": "B1",
+            "label": "0–150 claims",
+            "base_monthly_cents": 39900,
+            "per_claim_cents": 600,
+        },
+        {
+            "tier": "B2",
+            "label": "151–400 claims",
+            "base_monthly_cents": 59900,
+            "per_claim_cents": 500,
+        },
+        {
+            "tier": "B3",
+            "label": "401–1000 claims",
+            "base_monthly_cents": 99900,
+            "per_claim_cents": 400,
+        },
+        {
+            "tier": "B4",
+            "label": "1001+ claims",
+            "base_monthly_cents": 149900,
+            "per_claim_cents": 325,
+        },
     ],
     "ADDONS": [
         {"code": "CCT_TRANSPORT_OPS", "label": "CCT/Transport Ops", "monthly_cents": 39900},
         {"code": "HEMS_OPS", "label": "HEMS Ops", "monthly_cents": 75000},
-        {"code": "TRIP_PACK", "label": "Wisconsin TRIP Pack", "monthly_cents": 19900, "gov_only": True},
+        {
+            "code": "TRIP_PACK",
+            "label": "Wisconsin TRIP Pack",
+            "monthly_cents": 19900,
+            "gov_only": True,
+        },
     ],
 }
 
@@ -108,7 +133,7 @@ async def activate_pricebook(
             )
     data = dict(pb.get("data") or {})
     data["status"] = "active"
-    data["activated_at"] = datetime.now(timezone.utc).isoformat()
+    data["activated_at"] = datetime.now(UTC).isoformat()
     updated = await svc.update(
         table="pricebooks",
         tenant_id=current.tenant_id,
@@ -174,7 +199,7 @@ async def set_entitlements(
             "collections_mode": payload.get("collections_mode", "none"),
             "trip_enabled": payload.get("trip_enabled", False),
             "active": True,
-            "set_at": datetime.now(timezone.utc).isoformat(),
+            "set_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=correlation_id,
     )

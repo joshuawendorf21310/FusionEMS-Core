@@ -79,12 +79,12 @@ function getDomain(eventType: string): EventDomain {
 }
 
 const DOMAIN_COLORS: Record<EventDomain, string> = {
-  onboarding: '#22d3ee',
-  billing: '#4caf50',
-  fax: '#ff6b1a',
-  edi: '#fbbf24',
-  support: '#a855f7',
-  provisioning: '#3b82f6',
+  onboarding: 'var(--color-status-info)',
+  billing: 'var(--color-status-active)',
+  fax: 'var(--color-brand-orange)',
+  edi: 'var(--color-status-warning)',
+  support: 'var(--color-system-compliance)',
+  provisioning: 'var(--color-system-fleet)',
   other: 'rgba(255,255,255,0.4)',
 };
 
@@ -384,7 +384,7 @@ export default function EventsFeedPage() {
   return (
     <div
       className="min-h-screen px-6 py-6 flex flex-col gap-5"
-      style={{ background: '#07090d', color: 'white' }}
+      style={{ background: 'var(--color-bg-base)', color: 'white' }}
     >
       {/* ── Page header ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-4">

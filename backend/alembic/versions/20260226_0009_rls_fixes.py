@@ -5,6 +5,7 @@ Revision ID: 20260226_0009
 Revises: 20260226_0008
 Create Date: 2026-02-26
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -82,9 +83,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP POLICY IF EXISTS stripe_webhook_receipts_system_write ON stripe_webhook_receipts;")
+    op.execute(
+        "DROP POLICY IF EXISTS stripe_webhook_receipts_system_write ON stripe_webhook_receipts;"
+    )
     op.execute("DROP POLICY IF EXISTS lob_webhook_receipts_system_write ON lob_webhook_receipts;")
-    op.execute('DROP POLICY IF EXISTS "tenant_subscriptions_tenant_isolation" ON "tenant_subscriptions";')
+    op.execute(
+        'DROP POLICY IF EXISTS "tenant_subscriptions_tenant_isolation" ON "tenant_subscriptions";'
+    )
     op.execute('ALTER TABLE "tenant_subscriptions" DISABLE ROW LEVEL SECURITY;')
-    op.execute('DROP POLICY IF EXISTS "tenant_provisioning_events_tenant_isolation" ON "tenant_provisioning_events";')
+    op.execute(
+        'DROP POLICY IF EXISTS "tenant_provisioning_events_tenant_isolation" ON "tenant_provisioning_events";'
+    )
     op.execute('ALTER TABLE "tenant_provisioning_events" DISABLE ROW LEVEL SECURITY;')

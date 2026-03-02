@@ -3,9 +3,9 @@ from __future__ import annotations
 import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from alembic import context
 from core_app.core.config import get_settings
 from core_app.db.base import Base
 
@@ -27,9 +27,8 @@ def get_url() -> str:
 
 def _make_sync_url(url: str) -> str:
     """Convert async DB URL to sync for Alembic."""
-    return (
-        url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-           .replace("postgresql+aiopg://", "postgresql+psycopg2://")
+    return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://").replace(
+        "postgresql+aiopg://", "postgresql+psycopg2://"
     )
 
 

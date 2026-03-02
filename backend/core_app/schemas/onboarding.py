@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 
+
 class OnboardingStartRequest(BaseModel):
     email: EmailStr
     agency_name: str = Field(min_length=2, max_length=255)
@@ -11,10 +12,12 @@ class OnboardingStartRequest(BaseModel):
     level_mix: dict[str, float] = Field(default_factory=dict)
     selected_modules: list[str] = Field(default_factory=list)
 
+
 class OnboardingStartResponse(BaseModel):
     application_id: str
     roi_snapshot_hash: str
     status: str
+
 
 class ProposalResponse(BaseModel):
     application_id: str

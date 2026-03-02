@@ -38,7 +38,9 @@ class PatientRepository:
         )
         return await self.db.scalar(stmt)
 
-    async def list_for_incident(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> list[Patient]:
+    async def list_for_incident(
+        self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID
+    ) -> list[Patient]:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
         stmt = (
             select(Patient)
@@ -53,17 +55,23 @@ class PatientRepository:
 
     async def count_for_incident(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> int:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
-        stmt = select(func.count()).select_from(Patient).where(
-            Patient.tenant_id == scoped_tenant_id,
-            Patient.incident_id == incident_id,
-            Patient.deleted_at.is_(None),
+        stmt = (
+            select(func.count())
+            .select_from(Patient)
+            .where(
+                Patient.tenant_id == scoped_tenant_id,
+                Patient.incident_id == incident_id,
+                Patient.deleted_at.is_(None),
+            )
         )
         return int((await self.db.scalar(stmt)) or 0)
 
     async def update_fields(self, *, tenant_id: uuid.UUID, patient: Patient) -> Patient:
         scoped_tenant_id = self._require_tenant_scope(tenant_id)
         if patient.tenant_id != scoped_tenant_id:
-            raise AppError(code=ErrorCodes.PATIENT_NOT_FOUND, message="Patient not found.", status_code=404)
+            raise AppError(
+                code=ErrorCodes.PATIENT_NOT_FOUND, message="Patient not found.", status_code=404
+            )
         await self.db.flush()
         await self.db.refresh(patient)
         return patient

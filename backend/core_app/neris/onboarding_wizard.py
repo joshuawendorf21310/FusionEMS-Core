@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -33,7 +33,9 @@ WI_DSPS_GOLIVE_CHECKLIST = [
 
 
 class NERISOnboardingWizard:
-    def __init__(self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID) -> None:
+    def __init__(
+        self, db: Session, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID
+    ) -> None:
         self.svc = DominationService(db, publisher)
         self.tenant_id = tenant_id
         self.actor_user_id = actor_user_id
@@ -48,7 +50,11 @@ class NERISOnboardingWizard:
         existing = self.svc.repo("neris_onboarding").list(tenant_id=self.tenant_id, limit=5)
         for o in existing:
             if not (o.get("data") or {}).get("completed_at"):
-                return {"onboarding": o, "department": self._get_department((o.get("data") or {}).get("department_id")), "steps": ONBOARDING_STEPS}
+                return {
+                    "onboarding": o,
+                    "department": self._get_department((o.get("data") or {}).get("department_id")),
+                    "steps": ONBOARDING_STEPS,
+                }
 
         # Create department entity
         dept = await self.svc.create(
@@ -93,8 +99,7 @@ class NERISOnboardingWizard:
         dept = self._get_department(rd.get("department_id"))
         step_status = rd.get("step_status_json", {})
         steps_with_status = [
-            {**step, "status": step_status.get(step["id"], "pending")}
-            for step in ONBOARDING_STEPS
+            {**step, "status": step_status.get(step["id"], "pending")} for step in ONBOARDING_STEPS
         ]
         completed = sum(1 for s in steps_with_status if s["status"] == "complete")
         total_required = sum(1 for s in ONBOARDING_STEPS if s["required"])
@@ -103,7 +108,9 @@ class NERISOnboardingWizard:
             "department": dept,
             "steps": steps_with_status,
             "progress_percent": int(completed / len(ONBOARDING_STEPS) * 100),
-            "required_complete": sum(1 for s in steps_with_status if s["required"] and s["status"] == "complete"),
+            "required_complete": sum(
+                1 for s in steps_with_status if s["required"] and s["status"] == "complete"
+            ),
             "required_total": total_required,
             "production_ready": completed == len(ONBOARDING_STEPS),
             "completed_at": rd.get("completed_at"),
@@ -136,11 +143,10 @@ class NERISOnboardingWizard:
         rd["step_status_json"] = step_status
 
         all_required_done = all(
-            step_status.get(s["id"]) == "complete"
-            for s in ONBOARDING_STEPS if s["required"]
+            step_status.get(s["id"]) == "complete" for s in ONBOARDING_STEPS if s["required"]
         )
         if all_required_done and not rd.get("completed_at"):
-            rd["completed_at"] = datetime.now(timezone.utc).isoformat()
+            rd["completed_at"] = datetime.now(UTC).isoformat()
             dept = self._get_department(department_id)
             if dept:
                 dept_data = dict(dept.get("data") or {})
@@ -166,14 +172,26 @@ class NERISOnboardingWizard:
         )
         return updated
 
-    async def _process_step(self, step_id: str, data: dict, department_id: str | None, rd: dict, correlation_id: str | None) -> None:
+    async def _process_step(
+        self,
+        step_id: str,
+        data: dict,
+        department_id: str | None,
+        rd: dict,
+        correlation_id: str | None,
+    ) -> None:
         dept_uuid = uuid.UUID(department_id) if department_id else None
 
         if step_id == "department_identity" and dept_uuid:
             dept = self._get_department(department_id)
             if dept:
                 dept_data = dict(dept.get("data") or {})
-                for field in ("name", "primary_contact_name", "primary_contact_email", "primary_contact_phone"):
+                for field in (
+                    "name",
+                    "primary_contact_name",
+                    "primary_contact_email",
+                    "primary_contact_phone",
+                ):
                     if data.get(field):
                         dept_data[field] = data[field]
                 await self.svc.update(
@@ -209,7 +227,11 @@ class NERISOnboardingWizard:
                     table="fire_stations",
                     tenant_id=self.tenant_id,
                     actor_user_id=self.actor_user_id,
-                    data={"department_id": str(dept_uuid), "name": station.get("name", ""), "address_json": station.get("address", {})},
+                    data={
+                        "department_id": str(dept_uuid),
+                        "name": station.get("name", ""),
+                        "address_json": station.get("address", {}),
+                    },
                     correlation_id=correlation_id,
                 )
 
@@ -219,7 +241,12 @@ class NERISOnboardingWizard:
                     table="fire_apparatus",
                     tenant_id=self.tenant_id,
                     actor_user_id=self.actor_user_id,
-                    data={"department_id": str(dept_uuid), "unit_id": app.get("unit_id", ""), "unit_type_code": app.get("unit_type_code", ""), "station_id": app.get("station_id")},
+                    data={
+                        "department_id": str(dept_uuid),
+                        "unit_id": app.get("unit_id", ""),
+                        "unit_type_code": app.get("unit_type_code", ""),
+                        "station_id": app.get("station_id"),
+                    },
                     correlation_id=correlation_id,
                 )
 
@@ -229,13 +256,19 @@ class NERISOnboardingWizard:
                     table="fire_personnel",
                     tenant_id=self.tenant_id,
                     actor_user_id=self.actor_user_id,
-                    data={"department_id": str(dept_uuid), "name": p.get("name", ""), "role_code": p.get("role_code")},
+                    data={
+                        "department_id": str(dept_uuid),
+                        "name": p.get("name", ""),
+                        "role_code": p.get("role_code"),
+                    },
                     correlation_id=correlation_id,
                 )
 
         elif step_id == "pack_assignment" and dept_uuid:
             active_packs = self.svc.repo("neris_packs").list(tenant_id=self.tenant_id, limit=50)
-            active = next((p for p in active_packs if (p.get("data") or {}).get("status") == "active"), None)
+            active = next(
+                (p for p in active_packs if (p.get("data") or {}).get("status") == "active"), None
+            )
             if active:
                 dept = self._get_department(department_id)
                 if dept:
@@ -258,7 +291,9 @@ class NERISOnboardingWizard:
             incident_id = data.get("sample_incident_id")
             if not incident_id:
                 raise ValueError("sample_incident_id_required")
-            inc = self.svc.repo("fire_incidents").get(tenant_id=self.tenant_id, record_id=uuid.UUID(incident_id))
+            inc = self.svc.repo("fire_incidents").get(
+                tenant_id=self.tenant_id, record_id=uuid.UUID(incident_id)
+            )
             if not inc or (inc.get("data") or {}).get("status") not in ("validated", "exported"):
                 raise ValueError("sample_incident_not_validated")
 
@@ -270,7 +305,9 @@ class NERISOnboardingWizard:
         if not department_id:
             return None
         try:
-            return self.svc.repo("fire_departments").get(tenant_id=self.tenant_id, record_id=uuid.UUID(department_id))
+            return self.svc.repo("fire_departments").get(
+                tenant_id=self.tenant_id, record_id=uuid.UUID(department_id)
+            )
         except Exception:
             return None
 

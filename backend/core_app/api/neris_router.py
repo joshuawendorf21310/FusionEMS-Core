@@ -38,7 +38,9 @@ async def validate(
     svc = _svc(db)
     active_pack = _get_active_pack(svc, current.tenant_id)
     if not active_pack:
-        raise HTTPException(status_code=422, detail="No active NERIS pack found. Import and activate a pack first.")
+        raise HTTPException(
+            status_code=422, detail="No active NERIS pack found. Import and activate a pack first."
+        )
     pack_id = uuid.UUID(str(active_pack["id"]))
     entity_type = payload.get("entity_type", "INCIDENT")
     data = payload.get("payload", payload)

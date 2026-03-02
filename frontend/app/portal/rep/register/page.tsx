@@ -5,16 +5,16 @@ import { useRouter } from 'next/navigation';
 
 const PANEL_STYLE = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: 'var(--color-bg-panel, #0f1720)',
+  background: 'var(--color-bg-panel, var(--color-bg-input))',
   border: '1px solid rgba(255,255,255,0.08)',
 };
 
 const INPUT_STYLE: React.CSSProperties = {
   width: '100%',
-  background: '#0e161f',
+  background: 'var(--color-bg-input)',
   border: '1px solid rgba(255,255,255,0.08)',
   clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-  color: '#fff',
+  color: 'var(--color-text-primary)',
   fontSize: '0.9375rem',
   padding: '10px 12px',
   outline: 'none',
@@ -31,8 +31,8 @@ const LABEL_STYLE: React.CSSProperties = {
 
 const BTN_PRIMARY: React.CSSProperties = {
   clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-  background: '#ff6b1a',
-  color: '#fff',
+  background: 'var(--color-brand-orange)',
+  color: 'var(--color-text-primary)',
   fontWeight: 600,
   fontSize: '0.9375rem',
   padding: '11px 0',
@@ -58,12 +58,12 @@ function ProgressStepper({ current }: { current: number }) {
                   width: '28px',
                   height: '28px',
                   borderRadius: '50%',
-                  background: done ? '#ff6b1a' : active ? 'rgba(255,107,26,0.18)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${done ? '#ff6b1a' : active ? 'rgba(255,107,26,0.6)' : 'rgba(255,255,255,0.12)'}`,
+                  background: done ? 'var(--color-brand-orange)' : active ? 'rgba(255,107,26,0.18)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${done ? 'var(--color-brand-orange)' : active ? 'rgba(255,107,26,0.6)' : 'rgba(255,255,255,0.12)'}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: done ? '#fff' : active ? '#ff6b1a' : 'rgba(255,255,255,0.3)',
+                  color: done ? 'var(--color-text-primary)' : active ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.3)',
                   fontSize: '0.75rem',
                   fontWeight: 700,
                 }}
@@ -81,7 +81,7 @@ function ProgressStepper({ current }: { current: number }) {
                   fontSize: '0.6875rem',
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
-                  color: done ? '#ff6b1a' : active ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.28)',
+                  color: done ? 'var(--color-brand-orange)' : active ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.28)',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -165,13 +165,13 @@ export default function RepRegisterPage() {
 
   return (
     <div
-      style={{ background: 'var(--color-bg-base, #0b0f14)', minHeight: '100vh' }}
+      style={{ background: 'var(--color-bg-base, var(--color-bg-base))', minHeight: '100vh' }}
       className="flex items-center justify-center px-4 py-12"
     >
       <div style={{ width: '100%', maxWidth: '520px' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <h1 style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
+          <h1 style={{ color: 'var(--color-text-primary)', fontSize: '1.375rem', fontWeight: 700, margin: '0 0 8px' }}>
             Create Your Representative Account
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.875rem', margin: 0 }}>
@@ -269,7 +269,7 @@ export default function RepRegisterPage() {
                   background: 'rgba(220,38,38,0.12)',
                   border: '1px solid rgba(220,38,38,0.35)',
                   clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
-                  color: '#f87171',
+                  color: 'var(--color-brand-red)',
                   fontSize: '0.8125rem',
                   padding: '10px 12px',
                   marginBottom: '16px',

@@ -4,24 +4,32 @@ import base64
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
-from core_app.billing.validation import BillingValidator
-from core_app.billing.x12_837p import build_837p_ambulance
-from core_app.billing.x12_835 import parse_835
+from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
 from core_app.billing.artifacts import store_edi_artifact
+from core_app.billing.validation import BillingValidator
+from core_app.billing.x12_835 import parse_835
+from core_app.billing.x12_837p import build_837p_ambulance
 from core_app.core.config import get_settings
-from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
-from core_app.integrations.officeally import OfficeAllySftpConfig, submit_837_via_sftp, OfficeAllyClientError
-from core_app.payments.stripe_service import StripeConfig, create_patient_checkout_session, StripeNotConfigured
-from core_app.fax.telnyx_service import TelnyxConfig, send_sms, TelnyxNotConfigured
+from core_app.documents.s3_storage import default_exports_bucket, presign_get, put_bytes
+from core_app.fax.telnyx_service import TelnyxConfig, TelnyxNotConfigured, send_sms
+from core_app.integrations.officeally import (
+    OfficeAllyClientError,
+    OfficeAllySftpConfig,
+    submit_837_via_sftp,
+)
+from core_app.payments.stripe_service import (
+    StripeConfig,
+    StripeNotConfigured,
+    create_patient_checkout_session,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
 
 router = APIRouter(prefix="/api/v1/billing", tags=["Billing"])
 
@@ -68,7 +76,9 @@ async def validate_case(
     # Create missing-doc tasks idempotently: (case_id, doc_type)
     created_tasks: list[dict[str, Any]] = []
     existing = svc.repo("missing_document_tasks").list(tenant_id=current.tenant_id, limit=5000)
-    existing_keys = {(t["data"].get("owner_entity_id"), t["data"].get("doc_type")) for t in existing}
+    existing_keys = {
+        (t["data"].get("owner_entity_id"), t["data"].get("doc_type")) for t in existing
+    }
 
     for doc_type in missing:
         key = (str(case_id), doc_type)
@@ -193,7 +203,9 @@ async def submit_officeally(
                 password=settings.officeally_sftp_password,
                 remote_dir=settings.officeally_sftp_remote_dir or "/",
             )
-            uploaded_path = submit_837_via_sftp(cfg=cfg, file_name=file_name, x12_bytes=x12_text.encode("utf-8"))
+            uploaded_path = submit_837_via_sftp(
+                cfg=cfg, file_name=file_name, x12_bytes=x12_text.encode("utf-8")
+            )
             await svc.update(
                 table="edi_artifacts",
                 tenant_id=current.tenant_id,
@@ -220,10 +232,18 @@ async def submit_officeally(
         entity_type="edi_artifact",
         record_id=uuid.UUID(str(edi_row["id"])),
         event_type="EDI_837_CREATED",
-        payload={"billing_case_id": str(case_id), "edi_artifact_id": edi_row["id"], "uploaded_path": uploaded_path},
+        payload={
+            "billing_case_id": str(case_id),
+            "edi_artifact_id": edi_row["id"],
+            "uploaded_path": uploaded_path,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"edi_artifact": edi_row, "download_url": artifact["download_url"], "officeally_uploaded_path": uploaded_path}
+    return {
+        "edi_artifact": edi_row,
+        "download_url": artifact["download_url"],
+        "officeally_uploaded_path": uploaded_path,
+    }
 
 
 @router.post("/eras/import")
@@ -281,7 +301,11 @@ async def import_era(
         payload={"era_id": era_row["id"], "denials_count": len(parsed["denials"])},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"era": era_row, "denials": parsed["denials"], "download_url": presign_get(bucket=bucket, key=key)}
+    return {
+        "era": era_row,
+        "denials": parsed["denials"],
+        "download_url": presign_get(bucket=bucket, key=key),
+    }
 
 
 @router.post("/claims/{claim_id}/appeal/generate")
@@ -365,7 +389,10 @@ async def create_payment_link(
     # Stripe session
     try:
         sess = create_patient_checkout_session(
-            cfg=StripeConfig(secret_key=settings.stripe_secret_key, webhook_secret=settings.stripe_webhook_secret or None),
+            cfg=StripeConfig(
+                secret_key=settings.stripe_secret_key,
+                webhook_secret=settings.stripe_webhook_secret or None,
+            ),
             amount_cents=body.amount_cents,
             success_url=body.success_url,
             cancel_url=body.cancel_url,
@@ -378,14 +405,27 @@ async def create_payment_link(
         table="patient_payment_links",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"account_id": str(body.account_id), "amount_cents": body.amount_cents, "stripe_session_id": sess["id"], "status": "created"},
+        data={
+            "account_id": str(body.account_id),
+            "amount_cents": body.amount_cents,
+            "stripe_session_id": sess["id"],
+            "status": "created",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
     # Send SMS
     try:
-        tel = TelnyxConfig(api_key=settings.telnyx_api_key, messaging_profile_id=settings.telnyx_messaging_profile_id or None)
-        send_sms(cfg=tel, from_number=settings.telnyx_from_number, to_number=body.patient_phone, text=f"Your payment link: {sess['url']}")
+        tel = TelnyxConfig(
+            api_key=settings.telnyx_api_key,
+            messaging_profile_id=settings.telnyx_messaging_profile_id or None,
+        )
+        send_sms(
+            cfg=tel,
+            from_number=settings.telnyx_from_number,
+            to_number=body.patient_phone,
+            text=f"Your payment link: {sess['url']}",
+        )
     except TelnyxNotConfigured as e:
         # SMS failure shouldn't delete payment link
         await svc.update(
@@ -413,7 +453,9 @@ async def create_payment_link(
 @router.post("/webhooks/stripe")
 async def stripe_webhook(
     request: Request,
-    current: CurrentUser = Depends(get_current_user),  # protected endpoint; public webhook should be separate path in pricing_router
+    current: CurrentUser = Depends(
+        get_current_user
+    ),  # protected endpoint; public webhook should be separate path in pricing_router
     db: Session = Depends(db_session_dependency),
 ):
     raise HTTPException(status_code=400, detail="Use /api/v1/public/webhooks/stripe")

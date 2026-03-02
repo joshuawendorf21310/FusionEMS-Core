@@ -28,11 +28,13 @@ Sweep logic (runs on a configurable interval, default every 6 hours):
 Run via the main worker.py loop:
   asyncio.create_task(_epcr_retention_loop(stop_event))
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -46,9 +48,11 @@ GLACIER_DA_DAYS = 365 * 3
 # S3 lifecycle policy (applied once per bucket at startup)            #
 # ------------------------------------------------------------------ #
 
+
 def _apply_s3_lifecycle(bucket: str, prefix: str = "") -> None:
     try:
         import boto3
+
         s3 = boto3.client("s3")
         rule_id = f"fusionems-epcr-retention-{prefix or 'root'}"
         lifecycle = {
@@ -73,10 +77,8 @@ def _apply_s3_lifecycle(bucket: str, prefix: str = "") -> None:
             ]
         }
         existing = {}
-        try:
+        with contextlib.suppress(s3.exceptions.ClientError):
             existing = s3.get_bucket_lifecycle_configuration(Bucket=bucket)
-        except s3.exceptions.ClientError:
-            pass
         existing_ids = {r["ID"] for r in existing.get("Rules", [])}
         if rule_id not in existing_ids:
             s3.put_bucket_lifecycle_configuration(
@@ -91,10 +93,11 @@ def _apply_s3_lifecycle(bucket: str, prefix: str = "") -> None:
 def apply_all_s3_lifecycle_policies() -> None:
     try:
         from core_app.core.config import get_settings
+
         settings = get_settings()
         for bucket, prefix in [
             (settings.s3_bucket_exports, "nemsis-submissions/"),
-            (settings.s3_bucket_docs,    "epcr-attachments/"),
+            (settings.s3_bucket_docs, "epcr-attachments/"),
         ]:
             if bucket:
                 _apply_s3_lifecycle(bucket, prefix)
@@ -106,8 +109,9 @@ def apply_all_s3_lifecycle_policies() -> None:
 # DB sweep helpers                                                     #
 # ------------------------------------------------------------------ #
 
+
 def _cutoff(years: int = RETENTION_YEARS) -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=years * 365)
+    return datetime.now(UTC) - timedelta(days=years * 365)
 
 
 def _sweep_table(
@@ -118,6 +122,7 @@ def _sweep_table(
     legal_hold_col: str | None = None,
 ) -> int:
     from sqlalchemy import text
+
     cutoff = _cutoff()
     where_legal = ""
     if legal_hold_col:
@@ -140,12 +145,8 @@ async def run_retention_sweep(db_session_factory: Any) -> dict[str, int]:
             stats["epcr_charts"] = _sweep_table(
                 db, "epcr_charts", "submitted_at", legal_hold_col="legal_hold"
             )
-            stats["epcr_event_log"] = _sweep_table(
-                db, "epcr_event_log", "created_at"
-            )
-            stats["audit_logs"] = _sweep_table(
-                db, "audit_logs", "created_at"
-            )
+            stats["epcr_event_log"] = _sweep_table(db, "epcr_event_log", "created_at")
+            stats["audit_logs"] = _sweep_table(db, "audit_logs", "created_at")
             stats["nemsis_submission_results"] = _sweep_table(
                 db, "nemsis_submission_results", "created_at"
             )
@@ -173,6 +174,7 @@ async def _epcr_retention_loop(stop: asyncio.Event) -> None:
     while not stop.is_set():
         try:
             from core_app.db.session import get_db_session_ctx
+
             await run_retention_sweep(get_db_session_ctx)
         except Exception as exc:
             logger.error("Retention loop error: %s", exc)

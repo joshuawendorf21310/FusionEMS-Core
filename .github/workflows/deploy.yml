@@ -1,56 +1,607 @@
-name: Deploy (Push to main)
+name: Deploy AWS SAM / CloudFormation Stack
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
-  id-token: write
   contents: read
-
-concurrency:
-  group: deploy-main
-  cancel-in-progress: false
+  id-token: write
 
 jobs:
-  detect-changes:
+  quality-gate:
     runs-on: ubuntu-latest
-    outputs:
-      infra: ${{ steps.changes.outputs.infra }}
-      backend: ${{ steps.changes.outputs.backend }}
-      frontend: ${{ steps.changes.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 2
-      - name: Detect changed paths
-        id: changes
+          python-version: "3.11"
+
+      - name: Install Python dev dependencies
         run: |
-          INFRA=false; BACKEND=false; FRONTEND=false
-          git diff --name-only HEAD~1 HEAD | while read f; do
-            [[ "$f" == infra/* ]] && INFRA=true
-            [[ "$f" == backend/* || "$f" == opa/* ]] && BACKEND=true
-            [[ "$f" == frontend/* ]] && FRONTEND=true
+          pip install -r backend/requirements.txt -q
+          pip install -r backend/requirements-dev.txt -q
+
+      - name: Ruff lint (0 errors gate)
+        run: cd backend && python -m ruff check . --output-format=concise
+
+      - name: Ruff format check
+        run: cd backend && python -m ruff format . --check
+
+      - name: Pytest unit tests
+        run: cd backend && python -m pytest tests/ -q --ignore=tests/smoke --continue-on-collection-errors
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: TypeScript typecheck (0 errors gate)
+        run: cd frontend && npx tsc --noEmit
+
+      - name: ESLint (0 errors gate)
+        run: cd frontend && npx eslint . --ext .ts,.tsx
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: quality-gate
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      STACK_NAME: ${{ vars.CFN_STACK_NAME || 'fusionems-core' }}
+      APP_NAME: ${{ vars.CFN_APP_NAME || 'fusionems' }}
+      ARTIFACT_BUCKET: ${{ vars.CFN_ARTIFACT_BUCKET || 'fusionemsquantum-cfn-artifacts-prod' }}
+      HOSTED_ZONE_ID: ${{ vars.CFN_HOSTED_ZONE_ID || 'Z0858801IZXAHSWCPH85' }}
+      CFN_ENV: ${{ vars.CFN_ENV || 'prod' }}
+      ROOT_DOMAIN_NAME: www.fusionemsquantum.com
+      API_DOMAIN_NAME: api.fusionemsquantum.com
+      ACM_CERT_ARN_US_EAST_1: arn:aws:acm:us-east-1:793439286972:certificate/8411d09e-cb0c-4967-9721-9accd7ecdecc
+
+      TEMPLATE_FILE: infra/cloudformation/root.yml
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify AWS role ARN is configured
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_ARN || vars.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "::error::No AWS role ARN is configured. Set one of: secrets.AWS_ROLE_TO_ASSUME, secrets.AWS_ROLE_ARN, vars.AWS_ROLE_TO_ASSUME, or vars.AWS_ROLE_ARN."
+            exit 1
+          fi
+          echo "AWS role ARN is configured (value hidden)."
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_ARN || vars.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: fusionems-core-deploy
+
+      - name: Install AWS SAM CLI
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install aws-sam-cli
+          sam --version
+          aws --version
+
+      - name: Pre-deploy stack check and cleanup
+        id: pre-deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          STACK_STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "Stacks[0].StackStatus" \
+            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+          echo "Current stack status: $STACK_STATUS"
+
+          # ── Wait out any in-flight operation before acting ──────────────────
+          if [[ "$STACK_STATUS" == *"_IN_PROGRESS" ]]; then
+            echo "Stack is transitioning ($STACK_STATUS) — polling up to 45 min for stable state..."
+            for i in $(seq 1 90); do
+              sleep 30
+              STACK_STATUS=$(aws cloudformation describe-stacks \
+                --stack-name "$STACK_NAME" \
+                --region "$AWS_REGION" \
+                --query "Stacks[0].StackStatus" \
+                --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+              echo "  poll $i/90: $STACK_STATUS"
+              if [[ "$STACK_STATUS" != *"_IN_PROGRESS" ]]; then
+                break
+              fi
+            done
+            echo "Stack settled at: $STACK_STATUS"
+          fi
+
+          # ── ROLLBACK_FAILED: disable RDS deletion protection then delete ───
+          # When a CREATE rollback fails because DbInstance.DeletionProtection=true
+          # prevents CFN from deleting the RDS instance, the stack ends up in
+          # ROLLBACK_FAILED.  We must disable protection first so delete-stack
+          # can succeed.
+          if [[ "$STACK_STATUS" == "ROLLBACK_FAILED" || "$STACK_STATUS" == "UPDATE_ROLLBACK_FAILED" || "$STACK_STATUS" == "DELETE_FAILED" ]]; then
+            echo "Stack is in $STACK_STATUS — disabling RDS deletion protection and retrying delete..."
+
+            DATASTACK_ARN=$(aws cloudformation describe-stack-resource \
+              --stack-name "$STACK_NAME" \
+              --logical-resource-id DataStack \
+              --query "StackResourceDetail.PhysicalResourceId" \
+              --output text 2>/dev/null || echo "")
+
+            if [ -n "$DATASTACK_ARN" ] && [ "$DATASTACK_ARN" != "None" ]; then
+              RDS_ID=$(aws cloudformation describe-stack-resource \
+                --stack-name "$DATASTACK_ARN" \
+                --logical-resource-id DbInstance \
+                --query "StackResourceDetail.PhysicalResourceId" \
+                --output text 2>/dev/null || echo "")
+
+              if [ -n "$RDS_ID" ] && [ "$RDS_ID" != "None" ]; then
+                echo "  Disabling DeletionProtection on RDS instance: $RDS_ID"
+                aws rds modify-db-instance \
+                  --db-instance-identifier "$RDS_ID" \
+                  --no-deletion-protection \
+                  --apply-immediately \
+                  --region "$AWS_REGION" 2>/dev/null \
+                  && echo "  DeletionProtection disabled." \
+                  || echo "  (could not modify RDS — may already be gone)"
+                echo "  Waiting for RDS instance to reach available state..."
+                aws rds wait db-instance-available \
+                  --db-instance-identifier "$RDS_ID" \
+                  --region "$AWS_REGION" 2>/dev/null \
+                  && echo "  RDS instance available." \
+                  || echo "  (wait timed out or instance gone — proceeding)"
+              fi
+            fi
+
+            echo "Deleting stack from $STACK_STATUS state..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Waiting for stack deletion (RDS snapshot + ElastiCache can take ~20 min)..."
+            aws cloudformation wait stack-delete-complete \
+              --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Stack deleted."
+            STACK_STATUS="DOES_NOT_EXIST"
+          fi
+
+          # ── ROLLBACK_COMPLETE / CREATE_FAILED: straightforward delete ──────
+          if [[ "$STACK_STATUS" == "ROLLBACK_COMPLETE" || "$STACK_STATUS" == "CREATE_FAILED" ]]; then
+            echo "Stack is in terminal state ($STACK_STATUS). Deleting before fresh deploy..."
+            aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete \
+              --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            echo "Stack deleted."
+            STACK_STATUS="DOES_NOT_EXIST"
+          fi
+
+          # ── Fresh deploy: clean up orphaned SM secrets and KMS alias ───────
+          if [[ "$STACK_STATUS" == "DOES_NOT_EXIST" ]]; then
+            DESIRED_COUNT=0
+            echo "Fresh deploy detected — setting DesiredCount=0 (images will be pushed after CFN)."
+
+            echo "Cleaning up orphaned SecretsManager secrets that would block CFN re-create..."
+            for SECRET_ID in \
+                "${APP_NAME}/${CFN_ENV}/DB" \
+                "${APP_NAME}/${CFN_ENV}/Redis" \
+                "${APP_NAME}/${CFN_ENV}/AppSecrets"; do
+              if aws secretsmanager describe-secret \
+                  --secret-id "$SECRET_ID" \
+                  --region "$AWS_REGION" \
+                  --query "Name" --output text 2>/dev/null | grep -q .; then
+                echo "  Force-deleting orphaned secret: $SECRET_ID"
+                aws secretsmanager delete-secret \
+                  --secret-id "$SECRET_ID" \
+                  --force-delete-without-recovery \
+                  --region "$AWS_REGION" 2>/dev/null \
+                  && echo "    Deleted." \
+                  || echo "    (skipped — already gone or insufficient permissions)"
+              else
+                echo "  Secret not found (clean): $SECRET_ID"
+              fi
+            done
+
+            KMS_ALIAS="alias/${APP_NAME}-${CFN_ENV}-data"
+            if aws kms describe-key \
+                --key-id "$KMS_ALIAS" \
+                --region "$AWS_REGION" \
+                --query "KeyMetadata.KeyId" --output text 2>/dev/null | grep -q .; then
+              echo "Deleting orphaned KMS alias: $KMS_ALIAS"
+              aws kms delete-alias \
+                --alias-name "$KMS_ALIAS" \
+                --region "$AWS_REGION" 2>/dev/null \
+                && echo "  Deleted." || echo "  (already gone)"
+            else
+              echo "KMS alias not found (clean): $KMS_ALIAS"
+            fi
+          else
+            DESIRED_COUNT=2
+            echo "Update deploy detected — setting DesiredCount=2."
+          fi
+
+          echo "desired_count=$DESIRED_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy CloudFormation infrastructure
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "$TEMPLATE_FILE" ]; then
+            echo "::error::Template file not found: $TEMPLATE_FILE"
+            exit 1
+          fi
+
+          DESIRED_COUNT="${{ steps.pre-deploy.outputs.desired_count }}"
+
+          PARAMS=(
+            "Env=$CFN_ENV"
+            "RootDomainName=$ROOT_DOMAIN_NAME"
+            "ApiDomainName=$API_DOMAIN_NAME"
+            "HostedZoneId=$HOSTED_ZONE_ID"
+            "AcmCertificateArnUsEast1=$ACM_CERT_ARN_US_EAST_1"
+            "NestedTemplatesBucket=$ARTIFACT_BUCKET"
+            "ImageTagFrontend=$IMAGE_TAG"
+            "ImageTagBackend=$IMAGE_TAG"
+            "DesiredCount=$DESIRED_COUNT"
+          )
+
+          if grep -Eq 'Transform:\s*AWS::Serverless|AWS::Serverless::' "$TEMPLATE_FILE"; then
+            sam build --template-file "$TEMPLATE_FILE"
+            sam deploy \
+              --template-file ".aws-sam/build/template.yaml" \
+              --stack-name "$STACK_NAME" \
+              --region "$AWS_REGION" \
+              --s3-bucket "$ARTIFACT_BUCKET" \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+              --no-fail-on-empty-changeset \
+              --no-confirm-changeset \
+              --parameter-overrides "${PARAMS[@]}"
+          else
+            aws cloudformation package \
+              --template-file "$TEMPLATE_FILE" \
+              --s3-bucket "$ARTIFACT_BUCKET" \
+              --output-template-file packaged-root.yml
+
+            aws cloudformation deploy \
+              --template-file packaged-root.yml \
+              --stack-name "$STACK_NAME" \
+              --region "$AWS_REGION" \
+              --no-fail-on-empty-changeset \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+              --parameter-overrides "${PARAMS[@]}"
+          fi
+
+      - name: Dump CloudFormation events on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== CloudFormation events for root stack ==="
+          aws cloudformation describe-stack-events \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "StackEvents[?ResourceStatus!='UPDATE_IN_PROGRESS' && ResourceStatus!='CREATE_IN_PROGRESS'][ResourceType,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
+            --output table 2>/dev/null || echo "(root stack not found)"
+
+          echo ""
+          echo "=== CloudFormation events for nested stacks ==="
+          for NESTED_STACK in NetworkStack DataStack CognitoStack ComputeStack EdgeStack; do
+            NESTED_ARN=$(aws cloudformation describe-stack-resource \
+              --stack-name "$STACK_NAME" \
+              --logical-resource-id "$NESTED_STACK" \
+              --query "StackResourceDetail.PhysicalResourceId" \
+              --output text 2>/dev/null || echo "")
+            if [ -n "$NESTED_ARN" ] && [ "$NESTED_ARN" != "None" ]; then
+              echo "--- $NESTED_STACK ---"
+              aws cloudformation describe-stack-events \
+                --stack-name "$NESTED_ARN" \
+                --region "$AWS_REGION" \
+                --query "StackEvents[?ResourceStatus=='CREATE_FAILED' || ResourceStatus=='UPDATE_FAILED' || ResourceStatus=='DELETE_FAILED'][ResourceType,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
+                --output table 2>/dev/null || echo "(stack not found)"
+            fi
           done
-          git diff --name-only HEAD~1 HEAD > /tmp/changed_files.txt
-          grep -q '^infra/' /tmp/changed_files.txt && echo "infra=true" >> $GITHUB_OUTPUT || echo "infra=false" >> $GITHUB_OUTPUT
-          grep -q '^backend/\|^opa/' /tmp/changed_files.txt && echo "backend=true" >> $GITHUB_OUTPUT || echo "backend=false" >> $GITHUB_OUTPUT
-          grep -q '^frontend/' /tmp/changed_files.txt && echo "frontend=true" >> $GITHUB_OUTPUT || echo "frontend=false" >> $GITHUB_OUTPUT
 
-  deploy-infra:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.infra == 'true'
-    uses: ./.github/workflows/deploy-infra.yml
-    secrets: inherit
+      - name: Get ECR repo URIs from stack outputs
+        id: ecr-uris
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKEND_REPO=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendEcrRepoUri'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          FRONTEND_REPO=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendEcrRepoUri'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          if [ -z "$BACKEND_REPO" ] || [ "$BACKEND_REPO" = "None" ]; then
+            AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+            BACKEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-backend"
+            FRONTEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/fusionems-${CFN_ENV}-frontend"
+          fi
+          echo "backend_repo=$BACKEND_REPO" >> "$GITHUB_OUTPUT"
+          echo "frontend_repo=$FRONTEND_REPO" >> "$GITHUB_OUTPUT"
+          echo "Backend ECR: $BACKEND_REPO"
+          echo "Frontend ECR: $FRONTEND_REPO"
 
-  deploy-backend:
-    needs: [detect-changes, deploy-infra]
-    if: always() && needs.detect-changes.outputs.backend == 'true' && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
-    uses: ./.github/workflows/deploy-backend.yml
-    secrets: inherit
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-  deploy-frontend:
-    needs: [detect-changes, deploy-infra]
-    if: always() && needs.detect-changes.outputs.frontend == 'true' && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
-    uses: ./.github/workflows/deploy-frontend.yml
-    secrets: inherit
+      - name: Build and push backend image
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${{ steps.ecr-uris.outputs.backend_repo }}"
+          docker build \
+            --file backend/Dockerfile \
+            --tag "$REPO:$IMAGE_TAG" \
+            --tag "$REPO:latest" \
+            backend/
+          docker push "$REPO:$IMAGE_TAG"
+          docker push "$REPO:latest"
+          echo "Pushed backend: $REPO:$IMAGE_TAG"
+
+      - name: Build and push frontend image
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${{ steps.ecr-uris.outputs.frontend_repo }}"
+          docker build \
+            --file frontend/Dockerfile \
+            --tag "$REPO:$IMAGE_TAG" \
+            --tag "$REPO:latest" \
+            --build-arg "NEXT_PUBLIC_API_BASE=https://$API_DOMAIN_NAME" \
+            --build-arg "NEXT_PUBLIC_WS_URL=wss://$API_DOMAIN_NAME/ws" \
+            --build-arg "NEXT_PUBLIC_ROOT_DOMAIN=https://$ROOT_DOMAIN_NAME" \
+            frontend/
+          docker push "$REPO:$IMAGE_TAG"
+          docker push "$REPO:latest"
+          echo "Pushed frontend: $REPO:$IMAGE_TAG"
+
+      - name: Get ECS cluster and service names
+        id: ecs-names
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          BACKEND_SVC=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendServiceName'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          FRONTEND_SVC=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendServiceName'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          BACKEND_TASK_DEF=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='BackendTaskDefinition'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "cluster=$CLUSTER" >> "$GITHUB_OUTPUT"
+          echo "backend_svc=$BACKEND_SVC" >> "$GITHUB_OUTPUT"
+          echo "frontend_svc=$FRONTEND_SVC" >> "$GITHUB_OUTPUT"
+          echo "backend_task_def=$BACKEND_TASK_DEF" >> "$GITHUB_OUTPUT"
+          echo "ECS cluster: $CLUSTER | backend: $BACKEND_SVC | frontend: $FRONTEND_SVC"
+
+      - name: Run DB migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          TASK_DEF="${{ steps.ecs-names.outputs.backend_task_def }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ] || [ -z "$TASK_DEF" ] || [ "$TASK_DEF" = "None" ]; then
+            echo "ECS cluster or task definition not found — skipping migration run-task."
+            exit 0
+          fi
+
+          SUBNET=$(aws ec2 describe-subnets \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "Subnets[0].SubnetId" --output text 2>/dev/null || echo "")
+          SECURITY_GROUP=$(aws ec2 describe-security-groups \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+
+          NETWORK_CFG=""
+          if [ -n "$SUBNET" ] && [ "$SUBNET" != "None" ] && [ -n "$SECURITY_GROUP" ] && [ "$SECURITY_GROUP" != "None" ]; then
+            NETWORK_CFG="awsvpcConfiguration={subnets=[$SUBNET],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}"
+          fi
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            ${NETWORK_CFG:+--network-configuration "$NETWORK_CFG"} \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}' \
+            --query "tasks[0].taskArn" --output text)
+
+          echo "Migration task started: $TASK_ARN"
+          echo "Waiting for migration task to complete..."
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[0].exitCode" --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::DB migration task exited with code $EXIT_CODE"
+            exit 1
+          fi
+          echo "DB migrations completed successfully."
+
+      - name: Sync Stripe pricing catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          TASK_DEF="${{ steps.ecs-names.outputs.backend_task_def }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ] || [ -z "$TASK_DEF" ] || [ "$TASK_DEF" = "None" ]; then
+            echo "ECS cluster or task definition not found — skipping Stripe catalog sync."
+            exit 0
+          fi
+
+          SUBNET=$(aws ec2 describe-subnets \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "Subnets[0].SubnetId" --output text 2>/dev/null || echo "")
+          SECURITY_GROUP=$(aws ec2 describe-security-groups \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=$STACK_NAME" \
+            --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+
+          NETWORK_CFG=""
+          if [ -n "$SUBNET" ] && [ "$SUBNET" != "None" ] && [ -n "$SECURITY_GROUP" ] && [ "$SECURITY_GROUP" != "None" ]; then
+            NETWORK_CFG="awsvpcConfiguration={subnets=[$SUBNET],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}"
+          fi
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            ${NETWORK_CFG:+--network-configuration "$NETWORK_CFG"} \
+            --overrides "{\"containerOverrides\":[{\"name\":\"backend\",\"command\":[\"python\",\"-m\",\"core_app.pricing.stripe_sync\",\"--stage\",\"$CFN_ENV\"]}]}" \
+            --query "tasks[0].taskArn" --output text)
+
+          echo "Stripe sync task started: $TASK_ARN"
+          echo "Waiting for Stripe sync task to complete..."
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[0].exitCode" --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::Stripe catalog sync task exited with code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Stripe catalog sync completed successfully."
+
+      - name: Force new ECS deployment (promote desired count to 2)
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          BACKEND_SVC="${{ steps.ecs-names.outputs.backend_svc }}"
+          FRONTEND_SVC="${{ steps.ecs-names.outputs.frontend_svc }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "ECS cluster not found in stack outputs — skipping service update."
+            exit 0
+          fi
+          if [ -n "$BACKEND_SVC" ] && [ "$BACKEND_SVC" != "None" ]; then
+            aws ecs update-service --cluster "$CLUSTER" --service "$BACKEND_SVC" \
+              --desired-count 2 --force-new-deployment --no-cli-pager
+            echo "Triggered backend service update (desired=2)."
+          fi
+          if [ -n "$FRONTEND_SVC" ] && [ "$FRONTEND_SVC" != "None" ]; then
+            aws ecs update-service --cluster "$CLUSTER" --service "$FRONTEND_SVC" \
+              --desired-count 2 --force-new-deployment --no-cli-pager
+            echo "Triggered frontend service update (desired=2)."
+          fi
+
+      - name: Wait for ECS services to stabilize
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          BACKEND_SVC="${{ steps.ecs-names.outputs.backend_svc }}"
+          FRONTEND_SVC="${{ steps.ecs-names.outputs.frontend_svc }}"
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "No ECS cluster — skipping stability wait."
+            exit 0
+          fi
+
+          SERVICES=()
+          [ -n "$BACKEND_SVC" ] && [ "$BACKEND_SVC" != "None" ] && SERVICES+=("$BACKEND_SVC")
+          [ -n "$FRONTEND_SVC" ] && [ "$FRONTEND_SVC" != "None" ] && SERVICES+=("$FRONTEND_SVC")
+
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "No services to wait for."
+            exit 0
+          fi
+
+          echo "Waiting for services to stabilize: ${SERVICES[*]}"
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services "${SERVICES[@]}"
+          echo "All ECS services are stable."
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEALTH_URL="https://$API_DOMAIN_NAME/api/v1/health"
+          CATALOG_URL="https://$API_DOMAIN_NAME/public/pricing/catalog"
+          MAX_RETRIES=6
+          SLEEP=10
+
+          for URL in "$HEALTH_URL" "$CATALOG_URL"; do
+            echo "Smoke testing: $URL"
+            for i in $(seq 1 $MAX_RETRIES); do
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || echo "000")
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "  OK ($URL returned 200)"
+                break
+              fi
+              echo "  Attempt $i/$MAX_RETRIES: HTTP $HTTP_CODE — retrying in ${SLEEP}s..."
+              sleep $SLEEP
+              if [ "$i" = "$MAX_RETRIES" ]; then
+                echo "::error::Smoke test failed for $URL after $MAX_RETRIES attempts (last HTTP $HTTP_CODE)"
+                exit 1
+              fi
+            done
+          done
+          echo "All smoke tests passed."
+
+      - name: Rollback on failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ecs-names.outputs.cluster }}"
+          BACKEND_SVC="${{ steps.ecs-names.outputs.backend_svc }}"
+          FRONTEND_SVC="${{ steps.ecs-names.outputs.frontend_svc }}"
+
+          if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "None" ]; then
+            echo "No ECS cluster — cannot rollback."
+            exit 0
+          fi
+
+          echo "::warning::Deployment failed — rolling back ECS services to previous task definition revision."
+
+          _rollback_service() {
+            local SVC="$1"
+            [ -z "$SVC" ] || [ "$SVC" = "None" ] && return
+            CURRENT_TD=$(aws ecs describe-services \
+              --cluster "$CLUSTER" --services "$SVC" \
+              --query "services[0].taskDefinition" --output text 2>/dev/null || echo "")
+            if [ -z "$CURRENT_TD" ] || [ "$CURRENT_TD" = "None" ]; then
+              echo "Cannot determine current task definition for $SVC — skipping rollback."
+              return
+            fi
+            FAMILY=$(echo "$CURRENT_TD" | rev | cut -d'/' -f1 | rev | sed 's/:[0-9]*$//')
+            REVISION=$(echo "$CURRENT_TD" | grep -oP ':\K[0-9]+$' || echo "")
+            if [ -z "$REVISION" ] || [ "$REVISION" -le 1 ]; then
+              echo "No previous revision available for $SVC — skipping rollback."
+              return
+            fi
+            PREV_REVISION=$((REVISION - 1))
+            PREV_TD="${FAMILY}:${PREV_REVISION}"
+            echo "Rolling back $SVC → $PREV_TD"
+            aws ecs update-service \
+              --cluster "$CLUSTER" --service "$SVC" \
+              --task-definition "$PREV_TD" \
+              --force-new-deployment --no-cli-pager || echo "Rollback update for $SVC failed — manual intervention required."
+          }
+
+          _rollback_service "$BACKEND_SVC"
+          _rollback_service "$FRONTEND_SVC"
+          echo "Rollback initiated. Monitor ECS console for completion."

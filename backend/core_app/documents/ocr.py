@@ -65,13 +65,17 @@ class TextractOcrService:
         status = resp.get("JobStatus", "UNKNOWN")
         blocks = resp.get("Blocks", []) or []
 
-        lines = [b.get("Text", "") for b in blocks if b.get("BlockType") == "LINE" and b.get("Text")]
+        lines = [
+            b.get("Text", "") for b in blocks if b.get("BlockType") == "LINE" and b.get("Text")
+        ]
         text = "\n".join(lines).strip()
         doc_type = classify_text(text) if text else "other"
 
         patch = {
             "status": status.lower(),
-            "completed_at": dt.datetime.utcnow().isoformat() if status in ("SUCCEEDED", "FAILED") else None,
+            "completed_at": dt.datetime.utcnow().isoformat()
+            if status in ("SUCCEEDED", "FAILED")
+            else None,
             "text": text[:200000],
             "blocks_summary": {"lines": len(lines), "blocks": len(blocks)},
             "doc_type_guess": doc_type,

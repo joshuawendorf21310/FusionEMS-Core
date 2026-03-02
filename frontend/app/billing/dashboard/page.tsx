@@ -4,12 +4,12 @@ import React from 'react';
 import AppShell from '@/components/AppShell';
 
 const KPI_CARDS = [
-  { label: 'MRR', value: '$2,847,391', sub: 'Monthly Recurring Revenue', accent: '#22d3ee' },
-  { label: 'YTD Revenue', value: '$31,204,770', sub: 'Year-to-date collected', accent: '#22d3ee' },
-  { label: 'Clean Claim Rate', value: '94.2%', sub: 'First-pass acceptance', accent: '#4caf50' },
-  { label: 'Avg Days in AR', value: '28.4', sub: 'Days outstanding', accent: '#ff9800' },
-  { label: 'Denial Rate', value: '3.8%', sub: 'Claims denied by payer', accent: '#e53935' },
-  { label: 'Collection Rate', value: '91.7%', sub: 'Net collection efficiency', accent: '#22d3ee' },
+  { label: 'MRR', value: '$2,847,391', sub: 'Monthly Recurring Revenue', accent: 'var(--color-status-info)' },
+  { label: 'YTD Revenue', value: '$31,204,770', sub: 'Year-to-date collected', accent: 'var(--color-status-info)' },
+  { label: 'Clean Claim Rate', value: '94.2%', sub: 'First-pass acceptance', accent: 'var(--color-status-active)' },
+  { label: 'Avg Days in AR', value: '28.4', sub: 'Days outstanding', accent: 'var(--color-status-warning)' },
+  { label: 'Denial Rate', value: '3.8%', sub: 'Claims denied by payer', accent: 'var(--color-brand-red)' },
+  { label: 'Collection Rate', value: '91.7%', sub: 'Net collection efficiency', accent: 'var(--color-status-info)' },
 ];
 
 const AR_AGING = [

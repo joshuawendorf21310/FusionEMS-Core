@@ -47,7 +47,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
@@ -148,7 +148,7 @@ function Sidebar({
                   </div>
                 )}
                 {step.status === 'in_progress' && (
-                  <div className="w-3.5 h-3.5 rounded-full animate-pulse" style={{ background: '#ff6b1a' }} />
+                  <div className="w-3.5 h-3.5 rounded-full animate-pulse" style={{ background: 'var(--color-brand-orange)' }} />
                 )}
                 {step.status === 'skipped' && (
                   <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
@@ -447,7 +447,7 @@ function Step4({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
                 value={row.unit_type_code}
                 onChange={(e) => updateRow(i, 'unit_type_code', e.target.value)}
                 className={inputClass}
-                style={{ background: '#0b0f14' }}
+                style={{ background: 'var(--color-bg-base)' }}
               >
                 {UNIT_TYPES.map((t) => (
                   <option key={t} value={t} className="bg-bg-base">{t}</option>
@@ -584,7 +584,7 @@ function Step6({
     <div className="space-y-4 max-w-lg">
       {loading && !done && (
         <div className="flex items-center gap-3 p-4 rounded-sm" style={{ background: 'rgba(255,107,26,0.06)', border: '1px solid rgba(255,107,26,0.2)' }}>
-          <div className="w-4 h-4 rounded-full animate-pulse" style={{ background: '#ff6b1a' }} />
+          <div className="w-4 h-4 rounded-full animate-pulse" style={{ background: 'var(--color-brand-orange)' }} />
           <span className="text-xs text-[rgba(255,255,255,0.7)]">Auto-assigning active NERIS pack…</span>
         </div>
       )}
@@ -715,7 +715,7 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
         </Field>
       </div>
       <Field label="Incident Type">
-        <select value={form.incident_type_code} onChange={(e) => update('incident_type_code', e.target.value)} className={inputClass} style={{ background: '#0b0f14' }}>
+        <select value={form.incident_type_code} onChange={(e) => update('incident_type_code', e.target.value)} className={inputClass} style={{ background: 'var(--color-bg-base)' }}>
           {INCIDENT_TYPE_VALUES.map((v) => (
             <option key={v.code} value={v.code} className="bg-bg-base">{v.label}</option>
           ))}
@@ -772,7 +772,7 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
                     border: `1px solid ${issue.severity === 'error' ? 'rgba(229,57,53,0.18)' : 'rgba(255,152,0,0.18)'}`,
                   }}
                 >
-                  <span className="text-[9px] font-bold uppercase" style={{ color: issue.severity === 'error' ? '#e53935' : '#ff9800' }}>
+                  <span className="text-[9px] font-bold uppercase" style={{ color: issue.severity === 'error' ? 'var(--color-brand-red)' : 'var(--color-status-warning)' }}>
                     {issue.severity}
                   </span>
                   {issue.field_label && <span className="ml-1.5 text-xs font-medium text-[rgba(255,255,255,0.75)]">{issue.field_label}</span>}

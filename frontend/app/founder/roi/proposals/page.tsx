@@ -18,7 +18,7 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
@@ -48,7 +48,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -120,10 +120,10 @@ export default function ProposalTrackerPage() {
 
       {/* MODULE 1 — Proposal Stats */}
       <div className="grid grid-cols-4 gap-3">
-        <StatCard label="Total Sent (all time)" value={18} color="#fff" />
-        <StatCard label="Open (awaiting)" value={4} color="#ff9800" />
-        <StatCard label="Accepted" value={12} color="#4caf50" />
-        <StatCard label="Declined" value={2} color="#e53935" />
+        <StatCard label="Total Sent (all time)" value={18} color="var(--color-text-primary)" />
+        <StatCard label="Open (awaiting)" value={4} color="var(--color-status-warning)" />
+        <StatCard label="Accepted" value={12} color="var(--color-status-active)" />
+        <StatCard label="Declined" value={2} color="var(--color-brand-red)" />
       </div>
 
       {/* MODULE 2 — Active Proposals */}
@@ -136,9 +136,9 @@ export default function ProposalTrackerPage() {
               onClick={() => setFilter(f)}
               className="text-[10px] font-semibold px-3 py-1 rounded-sm transition-all"
               style={{
-                background: filter === f ? '#ff980018' : 'transparent',
-                color: filter === f ? '#ff9800' : 'rgba(255,255,255,0.4)',
-                border: `1px solid ${filter === f ? '#ff980040' : 'rgba(255,255,255,0.08)'}`,
+                background: filter === f ? 'color-mix(in srgb, var(--color-status-warning) 9%, transparent)' : 'transparent',
+                color: filter === f ? 'var(--color-status-warning)' : 'rgba(255,255,255,0.4)',
+                border: `1px solid ${filter === f ? 'color-mix(in srgb, var(--color-status-warning) 25%, transparent)' : 'rgba(255,255,255,0.08)'}`,
               }}
             >
               {f}
@@ -173,9 +173,9 @@ export default function ProposalTrackerPage() {
                       <button
                         className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
                         style={{
-                          background: p.statusKey === 'error' ? '#e5393510' : '#ff980010',
-                          color: p.statusKey === 'error' ? '#e53935' : '#ff9800',
-                          border: `1px solid ${p.statusKey === 'error' ? '#e5393525' : '#ff980025'}`,
+                          background: p.statusKey === 'error' ? 'color-mix(in srgb, var(--color-brand-red) 6%, transparent)' : 'color-mix(in srgb, var(--color-status-warning) 6%, transparent)',
+                          color: p.statusKey === 'error' ? 'var(--color-brand-red)' : 'var(--color-status-warning)',
+                          border: `1px solid ${p.statusKey === 'error' ? 'color-mix(in srgb, var(--color-brand-red) 14%, transparent)' : 'color-mix(in srgb, var(--color-status-warning) 14%, transparent)'}`,
                         }}
                       >
                         {p.action}
@@ -219,10 +219,10 @@ export default function ProposalTrackerPage() {
       <Panel>
         <SectionHeader number="4" title="Proposal Analytics" sub="Conversion performance" />
         <div className="grid grid-cols-4 gap-3">
-          <StatCard label="Avg Time to View" value="1.8 days" color="#29b6f6" />
-          <StatCard label="Avg Time to Decision" value="12.4 days" color="#ff9800" />
-          <StatCard label="Accept Rate" value="66.7%" color="#4caf50" />
-          <StatCard label="Avg Deal Value" value="$19,200/yr" color="#fff" />
+          <StatCard label="Avg Time to View" value="1.8 days" color="var(--color-status-info)" />
+          <StatCard label="Avg Time to Decision" value="12.4 days" color="var(--color-status-warning)" />
+          <StatCard label="Accept Rate" value="66.7%" color="var(--color-status-active)" />
+          <StatCard label="Avg Deal Value" value="$19,200/yr" color="var(--color-text-primary)" />
         </div>
         <div className="mt-4 space-y-3">
           <div>
@@ -230,14 +230,14 @@ export default function ProposalTrackerPage() {
               <span className="text-[11px] text-[rgba(255,255,255,0.6)]">Accept Rate</span>
               <span className="text-[11px] font-bold text-status-active">66.7%</span>
             </div>
-            <ProgressBar value={66.7} max={100} color="#4caf50" />
+            <ProgressBar value={66.7} max={100} color="var(--color-status-active)" />
           </div>
           <div>
             <div className="flex justify-between mb-1.5">
               <span className="text-[11px] text-[rgba(255,255,255,0.6)]">Pipeline Coverage (ARR target)</span>
               <span className="text-[11px] font-bold text-status-warning">43%</span>
             </div>
-            <ProgressBar value={43} max={100} color="#ff9800" />
+            <ProgressBar value={43} max={100} color="var(--color-status-warning)" />
           </div>
         </div>
       </Panel>
@@ -262,7 +262,7 @@ export default function ProposalTrackerPage() {
               </div>
               <button
                 className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-                style={{ background: '#ff980018', color: 'var(--q-yellow)', border: '1px solid #ff980030' }}
+                style={{ background: 'color-mix(in srgb, var(--color-status-warning) 9%, transparent)', color: 'var(--q-yellow)', border: '1px solid color-mix(in srgb, var(--color-status-warning) 19%, transparent)' }}
               >
                 Send Email
               </button>
@@ -308,7 +308,7 @@ export default function ProposalTrackerPage() {
         <button
           disabled={!newAgency || !newEmail}
           className="text-[11px] font-bold px-6 py-2.5 rounded-sm transition-all disabled:opacity-30 hover:opacity-90"
-          style={{ background: '#ff9800', color: '#000' }}
+          style={{ background: 'var(--color-status-warning)', color: '#000' }}
         >
           Generate ROI Proposal
         </button>

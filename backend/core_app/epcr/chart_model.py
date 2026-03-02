@@ -3,12 +3,12 @@ from __future__ import annotations
 import dataclasses
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 
-class ChartMode(str, Enum):
+class ChartMode(StrEnum):
     BLS = "bls"
     ACLS = "acls"
     CCT = "cct"
@@ -16,7 +16,7 @@ class ChartMode(str, Enum):
     FIRE = "fire"
 
 
-class ChartStatus(str, Enum):
+class ChartStatus(StrEnum):
     DRAFT = "draft"
     IN_PROGRESS = "in_progress"
     PENDING_QA = "pending_qa"
@@ -27,7 +27,7 @@ class ChartStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class SyncStatus(str, Enum):
+class SyncStatus(StrEnum):
     LOCAL_ONLY = "local_only"
     SYNCED = "synced"
     CONFLICT = "conflict"
@@ -247,8 +247,8 @@ class Chart:
     chart_mode: str = ChartMode.BLS.value
     chart_status: str = ChartStatus.DRAFT.value
     sync_status: str = SyncStatus.PENDING_SYNC.value
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     created_by: str = ""
     last_modified_by: str = ""
     patient: PatientDemographics = field(default_factory=PatientDemographics)
@@ -272,7 +272,7 @@ class Chart:
         return dataclasses.asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "Chart":
+    def from_dict(cls, d: dict[str, Any]) -> Chart:
         c = cls.__new__(cls)
         c.chart_id = d.get("chart_id", str(uuid.uuid4()))
         c.tenant_id = d.get("tenant_id", "")
@@ -280,20 +280,34 @@ class Chart:
         c.chart_mode = d.get("chart_mode", ChartMode.BLS.value)
         c.chart_status = d.get("chart_status", ChartStatus.DRAFT.value)
         c.sync_status = d.get("sync_status", SyncStatus.PENDING_SYNC.value)
-        c.created_at = d.get("created_at", datetime.now(timezone.utc).isoformat())
-        c.updated_at = d.get("updated_at", datetime.now(timezone.utc).isoformat())
+        c.created_at = d.get("created_at", datetime.now(UTC).isoformat())
+        c.updated_at = d.get("updated_at", datetime.now(UTC).isoformat())
         c.created_by = d.get("created_by", "")
         c.last_modified_by = d.get("last_modified_by", "")
 
-        c.patient = _build_dataclass(PatientDemographics, d.get("patient", {})) if isinstance(d.get("patient"), dict) else PatientDemographics()
-        c.consent = _build_dataclass(ConsentRecord, d.get("consent", {})) if isinstance(d.get("consent"), dict) else ConsentRecord()
-        c.dispatch = _build_dataclass(DispatchInfo, d.get("dispatch", {})) if isinstance(d.get("dispatch"), dict) else DispatchInfo()
-        c.disposition = _build_dataclass(DispositionInfo, d.get("disposition", {})) if isinstance(d.get("disposition"), dict) else DispositionInfo()
+        c.patient = (
+            _build_dataclass(PatientDemographics, d.get("patient", {}))
+            if isinstance(d.get("patient"), dict)
+            else PatientDemographics()
+        )
+        c.consent = (
+            _build_dataclass(ConsentRecord, d.get("consent", {}))
+            if isinstance(d.get("consent"), dict)
+            else ConsentRecord()
+        )
+        c.dispatch = (
+            _build_dataclass(DispatchInfo, d.get("dispatch", {}))
+            if isinstance(d.get("dispatch"), dict)
+            else DispatchInfo()
+        )
+        c.disposition = (
+            _build_dataclass(DispositionInfo, d.get("disposition", {}))
+            if isinstance(d.get("disposition"), dict)
+            else DispositionInfo()
+        )
 
         c.vitals = [
-            _build_dataclass(VitalSet, vs)
-            for vs in d.get("vitals", [])
-            if isinstance(vs, dict)
+            _build_dataclass(VitalSet, vs) for vs in d.get("vitals", []) if isinstance(vs, dict)
         ]
         c.medications = [
             _build_dataclass(MedicationAdmin, m)

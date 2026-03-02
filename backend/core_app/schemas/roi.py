@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import Any
+
+from pydantic import BaseModel, Field
+
 
 class RoiInput(BaseModel):
     zip_code: str = Field(min_length=3, max_length=16)
@@ -16,9 +18,11 @@ class RoiInput(BaseModel):
     collection_efficiency: float | None = Field(default=None, ge=0.0, le=1.0)
     write_off_rate: float | None = Field(default=None, ge=0.0, le=1.0)
 
+
 class RoiOutput(BaseModel):
     outputs: dict[str, Any]
     outputs_hash: str
+
 
 class RoiScenarioResponse(BaseModel):
     id: str

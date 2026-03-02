@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-
-from core_app.documents.s3_storage import put_bytes, presign_get
+from core_app.documents.s3_storage import presign_get, put_bytes
 
 
 class EvidenceService:
@@ -35,7 +34,7 @@ class EvidenceService:
             "size_bytes": len(content),
             "sha256": sha256,
             "content_type": content_type,
-            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "uploaded_at": datetime.now(UTC).isoformat(),
         }
 
     def get_presigned_url(self, s3_key: str, expires_seconds: int = 300) -> str:
@@ -59,7 +58,7 @@ class EvidenceService:
             "source_attachment_id": source_attachment_id or "",
             "confidence": confidence,
             "confirmed_by": confirmed_by or "",
-            "confirmed_at": datetime.now(timezone.utc).isoformat() if confirmed_by else "",
+            "confirmed_at": datetime.now(UTC).isoformat() if confirmed_by else "",
             "bounding_box": bounding_box or {},
         }
         chart.setdefault("provenance", []).append(record)

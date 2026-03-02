@@ -33,7 +33,7 @@ const NAV_DOMAINS = [
     id: 'ai-governance',
     label: '3 · AI Governance',
     icon: '◈',
-    color: '#a855f7',
+    color: 'var(--color-system-compliance)',
     links: [
       { href: '/founder/ai/policies', label: 'AI Policies' },
       { href: '/founder/ai/prompt-editor', label: 'Prompt Editor' },
@@ -109,7 +109,7 @@ const NAV_DOMAINS = [
     id: 'pwa-mobile',
     label: '9 · PWA & Mobile',
     icon: '◈',
-    color: '#3b82f6',
+    color: 'var(--color-system-fleet)',
     links: [
       { href: '/founder/pwa/crewlink', label: 'CrewLink' },
       { href: '/founder/pwa/scheduling', label: 'Scheduling' },
@@ -121,7 +121,7 @@ const NAV_DOMAINS = [
     id: 'infrastructure',
     label: '10 · Infrastructure',
     icon: '◈',
-    color: '#94a3b8',
+    color: 'var(--color-text-muted)',
     links: [
       { href: '/founder/infra/ecs', label: 'ECS Health' },
       { href: '/founder/infra/rds', label: 'RDS Health' },

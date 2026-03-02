@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -38,7 +38,10 @@ BLS_BLOCKS: list[WorkflowBlock] = [
         required=True,
         mode_applicability=["bls"],
         order=2,
-        prompts=["Document patient consent type", "For refusals: confirm capacity, explain risks, obtain signature"],
+        prompts=[
+            "Document patient consent type",
+            "For refusals: confirm capacity, explain risks, obtain signature",
+        ],
         required_fields=["consent.consent_type"],
         conditional_rules=[],
         quick_fill_options=["Informed", "Implied", "Refusal", "Guardian"],
@@ -151,7 +154,11 @@ ACLS_BLOCKS: list[WorkflowBlock] = [
         required=True,
         mode_applicability=["acls"],
         order=5,
-        prompts=["Record code start time", "Document each intervention with timestamp", "ROSC or termination time required"],
+        prompts=[
+            "Record code start time",
+            "Document each intervention with timestamp",
+            "ROSC or termination time required",
+        ],
         required_fields=["acls.code_start_time", "acls.initial_rhythm"],
         conditional_rules=[],
         quick_fill_options=["VF", "VT", "PEA", "Asystole", "Normal Sinus"],
@@ -192,7 +199,10 @@ CCT_BLOCKS: list[WorkflowBlock] = [
         required=False,
         mode_applicability=["cct"],
         order=2,
-        prompts=["Ingest transfer paperwork", "Document prior meds/procedures as 'prior to our care'"],
+        prompts=[
+            "Ingest transfer paperwork",
+            "Document prior meds/procedures as 'prior to our care'",
+        ],
         required_fields=[],
         conditional_rules=[],
         quick_fill_options=[],
@@ -216,7 +226,10 @@ CCT_BLOCKS: list[WorkflowBlock] = [
         required=False,
         mode_applicability=["cct"],
         order=6,
-        prompts=["Capture vent screen or enter settings manually", "Mode, FiO2, PEEP, tidal volume, rate"],
+        prompts=[
+            "Capture vent screen or enter settings manually",
+            "Mode, FiO2, PEEP, tidal volume, rate",
+        ],
         required_fields=["cct.vent_settings"],
         conditional_rules=[],
         quick_fill_options=[],
@@ -350,6 +363,7 @@ def check_conditional_rules(chart: dict[str, Any]) -> list[dict[str, Any]]:
     if dob_str:
         try:
             from datetime import date
+
             dob = date.fromisoformat(str(dob_str)[:10])
             today = date.today()
             patient_age = (today - dob).days // 365
@@ -362,10 +376,12 @@ def check_conditional_rules(chart: dict[str, Any]) -> list[dict[str, Any]]:
             result = False
             if condition == "patient_age_lt_12":
                 result = patient_age is not None and patient_age < 12
-            triggered.append({
-                "block_id": block.block_id,
-                "rule": rule,
-                "triggered": result,
-            })
+            triggered.append(
+                {
+                    "block_id": block.block_id,
+                    "rule": rule,
+                    "triggered": result,
+                }
+            )
 
     return triggered

@@ -5,6 +5,7 @@ Revision ID: 20260226_0010
 Revises: 20260226_0009
 Create Date: 2026-02-26
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -33,9 +34,16 @@ def upgrade() -> None:
             comment="billing_voice | billing_sms | billing_fax",
         ),
         sa.Column("forward_to_phone_e164", sa.String(length=20), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
-    op.create_index("ix_tenant_phone_numbers_tenant", "tenant_phone_numbers", ["tenant_id", "purpose"])
+    op.create_index(
+        "ix_tenant_phone_numbers_tenant", "tenant_phone_numbers", ["tenant_id", "purpose"]
+    )
 
     # ------------------------------------------------------------------
     # telnyx_events
@@ -46,11 +54,23 @@ def upgrade() -> None:
         sa.Column("event_id", sa.String(length=128), primary_key=True),
         sa.Column("event_type", sa.String(length=128), nullable=False),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=True, index=True),
-        sa.Column("received_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("raw_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "received_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "raw_json",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
         sa.Column("processed_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_index("ix_telnyx_events_type_received", "telnyx_events", ["event_type", "received_at"])
+    op.create_index(
+        "ix_telnyx_events_type_received", "telnyx_events", ["event_type", "received_at"]
+    )
 
     # ------------------------------------------------------------------
     # telnyx_calls
@@ -66,8 +86,18 @@ def upgrade() -> None:
         sa.Column("statement_id", sa.String(length=64), nullable=True),
         sa.Column("sms_phone", sa.String(length=20), nullable=True),
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.create_index("ix_telnyx_calls_tenant_state", "telnyx_calls", ["tenant_id", "state"])
 
@@ -84,9 +114,18 @@ def upgrade() -> None:
         sa.Column("to_phone", sa.String(length=20), nullable=False),
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column("status", sa.String(length=32), nullable=False, server_default="queued"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
-    op.create_index("ix_telnyx_sms_tenant_direction", "telnyx_sms_messages", ["tenant_id", "direction", "created_at"])
+    op.create_index(
+        "ix_telnyx_sms_tenant_direction",
+        "telnyx_sms_messages",
+        ["tenant_id", "direction", "created_at"],
+    )
 
     # ------------------------------------------------------------------
     # telnyx_opt_outs
@@ -96,7 +135,12 @@ def upgrade() -> None:
         "telnyx_opt_outs",
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("phone_e164", sa.String(length=20), nullable=False),
-        sa.Column("opted_out_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "opted_out_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("source", sa.String(length=32), nullable=False, server_default="sms_stop"),
         sa.PrimaryKeyConstraint("tenant_id", "phone_e164"),
     )
@@ -117,8 +161,15 @@ def upgrade() -> None:
         sa.Column("doc_type", sa.String(length=64), nullable=True),
         sa.Column("case_id", postgresql.UUID(as_uuid=True), nullable=True, index=True),
         sa.Column("status", sa.String(length=32), nullable=False, server_default="pending_fetch"),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.create_index("ix_fax_documents_tenant_status", "fax_documents", ["tenant_id", "status"])
 

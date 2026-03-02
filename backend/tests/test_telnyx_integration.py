@@ -7,6 +7,7 @@ Covers:
 - SMS STOP/HELP keyword handling and opt-out enforcement
 - IVR state machine: MENU → COLLECT_STATEMENT_ID → COLLECT_SMS_PHONE → done
 """
+
 from __future__ import annotations
 
 import base64
@@ -21,8 +22,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi.testclient import TestClient
 
-
 # ── Ed25519 test key pair ────────────────────────────────────────────────────
+
 
 def _generate_test_keypair():
     private_key = Ed25519PrivateKey.generate()
@@ -39,6 +40,7 @@ def _sign_payload(private_key: Ed25519PrivateKey, raw_body: bytes, timestamp: st
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="module")
 def keypair():
@@ -59,129 +61,171 @@ def public_key_b64(keypair):
 # Section 1: Ed25519 signature verification unit tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestEd25519Verification:
     def test_valid_signature(self, private_key, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         body = b'{"test": "payload"}'
         ts = str(int(time.time()))
         sig = _sign_payload(private_key, body, ts)
-        assert verify_telnyx_webhook(
-            raw_body=body,
-            signature_ed25519=sig,
-            timestamp=ts,
-            public_key_base64=public_key_b64,
-            tolerance_seconds=300,
-        ) is True
+        assert (
+            verify_telnyx_webhook(
+                raw_body=body,
+                signature_ed25519=sig,
+                timestamp=ts,
+                public_key_base64=public_key_b64,
+                tolerance_seconds=300,
+            )
+            is True
+        )
 
     def test_invalid_signature_wrong_key(self, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         other_key = Ed25519PrivateKey.generate()
         body = b'{"test": "payload"}'
         ts = str(int(time.time()))
         sig = _sign_payload(other_key, body, ts)
-        assert verify_telnyx_webhook(
-            raw_body=body,
-            signature_ed25519=sig,
-            timestamp=ts,
-            public_key_base64=public_key_b64,
-        ) is False
+        assert (
+            verify_telnyx_webhook(
+                raw_body=body,
+                signature_ed25519=sig,
+                timestamp=ts,
+                public_key_base64=public_key_b64,
+            )
+            is False
+        )
 
     def test_tampered_body(self, private_key, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         body = b'{"test": "payload"}'
         ts = str(int(time.time()))
         sig = _sign_payload(private_key, body, ts)
         tampered = b'{"test": "tampered"}'
-        assert verify_telnyx_webhook(
-            raw_body=tampered,
-            signature_ed25519=sig,
-            timestamp=ts,
-            public_key_base64=public_key_b64,
-        ) is False
+        assert (
+            verify_telnyx_webhook(
+                raw_body=tampered,
+                signature_ed25519=sig,
+                timestamp=ts,
+                public_key_base64=public_key_b64,
+            )
+            is False
+        )
 
     def test_expired_timestamp(self, private_key, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         body = b'{"test": "payload"}'
         ts = str(int(time.time()) - 600)
         sig = _sign_payload(private_key, body, ts)
-        assert verify_telnyx_webhook(
-            raw_body=body,
-            signature_ed25519=sig,
-            timestamp=ts,
-            public_key_base64=public_key_b64,
-            tolerance_seconds=300,
-        ) is False
+        assert (
+            verify_telnyx_webhook(
+                raw_body=body,
+                signature_ed25519=sig,
+                timestamp=ts,
+                public_key_base64=public_key_b64,
+                tolerance_seconds=300,
+            )
+            is False
+        )
 
     def test_future_timestamp_within_tolerance(self, private_key, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         body = b'{"test": "payload"}'
         ts = str(int(time.time()) + 30)
         sig = _sign_payload(private_key, body, ts)
-        assert verify_telnyx_webhook(
-            raw_body=body,
-            signature_ed25519=sig,
-            timestamp=ts,
-            public_key_base64=public_key_b64,
-            tolerance_seconds=300,
-        ) is True
+        assert (
+            verify_telnyx_webhook(
+                raw_body=body,
+                signature_ed25519=sig,
+                timestamp=ts,
+                public_key_base64=public_key_b64,
+                tolerance_seconds=300,
+            )
+            is True
+        )
 
     def test_missing_signature(self, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
-        assert verify_telnyx_webhook(
-            raw_body=b"body",
-            signature_ed25519=None,
-            timestamp=str(int(time.time())),
-            public_key_base64=public_key_b64,
-        ) is False
+
+        assert (
+            verify_telnyx_webhook(
+                raw_body=b"body",
+                signature_ed25519=None,
+                timestamp=str(int(time.time())),
+                public_key_base64=public_key_b64,
+            )
+            is False
+        )
 
     def test_missing_timestamp(self, private_key, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         body = b"body"
         ts = str(int(time.time()))
         sig = _sign_payload(private_key, body, ts)
-        assert verify_telnyx_webhook(
-            raw_body=body,
-            signature_ed25519=sig,
-            timestamp=None,
-            public_key_base64=public_key_b64,
-        ) is False
+        assert (
+            verify_telnyx_webhook(
+                raw_body=body,
+                signature_ed25519=sig,
+                timestamp=None,
+                public_key_base64=public_key_b64,
+            )
+            is False
+        )
 
     def test_missing_public_key(self, private_key):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         body = b"body"
         ts = str(int(time.time()))
         sig = _sign_payload(private_key, body, ts)
-        assert verify_telnyx_webhook(
-            raw_body=body,
-            signature_ed25519=sig,
-            timestamp=ts,
-            public_key_base64="",
-        ) is False
+        assert (
+            verify_telnyx_webhook(
+                raw_body=body,
+                signature_ed25519=sig,
+                timestamp=ts,
+                public_key_base64="",
+            )
+            is False
+        )
 
     def test_garbage_signature(self, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
-        assert verify_telnyx_webhook(
-            raw_body=b"body",
-            signature_ed25519="not-base64!!!",
-            timestamp=str(int(time.time())),
-            public_key_base64=public_key_b64,
-        ) is False
+
+        assert (
+            verify_telnyx_webhook(
+                raw_body=b"body",
+                signature_ed25519="not-base64!!!",
+                timestamp=str(int(time.time())),
+                public_key_base64=public_key_b64,
+            )
+            is False
+        )
 
     def test_non_integer_timestamp(self, private_key, public_key_b64):
         from core_app.telnyx.signature import verify_telnyx_webhook
+
         body = b"body"
         sig = _sign_payload(private_key, body, "not-a-number")
-        assert verify_telnyx_webhook(
-            raw_body=body,
-            signature_ed25519=sig,
-            timestamp="not-a-number",
-            public_key_base64=public_key_b64,
-        ) is False
+        assert (
+            verify_telnyx_webhook(
+                raw_body=body,
+                signature_ed25519=sig,
+                timestamp="not-a-number",
+                public_key_base64=public_key_b64,
+            )
+            is False
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Section 2: SMS webhook — STOP/HELP compliance + idempotency
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _make_sms_event(
     *,
@@ -218,9 +262,10 @@ def _sms_headers(private_key, body_bytes: bytes) -> dict[str, str]:
 
 class TestSmsWebhook:
     def _make_client(self, private_key, public_key_b64, db_mock):
-        from core_app.api.sms_webhook_router import router
         from fastapi import FastAPI
+
         from core_app.api.dependencies import db_session_dependency
+        from core_app.api.sms_webhook_router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -287,8 +332,10 @@ class TestSmsWebhook:
         body_bytes = json.dumps(event).encode()
         headers = _sms_headers(private_key, body_bytes)
 
-        with patch("core_app.api.sms_webhook_router.get_settings") as mock_settings, \
-             patch("core_app.api.sms_webhook_router.send_sms") as mock_sms:
+        with (
+            patch("core_app.api.sms_webhook_router.get_settings") as mock_settings,
+            patch("core_app.api.sms_webhook_router.send_sms") as mock_sms,
+        ):
             mock_settings.return_value.telnyx_public_key = public_key_b64
             mock_settings.return_value.telnyx_webhook_tolerance_seconds = 300
             mock_settings.return_value.telnyx_api_key = "KEY"
@@ -307,8 +354,10 @@ class TestSmsWebhook:
         body_bytes = json.dumps(event).encode()
         headers = _sms_headers(private_key, body_bytes)
 
-        with patch("core_app.api.sms_webhook_router.get_settings") as mock_settings, \
-             patch("core_app.api.sms_webhook_router.send_sms"):
+        with (
+            patch("core_app.api.sms_webhook_router.get_settings") as mock_settings,
+            patch("core_app.api.sms_webhook_router.send_sms"),
+        ):
             mock_settings.return_value.telnyx_public_key = public_key_b64
             mock_settings.return_value.telnyx_webhook_tolerance_seconds = 300
             mock_settings.return_value.telnyx_api_key = "KEY"
@@ -326,8 +375,10 @@ class TestSmsWebhook:
         body_bytes = json.dumps(event).encode()
         headers = _sms_headers(private_key, body_bytes)
 
-        with patch("core_app.api.sms_webhook_router.get_settings") as mock_settings, \
-             patch("core_app.api.sms_webhook_router.send_sms") as mock_sms:
+        with (
+            patch("core_app.api.sms_webhook_router.get_settings") as mock_settings,
+            patch("core_app.api.sms_webhook_router.send_sms") as mock_sms,
+        ):
             mock_settings.return_value.telnyx_public_key = public_key_b64
             mock_settings.return_value.telnyx_webhook_tolerance_seconds = 300
             mock_settings.return_value.telnyx_api_key = "KEY"
@@ -347,8 +398,10 @@ class TestSmsWebhook:
         body_bytes = json.dumps(event).encode()
         headers = _sms_headers(private_key, body_bytes)
 
-        with patch("core_app.api.sms_webhook_router.get_settings") as mock_settings, \
-             patch("core_app.api.sms_webhook_router.send_sms") as mock_sms:
+        with (
+            patch("core_app.api.sms_webhook_router.get_settings") as mock_settings,
+            patch("core_app.api.sms_webhook_router.send_sms") as mock_sms,
+        ):
             mock_settings.return_value.telnyx_public_key = public_key_b64
             mock_settings.return_value.telnyx_webhook_tolerance_seconds = 300
             mock_settings.return_value.telnyx_api_key = "KEY"
@@ -381,6 +434,7 @@ class TestSmsWebhook:
 # Section 3: IVR state machine transitions
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _make_voice_event(
     event_type: str,
     *,
@@ -392,7 +446,9 @@ def _make_voice_event(
     event_id: str | None = None,
 ) -> dict[str, Any]:
     cid = call_control_id or str(uuid.uuid4())
-    client_state = base64.b64encode(client_state_raw.encode()).decode() if client_state_raw else None
+    client_state = (
+        base64.b64encode(client_state_raw.encode()).decode() if client_state_raw else None
+    )
     payload: dict[str, Any] = {
         "call_control_id": cid,
         "to": to,
@@ -425,9 +481,10 @@ def _voice_headers(private_key, body_bytes: bytes) -> dict[str, str]:
 
 class TestIvrStateMachine:
     def _make_client(self, private_key, public_key_b64, db_mock):
-        from core_app.api.voice_webhook_router import router
         from fastapi import FastAPI
+
         from core_app.api.dependencies import db_session_dependency
+        from core_app.api.voice_webhook_router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -514,8 +571,10 @@ class TestIvrStateMachine:
         body_bytes = json.dumps(event).encode()
         headers = _voice_headers(private_key, body_bytes)
 
-        with patch("core_app.api.voice_webhook_router.get_settings") as ms, \
-             patch("core_app.api.voice_webhook_router.call_answer") as mock_answer:
+        with (
+            patch("core_app.api.voice_webhook_router.get_settings") as ms,
+            patch("core_app.api.voice_webhook_router.call_answer") as mock_answer,
+        ):
             self._patch_settings(ms, public_key_b64)
             mock_answer.return_value = {}
 
@@ -531,8 +590,10 @@ class TestIvrStateMachine:
         body_bytes = json.dumps(event).encode()
         headers = _voice_headers(private_key, body_bytes)
 
-        with patch("core_app.api.voice_webhook_router.get_settings") as ms, \
-             patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather:
+        with (
+            patch("core_app.api.voice_webhook_router.get_settings") as ms,
+            patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather,
+        ):
             self._patch_settings(ms, public_key_b64)
             mock_gather.return_value = {}
 
@@ -552,8 +613,10 @@ class TestIvrStateMachine:
         body_bytes = json.dumps(event).encode()
         headers = _voice_headers(private_key, body_bytes)
 
-        with patch("core_app.api.voice_webhook_router.get_settings") as ms, \
-             patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather:
+        with (
+            patch("core_app.api.voice_webhook_router.get_settings") as ms,
+            patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather,
+        ):
             self._patch_settings(ms, public_key_b64)
             mock_gather.return_value = {}
 
@@ -573,8 +636,10 @@ class TestIvrStateMachine:
         body_bytes = json.dumps(event).encode()
         headers = _voice_headers(private_key, body_bytes)
 
-        with patch("core_app.api.voice_webhook_router.get_settings") as ms, \
-             patch("core_app.api.voice_webhook_router.call_transfer") as mock_transfer:
+        with (
+            patch("core_app.api.voice_webhook_router.get_settings") as ms,
+            patch("core_app.api.voice_webhook_router.call_transfer") as mock_transfer,
+        ):
             self._patch_settings(ms, public_key_b64)
             mock_transfer.return_value = {}
 
@@ -596,9 +661,11 @@ class TestIvrStateMachine:
         body_bytes = json.dumps(event).encode()
         headers = _voice_headers(private_key, body_bytes)
 
-        with patch("core_app.api.voice_webhook_router.get_settings") as ms, \
-             patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather, \
-             patch("core_app.api.voice_webhook_router._validate_statement", return_value=True):
+        with (
+            patch("core_app.api.voice_webhook_router.get_settings") as ms,
+            patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather,
+            patch("core_app.api.voice_webhook_router._validate_statement", return_value=True),
+        ):
             self._patch_settings(ms, public_key_b64)
             mock_gather.return_value = {}
 
@@ -661,9 +728,11 @@ class TestIvrStateMachine:
         body_bytes = json.dumps(event).encode()
         headers = _voice_headers(private_key, body_bytes)
 
-        with patch("core_app.api.voice_webhook_router.get_settings") as ms, \
-             patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather, \
-             patch("core_app.api.voice_webhook_router.voice_payment_helper") as mock_helper:
+        with (
+            patch("core_app.api.voice_webhook_router.get_settings") as ms,
+            patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather,
+            patch("core_app.api.voice_webhook_router.voice_payment_helper") as mock_helper,
+        ):
             self._patch_settings(ms, public_key_b64)
             mock_gather.return_value = {}
             mock_helper.send_payment_link_for_call = AsyncMock(return_value=None)
@@ -706,8 +775,10 @@ class TestIvrStateMachine:
         body_bytes = json.dumps(event).encode()
         headers = _voice_headers(private_key, body_bytes)
 
-        with patch("core_app.api.voice_webhook_router.get_settings") as ms, \
-             patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather:
+        with (
+            patch("core_app.api.voice_webhook_router.get_settings") as ms,
+            patch("core_app.api.voice_webhook_router.call_gather_using_audio") as mock_gather,
+        ):
             self._patch_settings(ms, public_key_b64)
             mock_gather.return_value = {}
 
@@ -720,6 +791,7 @@ class TestIvrStateMachine:
 # ══════════════════════════════════════════════════════════════════════════════
 # Section 4: Fax webhook — idempotency + sig verify
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _make_fax_event(
     *,
@@ -756,9 +828,10 @@ def _fax_headers(private_key, body_bytes: bytes) -> dict[str, str]:
 
 class TestFaxWebhook:
     def _make_client(self, private_key, public_key_b64, db_mock):
-        from core_app.api.fax_webhook_router import router
         from fastapi import FastAPI
+
         from core_app.api.dependencies import db_session_dependency
+        from core_app.api.fax_webhook_router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -813,10 +886,12 @@ class TestFaxWebhook:
         headers = _fax_headers(private_key, body_bytes)
         pdf_bytes = b"%PDF-1.4 fake pdf content"
 
-        with patch("core_app.api.fax_webhook_router.get_settings") as ms, \
-             patch("core_app.api.fax_webhook_router.download_media", return_value=pdf_bytes), \
-             patch("core_app.api.fax_webhook_router.put_bytes") as mock_put, \
-             patch("core_app.api.fax_webhook_router.sqs_publisher") as mock_sqs:
+        with (
+            patch("core_app.api.fax_webhook_router.get_settings") as ms,
+            patch("core_app.api.fax_webhook_router.download_media", return_value=pdf_bytes),
+            patch("core_app.api.fax_webhook_router.put_bytes") as mock_put,
+            patch("core_app.api.fax_webhook_router.sqs_publisher") as mock_sqs,
+        ):
             s = MagicMock()
             s.telnyx_public_key = public_key_b64
             s.telnyx_webhook_tolerance_seconds = 300
@@ -840,10 +915,12 @@ class TestFaxWebhook:
         body_bytes = json.dumps(event).encode()
         headers = _fax_headers(private_key, body_bytes)
 
-        with patch("core_app.api.fax_webhook_router.get_settings") as ms, \
-             patch("core_app.api.fax_webhook_router.download_media") as mock_dl, \
-             patch("core_app.api.fax_webhook_router.put_bytes"), \
-             patch("core_app.api.fax_webhook_router.sqs_publisher"):
+        with (
+            patch("core_app.api.fax_webhook_router.get_settings") as ms,
+            patch("core_app.api.fax_webhook_router.download_media") as mock_dl,
+            patch("core_app.api.fax_webhook_router.put_bytes"),
+            patch("core_app.api.fax_webhook_router.sqs_publisher"),
+        ):
             s = MagicMock()
             s.telnyx_public_key = public_key_b64
             s.telnyx_webhook_tolerance_seconds = 300
@@ -888,8 +965,10 @@ class TestFaxWebhook:
         body_bytes = json.dumps(event).encode()
         headers = _fax_headers(private_key, body_bytes)
 
-        with patch("core_app.api.fax_webhook_router.get_settings") as ms, \
-             patch("core_app.api.fax_webhook_router.download_media") as mock_dl:
+        with (
+            patch("core_app.api.fax_webhook_router.get_settings") as ms,
+            patch("core_app.api.fax_webhook_router.download_media") as mock_dl,
+        ):
             s = MagicMock()
             s.telnyx_public_key = public_key_b64
             s.telnyx_webhook_tolerance_seconds = 300

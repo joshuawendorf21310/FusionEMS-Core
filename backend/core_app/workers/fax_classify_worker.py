@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -42,7 +42,9 @@ def process_fax_classify(message: dict[str, Any]) -> None:
 
     logger.info(
         "fax_classify_start fax_id=%s tenant_id=%s s3_key=%s",
-        fax_id, tenant_id, s3_key,
+        fax_id,
+        tenant_id,
+        s3_key,
     )
 
     if not fax_id or not s3_key:
@@ -67,7 +69,10 @@ def process_fax_classify(message: dict[str, Any]) -> None:
 
     logger.info(
         "fax_classify_done fax_id=%s doc_type=%s case_id=%s status=%s",
-        fax_id, doc_type, refined_case_id, status,
+        fax_id,
+        doc_type,
+        refined_case_id,
+        status,
     )
 
 
@@ -102,7 +107,9 @@ def _extract_text(*, s3_key: str, bucket: str) -> str:
         except Exception as exc:
             logger.error(
                 "fax_classify_textract_poll_failed job_id=%s attempt=%d error=%s",
-                job_id, attempt, exc,
+                job_id,
+                attempt,
+                exc,
             )
             return ""
 
@@ -111,7 +118,8 @@ def _extract_text(*, s3_key: str, bucket: str) -> str:
         if job_status == "FAILED":
             logger.error(
                 "fax_classify_textract_job_failed job_id=%s status_message=%s",
-                job_id, resp.get("StatusMessage", ""),
+                job_id,
+                resp.get("StatusMessage", ""),
             )
             return ""
 
@@ -123,20 +131,17 @@ def _extract_text(*, s3_key: str, bucket: str) -> str:
             if not next_token:
                 break
         else:
-            logger.debug(
-                "fax_classify_textract_in_progress job_id=%s attempt=%d", job_id, attempt
-            )
+            logger.debug("fax_classify_textract_in_progress job_id=%s attempt=%d", job_id, attempt)
     else:
         logger.error(
             "fax_classify_textract_timeout job_id=%s after %d polls",
-            job_id, _TEXTRACT_MAX_POLLS,
+            job_id,
+            _TEXTRACT_MAX_POLLS,
         )
         return ""
 
     text = "\n".join(lines)
-    logger.info(
-        "fax_classify_textract_done job_id=%s characters=%d", job_id, len(text)
-    )
+    logger.info("fax_classify_textract_done job_id=%s characters=%d", job_id, len(text))
     return text
 
 
@@ -186,6 +191,7 @@ def _persist_results(
 
     try:
         import psycopg
+
         with psycopg.connect(database_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -197,7 +203,7 @@ def _persist_results(
                         updated_at = %s
                     WHERE fax_id = %s
                     """,
-                    (doc_type, case_id, status, datetime.now(timezone.utc).isoformat(), fax_id),
+                    (doc_type, case_id, status, datetime.now(UTC).isoformat(), fax_id),
                 )
             conn.commit()
     except Exception as exc:

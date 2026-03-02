@@ -11,20 +11,37 @@ from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
 
-router = APIRouter(prefix="/api/v1/cad", tags=['CAD'])
+router = APIRouter(prefix="/api/v1/cad", tags=["CAD"])
 
 _ALS_COMPLAINTS = {
-    "cardiac arrest", "chest pain", "stroke", "difficulty breathing",
-    "respiratory distress", "altered mental status", "seizure", "anaphylaxis",
-    "overdose", "major trauma", "unconscious", "unresponsive",
+    "cardiac arrest",
+    "chest pain",
+    "stroke",
+    "difficulty breathing",
+    "respiratory distress",
+    "altered mental status",
+    "seizure",
+    "anaphylaxis",
+    "overdose",
+    "major trauma",
+    "unconscious",
+    "unresponsive",
 }
 _CCT_COMPLAINTS = {
-    "ventilator dependent", "critical care transfer", "post cardiac arrest",
-    "aortic dissection", "intracranial hemorrhage",
+    "ventilator dependent",
+    "critical care transfer",
+    "post cardiac arrest",
+    "aortic dissection",
+    "intracranial hemorrhage",
 }
 _HIGH_RISK_MECHANISMS = {
-    "mvc high speed", "fall > 20 feet", "penetrating torso", "explosion",
-    "electrocution", "drowning", "hanging",
+    "mvc high speed",
+    "fall > 20 feet",
+    "penetrating torso",
+    "explosion",
+    "electrocution",
+    "drowning",
+    "hanging",
 }
 
 
@@ -151,19 +168,50 @@ def _compute_acuity(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/calls")
-async def create_call(payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def create_call(
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
-    return await svc.create(table="calls", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=payload, correlation_id=getattr(request.state, "correlation_id", None))
+    return await svc.create(
+        table="calls",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=payload,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
 
 @router.post("/calls/{call_id}/intake/answer")
-async def intake_answer(call_id: uuid.UUID, payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def intake_answer(
+    call_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     payload = dict(payload)
     payload["call_id"] = str(call_id)
     svc = DominationService(db, get_event_publisher())
-    return await svc.create(table="call_intake_answers", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=payload, correlation_id=getattr(request.state, "correlation_id", None))
+    return await svc.create(
+        table="call_intake_answers",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=payload,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
 
 @router.post("/calls/{call_id}/decision/compute")
-async def compute_decision(call_id: uuid.UUID, payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def compute_decision(
+    call_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     svc = DominationService(db, get_event_publisher())
     acuity = _compute_acuity(payload)
     decision = {
@@ -176,46 +224,110 @@ async def compute_decision(call_id: uuid.UUID, payload: dict[str, Any], request:
         "required_docs": acuity["required_docs"],
         "risk_flags": acuity["risk_flags"],
         "suggested_questions": acuity["suggested_questions"],
-        "engine_version": "v1"
+        "engine_version": "v1",
     }
-    return await svc.create(table="dispatch_decisions", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=decision, correlation_id=getattr(request.state, "correlation_id", None))
+    return await svc.create(
+        table="dispatch_decisions",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=decision,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
 
 @router.post("/calls/{call_id}/decision/finalize")
-async def finalize_decision(call_id: uuid.UUID, payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def finalize_decision(
+    call_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     if payload.get("override") and not payload.get("override_reason"):
         return {"error": "override_reason_required"}
     payload = dict(payload)
     payload["call_id"] = str(call_id)
     payload["finalized_by"] = str(current.user_id)
     svc = DominationService(db, get_event_publisher())
-    return await svc.create(table="dispatch_decisions", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=payload, correlation_id=getattr(request.state, "correlation_id", None))
+    return await svc.create(
+        table="dispatch_decisions",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=payload,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
 
 @router.post("/calls/{call_id}/assign")
-async def assign_unit(call_id: uuid.UUID, payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def assign_unit(
+    call_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     payload = dict(payload)
     payload["call_id"] = str(call_id)
     svc = DominationService(db, get_event_publisher())
-    return await svc.create(table="crew_assignments", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=payload, correlation_id=getattr(request.state, "correlation_id", None))
+    return await svc.create(
+        table="crew_assignments",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data=payload,
+        correlation_id=getattr(request.state, "correlation_id", None),
+    )
+
 
 @router.post("/calls/{call_id}/status")
-async def set_call_status(call_id: uuid.UUID, payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency)):
+async def set_call_status(
+    call_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
     status = payload.get("status")
     expected_version = int(payload.get("expected_version", 0))
     svc = DominationService(db, get_event_publisher())
-    updated = svc.repo("calls").update(tenant_id=current.tenant_id, record_id=call_id, expected_version=expected_version, patch={"status": status})
+    updated = svc.repo("calls").update(
+        tenant_id=current.tenant_id,
+        record_id=call_id,
+        expected_version=expected_version,
+        patch={"status": status},
+    )
     if updated is None:
         event = {"call_id": str(call_id), "status": status}
-        return await svc.create(table="schedule_audit_events", tenant_id=current.tenant_id, actor_user_id=current.user_id, data=event, correlation_id=getattr(request.state, "correlation_id", None))
+        return await svc.create(
+            table="schedule_audit_events",
+            tenant_id=current.tenant_id,
+            actor_user_id=current.user_id,
+            data=event,
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
     return updated
 
+
 @router.get("/ops/board")
-async def ops_board(request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(db_session_dependency), limit: int = 200):
+async def ops_board(
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+    limit: int = 200,
+):
     svc = DominationService(db, get_event_publisher())
     return {
         "calls": svc.repo("calls").list(tenant_id=current.tenant_id, limit=limit, offset=0),
-        "unit_status_events": svc.repo("unit_status_events").list(tenant_id=current.tenant_id, limit=limit, offset=0),
-        "unit_locations": svc.repo("unit_locations").list(tenant_id=current.tenant_id, limit=limit, offset=0),
-        "weather_alerts": svc.repo("weather_alerts").list(tenant_id=current.tenant_id, limit=limit, offset=0),
-        "fleet_alerts": svc.repo("fleet_alerts").list(tenant_id=current.tenant_id, limit=limit, offset=0),
+        "unit_status_events": svc.repo("unit_status_events").list(
+            tenant_id=current.tenant_id, limit=limit, offset=0
+        ),
+        "unit_locations": svc.repo("unit_locations").list(
+            tenant_id=current.tenant_id, limit=limit, offset=0
+        ),
+        "weather_alerts": svc.repo("weather_alerts").list(
+            tenant_id=current.tenant_id, limit=limit, offset=0
+        ),
+        "fleet_alerts": svc.repo("fleet_alerts").list(
+            tenant_id=current.tenant_id, limit=limit, offset=0
+        ),
         "crew_pages": svc.repo("pages").list(tenant_id=current.tenant_id, limit=limit, offset=0),
     }

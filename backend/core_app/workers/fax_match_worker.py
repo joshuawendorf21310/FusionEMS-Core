@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -38,7 +38,12 @@ def process_fax_match(message: dict) -> None:
     logger.info("fax_match_start fax_id=%s correlation_id=%s", fax_id, correlation_id)
 
     if not fax_id or not tenant_id:
-        logger.warning("fax_match_missing_fields fax_id=%s tenant_id=%s correlation_id=%s", fax_id, tenant_id, correlation_id)
+        logger.warning(
+            "fax_match_missing_fields fax_id=%s tenant_id=%s correlation_id=%s",
+            fax_id,
+            tenant_id,
+            correlation_id,
+        )
         return
 
     database_url_idem = os.environ.get("DATABASE_URL", "")
@@ -49,17 +54,29 @@ def process_fax_match(message: dict) -> None:
             db = _Session()
             try:
                 existing = db.execute(
-                    text("SELECT data->>'match_status' as status FROM document_matches WHERE data->>'fax_id' = :fid AND tenant_id = :tid LIMIT 1"),
-                    {"fid": fax_id, "tid": str(tenant_id)}
+                    text(
+                        "SELECT data->>'match_status' as status FROM document_matches WHERE data->>'fax_id' = :fid AND tenant_id = :tid LIMIT 1"
+                    ),
+                    {"fid": fax_id, "tid": str(tenant_id)},
                 ).fetchone()
                 if existing and existing.status in ("matched", "suggested"):
-                    logger.info("fax_match_skip_already_processed fax_id=%s status=%s correlation_id=%s", fax_id, existing.status, correlation_id)
+                    logger.info(
+                        "fax_match_skip_already_processed fax_id=%s status=%s correlation_id=%s",
+                        fax_id,
+                        existing.status,
+                        correlation_id,
+                    )
                     return {"skipped": True, "reason": "already_processed", "fax_id": fax_id}
             finally:
                 db.close()
                 _engine.dispose()
         except Exception as _idem_exc:
-            logger.warning("fax_match_idempotency_check_failed fax_id=%s error=%s correlation_id=%s", fax_id, _idem_exc, correlation_id)
+            logger.warning(
+                "fax_match_idempotency_check_failed fax_id=%s error=%s correlation_id=%s",
+                fax_id,
+                _idem_exc,
+                correlation_id,
+            )
 
     database_url = os.environ.get("DATABASE_URL", "")
     bucket = os.environ.get("S3_BUCKET_DOCS", "")
@@ -68,9 +85,13 @@ def process_fax_match(message: dict) -> None:
     if s3_key and bucket:
         qr_payload = _try_decode_qr_from_pdf(bucket=bucket, s3_key=s3_key)
 
-
     if qr_payload:
-        logger.info("fax_match_qr_decoded fax_id=%s payload_claim_id=%s correlation_id=%s", fax_id, qr_payload.get("claim_id"), correlation_id)
+        logger.info(
+            "fax_match_qr_decoded fax_id=%s payload_claim_id=%s correlation_id=%s",
+            fax_id,
+            qr_payload.get("claim_id"),
+            correlation_id,
+        )
         match_result = _match_by_qr(
             fax_id=fax_id,
             tenant_id=tenant_id,
@@ -85,7 +106,12 @@ def process_fax_match(message: dict) -> None:
                 suggested_matches=None,
                 database_url=database_url,
             )
-            logger.info("fax_match_auto_matched_qr fax_id=%s claim_id=%s correlation_id=%s", fax_id, match_result["claim_id"], correlation_id)
+            logger.info(
+                "fax_match_auto_matched_qr fax_id=%s claim_id=%s correlation_id=%s",
+                fax_id,
+                match_result["claim_id"],
+                correlation_id,
+            )
             return
 
     if ocr_text:
@@ -115,7 +141,10 @@ def process_fax_match(message: dict) -> None:
                 )
                 logger.info(
                     "fax_match_auto_matched_prob fax_id=%s claim_id=%s score=%s correlation_id=%s",
-                    fax_id, best["claim_id"], best["score"], correlation_id,
+                    fax_id,
+                    best["claim_id"],
+                    best["score"],
+                    correlation_id,
                 )
                 return
 
@@ -126,7 +155,12 @@ def process_fax_match(message: dict) -> None:
                 suggested_matches=matches[:5],
                 database_url=database_url,
             )
-            logger.info("fax_match_suggested fax_id=%s top_score=%s correlation_id=%s", fax_id, best["score"], correlation_id)
+            logger.info(
+                "fax_match_suggested fax_id=%s top_score=%s correlation_id=%s",
+                fax_id,
+                best["score"],
+                correlation_id,
+            )
             return
 
     _persist_status(
@@ -142,6 +176,7 @@ def process_fax_match(message: dict) -> None:
 def _try_decode_qr_from_pdf(*, bucket: str, s3_key: str) -> dict | None:
     try:
         import boto3
+
         s3 = boto3.client("s3")
         resp = s3.get_object(Bucket=bucket, Key=s3_key)
         pdf_bytes: bytes = resp["Body"].read()
@@ -152,6 +187,7 @@ def _try_decode_qr_from_pdf(*, bucket: str, s3_key: str) -> dict | None:
     first_page_bytes: bytes = pdf_bytes
     try:
         import fitz
+
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         if doc.page_count > 0:
             page = doc[0]
@@ -183,11 +219,13 @@ def _match_by_qr(
     try:
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
+
         engine = create_engine(database_url, pool_pre_ping=True)
         Session = sessionmaker(bind=engine)
         db = Session()
         try:
             from core_app.fax.claim_matcher import ClaimMatcher
+
             matcher = ClaimMatcher(db, tenant_id)
             result = matcher.match_claim_by_qr(qr_payload)
             if result:
@@ -216,11 +254,13 @@ def _match_probabilistic(
     try:
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
+
         engine = create_engine(database_url, pool_pre_ping=True)
         Session = sessionmaker(bind=engine)
         db = Session()
         try:
             from core_app.fax.claim_matcher import ClaimMatcher
+
             matcher = ClaimMatcher(db, tenant_id)
             return matcher.match_claim_probabilistic(ocr_text, fax_date=fax_date)
         finally:
@@ -244,18 +284,22 @@ def _attach_claim(
     try:
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
+
         engine = create_engine(database_url, pool_pre_ping=True)
         Session = sessionmaker(bind=engine)
         db = Session()
         try:
             from core_app.fax.claim_matcher import ClaimMatcher
+
             matcher = ClaimMatcher(db, tenant_id)
             matcher.attach_to_claim(fax_id, claim_id, attachment_type, actor="auto_worker")
         finally:
             db.close()
             engine.dispose()
     except Exception as exc:
-        logger.error("fax_match_attach_failed fax_id=%s claim_id=%s error=%s", fax_id, claim_id, exc)
+        logger.error(
+            "fax_match_attach_failed fax_id=%s claim_id=%s error=%s", fax_id, claim_id, exc
+        )
 
 
 def _persist_status(
@@ -270,11 +314,12 @@ def _persist_status(
         logger.error("fax_match_persist_skipped DATABASE_URL not set")
         return
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     suggested_json = json.dumps(suggested_matches or [], default=str)
 
     try:
         import psycopg
+
         with psycopg.connect(database_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(

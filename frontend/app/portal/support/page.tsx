@@ -341,7 +341,7 @@ export default function AgencySupportPage() {
   return (
     <div
       className="flex h-screen overflow-hidden"
-      style={{ background: '#07090d', color: 'white' }}
+      style={{ background: 'var(--color-bg-void)', color: 'white' }}
     >
       {/* ── Left sidebar ─────────────────────────────────────────────────── */}
       <aside

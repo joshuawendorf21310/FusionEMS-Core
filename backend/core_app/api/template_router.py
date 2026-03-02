@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -170,7 +170,7 @@ async def update_template(
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     patch["version"] = record.get("data", {}).get("version", 1) + 1
     patch["updated_by"] = str(current.user_id)
-    patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+    patch["updated_at"] = datetime.now(UTC).isoformat()
     updated = await svc.update(
         table="templates",
         tenant_id=current.tenant_id,
@@ -215,7 +215,7 @@ async def delete_template(
         record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        patch={"status": "archived", "archived_at": datetime.now(timezone.utc).isoformat()},
+        patch={"status": "archived", "archived_at": datetime.now(UTC).isoformat()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {"status": "archived", "template_id": str(template_id)}
@@ -247,10 +247,19 @@ async def inject_variables(
             table="template_renders",
             tenant_id=current.tenant_id,
             actor_user_id=current.user_id,
-            data={"template_id": str(body.template_id), "variable_map": body.variable_map, "rendered_length": len(rendered)},
+            data={
+                "template_id": str(body.template_id),
+                "variable_map": body.variable_map,
+                "rendered_length": len(rendered),
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
-    return {"rendered": rendered, "errors": errors, "preview_only": body.preview_only, "missing_variables": missing_vars}
+    return {
+        "rendered": rendered,
+        "errors": errors,
+        "preview_only": body.preview_only,
+        "missing_variables": missing_vars,
+    }
 
 
 @router.post("/{template_id}/approve")
@@ -273,7 +282,11 @@ async def approve_template(
         record_id=record["id"],
         actor_user_id=current.user_id,
         expected_version=record.get("version", 1),
-        patch={"status": new_status, "approval_notes": body.notes, "approved_by": str(current.user_id)},
+        patch={
+            "status": new_status,
+            "approval_notes": body.notes,
+            "approved_by": str(current.user_id),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -335,9 +348,12 @@ async def rollback_template(
     svc = DominationService(db, get_event_publisher())
     all_versions = svc.repo("template_versions").list(tenant_id=current.tenant_id, limit=500)
     target = next(
-        (v for v in all_versions
-         if v.get("data", {}).get("template_id") == str(template_id)
-         and v.get("data", {}).get("version") == version),
+        (
+            v
+            for v in all_versions
+            if v.get("data", {}).get("template_id") == str(template_id)
+            and v.get("data", {}).get("version") == version
+        ),
         None,
     )
     if not target:
@@ -370,8 +386,24 @@ async def diff_versions(
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
     all_versions = svc.repo("template_versions").list(tenant_id=current.tenant_id, limit=500)
-    ver_a = next((v for v in all_versions if v.get("data", {}).get("template_id") == str(body.template_id) and v.get("data", {}).get("version") == body.version_a), None)
-    ver_b = next((v for v in all_versions if v.get("data", {}).get("template_id") == str(body.template_id) and v.get("data", {}).get("version") == body.version_b), None)
+    ver_a = next(
+        (
+            v
+            for v in all_versions
+            if v.get("data", {}).get("template_id") == str(body.template_id)
+            and v.get("data", {}).get("version") == body.version_a
+        ),
+        None,
+    )
+    ver_b = next(
+        (
+            v
+            for v in all_versions
+            if v.get("data", {}).get("template_id") == str(body.template_id)
+            and v.get("data", {}).get("version") == body.version_b
+        ),
+        None,
+    )
     if not ver_a or not ver_b:
         raise HTTPException(status_code=404, detail="version_not_found")
     content_a = ver_a.get("data", {}).get("content_snapshot", "")
@@ -526,9 +558,13 @@ async def template_analytics(
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
     renders = svc.repo("template_renders").list(tenant_id=current.tenant_id, limit=10000)
-    template_renders = [r for r in renders if r.get("data", {}).get("template_id") == str(template_id)]
+    template_renders = [
+        r for r in renders if r.get("data", {}).get("template_id") == str(template_id)
+    ]
     downloads = svc.repo("template_downloads").list(tenant_id=current.tenant_id, limit=10000)
-    template_downloads = [d for d in downloads if d.get("data", {}).get("template_id") == str(template_id)]
+    template_downloads = [
+        d for d in downloads if d.get("data", {}).get("template_id") == str(template_id)
+    ]
     return {
         "template_id": str(template_id),
         "total_renders": len(template_renders),
@@ -550,7 +586,9 @@ async def top_performing_templates(
         tid = r.get("data", {}).get("template_id", "unknown")
         counts[tid] = counts.get(tid, 0) + 1
     sorted_templates = sorted(counts.items(), key=lambda x: x[1], reverse=True)[:10]
-    return {"top_templates": [{"template_id": t[0], "render_count": t[1]} for t in sorted_templates]}
+    return {
+        "top_templates": [{"template_id": t[0], "render_count": t[1]} for t in sorted_templates]
+    }
 
 
 @router.post("/{template_id}/schedule-delivery")
@@ -590,7 +628,7 @@ async def lifecycle_management(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     all_templates = svc.repo("templates").list(tenant_id=current.tenant_id, limit=5000)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     lifecycle = {
         "total": len(all_templates),
         "draft": sum(1 for t in all_templates if t.get("data", {}).get("status") == "draft"),
@@ -615,7 +653,9 @@ async def generate_secure_link(
     record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
-    token = hashlib.sha256(f"{template_id}{current.tenant_id}{datetime.now(timezone.utc).isoformat()}".encode()).hexdigest()
+    token = hashlib.sha256(
+        f"{template_id}{current.tenant_id}{datetime.now(UTC).isoformat()}".encode()
+    ).hexdigest()
     link = await svc.create(
         table="template_secure_links",
         tenant_id=current.tenant_id,
@@ -654,7 +694,9 @@ async def policy_mass_refresh(
     require_role(current, ["founder"])
     svc = DominationService(db, get_event_publisher())
     all_templates = svc.repo("templates").list(tenant_id=current.tenant_id, limit=5000)
-    policy_templates = [t for t in all_templates if "compliance" in t.get("data", {}).get("tags", [])]
+    policy_templates = [
+        t for t in all_templates if "compliance" in t.get("data", {}).get("tags", [])
+    ]
     updated_count = 0
     for t in policy_templates:
         await svc.update(
@@ -663,11 +705,11 @@ async def policy_mass_refresh(
             record_id=t["id"],
             actor_user_id=current.user_id,
             expected_version=t.get("version", 1),
-            patch={"policy_refreshed_at": datetime.now(timezone.utc).isoformat()},
+            patch={"policy_refreshed_at": datetime.now(UTC).isoformat()},
             correlation_id=getattr(request.state, "correlation_id", None),
         )
         updated_count += 1
-    return {"refreshed_count": updated_count, "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"refreshed_count": updated_count, "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.get("/dependency-map")
@@ -678,7 +720,14 @@ async def dependency_map(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     all_templates = svc.repo("templates").list(tenant_id=current.tenant_id, limit=5000)
-    nodes = [{"id": t["id"], "name": t.get("data", {}).get("name", ""), "module": t.get("data", {}).get("module", "")} for t in all_templates]
+    nodes = [
+        {
+            "id": t["id"],
+            "name": t.get("data", {}).get("name", ""),
+            "module": t.get("data", {}).get("module", ""),
+        }
+        for t in all_templates
+    ]
     edges = []
     for t in all_templates:
         deps = t.get("data", {}).get("dependencies", [])

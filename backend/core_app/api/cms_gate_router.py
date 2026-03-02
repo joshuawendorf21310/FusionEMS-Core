@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -40,49 +40,70 @@ def _compute_cms_score(data: dict[str, Any]) -> dict[str, Any]:
             issues.append(failure_msg)
 
     patient_condition = (data.get("patient_condition") or "").strip()
-    gate("patient_condition_provided", bool(patient_condition), 15,
-         "Patient condition/chief complaint is required.")
+    gate(
+        "patient_condition_provided",
+        bool(patient_condition),
+        15,
+        "Patient condition/chief complaint is required.",
+    )
 
     transport_reason = (data.get("transport_reason") or "").strip()
-    gate("transport_reason_provided", bool(transport_reason), 15,
-         "Reason for transport is required.")
+    gate(
+        "transport_reason_provided", bool(transport_reason), 15, "Reason for transport is required."
+    )
 
     origin_address = (data.get("origin_address") or "").strip()
-    gate("origin_address_provided", bool(origin_address), 10,
-         "Origin address is required.")
+    gate("origin_address_provided", bool(origin_address), 10, "Origin address is required.")
 
     destination = (data.get("destination_name") or "").strip()
-    gate("destination_provided", bool(destination), 10,
-         "Destination facility/address is required.")
+    gate("destination_provided", bool(destination), 10, "Destination facility/address is required.")
 
     pcs_present = bool(data.get("pcs_on_file") or data.get("pcs_obtained"))
     transport_level = (data.get("transport_level") or "").upper()
     if transport_level in ("ALS", "SCT", "SPECIALTY"):
-        gate("pcs_present_for_als", pcs_present, 20,
-             "PCS (Physician Certification Statement) required for ALS/Specialty transport.")
+        gate(
+            "pcs_present_for_als",
+            pcs_present,
+            20,
+            "PCS (Physician Certification Statement) required for ALS/Specialty transport.",
+        )
     else:
         gate("pcs_present_for_als", True, 20, "")
 
     necessity_documented = bool(data.get("medical_necessity_documented"))
-    gate("necessity_documented", necessity_documented, 15,
-         "Medical necessity must be documented.")
+    gate("necessity_documented", necessity_documented, 15, "Medical necessity must be documented.")
 
     signature_present = bool(data.get("patient_signature") or data.get("signature_on_file"))
-    gate("signature_present", signature_present, 10,
-         "Patient signature or signature-on-file required.")
+    gate(
+        "signature_present",
+        signature_present,
+        10,
+        "Patient signature or signature-on-file required.",
+    )
 
-    insurance_present = bool(data.get("primary_insurance_id") or data.get("medicare_id") or data.get("medicaid_id"))
-    gate("insurance_verified", insurance_present, 5,
-         "Insurance information should be provided.")
+    insurance_present = bool(
+        data.get("primary_insurance_id") or data.get("medicare_id") or data.get("medicaid_id")
+    )
+    gate("insurance_verified", insurance_present, 5, "Insurance information should be provided.")
 
     free_text = (data.get("transport_reason") or "") + " " + (data.get("patient_condition") or "")
     bs_phrases = [
-        "taxi", "no ride", "no transportation", "convenience", "prefer not to walk",
-        "family refused", "doesn't want to", "just needs a ride",
+        "taxi",
+        "no ride",
+        "no transportation",
+        "convenience",
+        "prefer not to walk",
+        "family refused",
+        "doesn't want to",
+        "just needs a ride",
     ]
     bs_flag = any(phrase in free_text.lower() for phrase in bs_phrases)
-    gate("anti_bs_check", not bs_flag, 0,
-         "Transport reason contains language suggesting non-medical necessity ('taxi service' type phrases). Review required.")
+    gate(
+        "anti_bs_check",
+        not bs_flag,
+        0,
+        "Transport reason contains language suggesting non-medical necessity ('taxi service' type phrases). Review required.",
+    )
 
     total_weight = sum(g["weight"] for g in gates)
     pct = int(score / total_weight * 100) if total_weight else 0
@@ -99,7 +120,7 @@ def _compute_cms_score(data: dict[str, Any]) -> dict[str, Any]:
         "issues": issues,
         "gates": gates,
         "bs_flag": bs_flag,
-        "evaluated_at": datetime.now(timezone.utc).isoformat(),
+        "evaluated_at": datetime.now(UTC).isoformat(),
     }
 
 

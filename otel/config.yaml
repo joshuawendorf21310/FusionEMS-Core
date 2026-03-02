@@ -1,19 +1,94 @@
 receivers:
+
+  # OTLP receiver (apps send traces/logs/metrics here)
   otlp:
     protocols:
       http:
         endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
 
-exporters:
-  logging:
-    loglevel: info
+  # Prometheus scraping (collector self-metrics)
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: "otel-collector"
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["0.0.0.0:8888"]
 
 processors:
+
+  # Prevent OOM crashes
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Attach ECS / EC2 / environment metadata
+  resource:
+    attributes:
+      - key: service.namespace
+        value: fusionems
+        action: upsert
+      - key: deployment.environment
+        from_attribute: STAGE
+        action: upsert
+
+  # Batch for efficiency
   batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+
+  # Production OTLP exporter (send to observability backend)
+  otlp:
+    endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    tls:
+      insecure: false
+    sending_queue:
+      enabled: true
+      queue_size: 5000
+    retry_on_failure:
+      enabled: true
+
+  # Optional debug logging
+  logging:
+    verbosity: normal
+
+  # Prometheus metrics endpoint
+  prometheus:
+    endpoint: 0.0.0.0:8889
+
+extensions:
+
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  zpages:
+    endpoint: 0.0.0.0:55679
 
 service:
+
+  extensions: [health_check, pprof, zpages]
+
   pipelines:
+
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [logging]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp, logging]
+
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp, prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp, logging]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import UTC
 from typing import Any
 
 import boto3
@@ -14,16 +15,16 @@ logger = logging.getLogger(__name__)
 # Only forward or lateral transitions are allowed.
 PAYMENT_STATUS_MAP: dict[str, str] = {
     "checkout.session.completed": "paid",
-    "payment_intent.succeeded":   "paid",
+    "payment_intent.succeeded": "paid",
     "payment_intent.payment_failed": "failed",
-    "charge.refunded":            "refunded",
-    "charge.dispute.created":     "disputed",
+    "charge.refunded": "refunded",
+    "charge.dispute.created": "disputed",
 }
 
 STATUS_RANK: dict[str, int] = {
-    "pending":  0,
-    "failed":  10,
-    "paid":    50,
+    "pending": 0,
+    "failed": 10,
+    "paid": 50,
     "refunded": 60,
     "disputed": 70,
 }
@@ -60,23 +61,27 @@ def _table(name: str):
     return _get_ddb().Table(name)
 
 
-STATEMENTS_TABLE     = os.environ.get("STATEMENTS_TABLE") or ""
-STRIPE_EVENTS_TABLE  = os.environ.get("STRIPE_EVENTS_TABLE") or ""
-TENANTS_TABLE        = os.environ.get("TENANTS_TABLE") or ""
+STATEMENTS_TABLE = os.environ.get("STATEMENTS_TABLE") or ""
+STRIPE_EVENTS_TABLE = os.environ.get("STRIPE_EVENTS_TABLE") or ""
+TENANTS_TABLE = os.environ.get("TENANTS_TABLE") or ""
 
 
 # ── Core worker logic ──────────────────────────────────────────────────────────
 
+
 def process_stripe_event(message_body: dict[str, Any]) -> None:
-    event_id:            str = message_body["event_id"]
-    event_type:          str = message_body["event_type"]
+    event_id: str = message_body["event_id"]
+    event_type: str = message_body["event_type"]
     connected_account_id = message_body.get("connected_account_id")
-    payload:             dict[str, Any] = message_body.get("payload", {})
-    correlation_id:      str = message_body.get("correlation_id", "")
+    payload: dict[str, Any] = message_body.get("payload", {})
+    correlation_id: str = message_body.get("correlation_id", "")
 
     logger.info(
         "stripe_worker_processing event_id=%s event_type=%s account=%s correlation_id=%s",
-        event_id, event_type, connected_account_id, correlation_id,
+        event_id,
+        event_type,
+        connected_account_id,
+        correlation_id,
     )
 
     # Idempotency
@@ -86,14 +91,16 @@ def process_stripe_event(message_body: dict[str, Any]) -> None:
         logger.info("stripe_worker_duplicate event_id=%s", event_id)
         return
 
-    events_table.put_item(Item={
-        "event_id": event_id,
-        "event_type": event_type,
-        "connected_account_id": connected_account_id or "",
-        "payload": json.dumps(payload, default=str),
-        "correlation_id": correlation_id,
-        "processed": False,
-    })
+    events_table.put_item(
+        Item={
+            "event_id": event_id,
+            "event_type": event_type,
+            "connected_account_id": connected_account_id or "",
+            "payload": json.dumps(payload, default=str),
+            "correlation_id": correlation_id,
+            "processed": False,
+        }
+    )
 
     new_payment_status = PAYMENT_STATUS_MAP.get(event_type)
     if not new_payment_status:
@@ -143,9 +150,9 @@ def _resolve_tenant(connected_account_id: str) -> str | None:
     table = _table(TENANTS_TABLE)
     resp = table.query(
         IndexName="stripe_connected_account_id-index",
-        KeyConditionExpression=ddb_conditions.Key(
-            "stripe_connected_account_id"
-        ).eq(connected_account_id),
+        KeyConditionExpression=ddb_conditions.Key("stripe_connected_account_id").eq(
+            connected_account_id
+        ),
         Limit=1,
     )
     items = resp.get("Items", [])
@@ -172,7 +179,9 @@ def _update_statement_payment_status(
     if _rank(new_status) <= _rank(current_status) and current_status != "failed":
         logger.info(
             "stripe_worker_status_skip statement_id=%s current=%s new=%s",
-            statement_id, current_status, new_status,
+            statement_id,
+            current_status,
+            new_status,
         )
         return
 
@@ -183,11 +192,11 @@ def _update_statement_payment_status(
         "payment_updated_at = :now"
     )
     expr_vals: dict[str, Any] = {
-        ":s":   new_status,
-        ":et":  event_type,
+        ":s": new_status,
+        ":et": event_type,
         ":eid": event_id,
         ":now": _utcnow(),
-        ":cs":  current_status,
+        ":cs": current_status,
     }
 
     try:
@@ -199,12 +208,16 @@ def _update_statement_payment_status(
         )
         logger.info(
             "stripe_worker_status_updated statement_id=%s %s -> %s correlation_id=%s",
-            statement_id, current_status, new_status, correlation_id,
+            statement_id,
+            current_status,
+            new_status,
+            correlation_id,
         )
     except Exception as exc:
         logger.error(
             "stripe_worker_conditional_write_failed statement_id=%s error=%s",
-            statement_id, exc,
+            statement_id,
+            exc,
         )
 
 
@@ -217,11 +230,13 @@ def _mark_processed(table: Any, event_id: str) -> None:
 
 
 def _utcnow() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+
+    return datetime.now(UTC).isoformat()
 
 
 # ── Lambda handler ────────────────────────────────────────────────────────────
+
 
 def lambda_handler(event: dict[str, Any], context: Any) -> None:
     for record in event.get("Records", []):
@@ -231,6 +246,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> None:
         except Exception as exc:
             logger.exception(
                 "stripe_worker_record_failed message_id=%s error=%s",
-                record.get("messageId", ""), exc,
+                record.get("messageId", ""),
+                exc,
             )
             raise

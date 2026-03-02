@@ -1,15 +1,26 @@
 """
-Stripe Bootstrap Lambda (CloudFormation custom resource).
-Idempotently creates/updates Stripe Products and Prices using lookup_keys.
-Reads pricing spec from environment or S3.
-Stores Stripe IDs in SSM.
+Stripe Bootstrap Lambda (CloudFormation custom resource)
+
+Enterprise Production Version
+
+✔ Idempotent product provisioning (metadata search)
+✔ Idempotent price provisioning (lookup_key)
+✔ Metered pricing support
+✔ Stripe Tax support
+✔ Billing Portal provisioning
+✔ Webhook provisioning (no duplicates)
+✔ Secrets Manager or env secret
+✔ SSM storage of all IDs
+✔ Stable PhysicalResourceId
+✔ Safe for Create + Update
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, Dict
 
 import boto3
 import stripe
@@ -17,136 +28,267 @@ import stripe
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
-SSM_PREFIX = os.environ.get("SSM_PREFIX", "/quantumems/dev/stripe")
+# ==========================================================
+# ENVIRONMENT CONFIG
+# ==========================================================
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
+STRIPE_SECRET_ARN = os.environ.get("STRIPE_SECRET_ARN")
+
+SSM_PREFIX = os.environ.get("SSM_PREFIX", "/fusionems/dev/stripe")
 STAGE = os.environ.get("STAGE", "dev")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+
+ENABLE_STRIPE_TAX = os.environ.get("ENABLE_STRIPE_TAX", "true").lower() == "true"
+
+# ==========================================================
+# PRODUCT + PRICE CONFIG
+# (Use versioned keys for safe price evolution)
+# ==========================================================
 
 PRODUCTS = [
-    {"key": "SCHEDULING_ONLY", "name": "QuantumEMS Scheduling Only"},
-    {"key": "OPS_CORE", "name": "QuantumEMS Ops Core"},
-    {"key": "CLINICAL_CORE", "name": "QuantumEMS Clinical Core"},
-    {"key": "FULL_STACK", "name": "QuantumEMS Full Stack"},
-    {"key": "BILLING_AUTOMATION_BASE", "name": "Billing Automation Base"},
-    {"key": "CCT_TRANSPORT_OPS_ADDON", "name": "CCT / Transport Ops Add-on"},
-    {"key": "HEMS_ADDON", "name": "HEMS Ops Add-on"},
-    {"key": "TRIP_PACK_ADDON", "name": "Wisconsin TRIP Pack Add-on"},
+    {"key": "SCHEDULING_ONLY_V1", "name": "QuantumEMS Scheduling Only"},
+    {"key": "FULL_STACK_V1", "name": "QuantumEMS Full Stack"},
+    {"key": "BILLING_AUTOMATION_BASE_V1", "name": "Billing Automation Base"},
 ]
 
 PRICES = [
-    {"lookup_key": "SCHEDULING_S1_MONTHLY", "product_key": "SCHEDULING_ONLY", "unit_amount": 19900, "nickname": "Scheduling 1-25 users"},
-    {"lookup_key": "SCHEDULING_S2_MONTHLY", "product_key": "SCHEDULING_ONLY", "unit_amount": 39900, "nickname": "Scheduling 26-75 users"},
-    {"lookup_key": "SCHEDULING_S3_MONTHLY", "product_key": "SCHEDULING_ONLY", "unit_amount": 69900, "nickname": "Scheduling 76-150 users"},
-    {"lookup_key": "BILLING_AUTO_B1_MONTHLY", "product_key": "BILLING_AUTOMATION_BASE", "unit_amount": 39900, "nickname": "Billing Auto 0-150 claims base"},
-    {"lookup_key": "BILLING_AUTO_B2_MONTHLY", "product_key": "BILLING_AUTOMATION_BASE", "unit_amount": 59900, "nickname": "Billing Auto 151-400 claims base"},
-    {"lookup_key": "BILLING_AUTO_B3_MONTHLY", "product_key": "BILLING_AUTOMATION_BASE", "unit_amount": 99900, "nickname": "Billing Auto 401-1000 claims base"},
-    {"lookup_key": "BILLING_AUTO_B4_MONTHLY", "product_key": "BILLING_AUTOMATION_BASE", "unit_amount": 149900, "nickname": "Billing Auto 1001+ claims base"},
-    {"lookup_key": "CCT_MONTHLY", "product_key": "CCT_TRANSPORT_OPS_ADDON", "unit_amount": 39900, "nickname": "CCT/Transport Ops monthly"},
-    {"lookup_key": "HEMS_MONTHLY", "product_key": "HEMS_ADDON", "unit_amount": 75000, "nickname": "HEMS Ops monthly"},
-    {"lookup_key": "TRIP_MONTHLY", "product_key": "TRIP_PACK_ADDON", "unit_amount": 19900, "nickname": "Wisconsin TRIP Pack monthly"},
+    {
+        "lookup_key": "FULL_STACK_V1_MONTHLY",
+        "product_key": "FULL_STACK_V1",
+        "unit_amount": 99900,
+        "interval": "month",
+        "metered": False,
+    },
+    {
+        "lookup_key": "CLAIMS_METERED_V1",
+        "product_key": "BILLING_AUTOMATION_BASE_V1",
+        "unit_amount": 15,
+        "interval": "month",
+        "metered": True,
+    },
 ]
+
+# ==========================================================
+# ENTRYPOINT
+# ==========================================================
 
 
 def lambda_handler(event: dict, context: Any) -> dict:
+    logger.info("stripe_bootstrap_event=%s", json.dumps(event))
+
     request_type = event.get("RequestType", "Create")
+    physical_id = "fusionems-stripe-bootstrap"
+
     if request_type == "Delete":
-        _send_cfn_response(event, context, "SUCCESS", {})
+        _send_cfn_response(event, context, "SUCCESS", {}, physical_id)
         return {}
-
-    if not STRIPE_SECRET_KEY:
-        logger.error("STRIPE_SECRET_KEY not set")
-        _send_cfn_response(event, context, "FAILED", {}, "STRIPE_SECRET_KEY not configured")
-        return {}
-
-    stripe.api_key = STRIPE_SECRET_KEY
-    ssm = boto3.client("ssm")
 
     try:
-        product_ids: dict[str, str] = {}
-        for p in PRODUCTS:
-            existing = _find_product_by_name(p["name"])
-            if existing:
-                product_ids[p["key"]] = existing.id
-                logger.info("product_exists key=%s id=%s", p["key"], existing.id)
-            else:
-                created = stripe.Product.create(name=p["name"], metadata={"lookup_key": p["key"], "stage": STAGE})
-                product_ids[p["key"]] = created.id
-                logger.info("product_created key=%s id=%s", p["key"], created.id)
-            _ssm_put(ssm, f"{SSM_PREFIX}/products/{p['key']}", product_ids[p["key"]])
+        _configure_stripe()
 
-        price_ids: dict[str, str] = {}
-        for pr in PRICES:
-            product_id = product_ids.get(pr["product_key"])
-            if not product_id:
-                continue
-            existing_price = _find_price_by_lookup_key(pr["lookup_key"])
-            if existing_price:
-                price_ids[pr["lookup_key"]] = existing_price.id
-                logger.info("price_exists lookup_key=%s id=%s", pr["lookup_key"], existing_price.id)
-            else:
-                created_price = stripe.Price.create(
-                    product=product_id,
-                    unit_amount=pr["unit_amount"],
-                    currency="usd",
-                    recurring={"interval": "month"},
-                    lookup_key=pr["lookup_key"],
-                    nickname=pr["nickname"],
-                    metadata={"stage": STAGE},
-                )
-                price_ids[pr["lookup_key"]] = created_price.id
-                logger.info("price_created lookup_key=%s id=%s", pr["lookup_key"], created_price.id)
-            _ssm_put(ssm, f"{SSM_PREFIX}/prices/{pr['lookup_key']}", price_ids[pr["lookup_key"]])
+        ssm = boto3.client("ssm")
 
-        _send_cfn_response(event, context, "SUCCESS", {"ProductCount": len(product_ids), "PriceCount": len(price_ids)})
+        product_ids = _ensure_products(ssm)
+        price_ids = _ensure_prices(ssm, product_ids)
+        portal_id = _ensure_billing_portal(ssm)
+        webhook_secret = _ensure_webhook(ssm)
+
+        data = {
+            "ProductCount": len(product_ids),
+            "PriceCount": len(price_ids),
+            "BillingPortalConfigId": portal_id,
+            "WebhookConfigured": bool(webhook_secret),
+        }
+
+        _send_cfn_response(event, context, "SUCCESS", data, physical_id)
+
     except Exception as exc:
-        logger.exception("stripe_bootstrap_error error=%s", exc)
-        _send_cfn_response(event, context, "FAILED", {}, str(exc))
+        logger.exception("stripe_bootstrap_failed")
+        _send_cfn_response(event, context, "FAILED", {}, physical_id, str(exc))
+
     return {}
 
 
-def _find_product_by_name(name: str):
-    try:
-        products = stripe.Product.list(limit=100)
-        for p in products.auto_paging_iter():
-            if p.name == name:
-                return p
-    except Exception:
-        pass
-    return None
+# ==========================================================
+# STRIPE CONFIGURATION
+# ==========================================================
 
 
-def _find_price_by_lookup_key(lookup_key: str):
-    try:
-        prices = stripe.Price.list(lookup_keys=[lookup_key], limit=1)
-        if prices.data:
-            return prices.data[0]
-    except Exception:
-        pass
-    return None
+def _configure_stripe():
+    if STRIPE_SECRET_ARN:
+        secrets = boto3.client("secretsmanager")
+        secret = json.loads(
+            secrets.get_secret_value(SecretId=STRIPE_SECRET_ARN)["SecretString"]
+        )
+        stripe.api_key = secret["secret_key"]
+    elif STRIPE_SECRET_KEY:
+        stripe.api_key = STRIPE_SECRET_KEY
+    else:
+        raise RuntimeError("Stripe secret not configured")
+
+
+# ==========================================================
+# PRODUCTS
+# ==========================================================
+
+
+def _ensure_products(ssm) -> Dict[str, str]:
+    product_ids = {}
+
+    for p in PRODUCTS:
+        result = stripe.Product.search(
+            query=f"metadata['product_key']:'{p['key']}' AND metadata['stage']:'{STAGE}'"
+        )
+
+        if result.data:
+            product = result.data[0]
+            logger.info("product_exists key=%s id=%s", p["key"], product.id)
+        else:
+            product = stripe.Product.create(
+                name=p["name"],
+                metadata={"product_key": p["key"], "stage": STAGE},
+            )
+            logger.info("product_created key=%s id=%s", p["key"], product.id)
+
+        product_ids[p["key"]] = product.id
+        _ssm_put(ssm, f"{SSM_PREFIX}/products/{p['key']}", product.id)
+
+    return product_ids
+
+
+# ==========================================================
+# PRICES
+# ==========================================================
+
+
+def _ensure_prices(ssm, product_ids) -> Dict[str, str]:
+    price_ids = {}
+
+    for pr in PRICES:
+        existing = stripe.Price.list(lookup_keys=[pr["lookup_key"]], limit=1)
+
+        if existing.data:
+            price = existing.data[0]
+            logger.info("price_exists lookup_key=%s id=%s", pr["lookup_key"], price.id)
+        else:
+            recurring_config = {"interval": pr["interval"]}
+
+            if pr["metered"]:
+                recurring_config["usage_type"] = "metered"
+
+            create_params = {
+                "product": product_ids[pr["product_key"]],
+                "unit_amount": pr["unit_amount"],
+                "currency": "usd",
+                "recurring": recurring_config,
+                "lookup_key": pr["lookup_key"],
+                "metadata": {"stage": STAGE},
+            }
+
+            if ENABLE_STRIPE_TAX:
+                create_params["automatic_tax"] = {"enabled": True}
+
+            price = stripe.Price.create(**create_params)
+
+            logger.info("price_created lookup_key=%s id=%s", pr["lookup_key"], price.id)
+
+        price_ids[pr["lookup_key"]] = price.id
+        _ssm_put(ssm, f"{SSM_PREFIX}/prices/{pr['lookup_key']}", price.id)
+
+    return price_ids
+
+
+# ==========================================================
+# BILLING PORTAL
+# ==========================================================
+
+
+def _ensure_billing_portal(ssm) -> str:
+    configs = stripe.billing_portal.Configuration.list(limit=1)
+
+    if configs.data:
+        config = configs.data[0]
+    else:
+        config = stripe.billing_portal.Configuration.create(
+            features={
+                "subscription_cancel": {"enabled": True},
+                "payment_method_update": {"enabled": True},
+            }
+        )
+
+    _ssm_put(ssm, f"{SSM_PREFIX}/billing_portal/config_id", config.id)
+    return config.id
+
+
+# ==========================================================
+# WEBHOOK
+# ==========================================================
+
+
+def _ensure_webhook(ssm) -> str | None:
+    if not WEBHOOK_URL:
+        return None
+
+    endpoints = stripe.WebhookEndpoint.list(limit=100)
+
+    for ep in endpoints.auto_paging_iter():
+        if ep.url == WEBHOOK_URL:
+            logger.info("webhook_exists url=%s", WEBHOOK_URL)
+            _ssm_put(ssm, f"{SSM_PREFIX}/webhook/secret", ep.secret)
+            return ep.secret
+
+    new_ep = stripe.WebhookEndpoint.create(
+        url=WEBHOOK_URL,
+        enabled_events=[
+            "invoice.paid",
+            "invoice.payment_failed",
+            "customer.subscription.created",
+            "customer.subscription.updated",
+            "customer.subscription.deleted",
+        ],
+    )
+
+    logger.info("webhook_created url=%s", WEBHOOK_URL)
+
+    _ssm_put(ssm, f"{SSM_PREFIX}/webhook/secret", new_ep.secret)
+    return new_ep.secret
+
+
+# ==========================================================
+# SSM
+# ==========================================================
 
 
 def _ssm_put(ssm, name: str, value: str) -> None:
-    try:
-        ssm.put_parameter(Name=name, Value=value, Type="String", Overwrite=True)
-    except Exception as exc:
-        logger.warning("ssm_put_failed name=%s error=%s", name, exc)
+    ssm.put_parameter(Name=name, Value=value, Type="String", Overwrite=True)
 
 
-def _send_cfn_response(event: dict, context: Any, status: str, data: dict, reason: str = "") -> None:
+# ==========================================================
+# CLOUDFORMATION RESPONSE
+# ==========================================================
+
+
+def _send_cfn_response(event, context, status, data, physical_id, reason=""):
     import urllib.request
-    response_url = event.get("ResponseURL")
-    if not response_url:
-        return
-    body = json.dumps({
-        "Status": status,
-        "Reason": reason or f"See CloudWatch logs: {getattr(context, 'log_stream_name', '')}",
-        "PhysicalResourceId": event.get("PhysicalResourceId") or event.get("LogicalResourceId", "stripe-bootstrap"),
-        "StackId": event.get("StackId", ""),
-        "RequestId": event.get("RequestId", ""),
-        "LogicalResourceId": event.get("LogicalResourceId", ""),
-        "Data": data,
-    }).encode("utf-8")
-    req = urllib.request.Request(response_url, data=body, method="PUT", headers={"Content-Type": "", "Content-Length": str(len(body))})
-    try:
-        urllib.request.urlopen(req, timeout=10)
-    except Exception as exc:
-        logger.error("cfn_response_send_failed error=%s", exc)
+
+    body = json.dumps(
+        {
+            "Status": status,
+            "Reason": reason or f"See logs: {context.log_stream_name}",
+            "PhysicalResourceId": physical_id,
+            "StackId": event["StackId"],
+            "RequestId": event["RequestId"],
+            "LogicalResourceId": event["LogicalResourceId"],
+            "Data": data,
+        }
+    ).encode()
+
+    req = urllib.request.Request(
+        event["ResponseURL"],
+        data=body,
+        method="PUT",
+        headers={"Content-Type": "", "Content-Length": str(len(body))},
+    )
+
+    urllib.request.urlopen(req, timeout=10)

@@ -3,26 +3,91 @@ from __future__ import annotations
 from typing import Any
 
 ELEMENT_FIELD_MAP: dict[str, dict[str, str]] = {
-    "eRecord.01":      {"path": "chart_id",                              "label": "PCR Number",            "section": "Record",      "severity": "error"},
-    "eIncident.01":    {"path": "dispatch.incident_number",              "label": "Incident Number",       "section": "Incident",    "severity": "error"},
-    "eTimes.01":       {"path": "dispatch.psap_call_time",               "label": "PSAP Call Time",        "section": "Times",       "severity": "error"},
-    "eTimes.06":       {"path": "dispatch.arrived_scene_time",           "label": "Arrived Scene Time",    "section": "Times",       "severity": "error"},
-    "eTimes.07":       {"path": "dispatch.patient_contact_time",         "label": "Patient Contact Time",  "section": "Times",       "severity": "error"},
-    "ePatient.02":     {"path": "patient.dob",                           "label": "Patient DOB",           "section": "Patient",     "severity": "error"},
-    "ePatient.03":     {"path": "patient.last_name",                     "label": "Patient Last Name",     "section": "Patient",     "severity": "error"},
-    "ePatient.04":     {"path": "patient.first_name",                    "label": "Patient First Name",    "section": "Patient",     "severity": "error"},
-    "ePatient.13":     {"path": "patient.gender",                        "label": "Patient Gender",        "section": "Patient",     "severity": "error"},
-    "eResponse.13":    {"path": "dispatch.responding_unit",              "label": "Unit Call Sign",        "section": "Response",    "severity": "error"},
-    "eSituation.11":   {"path": "assessments[0].chief_complaint",        "label": "Primary Impression",    "section": "Situation",   "severity": "error"},
-    "eNarrative.01":   {"path": "narrative",                             "label": "Narrative",             "section": "Narrative",   "severity": "warning"},
-    "eDisposition.27": {"path": "disposition.patient_disposition_code",  "label": "Patient Disposition",   "section": "Disposition", "severity": "error"},
+    "eRecord.01": {
+        "path": "chart_id",
+        "label": "PCR Number",
+        "section": "Record",
+        "severity": "error",
+    },
+    "eIncident.01": {
+        "path": "dispatch.incident_number",
+        "label": "Incident Number",
+        "section": "Incident",
+        "severity": "error",
+    },
+    "eTimes.01": {
+        "path": "dispatch.psap_call_time",
+        "label": "PSAP Call Time",
+        "section": "Times",
+        "severity": "error",
+    },
+    "eTimes.06": {
+        "path": "dispatch.arrived_scene_time",
+        "label": "Arrived Scene Time",
+        "section": "Times",
+        "severity": "error",
+    },
+    "eTimes.07": {
+        "path": "dispatch.patient_contact_time",
+        "label": "Patient Contact Time",
+        "section": "Times",
+        "severity": "error",
+    },
+    "ePatient.02": {
+        "path": "patient.dob",
+        "label": "Patient DOB",
+        "section": "Patient",
+        "severity": "error",
+    },
+    "ePatient.03": {
+        "path": "patient.last_name",
+        "label": "Patient Last Name",
+        "section": "Patient",
+        "severity": "error",
+    },
+    "ePatient.04": {
+        "path": "patient.first_name",
+        "label": "Patient First Name",
+        "section": "Patient",
+        "severity": "error",
+    },
+    "ePatient.13": {
+        "path": "patient.gender",
+        "label": "Patient Gender",
+        "section": "Patient",
+        "severity": "error",
+    },
+    "eResponse.13": {
+        "path": "dispatch.responding_unit",
+        "label": "Unit Call Sign",
+        "section": "Response",
+        "severity": "error",
+    },
+    "eSituation.11": {
+        "path": "assessments[0].chief_complaint",
+        "label": "Primary Impression",
+        "section": "Situation",
+        "severity": "error",
+    },
+    "eNarrative.01": {
+        "path": "narrative",
+        "label": "Narrative",
+        "section": "Narrative",
+        "severity": "warning",
+    },
+    "eDisposition.27": {
+        "path": "disposition.patient_disposition_code",
+        "label": "Patient Disposition",
+        "section": "Disposition",
+        "severity": "error",
+    },
 }
 
 MODE_EXTRA: dict[str, list[str]] = {
-    "acls":  ["acls.initial_rhythm", "acls.code_start_time"],
-    "cct":   ["cct.transfer_source_facility"],
-    "hems":  ["hems.wheels_up_time", "hems.wheels_down_time", "hems.mission_number"],
-    "fire":  [],
+    "acls": ["acls.initial_rhythm", "acls.code_start_time"],
+    "cct": ["cct.transfer_source_facility"],
+    "hems": ["hems.wheels_up_time", "hems.wheels_down_time", "hems.mission_number"],
+    "fire": [],
 }
 
 
@@ -36,24 +101,42 @@ class CompletenessEngine:
             if val and str(val).strip():
                 present.append(elem_id)
             else:
-                missing.append({
-                    "element_id": elem_id,
-                    "field_path": meta["path"],
-                    "label": meta["label"],
-                    "section": meta["section"],
-                    "severity": meta["severity"],
-                })
+                missing.append(
+                    {
+                        "element_id": elem_id,
+                        "field_path": meta["path"],
+                        "label": meta["label"],
+                        "section": meta["section"],
+                        "severity": meta["severity"],
+                    }
+                )
 
         vitals = chart.get("vitals", [])
         if not vitals:
-            missing.append({"element_id": "eVitals", "field_path": "vitals", "label": "At least one Vital Set", "section": "Vitals", "severity": "error"})
+            missing.append(
+                {
+                    "element_id": "eVitals",
+                    "field_path": "vitals",
+                    "label": "At least one Vital Set",
+                    "section": "Vitals",
+                    "severity": "error",
+                }
+            )
         else:
             present.append("eVitals")
 
         for extra_path in MODE_EXTRA.get(mode, []):
             val = self._get_nested(chart, extra_path)
             if not val or not str(val).strip():
-                missing.append({"element_id": extra_path, "field_path": extra_path, "label": extra_path, "section": mode.upper(), "severity": "warning"})
+                missing.append(
+                    {
+                        "element_id": extra_path,
+                        "field_path": extra_path,
+                        "label": extra_path,
+                        "section": mode.upper(),
+                        "severity": "warning",
+                    }
+                )
 
         total = len(ELEMENT_FIELD_MAP) + 1 + len(MODE_EXTRA.get(mode, []))
         errors_only = [m for m in missing if m["severity"] == "error"]
@@ -79,6 +162,7 @@ class CompletenessEngine:
 
     def _get_nested(self, chart: dict[str, Any], path: str) -> Any:
         import re
+
         current: Any = chart
         parts = re.split(r"\.", path)
         for part in parts:

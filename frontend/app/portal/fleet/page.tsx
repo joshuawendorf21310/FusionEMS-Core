@@ -86,7 +86,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
@@ -110,9 +110,9 @@ function useToast() {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function readinessColor(score: number): string {
-  if (score >= 80) return '#4caf50';
-  if (score >= 40) return '#ff9800';
-  return '#e53935';
+  if (score >= 80) return 'var(--color-status-active)';
+  if (score >= 40) return 'var(--color-status-warning)';
+  return 'var(--color-brand-red)';
 }
 
 function fmtTs(ts: string): string {
@@ -122,12 +122,12 @@ function fmtTs(ts: string): string {
 const ALERT_STYLE: Record<AlertSeverity, { color: string; bg: string; label: string }> = {
   critical: { color: 'var(--q-red)', bg: 'rgba(229,57,53,0.12)', label: 'CRITICAL' },
   warning:  { color: 'var(--q-yellow)', bg: 'rgba(255,152,0,0.12)',  label: 'WARNING'  },
-  info:     { color: '#42a5f5', bg: 'rgba(66,165,245,0.12)', label: 'INFO'     },
+  info:     { color: 'var(--color-status-info)', bg: 'rgba(66,165,245,0.12)', label: 'INFO'     },
 };
 
 const WO_STATUS_STYLE: Record<WOStatus, { color: string; bg: string; label: string }> = {
   open:        { color: 'var(--q-yellow)', bg: 'rgba(255,152,0,0.12)',   label: 'OPEN'        },
-  in_progress: { color: '#42a5f5', bg: 'rgba(66,165,245,0.12)', label: 'IN PROGRESS' },
+  in_progress: { color: 'var(--color-status-info)', bg: 'rgba(66,165,245,0.12)', label: 'IN PROGRESS' },
   completed:   { color: 'var(--q-green)', bg: 'rgba(76,175,80,0.12)',   label: 'COMPLETED'   },
 };
 
@@ -410,8 +410,8 @@ export default function FleetPage() {
             onClick={() => setActiveTab(tab.id)}
             className="px-4 py-2.5 text-xs font-semibold transition-colors"
             style={{
-              color: activeTab === tab.id ? '#ff6b1a' : 'rgba(255,255,255,0.4)',
-              borderBottom: activeTab === tab.id ? '2px solid #ff6b1a' : '2px solid transparent',
+              color: activeTab === tab.id ? 'var(--color-brand-orange)' : 'rgba(255,255,255,0.4)',
+              borderBottom: activeTab === tab.id ? '2px solid var(--color-brand-orange)' : '2px solid transparent',
             }}
           >
             {tab.label}
@@ -444,7 +444,7 @@ export default function FleetPage() {
                     <div
                       key={label}
                       className="p-3 rounded-sm"
-                      style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+                      style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
                     >
                       <p className="text-[10px] mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</p>
                       <p className="text-lg font-bold tabular-nums" style={{ color }}>{value}</p>
@@ -460,7 +460,7 @@ export default function FleetPage() {
                   >
                     <table className="w-full text-xs">
                       <thead>
-                        <tr style={{ background: '#0b0f14', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <tr style={{ background: 'var(--color-bg-base)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                           {['Unit ID', 'Readiness', 'Alerts', 'MDT', 'Open Maint.'].map((h) => (
                             <th
                               key={h}
@@ -485,13 +485,13 @@ export default function FleetPage() {
                           >
                             <td className="px-3 py-2 font-semibold" style={{ color: 'var(--q-orange)' }}>{u.unit_id}</td>
                             <td className="px-3 py-2"><ReadinessBar score={u.readiness_score} /></td>
-                            <td className="px-3 py-2 tabular-nums" style={{ color: u.alert_count > 0 ? '#e53935' : 'rgba(255,255,255,0.6)' }}>
+                            <td className="px-3 py-2 tabular-nums" style={{ color: u.alert_count > 0 ? 'var(--color-brand-red)' : 'rgba(255,255,255,0.6)' }}>
                               {u.alert_count}
                             </td>
                             <td className="px-3 py-2">
                               <span
                                 className="w-2 h-2 rounded-full inline-block"
-                                style={{ background: u.mdt_online ? '#4caf50' : '#e53935' }}
+                                style={{ background: u.mdt_online ? 'var(--color-status-active)' : 'var(--color-brand-red)' }}
                               />
                             </td>
                             <td className="px-3 py-2 tabular-nums" style={{ color: 'rgba(255,255,255,0.6)' }}>
@@ -508,7 +508,7 @@ export default function FleetPage() {
                 {selectedUnit && (
                   <div
                     className="p-4 rounded-sm"
-                    style={{ background: '#0b0f14', border: '1px solid rgba(255,107,26,0.2)' }}
+                    style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,107,26,0.2)' }}
                   >
                     <p className="text-xs font-semibold mb-2" style={{ color: 'var(--q-orange)' }}>
                       Unit Detail — {selectedUnit}
@@ -545,7 +545,7 @@ export default function FleetPage() {
                 <div
                   key={alert.alert_id}
                   className="p-3 rounded-sm"
-                  style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+                  style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
                 >
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <Badge label={s.label} color={s.color} bg={s.bg} />
@@ -588,7 +588,7 @@ export default function FleetPage() {
             {/* Create form */}
             <div
               className="p-4 rounded-sm"
-              style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 Create Work Order
@@ -631,7 +631,7 @@ export default function FleetPage() {
                 onClick={createWorkOrder}
                 disabled={woSubmitBusy}
                 className="px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40"
-                style={{ background: '#ff6b1a', color: '#fff' }}
+                style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
               >
                 {woSubmitBusy ? 'Creating...' : 'Create Work Order'}
               </button>
@@ -652,7 +652,7 @@ export default function FleetPage() {
                 <div
                   key={wo.work_order_id}
                   className="p-3 rounded-sm"
-                  style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+                  style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
                 >
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <Badge label={s.label} color={s.color} bg={s.bg} />
@@ -701,7 +701,7 @@ export default function FleetPage() {
             {/* Create form */}
             <div
               className="p-4 rounded-sm"
-              style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 Create Inspection Template
@@ -746,7 +746,7 @@ export default function FleetPage() {
                   onClick={createTemplate}
                   disabled={inspSubmitBusy}
                   className="px-3 py-1.5 text-xs font-semibold rounded-sm disabled:opacity-40"
-                  style={{ background: '#ff6b1a', color: '#fff' }}
+                  style={{ background: 'var(--color-brand-orange)', color: 'var(--color-text-primary)' }}
                 >
                   {inspSubmitBusy ? 'Creating...' : 'Create Template'}
                 </button>
@@ -764,7 +764,7 @@ export default function FleetPage() {
               <div
                 key={t.template_id}
                 className="px-4 py-3 rounded-sm flex flex-wrap items-center gap-3"
-                style={{ background: '#0b0f14', border: '1px solid rgba(255,255,255,0.08)' }}
+                style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
                 <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>{t.name}</span>
                 <span

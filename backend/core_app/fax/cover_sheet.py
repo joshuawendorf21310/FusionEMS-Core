@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 try:
     import qrcode
+
     QR_AVAILABLE = True
 except ImportError:
     QR_AVAILABLE = False
@@ -14,6 +15,7 @@ except ImportError:
 try:
     import barcode
     from barcode.writer import ImageWriter
+
     BARCODE_AVAILABLE = True
 except ImportError:
     BARCODE_AVAILABLE = False
@@ -21,18 +23,19 @@ except ImportError:
 try:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
     from reportlab.platypus import (
-        SimpleDocTemplate,
+        HRFlowable,
+        Image,
+        PageBreak,
         Paragraph,
+        SimpleDocTemplate,
         Spacer,
         Table,
         TableStyle,
-        Image,
-        HRFlowable,
-        PageBreak,
     )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
     RL_AVAILABLE = True
 except ImportError:
     RL_AVAILABLE = False
@@ -127,21 +130,30 @@ def _styles():
 
 
 def _build_header_table(agency_name: str, s: dict) -> Table:
-    data = [[
-        Paragraph("<b>FusionEMS Quantum</b>", s["header"]),
-        Paragraph(f"<b>{agency_name}</b>", ParagraphStyle(
-            "RightHeader",
-            parent=s["header"],
-            alignment=2,
-        )),
-    ]]
+    data = [
+        [
+            Paragraph("<b>FusionEMS Quantum</b>", s["header"]),
+            Paragraph(
+                f"<b>{agency_name}</b>",
+                ParagraphStyle(
+                    "RightHeader",
+                    parent=s["header"],
+                    alignment=2,
+                ),
+            ),
+        ]
+    ]
     t = Table(data, colWidths=[3.5 * inch, 3.5 * inch])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
-        ("TEXTCOLOR", (0, 0), (-1, -1), BRAND_WHITE),
-        ("PADDING", (0, 0), (-1, -1), 10),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
+                ("TEXTCOLOR", (0, 0), (-1, -1), BRAND_WHITE),
+                ("PADDING", (0, 0), (-1, -1), 10),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
     return t
 
 
@@ -185,13 +197,17 @@ def _checkbox_row(doc_types: list[str], active_type: str, s: dict) -> Table:
         filled = "[\u2612]" if dt.lower() == active_type.lower() else "[\u2610]"
         row.append(Paragraph(f"{filled} {dt}", s["body"]))
     t = Table([row], colWidths=[inch * 7.0 / len(doc_types)] * len(doc_types))
-    t.setStyle(TableStyle([
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("PADDING", (0, 0), (-1, -1), 6),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("PADDING", (0, 0), (-1, -1), 6),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+            ]
+        )
+    )
     return t
 
 
@@ -234,64 +250,91 @@ class CoverSheetGenerator:
             ["Encounter Date", encounter_date or "—", "Tenant", tenant_id[:8] + "..."],
         ]
         ref_table = Table(ref_data, colWidths=[1.5 * inch, 2 * inch, 1.5 * inch, 2 * inch])
-        ref_table.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 10),
-            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
-            ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#f0f4f8")),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("PADDING", (0, 0), (-1, -1), 7),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ]))
+        ref_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
+                    ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#f0f4f8")),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("PADDING", (0, 0), (-1, -1), 7),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ]
+            )
+        )
         story.append(ref_table)
         story.append(Spacer(1, 0.2 * inch))
 
-        qr_payload = json.dumps({
-            "claim_id": claim_id,
-            "tenant_id": tenant_id,
-            "doc_type": doc_type,
-            "ts": datetime.now(timezone.utc).isoformat(),
-        })
+        qr_payload = json.dumps(
+            {
+                "claim_id": claim_id,
+                "tenant_id": tenant_id,
+                "doc_type": doc_type,
+                "ts": datetime.now(UTC).isoformat(),
+            }
+        )
         qr_img = _qr_image(qr_payload)
         bc_img = _barcode_image(claim_id[:20])
 
         if qr_img or bc_img:
-            img_cells = [qr_img or Paragraph("QR unavailable", s["body"]),
-                         bc_img or Paragraph("Barcode unavailable", s["body"])]
+            img_cells = [
+                qr_img or Paragraph("QR unavailable", s["body"]),
+                bc_img or Paragraph("Barcode unavailable", s["body"]),
+            ]
             col_widths = [2.2 * inch, 3 * inch]
             img_table = Table([img_cells], colWidths=col_widths)
-            img_table.setStyle(TableStyle([
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("PADDING", (0, 0), (-1, -1), 8),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e0")),
-            ]))
+            img_table.setStyle(
+                TableStyle(
+                    [
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("PADDING", (0, 0), (-1, -1), 8),
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e0")),
+                    ]
+                )
+            )
             story.append(img_table)
             story.append(Spacer(1, 0.2 * inch))
 
         story.append(Paragraph("Document Type", s["section"]))
-        doc_types = ["PCS", "Insurance Card", "Face Sheet", "Authorization", "Denial Letter", "Other"]
+        doc_types = [
+            "PCS",
+            "Insurance Card",
+            "Face Sheet",
+            "Authorization",
+            "Denial Letter",
+            "Other",
+        ]
         story.append(_checkbox_row(doc_types, doc_type, s))
         story.append(Spacer(1, 0.25 * inch))
 
-        instruction_bg_data = [[
-            Paragraph(f"FAX TO: {fax_number}", s["instruction"]),
-        ]]
+        instruction_bg_data = [
+            [
+                Paragraph(f"FAX TO: {fax_number}", s["instruction"]),
+            ]
+        ]
         instruction_table = Table(instruction_bg_data, colWidths=[7 * inch])
-        instruction_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff8e1")),
-            ("BOX", (0, 0), (-1, -1), 2, BRAND_GOLD),
-            ("PADDING", (0, 0), (-1, -1), 14),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ]))
+        instruction_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff8e1")),
+                    ("BOX", (0, 0), (-1, -1), 2, BRAND_GOLD),
+                    ("PADDING", (0, 0), (-1, -1), 14),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ]
+            )
+        )
         story.append(instruction_table)
         story.append(Spacer(1, 0.1 * inch))
 
-        story.append(Paragraph(
-            "Include this cover sheet as PAGE 1. Fax separately per patient.",
-            ParagraphStyle("inst_sub", parent=s["body"], alignment=1, fontSize=10),
-        ))
+        story.append(
+            Paragraph(
+                "Include this cover sheet as PAGE 1. Fax separately per patient.",
+                ParagraphStyle("inst_sub", parent=s["body"], alignment=1, fontSize=10),
+            )
+        )
         story.append(Spacer(1, 0.3 * inch))
 
         story.append(HRFlowable(width="100%", thickness=1, color=BRAND_LIGHT))
@@ -335,37 +378,54 @@ class CoverSheetGenerator:
             ["Encounter Date", "", "Tenant ID", tenant_id[:8] + "..."],
         ]
         blank_table = Table(blank_data, colWidths=[1.5 * inch, 2 * inch, 1.5 * inch, 2 * inch])
-        blank_table.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 10),
-            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
-            ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#f0f4f8")),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("PADDING", (0, 0), (-1, -1), 8),
-        ]))
+        blank_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
+                    ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#f0f4f8")),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("PADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
         story.append(blank_table)
         story.append(Spacer(1, 0.2 * inch))
 
         story.append(Paragraph("Document Type", s["section"]))
-        doc_types = ["PCS", "Insurance Card", "Face Sheet", "Authorization", "Denial Letter", "Other"]
+        doc_types = [
+            "PCS",
+            "Insurance Card",
+            "Face Sheet",
+            "Authorization",
+            "Denial Letter",
+            "Other",
+        ]
         story.append(_checkbox_row(doc_types, "", s))
         story.append(Spacer(1, 0.25 * inch))
 
         instr_data = [[Paragraph(f"FAX TO: {fax_number}", s["instruction"])]]
         instr_table = Table(instr_data, colWidths=[7 * inch])
-        instr_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff8e1")),
-            ("BOX", (0, 0), (-1, -1), 2, BRAND_GOLD),
-            ("PADDING", (0, 0), (-1, -1), 14),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ]))
+        instr_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff8e1")),
+                    ("BOX", (0, 0), (-1, -1), 2, BRAND_GOLD),
+                    ("PADDING", (0, 0), (-1, -1), 14),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ]
+            )
+        )
         story.append(instr_table)
         story.append(Spacer(1, 0.1 * inch))
-        story.append(Paragraph(
-            "Include this cover sheet as PAGE 1. Fax separately per patient.",
-            ParagraphStyle("inst_sub_b", parent=s["body"], alignment=1, fontSize=10),
-        ))
+        story.append(
+            Paragraph(
+                "Include this cover sheet as PAGE 1. Fax separately per patient.",
+                ParagraphStyle("inst_sub_b", parent=s["body"], alignment=1, fontSize=10),
+            )
+        )
         story.append(HRFlowable(width="100%", thickness=1, color=BRAND_LIGHT))
         story.append(Paragraph("FusionEMS Quantum — Automated Document Routing", s["footer"]))
 
@@ -377,16 +437,31 @@ class CoverSheetGenerator:
         story.append(HRFlowable(width="100%", thickness=2, color=BRAND_BLUE))
         story.append(Spacer(1, 0.15 * inch))
 
-        fax_block = [[Paragraph(f"FAX: {fax_number}", ParagraphStyle(
-            "BigFax", parent=s["body"], fontSize=22, fontName="Helvetica-Bold",
-            textColor=BRAND_DARK, alignment=1,
-        ))]]
+        fax_block = [
+            [
+                Paragraph(
+                    f"FAX: {fax_number}",
+                    ParagraphStyle(
+                        "BigFax",
+                        parent=s["body"],
+                        fontSize=22,
+                        fontName="Helvetica-Bold",
+                        textColor=BRAND_DARK,
+                        alignment=1,
+                    ),
+                )
+            ]
+        ]
         fax_table = Table(fax_block, colWidths=[7 * inch])
-        fax_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0f4f8")),
-            ("BOX", (0, 0), (-1, -1), 1, BRAND_BLUE),
-            ("PADDING", (0, 0), (-1, -1), 14),
-        ]))
+        fax_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0f4f8")),
+                    ("BOX", (0, 0), (-1, -1), 1, BRAND_BLUE),
+                    ("PADDING", (0, 0), (-1, -1), 14),
+                ]
+            )
+        )
         story.append(fax_table)
         story.append(Spacer(1, 0.15 * inch))
 
@@ -395,13 +470,17 @@ class CoverSheetGenerator:
             ["Portal Upload", upload_url],
         ]
         contact_table = Table(contact_data, colWidths=[1.5 * inch, 5.5 * inch])
-        contact_table.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 10),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("PADDING", (0, 0), (-1, -1), 7),
-            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
-        ]))
+        contact_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("PADDING", (0, 0), (-1, -1), 7),
+                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f4f8")),
+                ]
+            )
+        )
         story.append(contact_table)
         story.append(Spacer(1, 0.15 * inch))
 
@@ -469,11 +548,15 @@ class CoverSheetGenerator:
             story.append(Paragraph(tmpl_title, s["section"]))
             letter_data = [[Paragraph(tmpl_body.replace("\n", "<br/>"), s["body"])]]
             letter_table = Table(letter_data, colWidths=[7 * inch])
-            letter_table.setStyle(TableStyle([
-                ("BOX", (0, 0), (-1, -1), 0.75, colors.grey),
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-                ("PADDING", (0, 0), (-1, -1), 10),
-            ]))
+            letter_table.setStyle(
+                TableStyle(
+                    [
+                        ("BOX", (0, 0), (-1, -1), 0.75, colors.grey),
+                        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+                        ("PADDING", (0, 0), (-1, -1), 10),
+                    ]
+                )
+            )
             story.append(letter_table)
             story.append(Spacer(1, 0.15 * inch))
         story.append(HRFlowable(width="100%", thickness=1, color=BRAND_LIGHT))
@@ -511,17 +594,26 @@ class CoverSheetGenerator:
             ],
         ]
         qr_ref_table = Table(qr_table_data, colWidths=[1.8 * inch, 3.2 * inch, 2 * inch])
-        qr_ref_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), BRAND_DARK),
-            ("TEXTCOLOR", (0, 0), (-1, 0), BRAND_WHITE),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 10),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f8fafc"), colors.white]),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("FONTSIZE", (0, 1), (-1, -1), 9),
-            ("PADDING", (0, 0), (-1, -1), 7),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ]))
+        qr_ref_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), BRAND_DARK),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), BRAND_WHITE),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.HexColor("#f8fafc"), colors.white],
+                    ),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("FONTSIZE", (0, 1), (-1, -1), 9),
+                    ("PADDING", (0, 0), (-1, -1), 7),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ]
+            )
+        )
         story.append(qr_ref_table)
         story.append(Spacer(1, 0.3 * inch))
 
@@ -535,16 +627,25 @@ class CoverSheetGenerator:
             ["View Missing Docs", "Cases → [Case ID] → Checklist"],
         ]
         portal_table = Table(portal_data, colWidths=[2.5 * inch, 4.5 * inch])
-        portal_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), BRAND_DARK),
-            ("TEXTCOLOR", (0, 0), (-1, 0), BRAND_WHITE),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f8fafc"), colors.white]),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("PADDING", (0, 0), (-1, -1), 7),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ]))
+        portal_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), BRAND_DARK),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), BRAND_WHITE),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.HexColor("#f8fafc"), colors.white],
+                    ),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("PADDING", (0, 0), (-1, -1), 7),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ]
+            )
+        )
         story.append(portal_table)
         story.append(Spacer(1, 0.2 * inch))
         story.append(HRFlowable(width="100%", thickness=1, color=BRAND_LIGHT))

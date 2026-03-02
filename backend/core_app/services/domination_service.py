@@ -87,7 +87,9 @@ class DominationService:
         commit: bool = True,
     ) -> dict[str, Any] | None:
         repo = DominationRepository(self.db, table=table)
-        rec = repo.update(tenant_id=tenant_id, record_id=record_id, expected_version=expected_version, patch=patch)
+        rec = repo.update(
+            tenant_id=tenant_id, record_id=record_id, expected_version=expected_version, patch=patch
+        )
         if rec is None:
             return None
         self.audit.log_mutation(

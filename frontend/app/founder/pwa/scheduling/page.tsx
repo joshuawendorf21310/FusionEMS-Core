@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
-const DOMAIN_COLOR = '#3b82f6';
+const DOMAIN_COLOR = 'var(--color-system-fleet)';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -51,7 +51,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <Panel>
       <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1">{label}</div>
-      <div className="text-2xl font-black" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-2xl font-black" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </Panel>
   );
@@ -112,7 +112,7 @@ const fatigueRoster = [
   { name: 'P. Vasquez', kss: 8, hours: 16 },
 ];
 
-const kssColor = (k: number) => k < 4 ? '#4caf50' : k <= 6 ? '#ff9800' : '#e53935';
+const kssColor = (k: number) => k < 4 ? 'var(--color-status-active)' : k <= 6 ? 'var(--color-status-warning)' : 'var(--color-brand-red)';
 const kssBadge = (k: number): 'ok' | 'warn' | 'error' => k < 4 ? 'ok' : k <= 6 ? 'warn' : 'error';
 
 const appFeatures = [
@@ -141,10 +141,10 @@ export default function SchedulingPage() {
         <SectionHeader number="MOD 1" title="Shift Coverage Overview" sub="Current operational staffing state" />
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard label="Current Shifts" value={8} color={DOMAIN_COLOR} />
-          <StatCard label="Covered Units" value={12} color="#4caf50" />
-          <StatCard label="Open Shifts" value={2} color="#e53935" />
-          <StatCard label="On-Call" value={4} color="#ff9800" />
-          <StatCard label="Overtime Hours" value={14} color="#a855f7" sub="Today" />
+          <StatCard label="Covered Units" value={12} color="var(--color-status-active)" />
+          <StatCard label="Open Shifts" value={2} color="var(--color-brand-red)" />
+          <StatCard label="On-Call" value={4} color="var(--color-status-warning)" />
+          <StatCard label="Overtime Hours" value={14} color="var(--color-system-compliance)" sub="Today" />
         </div>
       </motion.div>
 
@@ -211,7 +211,7 @@ export default function SchedulingPage() {
                 </div>
                 <button
                   className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm border shrink-0 transition-colors"
-                  style={{ borderColor: '#4caf50', color: 'var(--q-green)', background: 'rgba(76,175,80,0.08)' }}
+                  style={{ borderColor: 'var(--color-status-active)', color: 'var(--q-green)', background: 'rgba(76,175,80,0.08)' }}
                   onClick={() => {}}
                 >
                   Fill Shift
@@ -237,7 +237,7 @@ export default function SchedulingPage() {
               </div>
               <div className="flex justify-between text-[10px]">
                 <span className="text-text-muted">Hours on duty</span>
-                <span style={{ color: crew.hours >= 14 ? '#e53935' : 'rgba(255,255,255,0.55)' }} className="font-bold">{crew.hours}h</span>
+                <span style={{ color: crew.hours >= 14 ? 'var(--color-brand-red)' : 'rgba(255,255,255,0.55)' }} className="font-bold">{crew.hours}h</span>
               </div>
             </Panel>
           ))}

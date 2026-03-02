@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -110,7 +110,7 @@ async def resolve_alert(
     data = dict(alert.get("data") or {})
     data["resolved"] = True
     data["acknowledged"] = True
-    data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+    data["resolved_at"] = datetime.now(UTC).isoformat()
     data["resolved_by"] = str(current.user_id)
     data["resolution_note"] = payload.get("note")
     updated = await svc.update(
@@ -154,7 +154,7 @@ async def create_work_order(
             "due_date": payload.get("due_date"),
             "estimated_hours": payload.get("estimated_hours"),
             "source_alert_id": payload.get("source_alert_id"),
-            "opened_at": datetime.now(timezone.utc).isoformat(),
+            "opened_at": datetime.now(UTC).isoformat(),
             "completed_at": None,
         },
         correlation_id=correlation_id,
@@ -171,7 +171,9 @@ async def list_work_orders(
 ):
     _check(current)
     svc = _svc(db)
-    orders = svc.repo("maintenance_work_orders").list(tenant_id=current.tenant_id, limit=min(limit, 500))
+    orders = svc.repo("maintenance_work_orders").list(
+        tenant_id=current.tenant_id, limit=min(limit, 500)
+    )
     if unit_id:
         orders = [o for o in orders if (o.get("data") or {}).get("unit_id") == unit_id]
     if status:
@@ -194,11 +196,21 @@ async def update_work_order(
         raise HTTPException(status_code=404, detail="Work order not found")
     correlation_id = getattr(request.state, "correlation_id", None)
     data = dict(order.get("data") or {})
-    for field in ("status", "title", "description", "priority", "assigned_to", "due_date", "estimated_hours", "actual_hours", "notes"):
+    for field in (
+        "status",
+        "title",
+        "description",
+        "priority",
+        "assigned_to",
+        "due_date",
+        "estimated_hours",
+        "actual_hours",
+        "notes",
+    ):
         if field in payload:
             data[field] = payload[field]
     if payload.get("status") == "completed" and not data.get("completed_at"):
-        data["completed_at"] = datetime.now(timezone.utc).isoformat()
+        data["completed_at"] = datetime.now(UTC).isoformat()
     updated = await svc.update(
         table="maintenance_work_orders",
         tenant_id=current.tenant_id,
@@ -266,7 +278,7 @@ async def create_inspection_instance(
             "template_id": payload.get("template_id"),
             "unit_id": payload.get("unit_id"),
             "inspected_by": str(current.user_id),
-            "inspected_at": datetime.now(timezone.utc).isoformat(),
+            "inspected_at": datetime.now(UTC).isoformat(),
             "responses": payload.get("responses", {}),
             "passed": payload.get("passed", True),
             "failures": payload.get("failures", []),

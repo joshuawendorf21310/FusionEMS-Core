@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -11,7 +11,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 logger = logging.getLogger(__name__)
 
 RATE_LIMITS: dict[str, dict[str, int]] = {
-    "api_calls_per_minute": {"starter": 60, "professional": 300, "enterprise": 1000, "founder": 9999},
+    "api_calls_per_minute": {
+        "starter": 60,
+        "professional": 300,
+        "enterprise": 1000,
+        "founder": 9999,
+    },
     "exports_per_day": {"starter": 10, "professional": 100, "enterprise": 500, "founder": 9999},
     "ai_calls_per_hour": {"starter": 20, "professional": 100, "enterprise": 500, "founder": 9999},
 }
@@ -27,7 +32,9 @@ def _get_redis():
     if _redis_client is None:
         try:
             import redis as redis_lib
+
             from core_app.core.config import get_settings
+
             settings = get_settings()
             _redis_client = redis_lib.from_url(
                 settings.redis_url,
@@ -69,12 +76,21 @@ def _redis_sliding_window(key: str, limit: int, window: int) -> tuple[bool, int]
 class TenantRateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, excluded_paths: list[str] | None = None) -> None:
         super().__init__(app)
-        self.excluded_paths = set(excluded_paths or [
-            "/health", "/api/v1/health", "/healthz",
-            "/api/v1/webhooks", "/api/v1/public", "/track",
-        ])
+        self.excluded_paths = set(
+            excluded_paths
+            or [
+                "/health",
+                "/api/v1/health",
+                "/healthz",
+                "/api/v1/webhooks",
+                "/api/v1/public",
+                "/track",
+            ]
+        )
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         path = request.url.path
 
         if any(path.startswith(ep) for ep in self.excluded_paths):
@@ -90,8 +106,15 @@ class TenantRateLimitMiddleware(BaseHTTPMiddleware):
             if not allowed:
                 return JSONResponse(
                     status_code=429,
-                    content={"error": "rate_limit_exceeded", "message": "Too many requests from this IP."},
-                    headers={"X-RateLimit-Limit": str(IP_RATE_LIMIT), "X-RateLimit-Remaining": "0", "Retry-After": "60"},
+                    content={
+                        "error": "rate_limit_exceeded",
+                        "message": "Too many requests from this IP.",
+                    },
+                    headers={
+                        "X-RateLimit-Limit": str(IP_RATE_LIMIT),
+                        "X-RateLimit-Remaining": "0",
+                        "Retry-After": "60",
+                    },
                 )
             response = await call_next(request)
             response.headers["X-RateLimit-Limit"] = str(IP_RATE_LIMIT)

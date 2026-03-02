@@ -1,36 +1,50 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-const PLANS = [
-  { code: 'SCHEDULING_ONLY', label: 'Scheduling Only', desc: 'Calendar, shifts, crew, bids, scheduling PWA', price: 'from $199/mo', color: 'var(--color-status-info)' },
-  { code: 'OPS_CORE', label: 'Ops Core', desc: 'TransportLink + CAD + CrewLink + Scheduling', price: 'Contact us', color: 'var(--q-green)' },
-  { code: 'CLINICAL_CORE', label: 'Clinical Core', desc: 'ePCR + NEMSIS/WI validation + Scheduling', price: 'Contact us', color: '#a855f7' },
-  { code: 'FULL_STACK', label: 'Full Stack', desc: 'Everything — Ops + Clinical + HEMS + NERIS', price: 'Contact us', color: 'var(--q-orange)' },
-];
+interface SchedulingTier {
+  code: string;
+  label: string;
+  monthly_cents: number;
+  price_display: string;
+}
 
-const SCHEDULING_TIERS = [
-  { code: 'S1', label: '1–25 active users', price: '$199/mo' },
-  { code: 'S2', label: '26–75 active users', price: '$399/mo' },
-  { code: 'S3', label: '76–150 active users', price: '$699/mo' },
-];
+interface BillingTier {
+  code: string;
+  label: string;
+  base_monthly_cents: number;
+  per_claim_cents: number;
+  base_display: string;
+  per_claim_display: string;
+}
 
-const BILLING_TIERS = [
-  { code: 'B1', label: '0–150 claims/mo', base: '$399/mo', per_claim: '+$6/claim' },
-  { code: 'B2', label: '151–400 claims/mo', base: '$599/mo', per_claim: '+$5/claim' },
-  { code: 'B3', label: '401–1,000 claims/mo', base: '$999/mo', per_claim: '+$4/claim' },
-  { code: 'B4', label: '1,001+ claims/mo', base: '$1,499/mo', per_claim: '+$3.25/claim' },
-];
+interface PlanDef {
+  code: string;
+  label: string;
+  desc: string;
+  contact_sales: boolean;
+  color: string;
+  price_display: string;
+}
 
-const ADDONS = [
-  { code: 'CCT_TRANSPORT_OPS', label: 'CCT / Transport Ops', price: '+$399/mo', gov_only: false },
-  { code: 'HEMS_OPS', label: 'HEMS Ops (rotor + fixed-wing)', price: '+$750/mo', gov_only: false },
-  { code: 'BILLING_AUTOMATION', label: 'Billing Automation', price: 'from $399/mo + per claim', gov_only: false },
-  { code: 'TRIP_PACK', label: 'Wisconsin TRIP Pack (gov agencies only)', price: '+$199/mo', gov_only: true },
-];
+interface AddonDef {
+  code: string;
+  label: string;
+  monthly_cents: number;
+  gov_only: boolean;
+  uses_billing_tier: boolean;
+  price_display: string;
+}
+
+interface Catalog {
+  plans: PlanDef[];
+  scheduling_tiers: SchedulingTier[];
+  billing_tiers: BillingTier[];
+  addons: AddonDef[];
+}
 
 const COLLECTIONS_MODES = [
   { code: 'none', label: 'No soft collections' },
@@ -53,6 +67,10 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [catalogError, setCatalogError] = useState('');
+  const [catalogLoading, setCatalogLoading] = useState(true);
+
   const [plan, setPlan] = useState('');
   const [tier, setTier] = useState('');
   const [billingTier, setBillingTier] = useState('');
@@ -71,6 +89,23 @@ export default function SignupPage() {
   const [agencyType, setAgencyType] = useState('');
   const [state, setState] = useState('Wisconsin');
 
+  const fetchCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    setCatalogError('');
+    try {
+      const res = await fetch(`${API_BASE}/public/pricing/catalog`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: Catalog = await res.json();
+      setCatalog(data);
+    } catch (e: any) {
+      setCatalogError(e.message || 'Failed to load pricing');
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchCatalog(); }, [fetchCatalog]);
+
   const toggleAddon = (code: string) => {
     setAddons(prev => prev.includes(code) ? prev.filter(a => a !== code) : [...prev, code]);
   };
@@ -79,6 +114,7 @@ export default function SignupPage() {
     setStatementChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]);
   };
 
+  const selectedPlan = catalog?.plans.find(p => p.code === plan);
   const canProceed1 = !!plan && (plan !== 'SCHEDULING_ONLY' || !!tier);
   const canProceed4 = agencyName && firstName && lastName && email && agencyType && state;
 
@@ -88,11 +124,12 @@ export default function SignupPage() {
       const payload = {
         agency_name: agencyName, first_name: firstName, last_name: lastName,
         email, phone, agency_type: agencyType, state,
-        plan_code: plan, tier_code: tier || billingTier,
-        modules: addons,
+        plan_code: plan,
+        tier_code: tier || null,
+        billing_tier_code: billingTier || null,
+        addon_codes: addons,
         is_government_entity: isGovEntity,
         collections_mode: collectionsMode,
-        trip_enabled: addons.includes('TRIP_PACK') && isGovEntity,
         statement_channels: statementChannels,
         collector_vendor_name: collectorVendor,
         placement_method: placementMethod,
@@ -103,11 +140,32 @@ export default function SignupPage() {
       });
       if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b?.detail || `Error ${res.status}`); }
       const data = await res.json();
-      localStorage.setItem('qs_app_id', data.id || data.application_id || '');
+      localStorage.setItem('qs_app_id', data.application_id || data.id || '');
       localStorage.setItem('qs_agency_name', agencyName);
       router.push('/signup/legal');
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
+  }
+
+  if (catalogLoading) {
+    return (
+      <div className="min-h-screen bg-bg-void text-text-primary flex items-center justify-center">
+        <div className="text-sm text-[rgba(255,255,255,0.4)]">Loading...</div>
+      </div>
+    );
+  }
+
+  if (catalogError || !catalog) {
+    return (
+      <div className="min-h-screen bg-bg-void text-text-primary flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="text-sm text-red-400">{catalogError || 'Unable to load pricing'}</div>
+          <button onClick={fetchCatalog} className="px-4 py-2 bg-orange text-text-inverse text-sm font-bold rounded-sm">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -136,7 +194,7 @@ export default function SignupPage() {
             <h2 className="text-xl font-bold mb-1">Choose your plan</h2>
             <p className="text-sm text-[rgba(255,255,255,0.45)] mb-6">One plan. Add what you need.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-              {PLANS.map(p => (
+              {catalog.plans.map(p => (
                 <button key={p.code} onClick={() => { setPlan(p.code); setTier(''); }}
                   className={`text-left p-4 rounded-sm border transition-all ${plan === p.code ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT hover:border-[rgba(255,255,255,0.2)]'}`}>
                   <div className="flex items-center gap-2 mb-1">
@@ -144,7 +202,7 @@ export default function SignupPage() {
                     <span className="font-semibold text-sm">{p.label}</span>
                   </div>
                   <div className="text-xs text-[rgba(255,255,255,0.45)] mb-2">{p.desc}</div>
-                  <div className="text-xs font-bold" style={{ color: p.color }}>{p.price}</div>
+                  <div className="text-xs font-bold" style={{ color: p.color }}>{p.price_display}</div>
                 </button>
               ))}
             </div>
@@ -152,11 +210,11 @@ export default function SignupPage() {
               <div className="mb-6">
                 <div className={labelCls}>Select size tier</div>
                 <div className="grid grid-cols-3 gap-2">
-                  {SCHEDULING_TIERS.map(t => (
+                  {catalog.scheduling_tiers.map(t => (
                     <button key={t.code} onClick={() => setTier(t.code)}
                       className={`p-3 rounded-sm border text-left transition-all ${tier === t.code ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT hover:border-[rgba(255,255,255,0.2)]'}`}>
                       <div className="text-xs font-semibold">{t.label}</div>
-                      <div className="text-xs text-orange font-bold mt-1">{t.price}</div>
+                      <div className="text-xs text-orange font-bold mt-1">{t.price_display}</div>
                     </button>
                   ))}
                 </div>
@@ -164,7 +222,7 @@ export default function SignupPage() {
             )}
             <div className="mb-4 flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={isGovEntity} onChange={e => setIsGovEntity(e.target.checked)} className="w-4 h-4 accent-[#ff6b1a]" />
+                <input type="checkbox" checked={isGovEntity} onChange={e => setIsGovEntity(e.target.checked)} className="w-4 h-4 accent-orange" />
                 <span className="text-sm">We are a government agency (municipal/county/tribal)</span>
               </label>
             </div>
@@ -180,16 +238,16 @@ export default function SignupPage() {
             <h2 className="text-xl font-bold mb-1">Add-ons</h2>
             <p className="text-sm text-[rgba(255,255,255,0.45)] mb-6">Add capabilities to your plan.</p>
             <div className="space-y-2 mb-6">
-              {ADDONS.filter(a => !a.gov_only || isGovEntity).map(a => (
+              {catalog.addons.filter(a => !a.gov_only || isGovEntity).map(a => (
                 <label key={a.code} className={`flex items-center justify-between p-4 rounded-sm border cursor-pointer transition-all ${addons.includes(a.code) ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT hover:border-border-strong'}`}>
                   <div className="flex items-center gap-3">
-                    <input type="checkbox" checked={addons.includes(a.code)} onChange={() => toggleAddon(a.code)} className="w-4 h-4 accent-[#ff6b1a]" />
+                    <input type="checkbox" checked={addons.includes(a.code)} onChange={() => toggleAddon(a.code)} className="w-4 h-4 accent-orange" />
                     <div>
                       <div className="text-sm font-semibold">{a.label}</div>
                       {a.gov_only && <div className="text-xs text-status-warning">Government agencies only</div>}
                     </div>
                   </div>
-                  <div className="text-xs text-orange font-bold">{a.price}</div>
+                  <div className="text-xs text-orange font-bold">{a.price_display}</div>
                 </label>
               ))}
             </div>
@@ -197,13 +255,13 @@ export default function SignupPage() {
               <div className="mb-6 p-4 border border-border-DEFAULT rounded-sm">
                 <div className={labelCls}>Billing Automation tier</div>
                 <div className="space-y-2">
-                  {BILLING_TIERS.map(t => (
+                  {catalog.billing_tiers.map(t => (
                     <label key={t.code} className={`flex items-center justify-between p-3 rounded-sm border cursor-pointer ${billingTier === t.code ? 'border-orange' : 'border-border-subtle'}`}>
                       <div className="flex items-center gap-2">
-                        <input type="radio" checked={billingTier === t.code} onChange={() => setBillingTier(t.code)} className="accent-[#ff6b1a]" />
+                        <input type="radio" checked={billingTier === t.code} onChange={() => setBillingTier(t.code)} className="accent-orange" />
                         <span className="text-xs">{t.label}</span>
                       </div>
-                      <span className="text-xs text-orange font-bold">{t.base} {t.per_claim}</span>
+                      <span className="text-xs text-orange font-bold">{t.base_display} {t.per_claim_display}</span>
                     </label>
                   ))}
                 </div>
@@ -223,7 +281,7 @@ export default function SignupPage() {
             <div className="space-y-2 mb-6">
               {COLLECTIONS_MODES.map(m => (
                 <label key={m.code} className={`flex items-center gap-3 p-4 rounded-sm border cursor-pointer transition-all ${collectionsMode === m.code ? 'border-orange bg-orange-ghost' : 'border-border-DEFAULT'}`}>
-                  <input type="radio" checked={collectionsMode === m.code} onChange={() => setCollectionsMode(m.code)} className="accent-[#ff6b1a]" />
+                  <input type="radio" checked={collectionsMode === m.code} onChange={() => setCollectionsMode(m.code)} className="accent-orange" />
                   <span className="text-sm">{m.label}</span>
                 </label>
               ))}
@@ -235,7 +293,7 @@ export default function SignupPage() {
                   <div className="flex gap-4">
                     {['mail','email','sms_link'].map(ch => (
                       <label key={ch} className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={statementChannels.includes(ch)} onChange={() => toggleChannel(ch)} className="accent-[#ff6b1a]" />
+                        <input type="checkbox" checked={statementChannels.includes(ch)} onChange={() => toggleChannel(ch)} className="accent-orange" />
                         <span className="text-sm capitalize">{ch.replace('_', ' ')}</span>
                       </label>
                     ))}
@@ -318,9 +376,9 @@ export default function SignupPage() {
             <p className="text-sm text-[rgba(255,255,255,0.45)] mb-6">Confirm your selections before proceeding to legal signing and payment.</p>
             <div className="space-y-3 mb-6">
               {[
-                { label: 'Plan', value: PLANS.find(p => p.code === plan)?.label || plan },
-                { label: 'Tier', value: SCHEDULING_TIERS.find(t => t.code === tier)?.label || tier || '—' },
-                { label: 'Add-ons', value: addons.length ? addons.join(', ') : 'None' },
+                { label: 'Plan', value: selectedPlan?.label || plan },
+                { label: 'Tier', value: catalog.scheduling_tiers.find(t => t.code === tier)?.label || tier || '—' },
+                { label: 'Add-ons', value: addons.length ? addons.map(ac => catalog.addons.find(a => a.code === ac)?.label || ac).join(', ') : 'None' },
                 { label: 'Government entity', value: isGovEntity ? 'Yes' : 'No' },
                 { label: 'Collections', value: COLLECTIONS_MODES.find(m => m.code === collectionsMode)?.label || collectionsMode },
                 { label: 'Agency', value: `${agencyName} (${agencyType}, ${state})` },

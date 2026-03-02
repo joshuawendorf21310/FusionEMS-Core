@@ -47,3 +47,26 @@ async def emit_letter_viewed(
         entity_type="letter",
         correlation_id=correlation_id,
     )
+
+
+async def emit_payment_confirmed(
+    *,
+    publisher: EventPublisher,
+    tenant_id: uuid.UUID,
+    payment_id: uuid.UUID,
+    amount_cents: int,
+    stripe_payment_intent: str | None,
+    correlation_id: str | None = None,
+) -> None:
+    await publisher.publish(
+        "payment.confirmed",
+        tenant_id=tenant_id,
+        entity_id=payment_id,
+        payload={
+            "payment_id": str(payment_id),
+            "amount_cents": amount_cents,
+            "stripe_payment_intent": stripe_payment_intent,
+        },
+        entity_type="payment",
+        correlation_id=correlation_id,
+    )

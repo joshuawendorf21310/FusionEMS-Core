@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
 
-const DOMAIN_COLOR = '#3b82f6';
+const DOMAIN_COLOR = 'var(--color-system-fleet)';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -51,7 +51,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <Panel>
       <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1">{label}</div>
-      <div className="text-2xl font-black" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-2xl font-black" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </Panel>
   );
@@ -124,9 +124,9 @@ export default function DeploymentPage() {
           <StatCard label="Current Version" value="v2.4.1" color={DOMAIN_COLOR} />
           <StatCard label="Last Deploy" value="2h ago" color="rgba(255,255,255,0.55)" />
           <StatCard label="Total Devices" value={47} color="rgba(255,255,255,0.7)" />
-          <StatCard label="Updated" value={44} color="#4caf50" />
-          <StatCard label="Pending" value={3} color="#ff9800" />
-          <StatCard label="Deploy Success" value="99.1%" color="#22d3ee" />
+          <StatCard label="Updated" value={44} color="var(--color-status-active)" />
+          <StatCard label="Pending" value={3} color="var(--color-status-warning)" />
+          <StatCard label="Deploy Success" value="99.1%" color="var(--color-status-info)" />
         </div>
       </motion.div>
 
@@ -250,9 +250,9 @@ export default function DeploymentPage() {
       <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="mb-8">
         <SectionHeader number="MOD 6" title="CDN &amp; Cache Health" sub="Edge delivery and bundle performance" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <StatCard label="Cache Hit Rate" value="94%" sub="Last 24h avg" color="#4caf50" />
+          <StatCard label="Cache Hit Rate" value="94%" sub="Last 24h avg" color="var(--color-status-active)" />
           <StatCard label="CDN Latency" value="18ms" sub="P50 global avg" color={DOMAIN_COLOR} />
-          <StatCard label="Bundle Size" value="2.1 MB" sub="Gzipped: 618 KB" color="#22d3ee" />
+          <StatCard label="Bundle Size" value="2.1 MB" sub="Gzipped: 618 KB" color="var(--color-status-info)" />
         </div>
       </motion.div>
 

@@ -30,6 +30,7 @@ Include:
   assessments, disposition, narrative, acls, cct, hems,
   created_at, created_by, submitted_at
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -38,17 +39,18 @@ import math
 from decimal import Decimal
 from typing import Any
 
-
-_VOLATILE_TOP_LEVEL = frozenset({
-    "updated_at",
-    "completeness_score",
-    "completeness_issues",
-    "sync_status",
-    "_event_log",
-    "attachments",
-    "last_modified_by",
-    "chart_status",
-})
+_VOLATILE_TOP_LEVEL = frozenset(
+    {
+        "updated_at",
+        "completeness_score",
+        "completeness_issues",
+        "sync_status",
+        "_event_log",
+        "attachments",
+        "last_modified_by",
+        "chart_status",
+    }
+)
 
 
 def _jcs_value(value: Any) -> Any:

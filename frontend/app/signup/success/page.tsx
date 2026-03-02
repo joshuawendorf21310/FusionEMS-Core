@@ -66,12 +66,12 @@ function ProvisioningSteps({ status }: { status: ProvisioningStatus }) {
             >
               {isDone ? (
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="#4caf50" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M2 6l3 3 5-5" stroke="var(--color-status-active)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               ) : isActive ? (
                 <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#ff6b1a" strokeWidth="4" />
-                  <path className="opacity-75" fill="#ff6b1a" d="M4 12a8 8 0 018-8v8z" />
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="var(--color-brand-orange)" strokeWidth="4" />
+                  <path className="opacity-75" fill="var(--color-brand-orange)" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               ) : (
                 <div
@@ -86,9 +86,9 @@ function ProvisioningSteps({ status }: { status: ProvisioningStatus }) {
               className="text-sm"
               style={{
                 color: isDone
-                  ? '#4caf50'
+                  ? 'var(--color-status-active)'
                   : isActive
-                  ? '#ff8c42'
+                  ? 'var(--color-brand-orange)'
                   : isPending
                   ? 'rgba(255,255,255,0.25)'
                   : 'rgba(255,255,255,0.65)',
@@ -199,12 +199,12 @@ export default function SuccessPage() {
         >
           {isComplete ? (
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M3 10l5 5 9-9" stroke="#4caf50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M3 10l5 5 9-9" stroke="var(--color-status-active)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : (
             <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#ff6b1a" strokeWidth="4" />
-              <path className="opacity-75" fill="#ff6b1a" d="M4 12a8 8 0 018-8v8z" />
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="var(--color-brand-orange)" strokeWidth="4" />
+              <path className="opacity-75" fill="var(--color-brand-orange)" d="M4 12a8 8 0 018-8v8z" />
             </svg>
           )}
         </div>
@@ -256,7 +256,7 @@ export default function SuccessPage() {
                   className="h-full rounded-full transition-all duration-700"
                   style={{
                     width: `${progress}%`,
-                    backgroundColor: isComplete ? '#4caf50' : '#ff6b1a',
+                    backgroundColor: isComplete ? 'var(--color-status-active)' : 'var(--color-brand-orange)',
                   }}
                 />
               </div>
@@ -284,7 +284,7 @@ export default function SuccessPage() {
               style={{
                 backgroundColor: 'rgba(255,59,59,0.06)',
                 border: '1px solid rgba(255,59,59,0.2)',
-                color: '#ff6b6b',
+                color: 'var(--color-brand-red)',
               }}
             >
               {pollError} — retrying…
@@ -296,7 +296,7 @@ export default function SuccessPage() {
             <div className="mt-4 flex items-center gap-2">
               <div
                 className="w-1.5 h-1.5 rounded-full animate-pulse"
-                style={{ backgroundColor: '#22d3ee' }}
+                style={{ backgroundColor: 'var(--color-status-info)' }}
               />
               <span className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
                 Checking every {POLL_INTERVAL_MS / 1000}s…
@@ -321,7 +321,7 @@ export default function SuccessPage() {
               {
                 icon: (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="var(--color-status-info)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 ),
                 text: `Login credentials will be sent to ${signerEmail || 'your email'}.`,
@@ -329,7 +329,7 @@ export default function SuccessPage() {
               {
                 icon: (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#ff6b1a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="var(--color-brand-orange)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 ),
                 text: 'Your HIPAA-compliant tenant is being isolated and configured.',
@@ -337,7 +337,7 @@ export default function SuccessPage() {
               {
                 icon: (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#4caf50" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="var(--color-status-active)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 ),
                 text: 'NEMSIS & ePCR modules will be pre-configured for your state.',
@@ -345,7 +345,7 @@ export default function SuccessPage() {
               {
                 icon: (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" stroke="var(--color-status-info)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 ),
                 text: 'Onboarding support will reach out within one business day.',
@@ -404,7 +404,7 @@ export default function SuccessPage() {
           style={{
             backgroundColor: 'rgba(255,59,59,0.08)',
             borderColor: 'rgba(255,59,59,0.3)',
-            color: '#ff6b6b',
+            color: 'var(--color-brand-red)',
           }}
         >
           <span className="font-semibold">Provisioning Error: </span>
@@ -433,7 +433,7 @@ export default function SuccessPage() {
           <div className="flex items-center gap-2">
             <div
               className="w-2 h-2 rounded-full animate-pulse"
-              style={{ backgroundColor: '#ff6b1a' }}
+              style={{ backgroundColor: 'var(--color-brand-orange)' }}
             />
             <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--q-orange)' }}>
               Provisioning…

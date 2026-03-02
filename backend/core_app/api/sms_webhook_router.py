@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,15 +19,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Telnyx SMS"])
 
-STOP_KEYWORDS  = {"STOP", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"}
-HELP_KEYWORDS  = {"HELP", "INFO"}
+STOP_KEYWORDS = {"STOP", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"}
+HELP_KEYWORDS = {"HELP", "INFO"}
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
-def _insert_event(db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict) -> bool:
+def _insert_event(
+    db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict
+) -> bool:
     result = db.execute(
         text(
             "INSERT INTO telnyx_events (event_id, event_type, tenant_id, received_at, raw_json) "
@@ -143,7 +145,9 @@ def _send_reply(
     except TelnyxApiError as exc:
         logger.error(
             "telnyx_sms_reply_failed from=%s to=%s error=%s",
-            from_number, to_number, exc,
+            from_number,
+            to_number,
+            exc,
         )
 
 
@@ -175,8 +179,16 @@ async def telnyx_sms_webhook(
     event_type: str = data.get("event_type", "")
     ep = data.get("payload", {})
 
-    to_number: str = ep.get("to", [{}])[0].get("phone_number", "") if isinstance(ep.get("to"), list) else ep.get("to", "")
-    from_number: str = ep.get("from", {}).get("phone_number", "") if isinstance(ep.get("from"), dict) else ep.get("from", "")
+    to_number: str = (
+        ep.get("to", [{}])[0].get("phone_number", "")
+        if isinstance(ep.get("to"), list)
+        else ep.get("to", "")
+    )
+    from_number: str = (
+        ep.get("from", {}).get("phone_number", "")
+        if isinstance(ep.get("from"), dict)
+        else ep.get("from", "")
+    )
     body_text: str = (ep.get("text") or "").strip()
     message_id: str = ep.get("id") or event_id
 
@@ -189,7 +201,11 @@ async def telnyx_sms_webhook(
 
     logger.info(
         "telnyx_sms event_type=%s event_id=%s from=%s to=%s tenant_id=%s",
-        event_type, event_id, from_number, to_number, tenant_id,
+        event_type,
+        event_id,
+        from_number,
+        to_number,
+        tenant_id,
     )
 
     if event_type == "message.received":
@@ -217,7 +233,11 @@ async def telnyx_sms_webhook(
             )
 
         elif keyword in HELP_KEYWORDS:
-            tenant_info = _get_tenant_info(db, tenant_id) if tenant_id else {"name": "EMS Agency", "billing_phone": ""}
+            tenant_info = (
+                _get_tenant_info(db, tenant_id)
+                if tenant_id
+                else {"name": "EMS Agency", "billing_phone": ""}
+            )
             agency_name = tenant_info["name"]
             billing_phone = tenant_info["billing_phone"] or "our billing office"
             _send_reply(

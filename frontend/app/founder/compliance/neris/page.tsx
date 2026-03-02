@@ -82,7 +82,7 @@ function Toast({ items }: { items: ToastItem[] }) {
           style={{
             background: t.type === 'success' ? 'rgba(76,175,80,0.18)' : 'rgba(229,57,53,0.18)',
             border: `1px solid ${t.type === 'success' ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.4)'}`,
-            color: t.type === 'success' ? '#4caf50' : '#e53935',
+            color: t.type === 'success' ? 'var(--color-status-active)' : 'var(--color-brand-red)',
           }}
         >
           {t.msg}
@@ -108,7 +108,7 @@ function useToast() {
 const PACK_STATUS_MAP: Record<PackStatus, { label: string; color: string; bg: string; pulse?: boolean }> = {
   importing:     { label: 'IMPORTING',  color: 'var(--q-yellow)', bg: 'rgba(245,158,11,0.12)',  pulse: true },
   staged:        { label: 'STAGED',     color: 'var(--color-system-billing)', bg: 'rgba(34,211,238,0.12)' },
-  compiled:      { label: 'COMPILED',   color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+  compiled:      { label: 'COMPILED',   color: 'var(--color-system-fleet)', bg: 'rgba(96,165,250,0.12)' },
   active:        { label: 'ACTIVE',     color: 'var(--q-green)', bg: 'rgba(76,175,80,0.12)' },
   archived:      { label: 'ARCHIVED',   color: 'rgba(255,255,255,0.35)', bg: 'rgba(255,255,255,0.06)' },
   import_failed: { label: 'FAILED',     color: 'var(--q-red)', bg: 'rgba(229,57,53,0.12)' },
@@ -296,7 +296,7 @@ function PackDetailDrawer({
                 <button
                   onClick={() => onAction('compile', pack.id)}
                   className="h-7 px-3 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-                  style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', color: '#60a5fa' }}
+                  style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', color: 'var(--color-system-fleet)' }}
                 >
                   Compile
                 </button>
@@ -458,7 +458,7 @@ function PacksTab({
                       <button
                         onClick={() => doCompile(pack.id)}
                         className="h-6 px-2 text-[10px] font-semibold uppercase tracking-wider rounded-sm"
-                        style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', color: '#60a5fa' }}
+                        style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', color: 'var(--color-system-fleet)' }}
                       >
                         Compile
                       </button>
@@ -523,7 +523,7 @@ function CopilotResult({ result }: { result: CopilotResult }) {
           <div className="h-1.5 rounded-full bg-[rgba(255,255,255,0.08)]">
             <div
               className="h-full rounded-full"
-              style={{ width: `${result.confidence * 100}%`, background: '#a855f7' }}
+              style={{ width: `${result.confidence * 100}%`, background: 'var(--color-system-compliance)' }}
             />
           </div>
         </div>
@@ -547,7 +547,7 @@ function IssueCard({ issue }: { issue: ValidationIssue }) {
         <span
           className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm"
           style={{
-            color: issue.severity === 'error' ? '#e53935' : '#ff9800',
+            color: issue.severity === 'error' ? 'var(--color-brand-red)' : 'var(--color-status-warning)',
             background: issue.severity === 'error' ? 'rgba(229,57,53,0.15)' : 'rgba(255,152,0,0.15)',
           }}
         >
@@ -735,7 +735,7 @@ function ValidateTab({
               value={entityType}
               onChange={(e) => setEntityType(e.target.value as 'ENTITY' | 'INCIDENT')}
               className="bg-[rgba(255,255,255,0.04)] border border-border-DEFAULT text-xs text-text-primary px-2 py-1 rounded-sm outline-none focus:border-[rgba(255,107,26,0.4)]"
-              style={{ background: '#0b0f14' }}
+              style={{ background: 'var(--color-bg-base)' }}
             >
               <option value="ENTITY">ENTITY</option>
               <option value="INCIDENT">INCIDENT</option>
@@ -785,7 +785,7 @@ function ValidateTab({
             onClick={() => explainWithCopilot(allIssues)}
             disabled={loadingCopilot}
             className="h-8 px-4 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all hover:brightness-110 disabled:opacity-40"
-            style={{ background: 'rgba(168,85,247,0.16)', border: '1px solid rgba(168,85,247,0.35)', color: '#a855f7' }}
+            style={{ background: 'rgba(168,85,247,0.16)', border: '1px solid rgba(168,85,247,0.35)', color: 'var(--color-system-compliance)' }}
           >
             {loadingCopilot ? 'Analyzing…' : 'Explain with Copilot'}
           </button>
@@ -876,7 +876,7 @@ function FixListTab({ issues }: { issues: ValidationIssue[] }) {
             onClick={explainAll}
             disabled={loadingCopilot}
             className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider rounded-sm disabled:opacity-40"
-            style={{ background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7' }}
+            style={{ background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.3)', color: 'var(--color-system-compliance)' }}
           >
             {loadingCopilot ? 'Analyzing…' : 'Explain All with Copilot'}
           </button>
@@ -913,7 +913,7 @@ function FixListTab({ issues }: { issues: ValidationIssue[] }) {
                 <div className="pt-3 space-y-2">
                   {sectionIssues.map((issue, i) => (
                     <div key={i} className="flex gap-2 items-start">
-                      <span className="mt-0.5 text-sm leading-none" style={{ color: issue.severity === 'error' ? '#e53935' : '#ff9800' }}>
+                      <span className="mt-0.5 text-sm leading-none" style={{ color: issue.severity === 'error' ? 'var(--color-brand-red)' : 'var(--color-status-warning)' }}>
                         {issue.severity === 'error' ? '✖' : '▲'}
                       </span>
                       <div>
@@ -1066,7 +1066,7 @@ function RulesBrowserTab({ activePackId, packs }: { activePackId: string | null;
                                 <span
                                   key={v}
                                   className="px-1.5 py-0.5 text-[10px] font-mono rounded-sm"
-                                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: '#a855f7' }}
+                                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: 'var(--color-system-compliance)' }}
                                 >
                                   {v}
                                 </span>

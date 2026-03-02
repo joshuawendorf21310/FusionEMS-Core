@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
@@ -19,6 +19,7 @@ def _svc(db: Session) -> DominationService:
 
 
 # ── Rule CRUD ────────────────────────────────────────────────────────────────
+
 
 @router.post("/rules")
 async def create_rule(
@@ -96,6 +97,7 @@ async def delete_rule(
 
 # ── Rule evaluation engine ────────────────────────────────────────────────────
 
+
 @router.post("/evaluate")
 async def evaluate_rules(
     payload: dict[str, Any],
@@ -138,6 +140,7 @@ async def evaluate_rules(
 
 # ── Role-based field visibility ───────────────────────────────────────────────
 
+
 @router.get("/role-matrix")
 async def role_matrix(
     current: CurrentUser = Depends(get_current_user),
@@ -159,6 +162,7 @@ async def role_matrix(
 
 # ── Tenant-scoped data isolation ──────────────────────────────────────────────
 
+
 @router.get("/tenant-isolation-status")
 async def tenant_isolation_status(
     current: CurrentUser = Depends(get_current_user),
@@ -174,15 +178,24 @@ async def tenant_isolation_status(
 
 # ── PHI masking ───────────────────────────────────────────────────────────────
 
+
 @router.get("/phi-fields")
 async def phi_fields(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
     phi = [
-        "patient_name", "dob", "ssn", "address", "phone", "email",
-        "insurance_id", "medical_record_number", "diagnosis_code",
-        "narrative", "chief_complaint",
+        "patient_name",
+        "dob",
+        "ssn",
+        "address",
+        "phone",
+        "email",
+        "insurance_id",
+        "medical_record_number",
+        "diagnosis_code",
+        "narrative",
+        "chief_complaint",
     ]
     masked = phi if current.role not in ("founder", "agency_admin", "billing") else []
     return {"phi_fields": phi, "masked_for_role": current.role, "masked": masked}
@@ -195,8 +208,14 @@ async def phi_mask_preview(
 ):
     fields = payload.get("fields", {})
     phi_keys = {
-        "patient_name", "dob", "ssn", "address", "phone", "email",
-        "insurance_id", "medical_record_number",
+        "patient_name",
+        "dob",
+        "ssn",
+        "address",
+        "phone",
+        "email",
+        "insurance_id",
+        "medical_record_number",
     }
     result = {}
     for k, v in fields.items():
@@ -208,6 +227,7 @@ async def phi_mask_preview(
 
 
 # ── Conditional visibility ────────────────────────────────────────────────────
+
 
 @router.post("/conditional-check")
 async def conditional_check(
@@ -231,6 +251,7 @@ async def conditional_check(
 
 # ── Founder override ──────────────────────────────────────────────────────────
 
+
 @router.get("/founder-view-status")
 async def founder_view_status(
     current: CurrentUser = Depends(require_role("founder")),
@@ -245,6 +266,7 @@ async def founder_view_status(
 
 
 # ── Billing / Compliance view toggles ────────────────────────────────────────
+
 
 @router.get("/view-modes")
 async def view_modes(
@@ -263,6 +285,7 @@ async def view_modes(
 
 # ── Stripe-status visibility gating ──────────────────────────────────────────
 
+
 @router.post("/stripe-gate-check")
 async def stripe_gate_check(
     payload: dict[str, Any],
@@ -280,14 +303,23 @@ async def stripe_gate_check(
 
 # ── Module-based UI gating ────────────────────────────────────────────────────
 
+
 @router.get("/module-gates")
 async def module_gates(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
     all_modules = [
-        "billing", "nemsis", "fhir", "cad", "fleet", "scheduling",
-        "fire_ops", "accreditation", "analytics", "founder_command",
+        "billing",
+        "nemsis",
+        "fhir",
+        "cad",
+        "fleet",
+        "scheduling",
+        "fire_ops",
+        "accreditation",
+        "analytics",
+        "founder_command",
     ]
     role_access = {
         "founder": all_modules,
@@ -302,6 +334,7 @@ async def module_gates(
 
 
 # ── Access control: device, IP, MFA, geo ────────────────────────────────────
+
 
 @router.post("/access-control-check")
 async def access_control_check(
@@ -331,6 +364,7 @@ async def access_control_check(
 
 
 # ── Temporary elevated access ─────────────────────────────────────────────────
+
 
 @router.post("/elevated-access/grant")
 async def grant_elevated_access(
@@ -364,6 +398,7 @@ async def list_elevated_access(
 
 # ── Time-based visibility windows ─────────────────────────────────────────────
 
+
 @router.post("/time-windows")
 async def create_time_window(
     payload: dict[str, Any],
@@ -395,6 +430,7 @@ async def list_time_windows(
 
 
 # ── One-time secure view links ─────────────────────────────────────────────────
+
 
 @router.post("/secure-links")
 async def create_secure_link(
@@ -432,10 +468,15 @@ async def validate_secure_link(
     d = match.get("data", {})
     if d.get("used"):
         return {"valid": False, "reason": "already_used"}
-    return {"valid": True, "resource": d.get("resource"), "expires_minutes": d.get("expires_minutes")}
+    return {
+        "valid": True,
+        "resource": d.get("resource"),
+        "expires_minutes": d.get("expires_minutes"),
+    }
 
 
 # ── Data redaction preview ─────────────────────────────────────────────────────
+
 
 @router.post("/redaction-preview")
 async def redaction_preview(
@@ -446,7 +487,10 @@ async def redaction_preview(
     record = payload.get("record", {})
     templates = {
         "standard": {"mask": ["ssn", "dob", "phone"], "deny": []},
-        "hipaa_strict": {"mask": ["ssn", "dob", "phone", "address", "email", "patient_name"], "deny": ["diagnosis_code"]},
+        "hipaa_strict": {
+            "mask": ["ssn", "dob", "phone", "address", "email", "patient_name"],
+            "deny": ["diagnosis_code"],
+        },
         "billing_safe": {"mask": ["ssn"], "deny": []},
         "export_safe": {"mask": ["ssn", "dob", "phone", "address"], "deny": ["narrative"]},
     }
@@ -463,6 +507,7 @@ async def redaction_preview(
 
 
 # ── Bulk rule application ──────────────────────────────────────────────────────
+
 
 @router.post("/rules/bulk-apply")
 async def bulk_apply_rules(
@@ -487,6 +532,7 @@ async def bulk_apply_rules(
 
 # ── Rule conflict detection ───────────────────────────────────────────────────
 
+
 @router.post("/rules/conflict-check")
 async def conflict_check(
     payload: dict[str, Any],
@@ -503,11 +549,14 @@ async def conflict_check(
         same_role = d.get("role") == incoming.get("role")
         field_overlap = set(d.get("fields", [])) & set(incoming.get("fields", []))
         if same_role and field_overlap and d.get("action") != incoming.get("action"):
-            conflicts.append({"rule_id": str(r.get("id")), "conflicting_fields": list(field_overlap)})
+            conflicts.append(
+                {"rule_id": str(r.get("id")), "conflicting_fields": list(field_overlap)}
+            )
     return {"has_conflicts": bool(conflicts), "conflicts": conflicts}
 
 
 # ── Rule testing sandbox ──────────────────────────────────────────────────────
+
 
 @router.post("/rules/sandbox-test")
 async def sandbox_test(
@@ -518,7 +567,9 @@ async def sandbox_test(
     test_context = payload.get("test_context", {})
     role_match = not rule.get("role") or rule.get("role") == test_context.get("role")
     cond = rule.get("conditions", {})
-    claim_match = not cond.get("claim_status") or cond["claim_status"] == test_context.get("claim_status")
+    claim_match = not cond.get("claim_status") or cond["claim_status"] == test_context.get(
+        "claim_status"
+    )
     payer_match = not cond.get("payer_type") or cond["payer_type"] == test_context.get("payer_type")
     would_apply = role_match and claim_match and payer_match
     return {
@@ -531,6 +582,7 @@ async def sandbox_test(
 
 
 # ── Visibility change audit log ───────────────────────────────────────────────
+
 
 @router.post("/audit-log")
 async def create_visibility_audit(
@@ -565,6 +617,7 @@ async def list_visibility_audit(
 
 # ── AND/OR logic chaining ─────────────────────────────────────────────────────
 
+
 @router.post("/logic-chain/evaluate")
 async def evaluate_logic_chain(
     payload: dict[str, Any],
@@ -593,6 +646,7 @@ async def evaluate_logic_chain(
 
 
 # ── Approval workflow for visibility changes ──────────────────────────────────
+
 
 @router.post("/approval-requests")
 async def create_approval_request(
@@ -645,6 +699,7 @@ async def decide_approval(
 
 # ── Compliance / Audit-lock ────────────────────────────────────────────────────
 
+
 @router.post("/compliance-lock")
 async def compliance_lock(
     payload: dict[str, Any],
@@ -679,6 +734,7 @@ async def compliance_lock_status(
 
 # ── Emergency access mode ─────────────────────────────────────────────────────
 
+
 @router.post("/emergency-access")
 async def emergency_access(
     payload: dict[str, Any],
@@ -702,6 +758,7 @@ async def emergency_access(
 
 
 # ── Policy versioning & rollback ──────────────────────────────────────────────
+
 
 @router.post("/policies")
 async def create_policy(
@@ -740,7 +797,9 @@ async def rollback_policy(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
     db: Session = Depends(db_session_dependency),
 ):
-    policy = _svc(db).repo("visibility_policies").get(tenant_id=current.tenant_id, record_id=policy_id)
+    policy = (
+        _svc(db).repo("visibility_policies").get(tenant_id=current.tenant_id, record_id=policy_id)
+    )
     if not policy:
         return {"error": "not_found"}
     snapshot = policy.get("data", {}).get("rules_snapshot", [])
@@ -755,6 +814,7 @@ async def rollback_policy(
 
 # ── Historical visibility snapshot ────────────────────────────────────────────
 
+
 @router.get("/snapshots")
 async def list_snapshots(
     current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
@@ -764,6 +824,7 @@ async def list_snapshots(
 
 
 # ── JWT claim-based visibility ────────────────────────────────────────────────
+
 
 @router.get("/jwt-claims-visibility")
 async def jwt_claims_visibility(
@@ -786,6 +847,7 @@ async def jwt_claims_visibility(
 
 # ── Per-endpoint restriction mapping ─────────────────────────────────────────
 
+
 @router.get("/endpoint-restrictions")
 async def endpoint_restrictions(
     current: CurrentUser = Depends(get_current_user),
@@ -799,10 +861,15 @@ async def endpoint_restrictions(
         "/api/v1/visibility": ["agency_admin", "founder"],
     }
     accessible = {ep: roles for ep, roles in restrictions.items() if current.role in roles}
-    return {"role": current.role, "accessible_endpoints": accessible, "all_restrictions": restrictions}
+    return {
+        "role": current.role,
+        "accessible_endpoints": accessible,
+        "all_restrictions": restrictions,
+    }
 
 
 # ── View-level rate limiting ──────────────────────────────────────────────────
+
 
 @router.get("/rate-limit-config")
 async def rate_limit_config(
@@ -820,6 +887,7 @@ async def rate_limit_config(
 
 # ── Export redaction rules ────────────────────────────────────────────────────
 
+
 @router.get("/export-redaction-rules")
 async def export_redaction_rules(
     current: CurrentUser = Depends(get_current_user),
@@ -831,6 +899,7 @@ async def export_redaction_rules(
 
 
 # ── Sensitive data auto-detection ─────────────────────────────────────────────
+
 
 @router.post("/auto-detect-sensitive")
 async def auto_detect_sensitive(
@@ -856,6 +925,7 @@ async def auto_detect_sensitive(
 
 # ── Visibility heatmap ────────────────────────────────────────────────────────
 
+
 @router.get("/heatmap")
 async def visibility_heatmap(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
@@ -871,6 +941,7 @@ async def visibility_heatmap(
 
 
 # ── Tenant visibility dashboard ───────────────────────────────────────────────
+
 
 @router.get("/dashboard")
 async def visibility_dashboard(
@@ -896,6 +967,7 @@ async def visibility_dashboard(
 
 
 # ── Behavioral anomaly / suspicious behavior ─────────────────────────────────
+
 
 @router.post("/anomaly-trigger")
 async def anomaly_trigger(
@@ -929,6 +1001,7 @@ async def list_anomaly_events(
 
 # ── Access scoring ────────────────────────────────────────────────────────────
 
+
 @router.get("/access-score")
 async def access_score(
     current: CurrentUser = Depends(get_current_user),
@@ -936,7 +1009,9 @@ async def access_score(
 ):
     svc = _svc(db)
     anomalies = svc.repo("visibility_anomaly_events").list(tenant_id=current.tenant_id)
-    user_anomalies = [a for a in anomalies if a.get("data", {}).get("user_id") == str(current.user_id)]
+    user_anomalies = [
+        a for a in anomalies if a.get("data", {}).get("user_id") == str(current.user_id)
+    ]
     high = sum(1 for a in user_anomalies if a.get("data", {}).get("severity") == "high")
     medium = sum(1 for a in user_anomalies if a.get("data", {}).get("severity") == "medium")
     score = max(0, 100 - high * 30 - medium * 10)
@@ -945,6 +1020,7 @@ async def access_score(
 
 
 # ── Zero-trust enforcement ────────────────────────────────────────────────────
+
 
 @router.post("/zero-trust/check")
 async def zero_trust_check(
@@ -974,6 +1050,7 @@ async def zero_trust_check(
 
 
 # ── Global kill-switch ────────────────────────────────────────────────────────
+
 
 @router.post("/kill-switch")
 async def kill_switch(
@@ -1009,6 +1086,7 @@ async def kill_switch_status(
 
 # ── Role simulation testing ───────────────────────────────────────────────────
 
+
 @router.post("/role-simulation")
 async def role_simulation(
     payload: dict[str, Any],
@@ -1043,6 +1121,7 @@ async def role_simulation(
 
 # ── Secure demo mode ──────────────────────────────────────────────────────────
 
+
 @router.get("/demo-mode/config")
 async def demo_mode_config(
     current: CurrentUser = Depends(get_current_user),
@@ -1057,6 +1136,7 @@ async def demo_mode_config(
 
 
 # ── Training mode ─────────────────────────────────────────────────────────────
+
 
 @router.get("/training-mode/config")
 async def training_mode_config(
@@ -1073,6 +1153,7 @@ async def training_mode_config(
 
 # ── De-identified sandbox ─────────────────────────────────────────────────────
 
+
 @router.post("/deidentify")
 async def deidentify(
     payload: dict[str, Any],
@@ -1081,10 +1162,14 @@ async def deidentify(
     record = payload.get("record", {})
     phi_fields = {"patient_name", "dob", "ssn", "address", "phone", "email", "insurance_id"}
     deidentified = {k: ("DEIDENTIFIED" if k in phi_fields else v) for k, v in record.items()}
-    return {"deidentified": deidentified, "fields_removed": len([k for k in record if k in phi_fields])}
+    return {
+        "deidentified": deidentified,
+        "fields_removed": len([k for k in record if k in phi_fields]),
+    }
 
 
 # ── Data minimization ─────────────────────────────────────────────────────────
+
 
 @router.post("/data-minimization/check")
 async def data_minimization_check(
@@ -1111,6 +1196,7 @@ async def data_minimization_check(
 
 
 # ── Access change alerting ─────────────────────────────────────────────────────
+
 
 @router.post("/access-alerts")
 async def create_access_alert(
@@ -1144,6 +1230,7 @@ async def list_access_alerts(
 
 # ── Auto-lock after failed attempts ───────────────────────────────────────────
 
+
 @router.post("/auto-lock")
 async def auto_lock(
     payload: dict[str, Any],
@@ -1173,6 +1260,7 @@ async def auto_lock(
 
 # ── Restricted search results / sensitive search query alert ─────────────────
 
+
 @router.post("/search-filter")
 async def search_filter(
     payload: dict[str, Any],
@@ -1193,6 +1281,7 @@ async def search_filter(
 
 # ── Clipboard copy restriction ────────────────────────────────────────────────
 
+
 @router.get("/clipboard-policy")
 async def clipboard_policy(
     current: CurrentUser = Depends(get_current_user),
@@ -1207,6 +1296,7 @@ async def clipboard_policy(
 
 
 # ── Third-party integration field filter ─────────────────────────────────────
+
 
 @router.post("/integration-field-filter")
 async def integration_field_filter(
@@ -1228,6 +1318,7 @@ async def integration_field_filter(
 
 
 # ── Live policy validation ────────────────────────────────────────────────────
+
 
 @router.post("/policy/live-validate")
 async def live_validate_policy(
@@ -1251,13 +1342,20 @@ async def live_validate_policy(
 
 # ── Field encryption enforcement ─────────────────────────────────────────────
 
+
 @router.get("/field-encryption-status")
 async def field_encryption_status(
     current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
 ):
     encrypted_fields = [
-        "ssn", "dob", "patient_name", "address", "phone",
-        "insurance_id", "account_number", "credit_card",
+        "ssn",
+        "dob",
+        "patient_name",
+        "address",
+        "phone",
+        "insurance_id",
+        "account_number",
+        "credit_card",
     ]
     return {
         "encrypted_fields": encrypted_fields,
@@ -1270,6 +1368,7 @@ async def field_encryption_status(
 
 # ── Inline policy explanation ─────────────────────────────────────────────────
 
+
 @router.get("/policy-explanation")
 async def policy_explanation(
     field: str = Query(...),
@@ -1281,17 +1380,22 @@ async def policy_explanation(
     for r in rules:
         d = r.get("data", {})
         if field in d.get("fields", []) and d.get("status") == "active":
-            applicable.append({
-                "rule_id": str(r.get("id")),
-                "rule_name": d.get("rule_name"),
-                "action": d.get("action"),
-                "role": d.get("role"),
-                "explanation": d.get("explanation", f"Rule applies {d.get('action')} to field '{field}'"),
-            })
+            applicable.append(
+                {
+                    "rule_id": str(r.get("id")),
+                    "rule_name": d.get("rule_name"),
+                    "action": d.get("action"),
+                    "role": d.get("role"),
+                    "explanation": d.get(
+                        "explanation", f"Rule applies {d.get('action')} to field '{field}'"
+                    ),
+                }
+            )
     return {"field": field, "applicable_rules": applicable, "count": len(applicable)}
 
 
 # ── Compliance classification labels ─────────────────────────────────────────
+
 
 @router.get("/classification-labels")
 async def classification_labels(
@@ -1299,7 +1403,10 @@ async def classification_labels(
 ):
     return {
         "labels": {
-            "PHI": {"color": "red", "description": "Protected Health Information - HIPAA regulated"},
+            "PHI": {
+                "color": "red",
+                "description": "Protected Health Information - HIPAA regulated",
+            },
             "PII": {"color": "orange", "description": "Personally Identifiable Information"},
             "FINANCIAL": {"color": "yellow", "description": "Financial data - PCI/internal policy"},
             "OPERATIONAL": {"color": "blue", "description": "Operational data - internal use"},
@@ -1309,6 +1416,7 @@ async def classification_labels(
 
 
 # ── Forensic access log ───────────────────────────────────────────────────────
+
 
 @router.get("/forensic-log")
 async def forensic_log(
@@ -1329,6 +1437,7 @@ async def forensic_log(
 
 # ── Insider threat monitoring ─────────────────────────────────────────────────
 
+
 @router.get("/insider-threat-report")
 async def insider_threat_report(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
@@ -1345,6 +1454,7 @@ async def insider_threat_report(
 
 
 # ── Restricted analytics aggregation ─────────────────────────────────────────
+
 
 @router.post("/privacy-safe-aggregate")
 async def privacy_safe_aggregate(

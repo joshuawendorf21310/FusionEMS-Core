@@ -18,11 +18,11 @@ function SectionHeader({ number, title, sub }: { number: string; title: string; 
 }
 
 function Badge({ label, status }: { label: string; status: 'ok' | 'warn' | 'error' | 'info' }) {
-  const c = { ok: '#4caf50', warn: '#ff9800', error: '#e53935', info: '#29b6f6' };
+  const c = { ok: 'var(--color-status-active)', warn: 'var(--color-status-warning)', error: 'var(--color-brand-red)', info: 'var(--color-status-info)' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wider border"
-      style={{ borderColor: `${c[status]}40`, color: c[status], background: `${c[status]}12` }}
+      style={{ borderColor: `color-mix(in srgb, ${c[status]} 25%, transparent)`, color: c[status], background: `color-mix(in srgb, ${c[status]} 7%, transparent)` }}
     >
       <span className="w-1 h-1 rounded-full" style={{ background: c[status] }} />
       {label}
@@ -48,7 +48,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
       style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
       {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
     </div>
   );
@@ -128,8 +128,8 @@ export default function ContractBuilderPage() {
               className="border border-border-DEFAULT p-3 bg-bg-input cursor-pointer transition-all"
               style={{
                 clipPath: 'polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)',
-                borderColor: selectedTemplate === t.id ? '#29b6f620' : 'rgba(255,255,255,0.08)',
-                background: selectedTemplate === t.id ? '#29b6f60a' : '#0a1219',
+                borderColor: selectedTemplate === t.id ? 'color-mix(in srgb, var(--color-status-info) 12%, transparent)' : 'rgba(255,255,255,0.08)',
+                background: selectedTemplate === t.id ? 'color-mix(in srgb, var(--color-status-info) 4%, transparent)' : 'var(--color-bg-input)',
               }}
               onClick={() => setSelectedTemplate(t.id)}
             >
@@ -144,7 +144,7 @@ export default function ContractBuilderPage() {
               <p className="text-[11px] text-[rgba(255,255,255,0.4)] mb-3">{t.desc}</p>
               <button
                 className="text-[10px] font-semibold px-3 py-1 rounded-sm transition-colors"
-                style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
+                style={{ background: 'color-mix(in srgb, var(--color-status-info) 9%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 19%, transparent)' }}
                 onClick={(e) => { e.stopPropagation(); setSelectedTemplate(t.id); }}
               >
                 Use Template
@@ -196,7 +196,7 @@ export default function ContractBuilderPage() {
             </div>
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#e5393518', color: 'var(--q-red)', border: '1px solid #e5393530' }}
+              style={{ background: 'color-mix(in srgb, var(--color-brand-red) 9%, transparent)', color: 'var(--q-red)', border: '1px solid color-mix(in srgb, var(--color-brand-red) 19%, transparent)' }}
             >
               Send Renewal
             </button>
@@ -211,7 +211,7 @@ export default function ContractBuilderPage() {
             </div>
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#ff980018', color: 'var(--q-yellow)', border: '1px solid #ff980030' }}
+              style={{ background: 'color-mix(in srgb, var(--color-status-warning) 9%, transparent)', color: 'var(--q-yellow)', border: '1px solid color-mix(in srgb, var(--color-status-warning) 19%, transparent)' }}
             >
               Send Renewal
             </button>
@@ -243,14 +243,14 @@ export default function ContractBuilderPage() {
               <button
                 disabled={!selectedTemplate}
                 className="flex-1 text-[10px] font-semibold py-2 rounded-sm transition-colors disabled:opacity-30"
-                style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
+                style={{ background: 'color-mix(in srgb, var(--color-status-info) 9%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 19%, transparent)' }}
               >
                 Download as PDF
               </button>
               <button
                 disabled={!selectedTemplate}
                 className="flex-1 text-[10px] font-semibold py-2 rounded-sm transition-colors disabled:opacity-30"
-                style={{ background: '#4caf5018', color: 'var(--q-green)', border: '1px solid #4caf5030' }}
+                style={{ background: 'color-mix(in srgb, var(--color-status-active) 9%, transparent)', color: 'var(--q-green)', border: '1px solid color-mix(in srgb, var(--color-status-active) 19%, transparent)' }}
               >
                 Send for Signature
               </button>
@@ -265,9 +265,9 @@ export default function ContractBuilderPage() {
                   onClick={() => handleCopy(v)}
                   className="text-[10px] font-mono px-2 py-1 rounded-sm transition-all"
                   style={{
-                    background: copied === v ? '#29b6f620' : '#29b6f610',
-                    color: copied === v ? '#4caf50' : '#29b6f6',
-                    border: '1px solid #29b6f625',
+                    background: copied === v ? 'color-mix(in srgb, var(--color-status-info) 12%, transparent)' : 'color-mix(in srgb, var(--color-status-info) 6%, transparent)',
+                    color: copied === v ? 'var(--color-status-active)' : 'var(--color-status-info)',
+                    border: '1px solid color-mix(in srgb, var(--color-status-info) 14%, transparent)',
                   }}
                   title="Click to copy"
                 >
@@ -294,13 +294,13 @@ export default function ContractBuilderPage() {
           <div className="flex gap-2">
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#ff980018', color: 'var(--q-yellow)', border: '1px solid #ff980030' }}
+              style={{ background: 'color-mix(in srgb, var(--color-status-warning) 9%, transparent)', color: 'var(--q-yellow)', border: '1px solid color-mix(in srgb, var(--color-status-warning) 19%, transparent)' }}
             >
               Resend
             </button>
             <button
               className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: '#29b6f618', color: 'var(--color-status-info)', border: '1px solid #29b6f630' }}
+              style={{ background: 'color-mix(in srgb, var(--color-status-info) 9%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 19%, transparent)' }}
             >
               View Doc
             </button>

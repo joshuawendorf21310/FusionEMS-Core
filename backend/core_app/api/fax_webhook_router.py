@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from core_app.api.dependencies import db_session_dependency
 from core_app.core.config import get_settings
 from core_app.documents.s3_storage import put_bytes
+from core_app.services import sqs_publisher
 from core_app.telnyx.client import TelnyxApiError, download_media
 from core_app.telnyx.signature import verify_telnyx_webhook
 
@@ -23,11 +24,11 @@ router = APIRouter(tags=["Telnyx Fax"])
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _s3_fax_key(tenant_id: str, fax_id: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return f"tenant/{tenant_id}/fax/{now.year}/{now.month:02d}/{now.day:02d}/{fax_id}/original.pdf"
 
 
@@ -42,7 +43,9 @@ def _resolve_tenant_by_did(db: Session, to_number: str) -> str | None:
     return str(row.tenant_id) if row else None
 
 
-def _insert_event(db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict) -> bool:
+def _insert_event(
+    db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict
+) -> bool:
     result = db.execute(
         text(
             "INSERT INTO telnyx_events (event_id, event_type, tenant_id, received_at, raw_json) "
@@ -158,7 +161,11 @@ async def telnyx_fax_webhook(
 
     logger.info(
         "telnyx_fax event_type=%s fax_id=%s from=%s to=%s tenant_id=%s",
-        event_type, fax_id, from_number, to_number, tenant_id,
+        event_type,
+        fax_id,
+        from_number,
+        to_number,
+        tenant_id,
     )
 
     if event_type != "fax.received":
@@ -184,7 +191,9 @@ async def telnyx_fax_webhook(
             s3_key = _s3_fax_key(tenant_id or "unrouted", fax_id)
             put_bytes(bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf")
             store_status = "stored"
-            logger.info("telnyx_fax_stored fax_id=%s s3_key=%s sha256=%s", fax_id, s3_key, sha256_hex)
+            logger.info(
+                "telnyx_fax_stored fax_id=%s s3_key=%s sha256=%s", fax_id, s3_key, sha256_hex
+            )
         except TelnyxApiError as exc:
             logger.error("telnyx_fax_download_failed fax_id=%s error=%s", fax_id, exc)
             store_status = "download_failed"
@@ -219,7 +228,6 @@ async def telnyx_fax_webhook(
     )
 
     if store_status == "stored" and s3_key:
-        from core_app.services.sqs_publisher import enqueue
         queue_url = settings.fax_classify_queue_url
         if queue_url:
             job = {
@@ -230,7 +238,7 @@ async def telnyx_fax_webhook(
                 "sha256": sha256_hex,
                 "case_id": case_id,
             }
-            enqueue(
+            sqs_publisher.enqueue(
                 queue_url,
                 job,
                 deduplication_id=fax_id,

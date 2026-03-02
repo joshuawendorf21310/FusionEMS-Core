@@ -4,11 +4,10 @@ import io
 import json
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-
-from core_app.documents.s3_storage import put_bytes, presign_get, default_exports_bucket
+from core_app.documents.s3_storage import default_exports_bucket, presign_get, put_bytes
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import EventPublisher
 
@@ -16,23 +15,31 @@ EXPORT_S3_PREFIX = "neris/exports"
 
 
 class NERISExporter:
-    def __init__(self, db, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID) -> None:
+    def __init__(
+        self, db, publisher: EventPublisher, tenant_id: uuid.UUID, actor_user_id: uuid.UUID
+    ) -> None:
         self.svc = DominationService(db, publisher)
         self.tenant_id = tenant_id
         self.actor_user_id = actor_user_id
         self.db = db
 
     def build_entity_payload(self, department_id: uuid.UUID) -> dict[str, Any]:
-        dept = self.svc.repo("fire_departments").get(tenant_id=self.tenant_id, record_id=department_id)
+        dept = self.svc.repo("fire_departments").get(
+            tenant_id=self.tenant_id, record_id=department_id
+        )
         if not dept:
             raise ValueError("department_not_found")
         dd = dept.get("data") or {}
 
         stations = self.svc.repo("fire_stations").list(tenant_id=self.tenant_id, limit=100)
-        stations = [s for s in stations if (s.get("data") or {}).get("department_id") == str(department_id)]
+        stations = [
+            s for s in stations if (s.get("data") or {}).get("department_id") == str(department_id)
+        ]
 
         apparatus = self.svc.repo("fire_apparatus").list(tenant_id=self.tenant_id, limit=200)
-        apparatus = [a for a in apparatus if (a.get("data") or {}).get("department_id") == str(department_id)]
+        apparatus = [
+            a for a in apparatus if (a.get("data") or {}).get("department_id") == str(department_id)
+        ]
 
         return {
             "department": {
@@ -72,9 +79,15 @@ class NERISExporter:
         actions = self.svc.repo("fire_incident_actions").list(tenant_id=self.tenant_id, limit=50)
         actions = [a for a in actions if (a.get("data") or {}).get("incident_id") == inc_id]
 
-        outcomes_list = self.svc.repo("fire_incident_outcomes").list(tenant_id=self.tenant_id, limit=5)
-        outcomes_list = [o for o in outcomes_list if (o.get("data") or {}).get("incident_id") == inc_id]
-        outcomes = (outcomes_list[0].get("data") or {}).get("outcomes_json", {}) if outcomes_list else {}
+        outcomes_list = self.svc.repo("fire_incident_outcomes").list(
+            tenant_id=self.tenant_id, limit=5
+        )
+        outcomes_list = [
+            o for o in outcomes_list if (o.get("data") or {}).get("incident_id") == inc_id
+        ]
+        outcomes = (
+            (outcomes_list[0].get("data") or {}).get("outcomes_json", {}) if outcomes_list else {}
+        )
 
         return {
             "incident": {
@@ -119,11 +132,11 @@ class NERISExporter:
             if inc:
                 incidents_payload.append(self.build_incident_payload(inc))
 
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         metadata = {
             "tenant_id": str(self.tenant_id),
             "department_id": str(department_id),
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "record_counts": {"incidents": len(incidents_payload)},
             "format_version": "neris-wi-rms-v1",
         }
@@ -150,13 +163,15 @@ class NERISExporter:
                 "s3_key": s3_key,
                 "bucket": bucket or "",
                 "incident_count": len(incidents_payload),
-                "exported_at": datetime.now(timezone.utc).isoformat(),
+                "exported_at": datetime.now(UTC).isoformat(),
                 "format_version": "neris-wi-rms-v1",
             },
             correlation_id=correlation_id,
         )
 
-        download_url = presign_get(bucket=bucket, key=s3_key, expires_seconds=900) if bucket else None
+        download_url = (
+            presign_get(bucket=bucket, key=s3_key, expires_seconds=900) if bucket else None
+        )
         return {
             "export_id": str(export_record["id"]),
             "s3_key": s3_key,

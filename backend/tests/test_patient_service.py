@@ -33,7 +33,9 @@ class FakePublisher:
     def __init__(self) -> None:
         self.events: list[tuple[str, uuid.UUID, uuid.UUID, dict]] = []
 
-    async def publish(self, event_name: str, tenant_id: uuid.UUID, entity_id: uuid.UUID, payload: dict) -> None:
+    async def publish(
+        self, event_name: str, tenant_id: uuid.UUID, entity_id: uuid.UUID, payload: dict
+    ) -> None:
         self.events.append((event_name, tenant_id, entity_id, payload))
 
 
@@ -56,11 +58,15 @@ class FakePatientRepository:
             return None
         return patient
 
-    async def list_for_incident(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> list[Patient]:
+    async def list_for_incident(
+        self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID
+    ) -> list[Patient]:
         return [
             patient
             for patient in self.patients.values()
-            if patient.tenant_id == tenant_id and patient.incident_id == incident_id and patient.deleted_at is None
+            if patient.tenant_id == tenant_id
+            and patient.incident_id == incident_id
+            and patient.deleted_at is None
         ]
 
     async def count_for_incident(self, *, tenant_id: uuid.UUID, incident_id: uuid.UUID) -> int:
@@ -84,7 +90,6 @@ class FakeIncidentRepository:
         return incident
 
 
-
 def _build_incident(*, tenant_id: uuid.UUID) -> Incident:
     now = datetime.now(UTC)
     return Incident(
@@ -96,7 +101,6 @@ def _build_incident(*, tenant_id: uuid.UUID) -> Incident:
         created_at=now,
         updated_at=now,
     )
-
 
 
 def _build_patient(*, tenant_id: uuid.UUID, incident_id: uuid.UUID, version: int = 1) -> Patient:
@@ -130,7 +134,9 @@ async def test_tenant_isolation_prevents_cross_tenant_patient_fetch() -> None:
     service.incident_repository = FakeIncidentRepository([incident])
 
     with pytest.raises(AppError) as exc:
-        await service.get_patient(tenant_id=tenant_b, incident_id=incident.id, patient_id=patient.id)
+        await service.get_patient(
+            tenant_id=tenant_b, incident_id=incident.id, patient_id=patient.id
+        )
 
     assert exc.value.code == ErrorCodes.PATIENT_NOT_FOUND
 

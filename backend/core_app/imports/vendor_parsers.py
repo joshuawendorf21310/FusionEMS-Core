@@ -5,9 +5,14 @@ import io
 from typing import Any
 from xml.etree import ElementTree as ET
 
-
 VENDOR_SIGNATURES = {
-    "imagetrend": ["PCRNumber", "UnitCallSign", "AgencyName", "IncidentNumber", "CADIncidentNumber"],
+    "imagetrend": [
+        "PCRNumber",
+        "UnitCallSign",
+        "AgencyName",
+        "IncidentNumber",
+        "CADIncidentNumber",
+    ],
     "eso": ["Incident_Number", "Unit_Number", "Patient_Last_Name", "ESO_ID", "RunNumber"],
     "zoll": ["IncidentID", "ZollAgencyID", "PCR_ID", "RunNumber", "Unit"],
     "traumasoft": ["TSSRunNumber", "TSPatientID", "TSAgencyID", "TSSIncidentID"],
@@ -28,7 +33,9 @@ def detect_vendor(headers: list[str]) -> str:
 
 def _normalize_imagetrend_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        "incident_number": row.get("PCRNumber") or row.get("IncidentNumber") or row.get("CADIncidentNumber"),
+        "incident_number": row.get("PCRNumber")
+        or row.get("IncidentNumber")
+        or row.get("CADIncidentNumber"),
         "unit_number": row.get("UnitCallSign") or row.get("Unit"),
         "patient_last_name": row.get("PatientLastName") or row.get("LastName"),
         "patient_first_name": row.get("PatientFirstName") or row.get("FirstName"),
@@ -146,15 +153,27 @@ def parse_vendor_xml(content: bytes, vendor_hint: str | None = None) -> dict[str
 
 def score_import_completeness(records: list[dict[str, Any]]) -> dict[str, Any]:
     required_fields = [
-        "incident_number", "unit_number", "patient_last_name", "patient_first_name",
-        "dispatch_time", "arrived_scene_time", "primary_impression", "billed_amount",
+        "incident_number",
+        "unit_number",
+        "patient_last_name",
+        "patient_first_name",
+        "dispatch_time",
+        "arrived_scene_time",
+        "primary_impression",
+        "billed_amount",
     ]
     recommended_fields = [
-        "date_of_birth", "payer_type", "patient_contact_time", "transport_destination",
+        "date_of_birth",
+        "payer_type",
+        "patient_contact_time",
+        "transport_destination",
         "icd10_codes",
     ]
     denial_risk_fields = [
-        "icd10_codes", "payer_type", "date_of_birth", "billed_amount",
+        "icd10_codes",
+        "payer_type",
+        "date_of_birth",
+        "billed_amount",
     ]
 
     total = len(records)
@@ -168,15 +187,18 @@ def score_import_completeness(records: list[dict[str, Any]]) -> dict[str, Any]:
                 field_fill[f] += 1
 
     req_score = sum(field_fill[f] for f in required_fields) / (len(required_fields) * total) * 100
-    rec_score = sum(field_fill[f] for f in recommended_fields) / (len(recommended_fields) * total) * 100
+    rec_score = (
+        sum(field_fill[f] for f in recommended_fields) / (len(recommended_fields) * total) * 100
+    )
     overall_score = (req_score * 0.7) + (rec_score * 0.3)
 
-    denial_missing_pct = sum(
-        1 for rec in records
-        if any(not rec.get(f) for f in denial_risk_fields)
-    ) / total * 100
+    denial_missing_pct = (
+        sum(1 for rec in records if any(not rec.get(f) for f in denial_risk_fields)) / total * 100
+    )
 
-    denial_risk = "low" if denial_missing_pct < 10 else "medium" if denial_missing_pct < 30 else "high"
+    denial_risk = (
+        "low" if denial_missing_pct < 10 else "medium" if denial_missing_pct < 30 else "high"
+    )
 
     return {
         "total_records": total,
@@ -185,7 +207,7 @@ def score_import_completeness(records: list[dict[str, Any]]) -> dict[str, Any]:
         "recommended_completeness_pct": round(rec_score, 1),
         "denial_risk": denial_risk,
         "denial_risk_pct": round(denial_missing_pct, 1),
-        "field_fill_rates": {f: round(field_fill[f]/total*100, 1) for f in field_fill},
+        "field_fill_rates": {f: round(field_fill[f] / total * 100, 1) for f in field_fill},
         "missing_critical_fields": [
             f for f in required_fields if field_fill.get(f, 0) / total < 0.5
         ],

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import io
 from dataclasses import dataclass
 
@@ -39,12 +40,8 @@ def submit_837_via_sftp(*, cfg: OfficeAllySftpConfig, file_name: str, x12_bytes:
                 sftp.putfo(bio, remote_path)
             return remote_path
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 sftp.close()
-            except Exception:
-                pass
     finally:
-        try:
+        with contextlib.suppress(Exception):
             transport.close()
-        except Exception:
-            pass

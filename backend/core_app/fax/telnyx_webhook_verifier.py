@@ -4,13 +4,12 @@ import base64
 import hashlib
 import hmac
 import time
-from typing import Optional
 
 
 def verify_telnyx_signature(
     raw_body: bytes,
-    telnyx_signature_ed25519: Optional[str],
-    telnyx_timestamp: Optional[str],
+    telnyx_signature_ed25519: str | None,
+    telnyx_timestamp: str | None,
     webhook_secret: str,
     tolerance_seconds: int = 300,
 ) -> bool:

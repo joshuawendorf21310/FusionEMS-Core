@@ -18,14 +18,19 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
             if request.state.tenant_status is None:
                 try:
                     from core_app.db.session import get_db_session
+
                     db = next(get_db_session())
-                    row = db.execute(
-                        text(
-                            "SELECT data->>'status' AS status, data->>'legal_status' AS legal_status "
-                            "FROM tenants WHERE tenant_id = :tid AND deleted_at IS NULL LIMIT 1"
-                        ),
-                        {"tid": str(tenant_id)},
-                    ).mappings().first()
+                    row = (
+                        db.execute(
+                            text(
+                                "SELECT data->>'status' AS status, data->>'legal_status' AS legal_status "
+                                "FROM tenants WHERE tenant_id = :tid AND deleted_at IS NULL LIMIT 1"
+                            ),
+                            {"tid": str(tenant_id)},
+                        )
+                        .mappings()
+                        .first()
+                    )
                     if row:
                         request.state.tenant_status = row["status"]
                         request.state.tenant_legal_status = row["legal_status"]

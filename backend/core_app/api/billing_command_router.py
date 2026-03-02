@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.billing.ar_aging import compute_revenue_forecast
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
-from core_app.billing.ar_aging import compute_revenue_forecast
 
 router = APIRouter(prefix="/api/v1/billing-command", tags=["Billing Command Center"])
 
@@ -78,7 +78,7 @@ async def revenue_dashboard(
         "revenue_cents": revenue_cents,
         "clean_claim_rate_pct": clean_claim_rate,
         "denial_rate_pct": denial_rate,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -115,7 +115,13 @@ async def payer_performance(
         d = c.get("data", {})
         payer = d.get("payer_name", "UNKNOWN")
         if payer not in payer_stats:
-            payer_stats[payer] = {"total": 0, "paid": 0, "denied": 0, "revenue_cents": 0, "days_to_payment": []}
+            payer_stats[payer] = {
+                "total": 0,
+                "paid": 0,
+                "denied": 0,
+                "revenue_cents": 0,
+                "days_to_payment": [],
+            }
         payer_stats[payer]["total"] += 1
         status = d.get("status", "")
         if status == "paid":
@@ -128,17 +134,23 @@ async def payer_performance(
             payer_stats[payer]["days_to_payment"].append(int(dtp))
     results = []
     for payer, stats in payer_stats.items():
-        avg_dtp = round(sum(stats["days_to_payment"]) / len(stats["days_to_payment"]), 1) if stats["days_to_payment"] else None
+        avg_dtp = (
+            round(sum(stats["days_to_payment"]) / len(stats["days_to_payment"]), 1)
+            if stats["days_to_payment"]
+            else None
+        )
         clean_rate = round(stats["paid"] / stats["total"] * 100, 2) if stats["total"] > 0 else 0
-        results.append({
-            "payer": payer,
-            "total_claims": stats["total"],
-            "paid": stats["paid"],
-            "denied": stats["denied"],
-            "revenue_cents": stats["revenue_cents"],
-            "clean_claim_rate_pct": clean_rate,
-            "avg_days_to_payment": avg_dtp,
-        })
+        results.append(
+            {
+                "payer": payer,
+                "total_claims": stats["total"],
+                "paid": stats["paid"],
+                "denied": stats["denied"],
+                "revenue_cents": stats["revenue_cents"],
+                "clean_claim_rate_pct": clean_rate,
+                "avg_days_to_payment": avg_dtp,
+            }
+        )
     results.sort(key=lambda x: x["revenue_cents"], reverse=True)
     return {"payers": results}
 
@@ -158,21 +170,25 @@ async def revenue_leakage(
         if d.get("status") == "denied" and not d.get("appealed"):
             amount = int(d.get("billed_amount_cents", 0))
             total_leakage_cents += amount
-            leakage_items.append({
-                "claim_id": c["id"],
-                "payer": d.get("payer_name"),
-                "amount_cents": amount,
-                "denial_reason": d.get("denial_reason"),
-                "leakage_type": "unappealed_denial",
-            })
+            leakage_items.append(
+                {
+                    "claim_id": c["id"],
+                    "payer": d.get("payer_name"),
+                    "amount_cents": amount,
+                    "denial_reason": d.get("denial_reason"),
+                    "leakage_type": "unappealed_denial",
+                }
+            )
         if d.get("underbilled"):
             delta = int(d.get("underbilled_delta_cents", 0))
             total_leakage_cents += delta
-            leakage_items.append({
-                "claim_id": c["id"],
-                "amount_cents": delta,
-                "leakage_type": "underbilling",
-            })
+            leakage_items.append(
+                {
+                    "claim_id": c["id"],
+                    "amount_cents": delta,
+                    "leakage_type": "underbilling",
+                }
+            )
     return {
         "total_leakage_cents": total_leakage_cents,
         "leakage_items": leakage_items[:50],
@@ -282,8 +298,16 @@ async def billing_kpis(
     total = len(claims)
     paid = sum(1 for c in claims if c.get("data", {}).get("status") == "paid")
     denied = sum(1 for c in claims if c.get("data", {}).get("status") == "denied")
-    revenue = sum(int(c.get("data", {}).get("paid_amount_cents", 0)) for c in claims if c.get("data", {}).get("status") == "paid")
-    dtp_values = [int(c.get("data", {}).get("days_to_payment", 0)) for c in claims if c.get("data", {}).get("days_to_payment")]
+    revenue = sum(
+        int(c.get("data", {}).get("paid_amount_cents", 0))
+        for c in claims
+        if c.get("data", {}).get("status") == "paid"
+    )
+    dtp_values = [
+        int(c.get("data", {}).get("days_to_payment", 0))
+        for c in claims
+        if c.get("data", {}).get("days_to_payment")
+    ]
     avg_dtp = round(sum(dtp_values) / len(dtp_values), 1) if dtp_values else None
     return {
         "total_claims": total,
@@ -291,7 +315,7 @@ async def billing_kpis(
         "denial_rate": round(denied / total * 100, 2) if total else 0,
         "total_revenue_cents": revenue,
         "avg_days_to_payment": avg_dtp,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -316,7 +340,11 @@ async def batch_resubmit(
             record_id=claim["id"],
             actor_user_id=current.user_id,
             expected_version=claim.get("version", 1),
-            patch={"status": "resubmitted", "resubmit_reason": body.resubmit_reason, "resubmitted_at": datetime.now(timezone.utc).isoformat()},
+            patch={
+                "status": "resubmitted",
+                "resubmit_reason": body.resubmit_reason,
+                "resubmitted_at": datetime.now(UTC).isoformat(),
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
         results.append({"claim_id": str(claim_id), "status": "resubmitted"})
@@ -339,7 +367,9 @@ async def fraud_anomaly(
         patient_counts[pid] = patient_counts.get(pid, 0) + 1
     for pid, count in patient_counts.items():
         if count > 10:
-            anomalies.append({"type": "duplicate_billing_risk", "patient_id": pid, "claim_count": count})
+            anomalies.append(
+                {"type": "duplicate_billing_risk", "patient_id": pid, "claim_count": count}
+            )
     return {"anomalies": anomalies, "total_anomalies": len(anomalies)}
 
 
@@ -358,11 +388,15 @@ async def duplicate_detection(
         if key not in seen:
             seen[key] = []
         seen[key].append(c["id"])
-    duplicates = [{
-        "key": k,
-        "claim_ids": v,
-        "count": len(v),
-    } for k, v in seen.items() if len(v) > 1]
+    duplicates = [
+        {
+            "key": k,
+            "claim_ids": v,
+            "count": len(v),
+        }
+        for k, v in seen.items()
+        if len(v) > 1
+    ]
     return {"duplicates": duplicates, "total_duplicate_groups": len(duplicates)}
 
 
@@ -401,7 +435,7 @@ async def stripe_reconciliation(
         "active_subscriptions": len(active),
         "past_due_subscriptions": len(past_due),
         "mrr_cents": mrr,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -417,12 +451,14 @@ async def churn_risk(
     for s in subscriptions:
         d = s.get("data", {})
         if d.get("status") in ("past_due", "canceled", "paused"):
-            at_risk.append({
-                "subscription_id": s["id"],
-                "tenant_id": d.get("tenant_id"),
-                "status": d.get("status"),
-                "monthly_amount_cents": int(d.get("monthly_amount_cents", 0)),
-            })
+            at_risk.append(
+                {
+                    "subscription_id": s["id"],
+                    "tenant_id": d.get("tenant_id"),
+                    "status": d.get("status"),
+                    "monthly_amount_cents": int(d.get("monthly_amount_cents", 0)),
+                }
+            )
     return {"at_risk_subscriptions": at_risk, "count": len(at_risk)}
 
 
@@ -476,7 +512,7 @@ async def billing_alerts(
     overdue = [lnk for lnk in overdue_links if lnk.get("data", {}).get("status") == "overdue"]
     if overdue:
         alerts.append({"type": "overdue_payments", "count": len(overdue), "severity": "medium"})
-    return {"alerts": alerts, "total": len(alerts), "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"alerts": alerts, "total": len(alerts), "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.post("/alert-thresholds")
@@ -531,7 +567,10 @@ async def payer_mix(
         mix[payer] = mix.get(payer, 0) + 1
     total = sum(mix.values())
     return {
-        "payer_mix": [{"category": k, "count": v, "pct": round(v / total * 100, 2) if total else 0} for k, v in mix.items()],
+        "payer_mix": [
+            {"category": k, "count": v, "pct": round(v / total * 100, 2) if total else 0}
+            for k, v in mix.items()
+        ],
         "total_claims": total,
     }
 
@@ -544,7 +583,9 @@ async def ar_concentration_risk(
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
     claims = svc.repo("claims").list(tenant_id=current.tenant_id, limit=10000)
-    open_claims = [c for c in claims if c.get("data", {}).get("status") in ("submitted", "pending", "denied")]
+    open_claims = [
+        c for c in claims if c.get("data", {}).get("status") in ("submitted", "pending", "denied")
+    ]
     payer_ar: dict[str, int] = {}
     total_ar = 0
     for c in open_claims:
@@ -604,13 +645,17 @@ async def billing_health(
     paid = sum(1 for c in claims if c.get("data", {}).get("status") == "paid")
     clean_rate = round(paid / total * 100, 2) if total else 0
     score = min(100, clean_rate)
-    health_status = "excellent" if score >= 90 else ("good" if score >= 75 else ("fair" if score >= 60 else "poor"))
+    health_status = (
+        "excellent"
+        if score >= 90
+        else ("good" if score >= 75 else ("fair" if score >= 60 else "poor"))
+    )
     return {
         "health_score": score,
         "status": health_status,
         "clean_claim_rate_pct": clean_rate,
         "total_claims": total,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }
 
 
@@ -622,7 +667,7 @@ async def tenant_billing_ranking(
     require_role(current, ["founder"])
     svc = DominationService(db, get_event_publisher())
     tenants = svc.repo("tenants").list(tenant_id=current.tenant_id, limit=10000)
-    return {"tenants": tenants[:20], "as_of": datetime.now(timezone.utc).isoformat()}
+    return {"tenants": tenants[:20], "as_of": datetime.now(UTC).isoformat()}
 
 
 @router.post("/payer-follow-up")
@@ -661,13 +706,21 @@ async def executive_summary(
     svc = DominationService(db, get_event_publisher())
     claims = svc.repo("claims").list(tenant_id=current.tenant_id, limit=10000)
     total = len(claims)
-    revenue = sum(int(c.get("data", {}).get("paid_amount_cents", 0)) for c in claims if c.get("data", {}).get("status") == "paid")
+    revenue = sum(
+        int(c.get("data", {}).get("paid_amount_cents", 0))
+        for c in claims
+        if c.get("data", {}).get("status") == "paid"
+    )
     subscriptions = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=1000)
-    mrr = sum(int(s.get("data", {}).get("monthly_amount_cents", 0)) for s in subscriptions if s.get("data", {}).get("status") == "active")
+    mrr = sum(
+        int(s.get("data", {}).get("monthly_amount_cents", 0))
+        for s in subscriptions
+        if s.get("data", {}).get("status") == "active"
+    )
     return {
         "total_claims": total,
         "total_revenue_cents": revenue,
         "mrr_cents": mrr,
         "arr_cents": mrr * 12,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }

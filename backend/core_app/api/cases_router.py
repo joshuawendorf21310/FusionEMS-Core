@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,8 +17,16 @@ router = APIRouter(prefix="/api/v1/cases", tags=["Cases"])
 ALLOWED_ROLES = {"founder", "agency_admin", "admin", "dispatcher", "ems"}
 
 VALID_STATUSES = {
-    "intake", "queued", "dispatched", "enroute", "onscene",
-    "transporting", "at_destination", "complete", "cancelled", "billed",
+    "intake",
+    "queued",
+    "dispatched",
+    "enroute",
+    "onscene",
+    "transporting",
+    "at_destination",
+    "complete",
+    "cancelled",
+    "billed",
 }
 
 VALID_MODES = {"ground", "rotor", "fixed_wing"}
@@ -43,7 +51,9 @@ async def create_case(
     _check(current)
     mode = payload.get("transport_mode", "ground")
     if mode not in VALID_MODES:
-        raise HTTPException(status_code=422, detail=f"transport_mode must be one of {sorted(VALID_MODES)}")
+        raise HTTPException(
+            status_code=422, detail=f"transport_mode must be one of {sorted(VALID_MODES)}"
+        )
     correlation_id = getattr(request.state, "correlation_id", None)
     svc = _svc(db)
     case = await svc.create(
@@ -66,7 +76,7 @@ async def create_case(
             "cms_gate_passed": False,
             "cms_gate_score": None,
             "cms_gate_result": None,
-            "opened_at": datetime.now(timezone.utc).isoformat(),
+            "opened_at": datetime.now(UTC).isoformat(),
             "closed_at": None,
             "timeline": [],
             "tags": payload.get("tags", []),
@@ -119,7 +129,9 @@ async def transition_status(
     _check(current)
     new_status = payload.get("status", "")
     if new_status not in VALID_STATUSES:
-        raise HTTPException(status_code=422, detail=f"Invalid status. Must be one of {sorted(VALID_STATUSES)}")
+        raise HTTPException(
+            status_code=422, detail=f"Invalid status. Must be one of {sorted(VALID_STATUSES)}"
+        )
     svc = _svc(db)
     case = svc.repo("cases").get(tenant_id=current.tenant_id, record_id=case_id)
     if not case:
@@ -127,16 +139,18 @@ async def transition_status(
     correlation_id = getattr(request.state, "correlation_id", None)
     data = dict(case.get("data") or {})
     timeline = list(data.get("timeline") or [])
-    timeline.append({
-        "status": new_status,
-        "at": datetime.now(timezone.utc).isoformat(),
-        "by": str(current.user_id),
-        "note": payload.get("note"),
-    })
+    timeline.append(
+        {
+            "status": new_status,
+            "at": datetime.now(UTC).isoformat(),
+            "by": str(current.user_id),
+            "note": payload.get("note"),
+        }
+    )
     data["status"] = new_status
     data["timeline"] = timeline
     if new_status in ("complete", "cancelled", "billed"):
-        data["closed_at"] = datetime.now(timezone.utc).isoformat()
+        data["closed_at"] = datetime.now(UTC).isoformat()
     updated = await svc.update(
         table="cases",
         tenant_id=current.tenant_id,
@@ -166,7 +180,14 @@ async def link_entity(
         raise HTTPException(status_code=404, detail="Case not found")
     correlation_id = getattr(request.state, "correlation_id", None)
     data = dict(case.get("data") or {})
-    linkable = {"transport_request_id", "cad_call_id", "crew_assignment_id", "epcr_chart_id", "billing_snapshot_id", "facility_id"}
+    linkable = {
+        "transport_request_id",
+        "cad_call_id",
+        "crew_assignment_id",
+        "epcr_chart_id",
+        "billing_snapshot_id",
+        "facility_id",
+    }
     for k, v in payload.items():
         if k in linkable:
             data[k] = v
