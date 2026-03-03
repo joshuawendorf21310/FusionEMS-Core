@@ -21,6 +21,7 @@ env:
   TF_VERSION: "1.6.0"
   AWS_REGION: "us-east-1"
   TF_WORKING_DIR: "infra/terraform/environments/prod"
+  AWS_ROLE_TO_ASSUME: "arn:aws:iam::793439286972:role/GitHubTerraformRole"
 
 jobs:
   # Job 1: lint-and-validate
@@ -88,8 +89,10 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
       - name: Terraform Init
         run: terraform init
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -198,8 +201,10 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
       - name: Terraform Init
         run: terraform init
         working-directory: ${{ env.TF_WORKING_DIR }}
