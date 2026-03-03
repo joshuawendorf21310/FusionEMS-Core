@@ -12,6 +12,10 @@ on:
       - 'infra/terraform/**'
       - '.github/workflows/terraform.yml'
 
+concurrency:
+  group: terraform-prod
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
@@ -92,7 +96,9 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Verify AWS Identity
-        run: aws sts get-caller-identity
+        run: |
+          echo "Verifying AWS identity..."
+          aws sts get-caller-identity
       - name: Terraform Init
         run: terraform init
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -204,7 +210,9 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Verify AWS Identity
-        run: aws sts get-caller-identity
+        run: |
+          echo "Verifying AWS identity..."
+          aws sts get-caller-identity
       - name: Terraform Init
         run: terraform init
         working-directory: ${{ env.TF_WORKING_DIR }}
