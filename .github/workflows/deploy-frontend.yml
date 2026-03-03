@@ -1,0 +1,107 @@
+name: Deploy Frontend to ECS Fargate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-1
+      ECR_REPO: fusionems-prod-frontend
+      ECS_CLUSTER: fusionems-core-ComputeStack-BTGXDWB46MID-EcsCluster-lUdeHgvd19kh
+      ECS_SERVICE: fusionems-core-ComputeStack-BTGXDWB46MID-FrontendTaskDefinition-lDUDuPAWBoYc-service-5j0v98g0
+      IMAGE_TAG: ${{ github.sha }}
+      API_DOMAIN_NAME: api.fusionemsquantum.com
+      ROOT_DOMAIN_NAME: www.fusionemsquantum.com
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify AWS role ARN is configured
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_ARN || vars.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "::error::No AWS role ARN configured. Set secrets.AWS_ROLE_TO_ASSUME or vars.AWS_ROLE_TO_ASSUME."
+            exit 1
+          fi
+          echo "AWS role ARN is configured."
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_ARN || vars.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: fusionems-frontend-deploy
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push frontend Docker image
+        shell: bash
+        run: |
+          set -euo pipefail
+          AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+          docker build \
+            --file frontend/Dockerfile \
+            --tag "$REPO:$IMAGE_TAG" \
+            --tag "$REPO:latest" \
+            --build-arg "NEXT_PUBLIC_API_BASE=https://$API_DOMAIN_NAME" \
+            --build-arg "NEXT_PUBLIC_WS_URL=wss://$API_DOMAIN_NAME/ws" \
+            --build-arg "NEXT_PUBLIC_ROOT_DOMAIN=https://$ROOT_DOMAIN_NAME" \
+            frontend/
+          docker push "$REPO:$IMAGE_TAG"
+          docker push "$REPO:latest"
+          echo "Pushed: $REPO:$IMAGE_TAG"
+        id: build-push
+
+      - name: Force new ECS deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment \
+            --no-cli-pager
+          echo "Triggered ECS service redeploy: $ECS_SERVICE"
+
+      - name: Wait for ECS service to stabilize
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Waiting for ECS service to stabilize (up to 10 minutes)..."
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE"
+          echo "ECS service is stable."
+
+      - name: Verify running task count
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUNNING=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "services[0].runningCount" \
+            --output text)
+          DESIRED=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "services[0].desiredCount" \
+            --output text)
+          echo "Running: $RUNNING / Desired: $DESIRED"
+          if [ "$RUNNING" != "$DESIRED" ]; then
+            echo "::error::Service has $RUNNING running tasks but $DESIRED desired."
+            exit 1
+          fi
+          echo "Deployment successful."
