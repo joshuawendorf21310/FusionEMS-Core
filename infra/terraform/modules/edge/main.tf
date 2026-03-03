@@ -54,6 +54,28 @@ resource "aws_wafv2_web_acl" "cloudfront" {
     }
   }
 
+  rule {
+    name     = "AWSManagedKnownBadInputs"
+    priority = 2
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "known-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
   visibility_config {
     cloudwatch_metrics_enabled = true
     metric_name                = "${local.name_prefix}-waf"
@@ -61,6 +83,24 @@ resource "aws_wafv2_web_acl" "cloudfront" {
   }
 
   tags = local.common_tags
+}
+
+# ========================= WAF Logging ========================================
+
+resource "aws_cloudwatch_log_group" "waf" {
+  provider = aws.us_east_1
+
+  name              = "aws-waf-logs-${local.name_prefix}-edge"
+  retention_in_days = 90
+
+  tags = local.common_tags
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "cloudfront" {
+  provider = aws.us_east_1
+
+  log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
+  resource_arn            = aws_wafv2_web_acl.cloudfront.arn
 }
 
 # ========================= Security Headers ===================================

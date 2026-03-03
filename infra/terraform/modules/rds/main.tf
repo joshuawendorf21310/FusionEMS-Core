@@ -18,13 +18,29 @@ locals {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
 # =============================================================================
 # KMS
 # =============================================================================
 
+data "aws_iam_policy_document" "rds_kms" {
+  statement {
+    sid    = "EnableRootAccountAccess"
+    effect = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+    actions   = ["kms:*"]
+    resources = ["*"]
+  }
+}
+
 resource "aws_kms_key" "rds" {
   description         = "${local.name_prefix}-rds"
   enable_key_rotation = true
+  policy              = data.aws_iam_policy_document.rds_kms.json
   tags                = local.common_tags
 }
 
@@ -72,6 +88,54 @@ resource "aws_secretsmanager_secret_version" "db" {
 }
 
 # =============================================================================
+# Enhanced Monitoring IAM Role
+# =============================================================================
+
+data "aws_iam_policy_document" "rds_monitoring_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["monitoring.rds.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "rds_monitoring" {
+  name               = "${local.name_prefix}-rds-monitoring"
+  assume_role_policy = data.aws_iam_policy_document.rds_monitoring_assume.json
+  tags               = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "rds_monitoring" {
+  role       = aws_iam_role.rds_monitoring.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+}
+
+# =============================================================================
+# Parameter Group (query logging)
+# =============================================================================
+
+resource "aws_db_parameter_group" "this" {
+  name   = "${local.name_prefix}-postgres16"
+  family = "postgres16"
+
+  parameter {
+    name  = "log_statement"
+    value = "all"
+  }
+
+  parameter {
+    name  = "log_min_duration_statement"
+    value = "250"
+  }
+
+  tags = local.common_tags
+}
+
+# =============================================================================
 # RDS Instance
 # =============================================================================
 
@@ -96,6 +160,7 @@ resource "aws_db_instance" "this" {
 
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [var.rds_security_group_id]
+  parameter_group_name   = aws_db_parameter_group.this.name
 
   backup_retention_period   = 14
   deletion_protection       = local.is_prod
@@ -104,6 +169,14 @@ resource "aws_db_instance" "this" {
 
   performance_insights_enabled    = true
   performance_insights_kms_key_id = aws_kms_key.rds.arn
+
+  iam_database_authentication_enabled = true
+  auto_minor_version_upgrade          = true
+
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
 
   apply_immediately = false
 

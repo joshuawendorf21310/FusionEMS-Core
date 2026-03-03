@@ -1,13 +1,13 @@
 package fusionems
 
-import future.keywords.in
+import rego.v1
 
 # =============================================================================
 # DEFAULTS
 # =============================================================================
 
 default allow = false
-default deny = []
+default deny := set()
 
 # Normalize
 method := upper(input.method)
@@ -23,28 +23,26 @@ path2 := input.path[2] if path_len > 2
 # PUBLIC (NO AUTH REQUIRED)
 # =============================================================================
 
-allow {
+allow if {
     path0 in {"healthz", "health", "track", "public"}
 }
 
 # Webhooks are validated at application layer (HMAC)
-allow {
-    path0 == "api"
-    path1 == "v1"
-    path2 == "webhooks"
+allow if {
+    _is_webhook_path
 }
 
 # =============================================================================
 # AUTHENTICATED ACCESS
 # =============================================================================
 
-allow {
+allow if {
     is_authenticated
     not deny[_]
     founder_override
 }
 
-allow {
+allow if {
     is_authenticated
     not deny[_]
     tenant_matches
@@ -55,7 +53,7 @@ allow {
 # FOUNDER OVERRIDE
 # =============================================================================
 
-founder_override {
+founder_override if {
     input.user.role == "founder"
 }
 
@@ -63,7 +61,7 @@ founder_override {
 # AUTH HELPERS
 # =============================================================================
 
-is_authenticated {
+is_authenticated if {
     input.user.sub != ""
     input.user.tenant_id != ""
 }
@@ -72,11 +70,11 @@ is_authenticated {
 # TENANT ISOLATION
 # =============================================================================
 
-tenant_matches {
+tenant_matches if {
     not input.resource.tenant_id
 }
 
-tenant_matches {
+tenant_matches if {
     input.resource.tenant_id != ""
     input.user.tenant_id == input.resource.tenant_id
 }
@@ -85,36 +83,36 @@ tenant_matches {
 # ROLE-BASED METHOD CONTROL
 # =============================================================================
 
-role_allows_method {
+role_allows_method if {
     input.user.role in {"agency_admin", "supervisor"}
     method in {"GET", "POST", "PUT", "PATCH", "DELETE"}
 }
 
-role_allows_method {
+role_allows_method if {
     input.user.role in {"billing", "billing_admin"}
     method in {"GET", "POST", "PUT", "PATCH"}
     billing_path
 }
 
-role_allows_method {
+role_allows_method if {
     input.user.role == "ems_crew"
     method in {"GET", "POST", "PUT", "PATCH"}
     ems_crew_path
 }
 
-role_allows_method {
+role_allows_method if {
     input.user.role == "patient"
     method in {"GET", "POST"}
     patient_path
 }
 
-role_allows_method {
+role_allows_method if {
     input.user.role == "readonly"
     method == "GET"
 }
 
 # Internal system services (queues, cron, webhooks, etc.)
-role_allows_method {
+role_allows_method if {
     input.user.role == "system"
 }
 
@@ -122,7 +120,7 @@ role_allows_method {
 # PATH SCOPES
 # =============================================================================
 
-billing_path {
+billing_path if {
     path2 in {
         "billing",
         "claims",
@@ -134,7 +132,7 @@ billing_path {
     }
 }
 
-ems_crew_path {
+ems_crew_path if {
     path2 in {
         "incidents",
         "patients",
@@ -148,7 +146,7 @@ ems_crew_path {
     }
 }
 
-patient_path {
+patient_path if {
     path2 in {
         "portal",
         "statements",
@@ -158,11 +156,21 @@ patient_path {
 }
 
 # =============================================================================
+# INTERNAL HELPERS
+# =============================================================================
+
+_is_webhook_path if {
+    path0 == "api"
+    path1 == "v1"
+    path2 == "webhooks"
+}
+
+# =============================================================================
 # EXPLICIT DENY RULES (ALWAYS TAKE PRECEDENCE)
 # =============================================================================
 
 # Cross-tenant access block
-deny[msg] {
+deny contains msg if {
     is_authenticated
     input.resource.tenant_id != ""
     input.user.tenant_id != input.resource.tenant_id
@@ -174,7 +182,7 @@ deny[msg] {
 }
 
 # Founder endpoints restricted
-deny[msg] {
+deny contains msg if {
     is_authenticated
     path2 == "founder"
     input.user.role != "founder"
@@ -182,16 +190,16 @@ deny[msg] {
 }
 
 # Block write attempts from readonly role
-deny[msg] {
+deny contains msg if {
     input.user.role == "readonly"
     method != "GET"
     msg := "readonly role cannot modify resources"
 }
 
 # Prevent unauthenticated access to protected routes
-deny[msg] {
+deny contains msg if {
     not is_authenticated
     not path0 in {"healthz", "health", "track", "public"}
-    not (path0 == "api" and path1 == "v1" and path2 == "webhooks")
+    not _is_webhook_path
     msg := "authentication required"
 }

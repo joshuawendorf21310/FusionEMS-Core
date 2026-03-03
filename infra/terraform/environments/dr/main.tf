@@ -200,16 +200,16 @@ module "cognito" {
 module "observability" {
   source = "../../modules/observability"
 
-  environment                    = var.environment
-  project                        = var.project
-  alert_email                    = var.alert_email
-  ecs_cluster_name               = module.ecs_cluster.cluster_name
-  backend_service_name           = module.backend_service.service_name
-  alb_arn_suffix                 = local.alb_arn_suffix
+  environment                     = var.environment
+  project                         = var.project
+  alert_email                     = var.alert_email
+  ecs_cluster_name                = module.ecs_cluster.cluster_name
+  backend_service_name            = module.backend_service.service_name
+  alb_arn_suffix                  = local.alb_arn_suffix
   backend_target_group_arn_suffix = local.backend_tg_arn_suffix
-  db_instance_id                 = module.rds.db_instance_id
-  redis_cluster_id               = module.redis.replication_group_id
-  tags                           = local.common_tags
+  db_instance_id                  = module.rds.db_instance_id
+  redis_cluster_id                = module.redis.replication_group_id
+  tags                            = local.common_tags
 }
 
 # ─── 11. Edge (CloudFront + Route53) ────────────────────────────────────────
@@ -217,14 +217,14 @@ module "observability" {
 module "edge" {
   source = "../../modules/edge"
 
-  environment                  = var.environment
-  project                      = var.project
-  root_domain_name             = var.root_domain_name
-  api_domain_name              = var.api_domain_name
-  hosted_zone_id               = var.hosted_zone_id
+  environment                   = var.environment
+  project                       = var.project
+  root_domain_name              = var.root_domain_name
+  api_domain_name               = var.api_domain_name
+  hosted_zone_id                = var.hosted_zone_id
   acm_certificate_arn_us_east_1 = var.acm_certificate_arn_us_east_1
-  alb_dns_name                 = module.ecs_cluster.alb_dns_name
-  tags                         = local.common_tags
+  alb_dns_name                  = module.ecs_cluster.alb_dns_name
+  tags                          = local.common_tags
 
   providers = {
     aws           = aws
@@ -251,24 +251,25 @@ module "ses" {
 module "backend_service" {
   source = "../../modules/ecs-service"
 
-  environment        = var.environment
-  project            = var.project
-  service_name       = "backend"
-  cluster_id         = module.ecs_cluster.cluster_id
-  cluster_name       = module.ecs_cluster.cluster_name
-  vpc_id             = module.networking.vpc_id
-  private_subnet_ids = module.networking.private_subnet_ids
-  security_group_ids = [module.networking.ecs_security_group_id]
-  execution_role_arn = module.iam.ecs_task_execution_role_arn
-  task_role_arn      = module.iam.ecs_task_role_arn
-  container_image    = "${module.ecs_cluster.backend_ecr_repository_url}:${var.backend_image_tag}"
-  container_port     = 8000
-  cpu                = 1024
-  memory             = 2048
-  alb_listener_arn   = module.ecs_cluster.alb_listener_arn
-  path_pattern       = ["/api/*"]
-  log_group_name     = module.ecs_cluster.log_group_name
-  tags               = local.common_tags
+  environment            = var.environment
+  project                = var.project
+  service_name           = "backend"
+  cluster_id             = module.ecs_cluster.cluster_id
+  cluster_name           = module.ecs_cluster.cluster_name
+  vpc_id                 = module.networking.vpc_id
+  private_subnet_ids     = module.networking.private_subnet_ids
+  security_group_ids     = [module.networking.ecs_security_group_id]
+  execution_role_arn     = module.iam.ecs_task_execution_role_arn
+  task_role_arn          = module.iam.ecs_task_role_arn
+  container_image        = "${module.ecs_cluster.backend_ecr_repository_url}:${var.backend_image_tag}"
+  container_port         = 8000
+  cpu                    = 1024
+  memory                 = 2048
+  alb_listener_arn       = module.ecs_cluster.alb_listener_arn
+  path_pattern           = ["/api/*"]
+  listener_rule_priority = 10
+  log_group_name         = module.ecs_cluster.log_group_name
+  tags                   = local.common_tags
 
   environment_variables = [
     { name = "ENVIRONMENT", value = var.environment },
