@@ -531,7 +531,7 @@ def _wi_default_incident_sections() -> list[dict]:
                     "path": "incident.units[].unit_id",
                     "label": "Unit ID",
                     "type": "string",
-                    "required": True,
+                    "required": False,
                 },
                 {
                     "path": "incident.units[].arrival_datetime",
