@@ -17,6 +17,32 @@ locals {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
+# =============================================================================
+# KMS
+# =============================================================================
+
+data "aws_iam_policy_document" "ses_kms" {
+  statement {
+    sid    = "EnableRootAccountAccess"
+    effect = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+    actions   = ["kms:*"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_kms_key" "ses" {
+  description         = "${local.name_prefix}-ses"
+  enable_key_rotation = true
+  policy              = data.aws_iam_policy_document.ses_kms.json
+  tags                = local.common_tags
+}
+
 # =============================================================================
 # Secrets Manager
 # =============================================================================
@@ -24,6 +50,7 @@ locals {
 resource "aws_secretsmanager_secret" "graph_email" {
   name        = "${local.name_prefix}-graph-email"
   description = "Microsoft Graph credentials for Founder Dashboard email"
+  kms_key_id  = aws_kms_key.ses.arn
 
   tags = local.common_tags
 }

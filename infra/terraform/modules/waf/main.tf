@@ -263,3 +263,19 @@ resource "aws_wafv2_web_acl" "this" {
     Name = "${var.project}-${var.environment}-waf"
   })
 }
+
+# ── WAF Logging ──────────────────────────────────────────────────────────────
+
+resource "aws_cloudwatch_log_group" "waf" {
+  name              = "aws-waf-logs-${var.project}-${var.environment}"
+  retention_in_days = 90
+
+  tags = merge(var.tags, {
+    Name = "aws-waf-logs-${var.project}-${var.environment}"
+  })
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "this" {
+  log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
+  resource_arn            = aws_wafv2_web_acl.this.arn
+}

@@ -1,6 +1,8 @@
 package main
 
-deny[msg] {
+import rego.v1
+
+deny contains msg if {
   resource := input.resource_changes[_]
   resource.type == "aws_security_group_rule"
   resource.change.after.type == "ingress"
@@ -9,7 +11,7 @@ deny[msg] {
   msg := sprintf("Security group rule %s allows 0.0.0.0/0 ingress on non-HTTPS port", [resource.address])
 }
 
-deny[msg] {
+deny contains msg if {
   resource := input.resource_changes[_]
   resource.type == "aws_security_group"
   ingress := resource.change.after.ingress[_]
