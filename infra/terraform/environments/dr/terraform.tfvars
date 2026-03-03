@@ -18,7 +18,7 @@ private_subnet_cidrs = ["10.3.11.0/24", "10.3.12.0/24", "10.3.13.0/24"]
 
 root_domain_name = "dr.fusionemsquantum.com"
 api_domain_name  = "api.dr.fusionemsquantum.com"
-hosted_zone_id   = ""
+hosted_zone_id   = "Z0858801IZXAHSWCPH85"
 
 # ─── Compute ─────────────────────────────────────────────────────────────────
 
