@@ -48,11 +48,17 @@ if [[ -n "$EXISTING" && "$EXISTING" != "None" ]]; then
   fi
 else
   echo "    Creating OIDC provider..."
+  # AWS requires a SHA-1 thumbprint for OIDC providers (as of 2025).
   THUMBPRINT=$(openssl s_client -servername token.actions.githubusercontent.com \
     -showcerts -connect token.actions.githubusercontent.com:443 </dev/null 2>/dev/null \
     | openssl x509 -fingerprint -sha1 -noout 2>/dev/null \
-    | sed 's/sha1 Fingerprint=//;s/://g' \
+    | sed 's/[Ss][Hh][Aa]1 Fingerprint=//;s/://g' \
     | tr '[:upper:]' '[:lower:]')
+
+  if [[ -z "$THUMBPRINT" ]]; then
+    echo "ERROR: Failed to retrieve GitHub OIDC thumbprint" >&2
+    exit 1
+  fi
 
   aws iam create-open-id-connect-provider \
     --url "$OIDC_URL" \
