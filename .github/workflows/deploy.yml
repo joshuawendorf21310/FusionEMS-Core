@@ -475,16 +475,11 @@ jobs:
               --no-confirm-changeset \
               --parameter-overrides "${PARAMS[@]}"
           else
-            aws cloudformation package \
+            python scripts/cfn_deploy.py \
               --template-file "$TEMPLATE_FILE" \
-              --s3-bucket "$ARTIFACT_BUCKET" \
-              --output-template-file packaged-root.yml
-
-            aws cloudformation deploy \
-              --template-file packaged-root.yml \
               --stack-name "$STACK_NAME" \
+              --s3-bucket "$ARTIFACT_BUCKET" \
               --region "$AWS_REGION" \
-              --no-fail-on-empty-changeset \
               --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
               --parameter-overrides "${PARAMS[@]}"
           fi
