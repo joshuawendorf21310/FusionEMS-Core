@@ -174,7 +174,7 @@ resource "aws_lb" "main" {
   security_groups    = [var.alb_security_group_id]
   subnets            = var.public_subnet_ids
 
-  enable_deletion_protection  = var.environment == "prod"
+  enable_deletion_protection = var.environment == "prod"
   drop_invalid_header_fields = true
 
   tags = merge(local.common_tags, {
