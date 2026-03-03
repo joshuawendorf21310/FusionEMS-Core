@@ -10,7 +10,7 @@ terraform {
 
 resource "aws_acm_certificate" "this" {
   domain_name               = var.root_domain_name
-  subject_alternative_names = [var.api_domain_name]
+  subject_alternative_names = ["www.${var.root_domain_name}", var.api_domain_name]
   validation_method         = "DNS"
 
   tags = merge(var.tags, {
