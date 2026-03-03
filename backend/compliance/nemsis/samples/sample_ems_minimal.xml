@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EMSDataSet xmlns="http://www.nemsis.org">
+  <Header>
+    <DemographicGroup>
+      <dAgency.01>WI12345</dAgency.01>
+      <dAgency.02>12345</dAgency.02>
+      <dAgency.04>55</dAgency.04>
+    </DemographicGroup>
+    <PatientCareReport>
+      <eRecord.01>WI-2024-SAMPLE-001</eRecord.01>
+      <eRecord.SoftwareApplicationGroup>
+        <eRecord.02>FusionEMS Quantum</eRecord.02>
+        <eRecord.03>3.5.0.211008CP3</eRecord.03>
+        <eRecord.04>FusionEMS</eRecord.04>
+      </eRecord.SoftwareApplicationGroup>
+      <eResponse>
+        <eResponse.01>12345</eResponse.01>
+        <eResponse.05>9920001</eResponse.05>
+        <eResponse.13>9907001</eResponse.13>
+        <eResponse.23>9923001</eResponse.23>
+      </eResponse>
+      <eTimes>
+        <eTimes.01>2024-12-15T14:22:00-06:00</eTimes.01>
+        <eTimes.03>2024-12-15T14:23:00-06:00</eTimes.03>
+        <eTimes.06>2024-12-15T14:32:00-06:00</eTimes.06>
+        <eTimes.07>2024-12-15T14:33:00-06:00</eTimes.07>
+      </eTimes>
+      <ePatient>
+        <ePatient.13>9906001</ePatient.13>
+      </ePatient>
+      <eSituation>
+        <eSituation.11>I21.9</eSituation.11>
+      </eSituation>
+      <eDisposition>
+        <eDisposition.12>4212015</eDisposition.12>
+      </eDisposition>
+      <eScene>
+        <eScene.09>Y92.009</eScene.09>
+      </eScene>
+    </PatientCareReport>
+  </Header>
+</EMSDataSet>

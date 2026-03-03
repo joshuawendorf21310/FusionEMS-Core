@@ -16,9 +16,9 @@ private_subnet_cidrs = ["10.2.11.0/24", "10.2.12.0/24", "10.2.13.0/24"]
 
 # ─── DNS ─────────────────────────────────────────────────────────────────────
 
-root_domain_name = "fusionems.com"
-api_domain_name  = "api.fusionems.com"
-hosted_zone_id   = ""
+root_domain_name = "fusionemsquantum.com"
+api_domain_name  = "api.fusionemsquantum.com"
+hosted_zone_id   = "Z0858801IZXAHSWCPH85"
 
 # ─── Compute ─────────────────────────────────────────────────────────────────
 
@@ -27,4 +27,4 @@ redis_node_type   = "cache.t4g.medium"
 
 # ─── Monitoring ──────────────────────────────────────────────────────────────
 
-alert_email = "alerts@fusionems.com"
+alert_email = "alerts@fusionemsquantum.com"

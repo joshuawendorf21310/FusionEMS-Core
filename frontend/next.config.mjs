@@ -2,9 +2,15 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
 
-if (!API_BASE && process.env.NODE_ENV === "production") {
-  throw new Error("NEXT_PUBLIC_API_BASE must be defined in production");
-}
+// NOTE:
+// - In AWS, the ALB/CloudFront path rules route /api/* directly to the backend.
+// - In local/docker, we often use http://localhost:8000.
+// So we treat NEXT_PUBLIC_API_BASE as optional and only enforce HTTPS for non-local hosts.
+const _isLocalHost = (hostname) =>
+  hostname === "localhost" ||
+  hostname === "127.0.0.1" ||
+  hostname === "::1" ||
+  hostname === "backend";
 
 const nextConfig = {
   output: "standalone",
@@ -26,7 +32,7 @@ const nextConfig = {
     remotePatterns: API_BASE
       ? [
           {
-            protocol: "https",
+            protocol: new URL(API_BASE).protocol.replace(":", ""),
             hostname: new URL(API_BASE).hostname,
           },
         ]
@@ -38,8 +44,10 @@ const nextConfig = {
 
     const parsed = new URL(API_BASE);
 
-    if (parsed.protocol !== "https:") {
-      throw new Error("NEXT_PUBLIC_API_BASE must use HTTPS");
+    if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:" && !_isLocalHost(parsed.hostname)) {
+      throw new Error(
+        `NEXT_PUBLIC_API_BASE must use HTTPS for non-local hosts (got ${API_BASE}).`
+      );
     }
 
     return [

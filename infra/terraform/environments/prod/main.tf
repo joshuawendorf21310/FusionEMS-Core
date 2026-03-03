@@ -93,14 +93,18 @@ module "iam" {
   ]
   sqs_queue_arns = []
   sns_topic_arns = [module.observability.alert_topic_arn]
-  secrets_arns = [
-    module.rds.db_secret_arn,
-    module.redis.auth_secret_arn,
-    module.ses.graph_email_secret_arn,
-  ]
+  secrets_arns = concat(
+    [
+      module.rds.db_secret_arn,
+      module.redis.auth_secret_arn,
+      module.ses.graph_email_secret_arn,
+    ],
+    module.secrets.all_secret_arns,
+  )
   kms_key_arns = [
     module.rds.kms_key_arn,
     module.s3.kms_key_arn,
+    module.secrets.kms_key_arn,
   ]
   tags = local.common_tags
 }
@@ -246,6 +250,16 @@ module "ses" {
   tags                = local.common_tags
 }
 
+# ─── 12b. Secrets ────────────────────────────────────────────────────────────
+
+module "secrets" {
+  source = "../../modules/secrets"
+
+  environment = var.environment
+  project     = var.project
+  tags        = local.common_tags
+}
+
 # ─── 13. Backend Service ────────────────────────────────────────────────────
 
 module "backend_service" {
@@ -284,6 +298,11 @@ module "backend_service" {
   secrets = [
     { name = "DATABASE_URL", valueFrom = module.rds.db_secret_arn },
     { name = "REDIS_URL", valueFrom = module.redis.auth_secret_arn },
+    { name = "STRIPE_SECRETS", valueFrom = module.secrets.vendor_secret_arns["stripe"] },
+    { name = "TELNYX_SECRETS", valueFrom = module.secrets.vendor_secret_arns["telnyx"] },
+    { name = "LOB_SECRETS", valueFrom = module.secrets.vendor_secret_arns["lob"] },
+    { name = "OPENAI_SECRETS", valueFrom = module.secrets.vendor_secret_arns["openai"] },
+    { name = "OFFICEALLY_SECRETS", valueFrom = module.secrets.vendor_secret_arns["officeally"] },
   ]
 }
 

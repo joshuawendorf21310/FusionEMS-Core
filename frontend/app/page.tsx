@@ -120,6 +120,16 @@ export default async function Page() {
       </section>
 
       <section className="rounded-2xl border border-border bg-panel p-6">
+        <div className="text-sm font-semibold">Enterprise Security &amp; Compliance</div>
+        <div className="mt-3 text-sm text-muted">
+          Built with FedRAMP-aligned controls (NIST 800-53 patterns): zero static cloud credentials, centralized secrets, hardened CI/CD, WAF protection, encrypted data, and continuous vulnerability scanning.
+        </div>
+        <div className="mt-2 text-xs text-muted italic">
+          FedRAMP authorization not currently claimed.
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-panel p-6">
         <div className="text-sm font-semibold">Activation Roadmap</div>
         <div className="mt-3 grid gap-2 text-sm text-muted">
           <div>Phase I — Revenue Infrastructure (Active)</div>

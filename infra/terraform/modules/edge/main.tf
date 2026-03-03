@@ -4,6 +4,14 @@
 
 terraform {
   required_version = ">= 1.6"
+
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      version               = "~> 5.0"
+      configuration_aliases = [aws.us_east_1]
+    }
+  }
 }
 
 locals {
@@ -72,6 +80,50 @@ resource "aws_wafv2_web_acl" "cloudfront" {
     visibility_config {
       cloudwatch_metrics_enabled = true
       metric_name                = "known-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "RateLimit"
+    priority = 3
+
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "rate-limit"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "AWSManagedSQLi"
+    priority = 4
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesSQLiRuleSet"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "sqli"
       sampled_requests_enabled   = true
     }
   }
@@ -187,7 +239,7 @@ resource "aws_cloudfront_distribution" "this" {
   is_ipv6_enabled     = true
   http_version        = "http2and3"
   web_acl_id          = aws_wafv2_web_acl.cloudfront.arn
-  aliases             = [var.root_domain_name, var.api_domain_name]
+  aliases             = [var.root_domain_name, "www.${var.root_domain_name}", var.api_domain_name]
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
 
@@ -211,6 +263,11 @@ resource "aws_cloudfront_distribution" "this" {
     compress                   = true
     cache_policy_id            = aws_cloudfront_cache_policy.static.id
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.apex_redirect.arn
+    }
   }
 
   ordered_cache_behavior {
@@ -248,6 +305,31 @@ resource "aws_cloudfront_distribution" "this" {
   tags = local.common_tags
 }
 
+# ========================= CloudFront Function: Apex -> WWW Redirect ==========
+
+resource "aws_cloudfront_function" "apex_redirect" {
+  name    = "${local.name_prefix}-apex-redirect"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+
+  code = <<-EOF
+    function handler(event) {
+      var request = event.request;
+      var host = request.headers.host.value;
+      if (host === '${var.root_domain_name}') {
+        return {
+          statusCode: 301,
+          statusDescription: 'Moved Permanently',
+          headers: {
+            location: { value: 'https://www.${var.root_domain_name}' + request.uri }
+          }
+        };
+      }
+      return request;
+    }
+  EOF
+}
+
 # ========================= Route 53 Records ===================================
 
 resource "aws_route53_record" "root" {
@@ -265,6 +347,18 @@ resource "aws_route53_record" "root" {
 resource "aws_route53_record" "api" {
   zone_id = var.hosted_zone_id
   name    = var.api_domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.this.domain_name
+    zone_id                = aws_cloudfront_distribution.this.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "www" {
+  zone_id = var.hosted_zone_id
+  name    = "www.${var.root_domain_name}"
   type    = "A"
 
   alias {
