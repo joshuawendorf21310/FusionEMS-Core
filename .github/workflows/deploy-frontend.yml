@@ -68,11 +68,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          aws ecs update-service \
+          pip install boto3 -q
+          python scripts/ecs_update_service.py \
             --cluster "$ECS_CLUSTER" \
             --service "$ECS_SERVICE" \
-            --force-new-deployment \
-            --no-cli-pager
+            --region "$AWS_REGION"
           echo "Triggered ECS service redeploy: $ECS_SERVICE"
 
       - name: Wait for ECS service to stabilize

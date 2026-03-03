@@ -680,14 +680,17 @@ jobs:
             echo "ECS cluster not found in stack outputs — skipping service update."
             exit 0
           fi
+          pip install boto3 -q
           if [ -n "$BACKEND_SVC" ] && [ "$BACKEND_SVC" != "None" ]; then
-            aws ecs update-service --cluster "$CLUSTER" --service "$BACKEND_SVC" \
-              --desired-count 2 --force-new-deployment --no-cli-pager
+            python scripts/ecs_update_service.py \
+              --cluster "$CLUSTER" --service "$BACKEND_SVC" \
+              --desired-count 2 --region "$AWS_REGION"
             echo "Triggered backend service update (desired=2)."
           fi
           if [ -n "$FRONTEND_SVC" ] && [ "$FRONTEND_SVC" != "None" ]; then
-            aws ecs update-service --cluster "$CLUSTER" --service "$FRONTEND_SVC" \
-              --desired-count 2 --force-new-deployment --no-cli-pager
+            python scripts/ecs_update_service.py \
+              --cluster "$CLUSTER" --service "$FRONTEND_SVC" \
+              --desired-count 2 --region "$AWS_REGION"
             echo "Triggered frontend service update (desired=2)."
           fi
 
