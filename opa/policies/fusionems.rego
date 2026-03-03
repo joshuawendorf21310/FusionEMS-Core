@@ -188,10 +188,17 @@ deny[msg] {
     msg := "readonly role cannot modify resources"
 }
 
+# Identifies webhook API endpoints (validated at application layer via HMAC)
+webhook_path {
+    path0 == "api"
+    path1 == "v1"
+    path2 == "webhooks"
+}
+
 # Prevent unauthenticated access to protected routes
 deny[msg] {
     not is_authenticated
     not path0 in {"healthz", "health", "track", "public"}
-    not (path0 == "api" and path1 == "v1" and path2 == "webhooks")
+    not webhook_path
     msg := "authentication required"
 }
