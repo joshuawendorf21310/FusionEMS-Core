@@ -200,16 +200,16 @@ module "cognito" {
 module "observability" {
   source = "../../modules/observability"
 
-  environment                    = var.environment
-  project                        = var.project
-  alert_email                    = var.alert_email
-  ecs_cluster_name               = module.ecs_cluster.cluster_name
-  backend_service_name           = module.backend_service.service_name
-  alb_arn_suffix                 = local.alb_arn_suffix
+  environment                     = var.environment
+  project                         = var.project
+  alert_email                     = var.alert_email
+  ecs_cluster_name                = module.ecs_cluster.cluster_name
+  backend_service_name            = module.backend_service.service_name
+  alb_arn_suffix                  = local.alb_arn_suffix
   backend_target_group_arn_suffix = local.backend_tg_arn_suffix
-  db_instance_id                 = module.rds.db_instance_id
-  redis_cluster_id               = module.redis.replication_group_id
-  tags                           = local.common_tags
+  db_instance_id                  = module.rds.db_instance_id
+  redis_cluster_id                = module.redis.replication_group_id
+  tags                            = local.common_tags
 }
 
 # ─── 11. Edge (CloudFront + Route53) ────────────────────────────────────────
@@ -217,14 +217,14 @@ module "observability" {
 module "edge" {
   source = "../../modules/edge"
 
-  environment                  = var.environment
-  project                      = var.project
-  root_domain_name             = var.root_domain_name
-  api_domain_name              = var.api_domain_name
-  hosted_zone_id               = var.hosted_zone_id
+  environment                   = var.environment
+  project                       = var.project
+  root_domain_name              = var.root_domain_name
+  api_domain_name               = var.api_domain_name
+  hosted_zone_id                = var.hosted_zone_id
   acm_certificate_arn_us_east_1 = var.acm_certificate_arn_us_east_1
-  alb_dns_name                 = module.ecs_cluster.alb_dns_name
-  tags                         = local.common_tags
+  alb_dns_name                  = module.ecs_cluster.alb_dns_name
+  tags                          = local.common_tags
 
   providers = {
     aws           = aws

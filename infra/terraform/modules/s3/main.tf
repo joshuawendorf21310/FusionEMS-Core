@@ -25,39 +25,39 @@ resource "aws_kms_alias" "s3" {
 locals {
   buckets = {
     docs = {
-      suffix             = "docs"
-      description        = "Document storage"
-      glacier_days       = 90
-      expiration_days    = 730
-      expire             = true
+      suffix          = "docs"
+      description     = "Document storage"
+      glacier_days    = 90
+      expiration_days = 730
+      expire          = true
     }
     exports = {
-      suffix             = "exports"
-      description        = "Export files"
-      glacier_days       = 90
-      expiration_days    = 730
-      expire             = true
+      suffix          = "exports"
+      description     = "Export files"
+      glacier_days    = 90
+      expiration_days = 730
+      expire          = true
     }
     proposals = {
-      suffix             = "proposals"
-      description        = "Proposals"
-      glacier_days       = 90
-      expiration_days    = 730
-      expire             = true
+      suffix          = "proposals"
+      description     = "Proposals"
+      glacier_days    = 90
+      expiration_days = 730
+      expire          = true
     }
     audit = {
-      suffix             = "audit"
-      description        = "Audit logs"
-      glacier_days       = 365
-      expiration_days    = 0
-      expire             = false
+      suffix          = "audit"
+      description     = "Audit logs"
+      glacier_days    = 365
+      expiration_days = 0
+      expire          = false
     }
     artifacts = {
-      suffix             = "artifacts"
-      description        = "CFN/deployment artifacts"
-      glacier_days       = 90
-      expiration_days    = 90
-      expire             = true
+      suffix          = "artifacts"
+      description     = "CFN/deployment artifacts"
+      glacier_days    = 90
+      expiration_days = 90
+      expire          = true
     }
   }
 }
