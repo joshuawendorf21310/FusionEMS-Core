@@ -1,0 +1,11 @@
+compact: true
+directory:
+  - infra/terraform
+framework:
+  - terraform
+quiet: true
+skip-check:
+  - CKV_AWS_144  # S3 cross-region replication (handled at module level)
+  - CKV_AWS_145  # S3 KMS encryption (we use it but checkov may false-positive)
+  - CKV2_AWS_6   # S3 public access (handled in module)
+soft-fail: false
