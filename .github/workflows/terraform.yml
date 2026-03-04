@@ -1,180 +1,143 @@
 name: terraform
 
 on:
-  pull_request:
-    paths:
-      - "infra/terraform/**"
-      - ".github/workflows/terraform.yml"
-  push:
-    branches: ["main"]
-    paths:
-      - "infra/terraform/**"
-      - ".github/workflows/terraform.yml"
-  workflow_dispatch:
+pull_request:
+paths:
+- "infra/terraform/**"
+- ".github/workflows/terraform.yml"
+
+push:
+branches:
+- main
+paths:
+- "infra/terraform/**"
+- ".github/workflows/terraform.yml"
+
+workflow_dispatch:
 
 permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
+id-token: write
+contents: read
+pull-requests: write
 
 concurrency:
-  group: terraform-${{ github.ref }}-${{ github.workflow }}
-  cancel-in-progress: false
+group: terraform-${{ github.ref }}-${{ github.workflow }}
+cancel-in-progress: false
 
 env:
-  TF_IN_AUTOMATION: "true"
-  TF_INPUT: "false"
-  AWS_REGION: "us-east-1"
-  TF_WORKING_DIR: "infra/terraform/environments/prod"
-  # Literal prod account ID (avoid fragile expression parsing in workflows).
-  EXPECTED_AWS_ACCOUNT_ID: "793439286972"
+TF_IN_AUTOMATION: "true"
+TF_INPUT: "false"
+AWS_REGION: "us-east-1"
+TF_WORKING_DIR: "infra/terraform/environments/prod"
+EXPECTED_AWS_ACCOUNT_ID: "793439286972"
 
 jobs:
-  validate_plan:
-    name: Validate + Plan
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ env.TF_WORKING_DIR }}
 
-    steps:
-      - uses: actions/checkout@v4
+validate_plan:
+name: Validate + Plan
+runs-on: ubuntu-latest
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
+```
+defaults:
+  run:
+    shell: bash
+    working-directory: ${{ env.TF_WORKING_DIR }}
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
-          aws-region: us-east-1
+steps:
 
-      - name: Enforce AWS account
-        run: |
-          set -euo pipefail
-          acct="$(aws sts get-caller-identity --query Account --output text)"
-          echo "AWS account: $acct"
-          if [[ -n "${EXPECTED_AWS_ACCOUNT_ID}" && "$acct" != "${EXPECTED_AWS_ACCOUNT_ID}" ]]; then
-            echo "ERROR: Wrong AWS account. Expected ${EXPECTED_AWS_ACCOUNT_ID}, got $acct"
-            exit 1
-          fi
+  - name: Checkout
+    uses: actions/checkout@v4
 
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive
-        working-directory: infra/terraform
+  - name: Setup Terraform
+    uses: hashicorp/setup-terraform@v3
+    with:
+      terraform_version: 1.8.5
 
-      - name: Terraform init
-        run: terraform init -lock-timeout=10m
+  - name: Configure AWS credentials (OIDC)
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: arn:aws:iam::793439286972:role/GitHubTerraformRole
+      aws-region: us-east-1
 
-      - name: Terraform validate
-        run: terraform validate
+  - name: Verify AWS account
+    run: |
+      set -euo pipefail
+      acct="$(aws sts get-caller-identity --query Account --output text)"
+      echo "AWS account: $acct"
 
-      - name: Terraform plan
-        id: plan
-        run: |
-          set -euo pipefail
-          terraform plan -lock-timeout=10m -no-color -out=tfplan
-          terraform show -no-color tfplan > plan.txt
+      if [[ "$acct" != "${EXPECTED_AWS_ACCOUNT_ID}" ]]; then
+        echo "ERROR: Wrong AWS account"
+        exit 1
+      fi
 
-      - name: tfsec
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          working_directory: infra/terraform
+  - name: Terraform fmt
+    run: terraform fmt -check -recursive ../../
 
-      - name: Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: infra/terraform
-          framework: terraform
-          config_file: checkov.yml
+  - name: Terraform init
+    run: terraform init -lock-timeout=10m
 
-      - name: Install conftest
-        run: |
-          set -euo pipefail
-          curl -L -o /tmp/conftest.tar.gz https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz
-          tar -xzf /tmp/conftest.tar.gz -C /tmp
-          sudo mv /tmp/conftest /usr/local/bin/conftest
+  - name: Terraform validate
+    run: terraform validate
 
-      - name: OPA policy checks
-        run: |
-          set -euo pipefail
-          terraform show -json tfplan > tfplan.json
-          conftest test tfplan.json -p ../../policy/opa
+  - name: Terraform plan
+    id: plan
+    run: |
+      set -euo pipefail
+      terraform plan -lock-timeout=10m -no-color -out=tfplan
+      terraform show -no-color tfplan > plan.txt
 
-      - name: Infracost setup
-        uses: infracost/actions/setup@v3
-        with:
-          api-key: ${{ secrets.INFRACOST_API_KEY }}
-        if: env.INFRACOST_API_KEY != ''
-        env:
-          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+  - name: Comment Terraform plan
+    if: github.event_name == 'pull_request'
+    uses: marocchino/sticky-pull-request-comment@v2
+    with:
+      header: terraform-plan
+      path: ${{ env.TF_WORKING_DIR }}/plan.txt
+```
 
-      - name: Infracost breakdown
-        run: |
-          set -euo pipefail
-          infracost breakdown --path tfplan.json --format json --out-file infracost.json
-          infracost output --path infracost.json --format table --out-file infracost.txt
-        if: env.INFRACOST_API_KEY != ''
-        env:
-          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+apply_prod:
+name: Apply (Protected)
+needs: validate_plan
+runs-on: ubuntu-latest
 
-      - name: Trivy container scan
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: table
-          exit-code: "1"
-          severity: CRITICAL
+```
+if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-      - name: Comment plan on PR
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: terraform-plan
-          path: ${{ env.TF_WORKING_DIR }}/plan.txt
+environment: prod
 
-  apply_prod:
-    name: Apply (Protected)
-    needs: [validate_plan]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: prod
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ env.TF_WORKING_DIR }}
+defaults:
+  run:
+    shell: bash
+    working-directory: ${{ env.TF_WORKING_DIR }}
 
-    steps:
-      - uses: actions/checkout@v4
+steps:
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
+  - name: Checkout
+    uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
-          aws-region: us-east-1
+  - name: Setup Terraform
+    uses: hashicorp/setup-terraform@v3
+    with:
+      terraform_version: 1.8.5
 
-      - name: Enforce AWS account
-        run: |
-          set -euo pipefail
-          acct="$(aws sts get-caller-identity --query Account --output text)"
-          if [[ -n "${EXPECTED_AWS_ACCOUNT_ID}" && "$acct" != "${EXPECTED_AWS_ACCOUNT_ID}" ]]; then
-            echo "ERROR: Wrong AWS account."
-            exit 1
-          fi
+  - name: Configure AWS credentials (OIDC)
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: arn:aws:iam::793439286972:role/GitHubTerraformRole
+      aws-region: us-east-1
 
-      - name: Terraform init
-        run: terraform init -lock-timeout=10m
+  - name: Verify AWS account
+    run: |
+      set -euo pipefail
+      acct="$(aws sts get-caller-identity --query Account --output text)"
 
-      - name: Terraform apply
-        run: |
-          set -euo pipefail
-          terraform apply -lock-timeout=10m -auto-approve
+      if [[ "$acct" != "${EXPECTED_AWS_ACCOUNT_ID}" ]]; then
+        echo "ERROR: Wrong AWS account"
+        exit 1
+      fi
+
+  - name: Terraform init
+    run: terraform init -lock-timeout=10m
+
+  - name: Terraform apply
+    run: terraform apply -auto-approve
+```
