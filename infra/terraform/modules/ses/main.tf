@@ -55,15 +55,7 @@ resource "aws_secretsmanager_secret" "graph_email" {
   tags = local.common_tags
 }
 
-resource "aws_secretsmanager_secret_version" "graph_email" {
-  secret_id = aws_secretsmanager_secret.graph_email.id
-  secret_string = jsonencode({
-    tenant_id     = var.graph_tenant_id
-    client_id     = var.graph_client_id
-    client_secret = var.graph_client_secret
-    founder_email = var.graph_founder_email
-  })
-}
+# NOTE: Do not manage secret values with Terraform (no aws_secretsmanager_secret_version)
 
 # =============================================================================
 # IAM Policy
