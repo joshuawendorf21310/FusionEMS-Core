@@ -1,5 +1,5 @@
 ###############################################################################
-# FusionEMS – Terraform root configuration (shared across all environments)
+# FusionEMS  Terraform root configuration (shared across all environments)
 ###############################################################################
 
 terraform {
@@ -17,7 +17,7 @@ terraform {
   }
 }
 
-# ─── Providers ───────────────────────────────────────────────────────────────
+#  Providers 
 
 provider "aws" {
   region = var.aws_region
@@ -36,11 +36,11 @@ provider "aws" {
   }
 }
 
-# ─── Data Sources ────────────────────────────────────────────────────────────
+#  Data Sources 
 
 data "aws_caller_identity" "current" {}
 
-# ─── Locals ──────────────────────────────────────────────────────────────────
+#  Locals 
 
 locals {
   common_tags = {
@@ -53,7 +53,7 @@ locals {
   backend_tg_arn_suffix = replace(module.backend_service.target_group_arn, "/^.*:targetgroup\\//", "")
 }
 
-# ─── 1. Networking ───────────────────────────────────────────────────────────
+#  1. Networking 
 
 module "networking" {
   source = "../../modules/networking"
@@ -69,7 +69,7 @@ module "networking" {
   tags                 = local.common_tags
 }
 
-# ─── 2. IAM ──────────────────────────────────────────────────────────────────
+#  2. IAM 
 
 module "iam" {
   source = "../../modules/iam"
@@ -91,7 +91,11 @@ module "iam" {
     module.s3.audit_bucket_arn,
     module.s3.artifacts_bucket_arn,
   ]
-  sqs_queue_arns = []
+  sqs_queue_arns = [
+    aws_sqs_queue.neris_pack_import.arn,
+    aws_sqs_queue.neris_pack_compile.arn,
+    aws_sqs_queue.neris_export.arn,
+  ]
   sns_topic_arns = [module.observability.alert_topic_arn]
   secrets_arns = concat(
     [
@@ -109,7 +113,7 @@ module "iam" {
   tags = local.common_tags
 }
 
-# ─── 3. ACM ──────────────────────────────────────────────────────────────────
+#  3. ACM 
 
 module "acm" {
   source = "../../modules/acm"
@@ -122,7 +126,7 @@ module "acm" {
   tags             = local.common_tags
 }
 
-# ─── 4. S3 ───────────────────────────────────────────────────────────────────
+#  4. S3 
 
 module "s3" {
   source = "../../modules/s3"
@@ -132,7 +136,7 @@ module "s3" {
   tags        = local.common_tags
 }
 
-# ─── 5. WAF ──────────────────────────────────────────────────────────────────
+#  5. WAF 
 
 module "waf" {
   source = "../../modules/waf"
@@ -142,7 +146,7 @@ module "waf" {
   tags        = local.common_tags
 }
 
-# ─── 6. ECS Cluster ─────────────────────────────────────────────────────────
+#  6. ECS Cluster 
 
 module "ecs_cluster" {
   source = "../../modules/ecs-cluster"
@@ -158,7 +162,7 @@ module "ecs_cluster" {
   tags                  = local.common_tags
 }
 
-# ─── 7. RDS ──────────────────────────────────────────────────────────────────
+#  7. RDS 
 
 module "rds" {
   source = "../../modules/rds"
@@ -173,7 +177,7 @@ module "rds" {
   tags                  = local.common_tags
 }
 
-# ─── 8. Redis ────────────────────────────────────────────────────────────────
+#  8. Redis 
 
 module "redis" {
   source = "../../modules/redis"
@@ -187,7 +191,7 @@ module "redis" {
   tags                    = local.common_tags
 }
 
-# ─── 9. Cognito ──────────────────────────────────────────────────────────────
+#  9. Cognito 
 
 module "cognito" {
   source = "../../modules/cognito"
@@ -199,7 +203,7 @@ module "cognito" {
   tags          = local.common_tags
 }
 
-# ─── 10. Observability ──────────────────────────────────────────────────────
+#  10. Observability 
 
 module "observability" {
   source = "../../modules/observability"
@@ -216,7 +220,7 @@ module "observability" {
   tags                            = local.common_tags
 }
 
-# ─── 11. Edge (CloudFront + Route53) ────────────────────────────────────────
+#  11. Edge (CloudFront + Route53) 
 
 module "edge" {
   source = "../../modules/edge"
@@ -236,7 +240,7 @@ module "edge" {
   }
 }
 
-# ─── 12. SES ─────────────────────────────────────────────────────────────────
+#  12. SES 
 
 module "ses" {
   source = "../../modules/ses"
@@ -250,7 +254,7 @@ module "ses" {
   tags                = local.common_tags
 }
 
-# ─── 12b. Secrets ────────────────────────────────────────────────────────────
+#  12b. Secrets 
 
 module "secrets" {
   source = "../../modules/secrets"
@@ -260,7 +264,93 @@ module "secrets" {
   tags        = local.common_tags
 }
 
-# ─── 13. Backend Service ────────────────────────────────────────────────────
+#  12c. NERIS queues (SQS) 
+
+locals {
+  neris_sqs_tags = merge(local.common_tags, {
+    Owner     = "FusionEMS"
+    Service   = "backend"
+    Component = "neris"
+    DataClass = "internal"
+  })
+}
+
+resource "aws_sqs_queue" "neris_pack_import_dlq" {
+  name                       = "${var.project}-${var.environment}-neris-pack-import-dlq"
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 120
+  message_retention_seconds  = 1209600
+  sqs_managed_sse_enabled    = true
+
+  tags = local.neris_sqs_tags
+}
+
+resource "aws_sqs_queue" "neris_pack_compile_dlq" {
+  name                       = "${var.project}-${var.environment}-neris-pack-compile-dlq"
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 120
+  message_retention_seconds  = 1209600
+  sqs_managed_sse_enabled    = true
+
+  tags = local.neris_sqs_tags
+}
+
+resource "aws_sqs_queue" "neris_export_dlq" {
+  name                       = "${var.project}-${var.environment}-neris-export-dlq"
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 120
+  message_retention_seconds  = 1209600
+  sqs_managed_sse_enabled    = true
+
+  tags = local.neris_sqs_tags
+}
+
+resource "aws_sqs_queue" "neris_pack_import" {
+  name                       = "${var.project}-${var.environment}-neris-pack-import"
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 120
+  message_retention_seconds  = 1209600
+  sqs_managed_sse_enabled    = true
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.neris_pack_import_dlq.arn
+    maxReceiveCount     = 5
+  })
+
+  tags = local.neris_sqs_tags
+}
+
+resource "aws_sqs_queue" "neris_pack_compile" {
+  name                       = "${var.project}-${var.environment}-neris-pack-compile"
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 120
+  message_retention_seconds  = 1209600
+  sqs_managed_sse_enabled    = true
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.neris_pack_compile_dlq.arn
+    maxReceiveCount     = 5
+  })
+
+  tags = local.neris_sqs_tags
+}
+
+resource "aws_sqs_queue" "neris_export" {
+  name                       = "${var.project}-${var.environment}-neris-export"
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 120
+  message_retention_seconds  = 1209600
+  sqs_managed_sse_enabled    = true
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.neris_export_dlq.arn
+    maxReceiveCount     = 5
+  })
+
+  tags = local.neris_sqs_tags
+}
+
+#  13. Backend Service 
 
 module "backend_service" {
   source = "../../modules/ecs-service"
@@ -296,17 +386,38 @@ module "backend_service" {
   ]
 
   secrets = [
-    { name = "DATABASE_URL", valueFrom = module.rds.db_secret_arn },
-    { name = "REDIS_URL", valueFrom = module.redis.auth_secret_arn },
-    { name = "STRIPE_SECRETS", valueFrom = module.secrets.vendor_secret_arns["stripe"] },
-    { name = "TELNYX_SECRETS", valueFrom = module.secrets.vendor_secret_arns["telnyx"] },
-    { name = "LOB_SECRETS", valueFrom = module.secrets.vendor_secret_arns["lob"] },
-    { name = "OPENAI_SECRETS", valueFrom = module.secrets.vendor_secret_arns["openai"] },
-    { name = "OFFICEALLY_SECRETS", valueFrom = module.secrets.vendor_secret_arns["officeally"] },
+    {
+      name      = "DATABASE_URL"
+      valueFrom = "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/DATABASE_URL-HQtyrw"
+    },
+    { name = "JWT_SECRET_KEY", valueFrom = "${module.secrets.app_secret_arn}:JWT_SECRET_KEY::" },
+    { name = "STRIPE_SECRET_KEY", valueFrom = "${module.secrets.app_secret_arn}:STRIPE_SECRET_KEY::" },
+    { name = "STRIPE_WEBHOOK_SECRET", valueFrom = "${module.secrets.app_secret_arn}:STRIPE_WEBHOOK_SECRET::" },
+    { name = "LOB_API_KEY", valueFrom = "${module.secrets.app_secret_arn}:LOB_API_KEY::" },
+    { name = "LOB_WEBHOOK_SECRET", valueFrom = "${module.secrets.app_secret_arn}:LOB_WEBHOOK_SECRET::" },
+    { name = "TELNYX_API_KEY", valueFrom = "${module.secrets.app_secret_arn}:TELNYX_API_KEY::" },
+    { name = "TELNYX_FROM_NUMBER", valueFrom = "${module.secrets.app_secret_arn}:TELNYX_FROM_NUMBER::" },
+    { name = "TELNYX_PUBLIC_KEY", valueFrom = "${module.secrets.app_secret_arn}:TELNYX_PUBLIC_KEY::" },
+    { name = "IVR_AUDIO_BASE_URL", valueFrom = "${module.secrets.app_secret_arn}:IVR_AUDIO_BASE_URL::" },
+    { name = "FAX_CLASSIFY_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:FAX_CLASSIFY_QUEUE_URL::" },
+    { name = "SYSTEM_TENANT_ID", valueFrom = "${module.secrets.app_secret_arn}:SYSTEM_TENANT_ID::" },
+    { name = "LOB_EVENTS_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:LOB_EVENTS_QUEUE_URL::" },
+    { name = "STRIPE_EVENTS_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:STRIPE_EVENTS_QUEUE_URL::" },
+    { name = "NERIS_PACK_IMPORT_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:NERIS_PACK_IMPORT_QUEUE_URL::" },
+    { name = "NERIS_PACK_COMPILE_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:NERIS_PACK_COMPILE_QUEUE_URL::" },
+    { name = "NERIS_EXPORT_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:NERIS_EXPORT_QUEUE_URL::" },
+    { name = "STATEMENTS_TABLE", valueFrom = "${module.secrets.app_secret_arn}:STATEMENTS_TABLE::" },
+    { name = "LOB_EVENTS_TABLE", valueFrom = "${module.secrets.app_secret_arn}:LOB_EVENTS_TABLE::" },
+    { name = "STRIPE_EVENTS_TABLE", valueFrom = "${module.secrets.app_secret_arn}:STRIPE_EVENTS_TABLE::" },
+    { name = "TENANTS_TABLE", valueFrom = "${module.secrets.app_secret_arn}:TENANTS_TABLE::" },
+    { name = "GRAPH_TENANT_ID", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_TENANT_ID::" },
+    { name = "GRAPH_CLIENT_ID", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_CLIENT_ID::" },
+    { name = "GRAPH_CLIENT_SECRET", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_CLIENT_SECRET::" },
+    { name = "GRAPH_FOUNDER_EMAIL", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_FOUNDER_EMAIL::" },
   ]
 }
 
-# ─── 14. Frontend Service ───────────────────────────────────────────────────
+#  14. Frontend Service 
 
 module "frontend_service" {
   source = "../../modules/ecs-service"

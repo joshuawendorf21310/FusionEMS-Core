@@ -66,6 +66,7 @@ resource "aws_iam_role" "ecs_task_execution" {
 }
 
 # ECR pull permissions – scoped to provided repository ARNs
+
 data "aws_iam_policy_document" "ecs_exec_ecr" {
   statement {
     sid    = "ECRGetAuth"
@@ -73,7 +74,7 @@ data "aws_iam_policy_document" "ecs_exec_ecr" {
     actions = [
       "ecr:GetAuthorizationToken",
     ]
-    resources = ["*"] # GetAuthorizationToken does not support resource-level scoping
+    resources = ["*"]
   }
 
   statement {
@@ -94,6 +95,7 @@ resource "aws_iam_role_policy" "ecs_exec_ecr" {
 }
 
 # CloudWatch Logs permissions – scoped to project log groups
+
 data "aws_iam_policy_document" "ecs_exec_logs" {
   statement {
     sid    = "CloudWatchLogs"
@@ -102,6 +104,7 @@ data "aws_iam_policy_document" "ecs_exec_logs" {
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
+      "logs:DescribeLogStreams",
     ]
     resources = [
       local.log_group_arn,
@@ -117,6 +120,7 @@ resource "aws_iam_role_policy" "ecs_exec_logs" {
 }
 
 # Secrets Manager read – allows execution role to inject secrets as env vars
+
 resource "aws_iam_role_policy" "ecs_exec_secrets" {
   count  = length(var.secrets_arns) > 0 ? 1 : 0
   name   = "${local.name_prefix}-ecs-exec-secrets"
@@ -138,6 +142,7 @@ data "aws_iam_policy_document" "ecs_exec_secrets" {
 }
 
 # KMS decrypt – for encrypted secrets or ECR images
+
 resource "aws_iam_role_policy" "ecs_exec_kms" {
   count  = length(var.kms_key_arns) > 0 ? 1 : 0
   name   = "${local.name_prefix}-ecs-exec-kms"
@@ -181,6 +186,7 @@ resource "aws_iam_role" "ecs_task" {
 }
 
 # S3 access – scoped to provided bucket ARNs
+
 resource "aws_iam_role_policy" "ecs_task_s3" {
   count  = length(var.s3_bucket_arns) > 0 ? 1 : 0
   name   = "${local.name_prefix}-ecs-task-s3"
@@ -206,6 +212,7 @@ data "aws_iam_policy_document" "ecs_task_s3" {
 }
 
 # SQS access – scoped to provided queue ARNs
+
 resource "aws_iam_role_policy" "ecs_task_sqs" {
   count  = length(var.sqs_queue_arns) > 0 ? 1 : 0
   name   = "${local.name_prefix}-ecs-task-sqs"
@@ -220,10 +227,11 @@ data "aws_iam_policy_document" "ecs_task_sqs" {
     sid    = "SQSAccess"
     effect = "Allow"
     actions = [
+      "sqs:GetQueueUrl",
+      "sqs:GetQueueAttributes",
       "sqs:SendMessage",
       "sqs:ReceiveMessage",
       "sqs:DeleteMessage",
-      "sqs:GetQueueAttributes",
       "sqs:ChangeMessageVisibility",
     ]
     resources = var.sqs_queue_arns
@@ -231,6 +239,7 @@ data "aws_iam_policy_document" "ecs_task_sqs" {
 }
 
 # SNS publish – scoped to provided topic ARNs
+
 resource "aws_iam_role_policy" "ecs_task_sns" {
   count  = length(var.sns_topic_arns) > 0 ? 1 : 0
   name   = "${local.name_prefix}-ecs-task-sns"
@@ -252,6 +261,7 @@ data "aws_iam_policy_document" "ecs_task_sns" {
 }
 
 # Secrets Manager read – application-level secret access
+
 resource "aws_iam_role_policy" "ecs_task_secrets" {
   count  = length(var.secrets_arns) > 0 ? 1 : 0
   name   = "${local.name_prefix}-ecs-task-secrets"
@@ -274,6 +284,7 @@ data "aws_iam_policy_document" "ecs_task_secrets" {
 }
 
 # DynamoDB access – scoped to project-prefixed tables
+
 data "aws_iam_policy_document" "ecs_task_dynamodb" {
   statement {
     sid    = "DynamoDBAccess"
@@ -302,6 +313,7 @@ resource "aws_iam_role_policy" "ecs_task_dynamodb" {
 }
 
 # KMS decrypt/encrypt – for application-level encryption
+
 resource "aws_iam_role_policy" "ecs_task_kms" {
   count  = length(var.kms_key_arns) > 0 ? 1 : 0
   name   = "${local.name_prefix}-ecs-task-kms"
@@ -334,8 +346,6 @@ resource "aws_iam_openid_connect_provider" "github" {
   url            = local.github_oidc_url
   client_id_list = ["sts.amazonaws.com"]
 
-  # AWS verifies GitHub OIDC via its own CA bundle since July 2023.
-  # A thumbprint is still required by the API but is not used for validation.
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-github-oidc" })
@@ -346,7 +356,6 @@ resource "aws_iam_openid_connect_provider" "github" {
 ###########################################################
 
 locals {
-  # Resolve OIDC provider ARN – use newly created or reference existing
   oidc_provider_arn = var.create_oidc_provider ? (
     length(aws_iam_openid_connect_provider.github) > 0
     ? aws_iam_openid_connect_provider.github[0].arn
@@ -396,6 +405,7 @@ resource "aws_iam_role" "github_actions" {
 }
 
 # ECR push permissions for CI/CD
+
 data "aws_iam_policy_document" "gha_ecr" {
   count = local.create_github_role ? 1 : 0
 
@@ -434,6 +444,7 @@ resource "aws_iam_role_policy" "gha_ecr" {
 }
 
 # ECS deployment permissions
+
 data "aws_iam_policy_document" "gha_ecs" {
   count = local.create_github_role ? 1 : 0
 
@@ -459,7 +470,6 @@ data "aws_iam_policy_document" "gha_ecs" {
     ]
   }
 
-  # Pass role to ECS – required for task definition registration
   statement {
     sid    = "PassRoleToECS"
     effect = "Allow"
@@ -486,6 +496,7 @@ resource "aws_iam_role_policy" "gha_ecs" {
 }
 
 # Terraform state backend permissions (S3 + DynamoDB lock table)
+
 data "aws_iam_policy_document" "gha_terraform" {
   count = local.create_github_role ? 1 : 0
 
@@ -526,7 +537,8 @@ resource "aws_iam_role_policy" "gha_terraform" {
   policy = data.aws_iam_policy_document.gha_terraform[0].json
 }
 
-# CloudWatch Logs read – for deployment verification
+# CloudWatch Logs read  for deployment verification
+
 data "aws_iam_policy_document" "gha_logs" {
   count = local.create_github_role ? 1 : 0
 

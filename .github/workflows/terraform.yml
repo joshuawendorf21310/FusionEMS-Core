@@ -48,8 +48,8 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
+          aws-region: us-east-1
 
       - name: Enforce AWS account
         run: |
@@ -159,8 +159,8 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
+          aws-region: us-east-1
 
       - name: Enforce AWS account
         run: |
