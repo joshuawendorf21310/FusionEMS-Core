@@ -101,6 +101,18 @@ variable "github_repo" {
   default     = ""
 }
 
+variable "github_actions_role_name" {
+  description = "Role name GitHub Actions should assume for Terraform deployments"
+  type        = string
+  default     = ""
+}
+
+variable "github_allowed_subjects" {
+  description = "Allowed GitHub OIDC subject patterns for the deployment role trust policy"
+  type        = list(string)
+  default     = []
+}
+
 # ─── Database ────────────────────────────────────────────────────────────────
 
 variable "db_instance_class" {

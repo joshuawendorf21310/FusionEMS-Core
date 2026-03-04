@@ -13,7 +13,7 @@
 set -euo pipefail
 
 ACCOUNT_ID="793439286972"
-ROLE_NAME="GitHubTerraformRole"
+ROLE_NAME="FusionEMS-GHA-TerraformProd"
 OIDC_URL="https://token.actions.githubusercontent.com"
 OIDC_CLIENT="sts.amazonaws.com"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

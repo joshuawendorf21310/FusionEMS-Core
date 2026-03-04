@@ -51,6 +51,18 @@ variable "github_repo" {
   type        = string
 }
 
+variable "github_actions_role_name" {
+  description = "Optional override for the GitHub Actions deployment role name (defaults to <project>-<env>-github-actions-deploy)"
+  type        = string
+  default     = ""
+}
+
+variable "github_allowed_subjects" {
+  description = "Optional allowed GitHub OIDC subject patterns (sub). If empty, defaults to repo:<org>/<repo>:*"
+  type        = list(string)
+  default     = []
+}
+
 # ── Resource ARN scoping ─────────────────────────────────
 
 variable "ecr_repository_arns" {

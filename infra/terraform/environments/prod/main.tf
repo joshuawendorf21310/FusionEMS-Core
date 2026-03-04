@@ -49,6 +49,9 @@ locals {
     ManagedBy   = "terraform"
   }
 
+  # Dedicated DSN secret (NOT the RDS managed JSON secret)
+  database_url_secret_arn = "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/DATABASE_URL-HQtyrw"
+
   alb_arn_suffix        = replace(module.ecs_cluster.alb_arn, "/^.*:loadbalancer\\//", "")
   backend_tg_arn_suffix = replace(module.backend_service.target_group_arn, "/^.*:targetgroup\\//", "")
 }
@@ -74,12 +77,14 @@ module "networking" {
 module "iam" {
   source = "../../modules/iam"
 
-  environment = var.environment
-  project     = var.project
-  region      = var.aws_region
-  account_id  = data.aws_caller_identity.current.account_id
-  github_org  = var.github_org
-  github_repo = var.github_repo
+  environment              = var.environment
+  project                  = var.project
+  region                   = var.aws_region
+  account_id               = data.aws_caller_identity.current.account_id
+  github_org               = var.github_org
+  github_repo              = var.github_repo
+  github_actions_role_name = var.github_actions_role_name
+  github_allowed_subjects  = var.github_allowed_subjects
 
   ecr_repository_arns = [
     "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project}-${var.environment}-*"
@@ -102,6 +107,7 @@ module "iam" {
       module.rds.db_secret_arn,
       module.redis.auth_secret_arn,
       module.ses.graph_email_secret_arn,
+      local.database_url_secret_arn,
     ],
     module.secrets.all_secret_arns,
   )
@@ -383,12 +389,20 @@ module "backend_service" {
     { name = "S3_DOCS_BUCKET", value = module.s3.docs_bucket_name },
     { name = "S3_EXPORTS_BUCKET", value = module.s3.exports_bucket_name },
     { name = "S3_PROPOSALS_BUCKET", value = module.s3.proposals_bucket_name },
+
+    # NERIS queues (created in this stack) – inject directly so backend doesn't depend on Secrets Manager keys.
+    { name = "NERIS_PACK_IMPORT_QUEUE_URL", value = aws_sqs_queue.neris_pack_import.url },
+    { name = "NERIS_PACK_COMPILE_QUEUE_URL", value = aws_sqs_queue.neris_pack_compile.url },
+    { name = "NERIS_EXPORT_QUEUE_URL", value = aws_sqs_queue.neris_export.url },
+
+    # Non-secret config
+    { name = "GRAPH_FOUNDER_EMAIL", value = "joshua.j.wendorf@fusionemsquantum.com" },
   ]
 
   secrets = [
     {
       name      = "DATABASE_URL"
-      valueFrom = "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/DATABASE_URL-HQtyrw"
+      valueFrom = local.database_url_secret_arn
     },
     { name = "JWT_SECRET_KEY", valueFrom = "${module.secrets.app_secret_arn}:JWT_SECRET_KEY::" },
     { name = "STRIPE_SECRET_KEY", valueFrom = "${module.secrets.app_secret_arn}:STRIPE_SECRET_KEY::" },
@@ -403,9 +417,7 @@ module "backend_service" {
     { name = "SYSTEM_TENANT_ID", valueFrom = "${module.secrets.app_secret_arn}:SYSTEM_TENANT_ID::" },
     { name = "LOB_EVENTS_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:LOB_EVENTS_QUEUE_URL::" },
     { name = "STRIPE_EVENTS_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:STRIPE_EVENTS_QUEUE_URL::" },
-    { name = "NERIS_PACK_IMPORT_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:NERIS_PACK_IMPORT_QUEUE_URL::" },
-    { name = "NERIS_PACK_COMPILE_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:NERIS_PACK_COMPILE_QUEUE_URL::" },
-    { name = "NERIS_EXPORT_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:NERIS_EXPORT_QUEUE_URL::" },
+    # NERIS queue URLs are provided via environment_variables (see above)
     { name = "STATEMENTS_TABLE", valueFrom = "${module.secrets.app_secret_arn}:STATEMENTS_TABLE::" },
     { name = "LOB_EVENTS_TABLE", valueFrom = "${module.secrets.app_secret_arn}:LOB_EVENTS_TABLE::" },
     { name = "STRIPE_EVENTS_TABLE", valueFrom = "${module.secrets.app_secret_arn}:STRIPE_EVENTS_TABLE::" },
@@ -413,7 +425,7 @@ module "backend_service" {
     { name = "GRAPH_TENANT_ID", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_TENANT_ID::" },
     { name = "GRAPH_CLIENT_ID", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_CLIENT_ID::" },
     { name = "GRAPH_CLIENT_SECRET", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_CLIENT_SECRET::" },
-    { name = "GRAPH_FOUNDER_EMAIL", valueFrom = "${module.secrets.app_secret_arn}:GRAPH_FOUNDER_EMAIL::" },
+    # GRAPH_FOUNDER_EMAIL is provided via environment_variables (see above)
   ]
 }
 

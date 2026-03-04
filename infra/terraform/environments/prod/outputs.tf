@@ -39,6 +39,23 @@ output "redis_endpoint" {
   sensitive   = true
 }
 
+# ─── NERIS (SQS) ────────────────────────────────────────────────────────────
+
+output "neris_pack_import_queue_url" {
+  description = "NERIS pack import SQS queue URL"
+  value       = aws_sqs_queue.neris_pack_import.url
+}
+
+output "neris_pack_compile_queue_url" {
+  description = "NERIS pack compile SQS queue URL"
+  value       = aws_sqs_queue.neris_pack_compile.url
+}
+
+output "neris_export_queue_url" {
+  description = "NERIS export SQS queue URL"
+  value       = aws_sqs_queue.neris_export.url
+}
+
 # ─── Container Registries ───────────────────────────────────────────────────
 
 output "backend_ecr_repository_url" {

@@ -26,6 +26,7 @@ env:
   TF_INPUT: "false"
   AWS_REGION: "us-east-1"
   TF_WORKING_DIR: "infra/terraform/environments/prod"
+  # Literal prod account ID (avoid fragile expression parsing in workflows).
   EXPECTED_AWS_ACCOUNT_ID: "793439286972"
 
 jobs:
@@ -50,8 +51,6 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
           aws-region: us-east-1
-          audience: sts.amazonaws.com
-          output-env-credentials: true
 
       - name: Enforce AWS account
         run: |
@@ -79,18 +78,6 @@ jobs:
           set -euo pipefail
           terraform plan -lock-timeout=10m -no-color -out=tfplan
           terraform show -no-color tfplan > plan.txt
-
-      - name: Upload tfplan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: ${{ env.TF_WORKING_DIR }}/tfplan
-
-      - name: Upload plan.txt artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: plan-txt
-          path: ${{ env.TF_WORKING_DIR }}/plan.txt
 
       - name: tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
@@ -155,8 +142,7 @@ jobs:
     needs: [validate_plan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: prod
+    environment: prod
     defaults:
       run:
         shell: bash
@@ -175,29 +161,20 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
           aws-region: us-east-1
-          audience: sts.amazonaws.com
-          output-env-credentials: true
 
       - name: Enforce AWS account
         run: |
           set -euo pipefail
           acct="$(aws sts get-caller-identity --query Account --output text)"
-          echo "AWS account: $acct"
           if [[ -n "${EXPECTED_AWS_ACCOUNT_ID}" && "$acct" != "${EXPECTED_AWS_ACCOUNT_ID}" ]]; then
-            echo "ERROR: Wrong AWS account. Expected ${EXPECTED_AWS_ACCOUNT_ID}, got $acct"
+            echo "ERROR: Wrong AWS account."
             exit 1
           fi
 
       - name: Terraform init
         run: terraform init -lock-timeout=10m
 
-      - name: Download tfplan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: ${{ env.TF_WORKING_DIR }}
-
-      - name: Terraform apply (exact plan)
+      - name: Terraform apply
         run: |
           set -euo pipefail
-          terraform apply -lock-timeout=10m -no-color -auto-approve tfplan
+          terraform apply -lock-timeout=10m -auto-approve

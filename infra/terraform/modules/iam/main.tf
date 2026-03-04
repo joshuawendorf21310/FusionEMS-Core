@@ -365,6 +365,8 @@ locals {
   )
 
   create_github_role = var.github_org != "" && var.github_repo != ""
+
+  github_subject_patterns = length(var.github_allowed_subjects) > 0 ? var.github_allowed_subjects : ["repo:${var.github_org}/${var.github_repo}:*"]
 }
 
 data "aws_iam_policy_document" "github_actions_assume" {
@@ -389,7 +391,7 @@ data "aws_iam_policy_document" "github_actions_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org}/${var.github_repo}:*"]
+      values   = local.github_subject_patterns
     }
   }
 }
@@ -397,7 +399,7 @@ data "aws_iam_policy_document" "github_actions_assume" {
 resource "aws_iam_role" "github_actions" {
   count = local.create_github_role ? 1 : 0
 
-  name                 = "${local.name_prefix}-github-actions-deploy"
+  name                 = var.github_actions_role_name != "" ? var.github_actions_role_name : "${local.name_prefix}-github-actions-deploy"
   assume_role_policy   = data.aws_iam_policy_document.github_actions_assume[0].json
   max_session_duration = 3600
 
