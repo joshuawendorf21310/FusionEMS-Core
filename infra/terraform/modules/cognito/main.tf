@@ -13,6 +13,10 @@ data "aws_region" "current" {}
 resource "aws_cognito_user_pool" "this" {
   name = "${var.project}-${var.environment}-userpool"
 
+  lifecycle {
+    ignore_changes = [schema]
+  }
+
   username_configuration {
     case_sensitive = false
   }
