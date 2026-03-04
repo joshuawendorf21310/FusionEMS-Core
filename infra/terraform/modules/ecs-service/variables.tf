@@ -98,7 +98,7 @@ variable "max_capacity" {
 variable "health_check_path" {
   description = "HTTP path for target group health checks"
   type        = string
-  default     = "/healthz"
+  default     = "/health"
 }
 
 variable "health_check_interval" {

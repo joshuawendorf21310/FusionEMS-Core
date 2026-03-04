@@ -27,8 +27,14 @@ locals {
     var.tags,
   )
 
-  # CloudWatch log group ARN pattern scoped to project
-  log_group_arn = "arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/${local.name_prefix}-*"
+  # CloudWatch log group ARN prefix scoped to project.
+  # IMPORTANT: log group names are /ecs/<name_prefix> (no trailing dash), and ECS log streams are:
+  #   arn:aws:logs:<region>:<acct>:log-group:/ecs/<name_prefix>:log-stream:<container>/<container>/<task-id>
+  log_group_arn_prefix = "arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/${local.name_prefix}"
+
+  # Terraform remote state backend naming (must match environments/*/backend.tf)
+  terraform_state_bucket_name = "${var.project}-terraform-state-${var.environment}"
+  terraform_lock_table_name   = "${var.project}-terraform-locks"
 
   # DynamoDB table ARN pattern scoped to project
   dynamodb_table_arn = "arn:aws:dynamodb:${var.region}:${var.account_id}:table/${local.name_prefix}-*"
@@ -107,8 +113,13 @@ data "aws_iam_policy_document" "ecs_exec_logs" {
       "logs:DescribeLogStreams",
     ]
     resources = [
-      local.log_group_arn,
-      "${local.log_group_arn}:*",
+      # Exact project log group (/ecs/<name_prefix>)
+      local.log_group_arn_prefix,
+      "${local.log_group_arn_prefix}:log-stream:*",
+
+      # Also allow any future suffixed log groups (/ecs/<name_prefix>-*)
+      "${local.log_group_arn_prefix}-*",
+      "${local.log_group_arn_prefix}-*:log-stream:*",
     ]
   }
 }
@@ -513,8 +524,8 @@ data "aws_iam_policy_document" "gha_terraform" {
       "s3:GetBucketLocation",
     ]
     resources = [
-      "arn:aws:s3:::${local.name_prefix}-terraform-state",
-      "arn:aws:s3:::${local.name_prefix}-terraform-state/*",
+      "arn:aws:s3:::${local.terraform_state_bucket_name}",
+      "arn:aws:s3:::${local.terraform_state_bucket_name}/*",
     ]
   }
 
@@ -527,7 +538,7 @@ data "aws_iam_policy_document" "gha_terraform" {
       "dynamodb:DeleteItem",
     ]
     resources = [
-      "arn:aws:dynamodb:${var.region}:${var.account_id}:table/${local.name_prefix}-terraform-lock",
+      "arn:aws:dynamodb:${var.region}:${var.account_id}:table/${local.terraform_lock_table_name}",
     ]
   }
 }
@@ -537,6 +548,64 @@ resource "aws_iam_role_policy" "gha_terraform" {
   name   = "${local.name_prefix}-gha-terraform"
   role   = aws_iam_role.github_actions[0].id
   policy = data.aws_iam_policy_document.gha_terraform[0].json
+}
+
+# Terraform apply permissions (broad but limited to the services this stack uses).
+# NOTE: This replaces the need for ad-hoc console policies on the role.
+
+data "aws_iam_policy_document" "gha_terraform_apply" {
+  count = local.create_github_role ? 1 : 0
+
+  statement {
+    sid    = "TerraformApply"
+    effect = "Allow"
+    actions = [
+      "acm:*",
+      "cloudfront:*",
+      "cloudwatch:*",
+      "cognito-idp:*",
+      "dynamodb:*",
+      "ec2:*",
+      "ecr:*",
+      "ecs:*",
+      "elasticache:*",
+      "elasticloadbalancing:*",
+      "iam:AttachRolePolicy",
+      "iam:CreatePolicy",
+      "iam:CreatePolicyVersion",
+      "iam:CreateRole",
+      "iam:CreateServiceLinkedRole",
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:DeleteRole",
+      "iam:DeleteRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:Get*",
+      "iam:List*",
+      "iam:PassRole",
+      "iam:PutRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateRole",
+      "kms:*",
+      "logs:*",
+      "rds:*",
+      "route53:*",
+      "s3:*",
+      "secretsmanager:*",
+      "sns:*",
+      "wafv2:*",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "gha_terraform_apply" {
+  count  = local.create_github_role ? 1 : 0
+  name   = "${local.name_prefix}-gha-terraform-apply"
+  role   = aws_iam_role.github_actions[0].id
+  policy = data.aws_iam_policy_document.gha_terraform_apply[0].json
 }
 
 # CloudWatch Logs read  for deployment verification
@@ -553,8 +622,10 @@ data "aws_iam_policy_document" "gha_logs" {
       "logs:GetLogEvents",
     ]
     resources = [
-      local.log_group_arn,
-      "${local.log_group_arn}:*",
+      local.log_group_arn_prefix,
+      "${local.log_group_arn_prefix}:log-stream:*",
+      "${local.log_group_arn_prefix}-*",
+      "${local.log_group_arn_prefix}-*:log-stream:*",
     ]
   }
 }

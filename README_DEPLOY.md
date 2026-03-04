@@ -205,7 +205,7 @@ Status: **NERIS integration-ready / validation-passing** (not certified)
 
 ### Post-Deploy
 
-- [ ] Health endpoints responding: `/healthz`, `/api/v1/health`
+- [ ] Health endpoints responding: `/health` (liveness), `/healthz` (readiness)
 - [ ] CloudFront distribution deployed, www resolves
 - [ ] Apex domain redirects to www
 - [ ] WAF rules active (check CloudWatch WAF logs)

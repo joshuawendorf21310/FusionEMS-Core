@@ -45,7 +45,7 @@ resource "aws_ecs_task_definition" "this" {
         interval    = 30
         timeout     = 5
         retries     = 3
-        startPeriod = 60
+        startPeriod = 120
       }
 
       logConfiguration = {
@@ -83,7 +83,7 @@ resource "aws_lb_target_group" "this" {
     timeout             = min(var.health_check_interval - 1, 10)
     healthy_threshold   = 2
     unhealthy_threshold = 3
-    matcher             = "200"
+    matcher             = "200-299"
   }
 
   tags = merge(local.common_tags, {
@@ -125,6 +125,7 @@ resource "aws_ecs_service" "this" {
   deployment_minimum_healthy_percent = 100
   enable_execute_command             = true
   force_new_deployment               = true
+  health_check_grace_period_seconds  = 120
 
   network_configuration {
     subnets          = var.private_subnet_ids
