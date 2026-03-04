@@ -62,7 +62,7 @@ services:
   # OPA
   # ==========================================================
   opa:
-    image: openpolicyagent/opa:0.67.0
+    image: openpolicyagent/opa:0.71.0
     container_name: fusionems-opa
     restart: unless-stopped
     command:
@@ -83,7 +83,7 @@ services:
   # OTEL COLLECTOR
   # ==========================================================
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.108.0
+    image: otel/opentelemetry-collector-contrib:0.116.0
     container_name: fusionems-otel
     restart: unless-stopped
     command: ["--config=/etc/otelcol/config.yaml"]
@@ -99,7 +99,7 @@ services:
   # PROMETHEUS
   # ==========================================================
   prometheus:
-    image: prom/prometheus:v2.53.0
+    image: prom/prometheus:v2.55.1
     container_name: fusionems-prometheus
     restart: unless-stopped
     volumes:
@@ -117,7 +117,7 @@ services:
   # GRAFANA
   # ==========================================================
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:11.4.0
     container_name: fusionems-grafana
     restart: unless-stopped
     ports:

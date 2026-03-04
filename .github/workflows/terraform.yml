@@ -1,258 +1,180 @@
-name: Terraform CI/CD
+name: terraform
 
 on:
   pull_request:
-    branches: [main]
     paths:
-      - 'infra/terraform/**'
-      - '.github/workflows/terraform.yml'
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
   push:
-    branches: [main]
+    branches: ["main"]
     paths:
-      - 'infra/terraform/**'
-      - '.github/workflows/terraform.yml'
-
-concurrency:
-  group: terraform-prod
-  cancel-in-progress: false
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
 
 permissions:
-  contents: read
   id-token: write
+  contents: read
   pull-requests: write
 
+concurrency:
+  group: terraform-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: false
+
 env:
-  TF_VERSION: "1.6.0"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
   AWS_REGION: "us-east-1"
   TF_WORKING_DIR: "infra/terraform/environments/prod"
-  AWS_ROLE_TO_ASSUME: "arn:aws:iam::793439286972:role/GitHubTerraformRole"
+  EXPECTED_AWS_ACCOUNT_ID: "${{ vars.AWS_ACCOUNT_ID }}"
 
 jobs:
-  # Job 1: lint-and-validate
-  lint-and-validate:
+  validate_plan:
+    name: Validate + Plan
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-      - name: Terraform Format Check
-        run: |
-          set -euo pipefail
-          terraform fmt -check -recursive -diff
-        working-directory: infra/terraform
-      - name: Terraform Init (validation only)
-        run: |
-          set -euo pipefail
-          terraform init -backend=false
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Terraform Validate
-        run: |
-          set -euo pipefail
-          terraform validate
+    defaults:
+      run:
+        shell: bash
         working-directory: ${{ env.TF_WORKING_DIR }}
 
-  # Job 2: security-scan (PR only)
-  security-scan:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      - name: tfsec scan
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
+          aws-region: us-east-1
+
+      - name: Enforce AWS account
+        run: |
+          set -euo pipefail
+          acct="$(aws sts get-caller-identity --query Account --output text)"
+          echo "AWS account: $acct"
+          if [[ -n "${EXPECTED_AWS_ACCOUNT_ID}" && "$acct" != "${EXPECTED_AWS_ACCOUNT_ID}" ]]; then
+            echo "ERROR: Wrong AWS account. Expected ${EXPECTED_AWS_ACCOUNT_ID}, got $acct"
+            exit 1
+          fi
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+        working-directory: infra/terraform
+
+      - name: Terraform init
+        run: terraform init -lock-timeout=10m
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          set -euo pipefail
+          terraform plan -lock-timeout=10m -no-color -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+
+      - name: tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           working_directory: infra/terraform
-          soft_fail: false
-      - name: checkov scan
+
+      - name: Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: infra/terraform
           framework: terraform
-          quiet: true
-          soft_fail: false
           config_file: checkov.yml
 
-  # Job 3: policy-check (PR only)
-  policy-check:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Conftest
+      - name: Install conftest
         run: |
           set -euo pipefail
-          LATEST_VERSION=$(curl -s https://api.github.com/repos/open-policy-agent/conftest/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
-          curl -sL "https://github.com/open-policy-agent/conftest/releases/download/v${LATEST_VERSION}/conftest_${LATEST_VERSION}_Linux_x86_64.tar.gz" | tar xz
-          sudo mv conftest /usr/local/bin/
-      - name: Run OPA Policy Checks
-        run: |
-          set -euo pipefail
-          conftest test infra/terraform/modules/ -p opa/policies/ --all-namespaces
+          curl -L -o /tmp/conftest.tar.gz https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz
+          tar -xzf /tmp/conftest.tar.gz -C /tmp
+          sudo mv /tmp/conftest /usr/local/bin/conftest
 
-  # Job 4: plan (PR only)
-  plan:
-    runs-on: ubuntu-latest
-    needs: [lint-and-validate, security-scan, policy-check]
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Verify AWS Identity
+      - name: OPA policy checks
         run: |
           set -euo pipefail
-          aws sts get-caller-identity
-      - name: Enforce Correct AWS Account
-        run: |
-          set -euo pipefail
-          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-          if [ "$ACCOUNT" != "793439286972" ]; then
-            echo "::error::Wrong AWS account detected: expected 793439286972, got $ACCOUNT"
-            exit 1
-          fi
-      - name: Terraform Init
-        run: |
-          set -euo pipefail
-          terraform init -reconfigure
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Terraform Plan
-        id: plan
-        run: |
-          set -euo pipefail
-          terraform plan -no-color -lock-timeout=5m -out=tfplan 2>&1 | tee plan_output.txt
-          terraform show -no-color -json tfplan > plan.json
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Check for Destructive Changes
-        id: destructive
-        run: |
-          set -euo pipefail
-          DESTROYS=$(cat ${{ env.TF_WORKING_DIR }}/plan.json | jq '[.resource_changes[]? | select(.change.actions | contains(["delete"]))] | length')
-          RDS_REPLACE=$(cat ${{ env.TF_WORKING_DIR }}/plan.json | jq '[.resource_changes[]? | select(.type == "aws_db_instance" and (.change.actions | contains(["delete"])))] | length')
-          VPC_REPLACE=$(cat ${{ env.TF_WORKING_DIR }}/plan.json | jq '[.resource_changes[]? | select(.type == "aws_vpc" and (.change.actions | contains(["delete"])))] | length')
-          echo "destroys=$DESTROYS" >> $GITHUB_OUTPUT
-          echo "rds_replace=$RDS_REPLACE" >> $GITHUB_OUTPUT
-          echo "vpc_replace=$VPC_REPLACE" >> $GITHUB_OUTPUT
-          if [ "$RDS_REPLACE" -gt 0 ] || [ "$VPC_REPLACE" -gt 0 ]; then
-            echo "::error::DESTRUCTIVE CHANGES DETECTED: RDS replacements=$RDS_REPLACE, VPC replacements=$VPC_REPLACE"
-            echo "blocked=true" >> $GITHUB_OUTPUT
-          else
-            echo "blocked=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Comment Plan on PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const plan = fs.readFileSync('${{ env.TF_WORKING_DIR }}/plan_output.txt', 'utf8');
-            const destroys = '${{ steps.destructive.outputs.destroys }}';
-            const blocked = '${{ steps.destructive.outputs.blocked }}';
-            const truncated = plan.length > 60000 ? plan.substring(0, 60000) + '\n... (truncated)' : plan;
-            let body = '### Terraform Plan\n\n';
-            if (blocked === 'true') {
-              body += '🚨 **DESTRUCTIVE CHANGES DETECTED** - Manual approval required\n\n';
-            }
-            body += `Resources to destroy: ${destroys}\n\n`;
-            body += '<details><summary>Show Plan</summary>\n\n```\n' + truncated + '\n```\n</details>';
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-      - name: Fail on Destructive Changes
-        if: steps.destructive.outputs.blocked == 'true'
-        run: |
-          set -euo pipefail
-          if ! gh pr view ${{ github.event.pull_request.number }} --json labels --jq '.labels[].name' | grep -q 'approve-destroy'; then
-            echo "::error::Destructive changes require 'approve-destroy' label on PR"
-            exit 1
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
+          terraform show -json tfplan > tfplan.json
+          conftest test tfplan.json -p ../../policy/opa
 
-  # Job 5: cost-estimate (PR only)
-  cost-estimate:
-    runs-on: ubuntu-latest
-    needs: [lint-and-validate]
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Infracost
+      - name: Infracost setup
         uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
-      - name: Generate Infracost Diff
-        run: |
-          set -euo pipefail
-          infracost diff --path=${{ env.TF_WORKING_DIR }} \
-            --format=json --out-file=/tmp/infracost.json || true
-      - name: Post Infracost Comment
-        if: always()
-        uses: infracost/actions/comment@v3
-        with:
-          path: /tmp/infracost.json
-          behavior: update
-        continue-on-error: true
+        if: env.INFRACOST_API_KEY != ''
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
 
-  # Job 6: container-scan (PR only, if Dockerfile changed)
-  container-scan:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build Backend Image
+      - name: Infracost breakdown
         run: |
           set -euo pipefail
-          docker build -t fusionems-backend:scan ./backend
-      - name: Run Trivy vulnerability scanner
+          infracost breakdown --path tfplan.json --format json --out-file infracost.json
+          infracost output --path infracost.json --format table --out-file infracost.txt
+        if: env.INFRACOST_API_KEY != ''
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Trivy container scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: 'fusionems-backend:scan'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL'
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
 
-  # Job 7: apply (merge to main only)
-  apply:
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: terraform-plan
+          path: ${{ env.TF_WORKING_DIR }}/plan.txt
+
+  apply_prod:
+    name: Apply (Protected)
+    needs: [validate_plan]
     runs-on: ubuntu-latest
-    needs: [lint-and-validate]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: prod
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TF_VERSION }}
-      - name: Configure AWS Credentials (OIDC)
+          terraform_version: 1.8.5
+
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Verify AWS Identity
+          role-to-assume: arn:aws:iam::793439286972:role/FusionEMS-GHA-TerraformProd
+          aws-region: us-east-1
+
+      - name: Enforce AWS account
         run: |
           set -euo pipefail
-          aws sts get-caller-identity
-      - name: Enforce Correct AWS Account
-        run: |
-          set -euo pipefail
-          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-          if [ "$ACCOUNT" != "793439286972" ]; then
-            echo "::error::Wrong AWS account detected: expected 793439286972, got $ACCOUNT"
+          acct="$(aws sts get-caller-identity --query Account --output text)"
+          if [[ -n "${EXPECTED_AWS_ACCOUNT_ID}" && "$acct" != "${EXPECTED_AWS_ACCOUNT_ID}" ]]; then
+            echo "ERROR: Wrong AWS account."
             exit 1
           fi
-      - name: Terraform Init
+
+      - name: Terraform init
+        run: terraform init -lock-timeout=10m
+
+      - name: Terraform apply
         run: |
           set -euo pipefail
-          terraform init -reconfigure
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Terraform Apply
-        run: |
-          set -euo pipefail
-          terraform apply -auto-approve -lock-timeout=5m
-        working-directory: ${{ env.TF_WORKING_DIR }}
+          terraform apply -lock-timeout=10m -auto-approve

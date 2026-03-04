@@ -1,0 +1,60 @@
+{
+  "agency_state_id": "WI12345",
+  "agency_number": "12345",
+  "agency_state": "55",
+  "record_id": "WI-2024-000001",
+  "ems_agency_number": "12345",
+  "type_of_service": "9920001",
+  "primary_role": "9917003",
+  "unit_transport_capability": "9907001",
+  "response_mode": "9923001",
+  "times": {
+    "psap_call": "2024-12-15T14:22:00-06:00",
+    "unit_notified": "2024-12-15T14:23:00-06:00",
+    "unit_en_route": "2024-12-15T14:25:00-06:00",
+    "unit_arrived_scene": "2024-12-15T14:32:00-06:00",
+    "arrived_patient": "2024-12-15T14:33:00-06:00",
+    "unit_left_scene": "2024-12-15T14:50:00-06:00",
+    "arrived_destination": "2024-12-15T15:05:00-06:00",
+    "unit_back_in_service": "2024-12-15T15:25:00-06:00"
+  },
+  "patient": {
+    "last_name": "DOE",
+    "first_name": "JOHN",
+    "gender": "9906001",
+    "race": "2514007",
+    "age": "45",
+    "age_units": "2516009"
+  },
+  "complaint_reported": "Chest Pain",
+  "primary_symptom": "R07.9",
+  "primary_impression": "I21.9",
+  "provider_primary_impression": "I21.9",
+  "disposition": "4212015",
+  "transport_disposition": "4218001",
+  "final_patient_acuity": "4219001",
+  "scene": {
+    "first_crew_on_scene": "9923001",
+    "incident_location_type": "Y92.009",
+    "incident_street": "123 Main St",
+    "incident_city": "Madison",
+    "incident_state": "55",
+    "incident_zip": "53703"
+  },
+  "vitals": [
+    {
+      "datetime": "2024-12-15T14:35:00-06:00",
+      "sbp": "148",
+      "dbp": "92",
+      "heart_rate": "88",
+      "pulse_oximetry": "96",
+      "respiratory_rate": "18",
+      "gcs_total": "15"
+    }
+  ],
+  "eRecord.SoftwareApplicationGroup": {
+    "eRecord.02": "FusionEMS Quantum",
+    "eRecord.03": "3.5.0.211008CP3",
+    "eRecord.04": "FusionEMS"
+  }
+}
