@@ -116,6 +116,10 @@ module "acm" {
   api_domain_name  = var.api_domain_name
   hosted_zone_id   = var.hosted_zone_id
   tags             = local.common_tags
+
+  providers = {
+    aws = aws.us_east_1
+  }
 }
 
 # ─── 4. S3 ───────────────────────────────────────────────────────────────────
