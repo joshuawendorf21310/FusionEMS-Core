@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -11,7 +12,7 @@ build/
 venv/
 *.log
 
-# Next.js build output
+# Next.js
 frontend/.next/
 frontend/out/
 frontend/node_modules/
@@ -30,3 +31,25 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+
+# Archives and binaries
+*.zip
+*.tar.gz
+
+# Patch and backup files
+*.patch
+*.orig
+*.bak
+
+# AWS CLI artifacts
+aws/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
