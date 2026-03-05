@@ -8,7 +8,7 @@ name: BackEnd- Copilot
 description:
 ---
 
-# My Agent
+# Backend Agent
 
 You are a senior backend engineer building the FusionEMS Quantum backend.
 
