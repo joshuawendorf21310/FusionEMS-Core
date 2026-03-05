@@ -1,3 +1,5 @@
+import os
+
 import redis.asyncio as aioredis
 import sqlalchemy
 from fastapi import FastAPI, Request
@@ -245,6 +247,11 @@ def health() -> dict[str, str]:
 @app.get("/healthz")
 async def healthz() -> JSONResponse:
     checks: dict[str, str] = {}
+    warnings: dict[str, str] = {}
+
+    # Redis is optional for readiness unless explicitly required.
+    # This prevents ALB/ECS health check loops when Redis is briefly unavailable during startup.
+    redis_required = os.getenv("REDIS_REQUIRED", "").strip().lower() in {"1", "true", "yes", "on"}
 
     # Database check
     try:
@@ -264,12 +271,19 @@ async def healthz() -> JSONResponse:
             checks["redis"] = "ok"
         except Exception:
             checks["redis"] = "unreachable"
+            warnings["redis"] = "unreachable"
     else:
         checks["redis"] = "not_configured"
-        redis_ok = True
+        redis_ok = not redis_required
+        if redis_required:
+            warnings["redis"] = "required_but_not_configured"
 
-    healthy = checks["db"] == "ok" and redis_ok
+    healthy = checks["db"] == "ok" and (redis_ok or not redis_required)
+
+    content: dict[str, object] = {"status": "ok" if healthy else "degraded", "checks": checks}
+    if warnings:
+        content["warnings"] = warnings
     return JSONResponse(
-        content={"status": "ok" if healthy else "degraded", "checks": checks},
+        content=content,
         status_code=200 if healthy else 503,
     )

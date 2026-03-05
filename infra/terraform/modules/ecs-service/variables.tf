@@ -83,6 +83,17 @@ variable "desired_count" {
   default     = 2
 }
 
+variable "deployment_minimum_healthy_percent" {
+  description = "Minimum percentage of tasks that must remain healthy during a deployment"
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.deployment_minimum_healthy_percent >= 0 && var.deployment_minimum_healthy_percent <= 100
+    error_message = "deployment_minimum_healthy_percent must be between 0 and 100."
+  }
+}
+
 variable "min_capacity" {
   description = "Minimum number of tasks for autoscaling"
   type        = number
@@ -110,6 +121,12 @@ variable "health_check_interval" {
 variable "alb_listener_arn" {
   description = "ARN of the ALB listener to attach the rule to"
   type        = string
+}
+
+variable "additional_alb_listener_arns" {
+  description = "Additional ALB listener ARNs to attach the same listener rule to (e.g., an HTTP listener for CloudFront origin traffic). Use a map so keys are known at plan time."
+  type        = map(string)
+  default     = {}
 }
 
 variable "path_pattern" {

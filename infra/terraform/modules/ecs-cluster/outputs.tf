@@ -51,6 +51,11 @@ output "alb_listener_arn" {
   value       = aws_lb_listener.https.arn
 }
 
+output "alb_http_listener_arn" {
+  description = "HTTP listener ARN"
+  value       = aws_lb_listener.http.arn
+}
+
 # CloudWatch
 output "log_group_name" {
   description = "CloudWatch log group name"

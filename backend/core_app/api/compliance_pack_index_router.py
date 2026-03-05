@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any
 
 import boto3
@@ -17,9 +18,15 @@ from core_app.repositories.domination_repository import DominationRepository
 
 router = APIRouter(prefix="/api/v1/founder/compliance", tags=["founder-compliance"])
 
-_s3 = boto3.client("s3")
-_ssm = boto3.client("ssm")
-_sqs = boto3.client("sqs")
+
+@lru_cache(maxsize=1)
+def _s3_client():
+    return boto3.client("s3")
+
+
+@lru_cache(maxsize=1)
+def _ssm_client():
+    return boto3.client("ssm")
 
 BUCKET = os.environ.get("KITLINK_ARTIFACTS_BUCKET", "")
 APP_NAME = os.environ.get("APP_NAME", "fusionems")
@@ -55,12 +62,12 @@ def _load_pack_index() -> dict:
     if _index_cache and (now - _index_cache_ts) < _INDEX_TTL:
         return _index_cache
     try:
-        ssm_val = _ssm.get_parameter(Name=_ssm_key("index"))["Parameter"]["Value"]
+        ssm_val = _ssm_client().get_parameter(Name=_ssm_key("index"))["Parameter"]["Value"]
         s3_key = ssm_val.replace(f"s3://{BUCKET}/", "")
     except Exception:
         s3_key = _PACK_S3_KEYS["pack_index_v1"]
     try:
-        obj = _s3.get_object(Bucket=BUCKET, Key=s3_key)
+        obj = _s3_client().get_object(Bucket=BUCKET, Key=s3_key)
         _index_cache = json.loads(obj["Body"].read())
         _index_cache_ts = now
     except Exception:
@@ -73,7 +80,7 @@ def _load_pack_json(pack_id: str) -> dict:
     if not s3_key:
         raise HTTPException(status_code=404, detail=f"Pack '{pack_id}' not found in index")
     try:
-        obj = _s3.get_object(Bucket=BUCKET, Key=s3_key)
+        obj = _s3_client().get_object(Bucket=BUCKET, Key=s3_key)
         return json.loads(obj["Body"].read())
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Cannot load pack from S3: {e}")

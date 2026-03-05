@@ -375,7 +375,12 @@ module "backend_service" {
   container_port         = 8000
   cpu                    = 1024
   memory                 = 2048
+  desired_count          = 2
+  # Temporarily allow deployments to proceed even if a subset of tasks is unhealthy.
+  # This reduces rollback risk during incident response when older revisions may crash at import-time.
+  deployment_minimum_healthy_percent = 50
   alb_listener_arn       = module.ecs_cluster.alb_listener_arn
+  additional_alb_listener_arns = { http = module.ecs_cluster.alb_http_listener_arn }
   path_pattern           = ["/api/*"]
   listener_rule_priority = 10
   log_group_name         = module.ecs_cluster.log_group_name
@@ -383,6 +388,8 @@ module "backend_service" {
 
   environment_variables = [
     { name = "ENVIRONMENT", value = var.environment },
+    # In staging/prod we require Cognito-based auth (the app refuses to boot with AUTH_MODE=local).
+    { name = "AUTH_MODE", value = "cognito" },
     { name = "AWS_DEFAULT_REGION", value = var.aws_region },
     { name = "COGNITO_USER_POOL_ID", value = module.cognito.user_pool_id },
     { name = "COGNITO_CLIENT_ID", value = module.cognito.user_pool_client_id },
@@ -448,9 +455,12 @@ module "frontend_service" {
   container_port         = 3000
   cpu                    = 512
   memory                 = 1024
+  desired_count          = 2
   alb_listener_arn       = module.ecs_cluster.alb_listener_arn
+  additional_alb_listener_arns = { http = module.ecs_cluster.alb_http_listener_arn }
   path_pattern           = ["/*"]
   listener_rule_priority = 100
+  health_check_path      = "/healthz"
   log_group_name         = module.ecs_cluster.log_group_name
   tags                   = local.common_tags
 

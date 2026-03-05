@@ -25,6 +25,11 @@ hosted_zone_id   = "Z0858801IZXAHSWCPH85"
 db_instance_class = "db.t4g.large"
 redis_node_type   = "cache.t4g.medium"
 
+# Application image tags (ECR)
+# NOTE: Use immutable tags (not "latest") so ECS deployments always pick up the intended build.
+backend_image_tag  = "hc-20260305015136-eb18a434"
+frontend_image_tag = "hc-20260305012629-eb18a434"
+
 # ─── Monitoring ──────────────────────────────────────────────────────────────
 
 alert_email = "alerts@fusionemsquantum.com"
