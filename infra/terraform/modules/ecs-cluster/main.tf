@@ -241,7 +241,7 @@ resource "aws_lb_listener" "http" {
 # =============================================================================
 
 resource "aws_wafv2_web_acl_association" "alb" {
-  count = var.waf_acl_arn != "" ? 1 : 0
+  count = var.enable_waf ? 1 : 0
 
   resource_arn = aws_lb.main.arn
   web_acl_arn  = var.waf_acl_arn

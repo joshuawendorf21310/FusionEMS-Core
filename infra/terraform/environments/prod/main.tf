@@ -165,6 +165,7 @@ module "ecs_cluster" {
   alb_security_group_id = module.networking.alb_security_group_id
   acm_certificate_arn   = module.acm.certificate_arn
   waf_acl_arn           = module.waf.web_acl_arn
+  enable_waf            = true
   tags                  = local.common_tags
 }
 
