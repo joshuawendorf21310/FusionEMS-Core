@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.billing.ar_aging import compute_revenue_forecast
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
@@ -66,8 +70,12 @@ async def revenue_dashboard(
     total = len(claims)
     paid = sum(1 for c in claims if c.get("data", {}).get("status") == "paid")
     denied = sum(1 for c in claims if c.get("data", {}).get("status") == "denied")
-    pending = sum(1 for c in claims if c.get("data", {}).get("status") in ("submitted", "pending"))
-    revenue_cents = sum(int(c.get("data", {}).get("paid_amount_cents", 0)) for c in claims)
+    pending = sum(
+        1 for c in claims if c.get("data", {}).get("status") in ("submitted", "pending")
+    )
+    revenue_cents = sum(
+        int(c.get("data", {}).get("paid_amount_cents", 0)) for c in claims
+    )
     clean_claim_rate = round((paid / total * 100) if total > 0 else 0, 2)
     denial_rate = round((denied / total * 100) if total > 0 else 0, 2)
     return {
@@ -139,7 +147,9 @@ async def payer_performance(
             if stats["days_to_payment"]
             else None
         )
-        clean_rate = round(stats["paid"] / stats["total"] * 100, 2) if stats["total"] > 0 else 0
+        clean_rate = (
+            round(stats["paid"] / stats["total"] * 100, 2) if stats["total"] > 0 else 0
+        )
         results.append(
             {
                 "payer": payer,
@@ -209,11 +219,18 @@ async def modifier_impact(
         d = c.get("data", {})
         for mod in d.get("modifiers", []):
             if mod not in modifier_stats:
-                modifier_stats[mod] = {"total": 0, "paid": 0, "denied": 0, "revenue_cents": 0}
+                modifier_stats[mod] = {
+                    "total": 0,
+                    "paid": 0,
+                    "denied": 0,
+                    "revenue_cents": 0,
+                }
             modifier_stats[mod]["total"] += 1
             if d.get("status") == "paid":
                 modifier_stats[mod]["paid"] += 1
-                modifier_stats[mod]["revenue_cents"] += int(d.get("paid_amount_cents", 0))
+                modifier_stats[mod]["revenue_cents"] += int(
+                    d.get("paid_amount_cents", 0)
+                )
             elif d.get("status") == "denied":
                 modifier_stats[mod]["denied"] += 1
     return {"modifiers": [{"modifier": k, **v} for k, v in modifier_stats.items()]}
@@ -231,7 +248,9 @@ async def claim_lifecycle(
     if not claim:
         raise HTTPException(status_code=404, detail="claim_not_found")
     all_events = svc.repo("claim_events").list(tenant_id=current.tenant_id, limit=10000)
-    events = [e for e in all_events if e.get("data", {}).get("claim_id") == str(claim_id)]
+    events = [
+        e for e in all_events if e.get("data", {}).get("claim_id") == str(claim_id)
+    ]
     events.sort(key=lambda e: e.get("created_at", ""))
     return {"claim": claim, "lifecycle_events": events}
 
@@ -246,7 +265,9 @@ async def predict_denial(
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
     denials = svc.repo("denials").list(tenant_id=current.tenant_id, limit=10000)
-    payer_denials = [d for d in denials if d.get("data", {}).get("payer_id") == body.payer_id]
+    payer_denials = [
+        d for d in denials if d.get("data", {}).get("payer_id") == body.payer_id
+    ]
     total_by_payer = len(payer_denials)
     risk_score = min(round(total_by_payer / max(1, len(denials)) * 100, 2), 100)
     risk_flags = []
@@ -278,7 +299,9 @@ async def appeal_success_tracker(
     svc = DominationService(db, get_event_publisher())
     appeals = svc.repo("appeals").list(tenant_id=current.tenant_id, limit=10000)
     total = len(appeals)
-    successful = sum(1 for a in appeals if a.get("data", {}).get("status") in ("approved", "paid"))
+    successful = sum(
+        1 for a in appeals if a.get("data", {}).get("status") in ("approved", "paid")
+    )
     success_rate = round(successful / total * 100, 2) if total > 0 else 0
     return {
         "total_appeals": total,
@@ -368,7 +391,11 @@ async def fraud_anomaly(
     for pid, count in patient_counts.items():
         if count > 10:
             anomalies.append(
-                {"type": "duplicate_billing_risk", "patient_id": pid, "claim_count": count}
+                {
+                    "type": "duplicate_billing_risk",
+                    "patient_id": pid,
+                    "claim_count": count,
+                }
             )
     return {"anomalies": anomalies, "total_anomalies": len(anomalies)}
 
@@ -427,9 +454,13 @@ async def stripe_reconciliation(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    subscriptions = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=10000)
+    subscriptions = svc.repo("tenant_subscriptions").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     active = [s for s in subscriptions if s.get("data", {}).get("status") == "active"]
-    past_due = [s for s in subscriptions if s.get("data", {}).get("status") == "past_due"]
+    past_due = [
+        s for s in subscriptions if s.get("data", {}).get("status") == "past_due"
+    ]
     mrr = sum(int(s.get("data", {}).get("monthly_amount_cents", 0)) for s in active)
     return {
         "active_subscriptions": len(active),
@@ -446,7 +477,9 @@ async def churn_risk(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    subscriptions = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=10000)
+    subscriptions = svc.repo("tenant_subscriptions").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     at_risk = []
     for s in subscriptions:
         d = s.get("data", {})
@@ -507,12 +540,24 @@ async def billing_alerts(
     alerts = []
     denied = [c for c in claims if c.get("data", {}).get("status") == "denied"]
     if len(denied) > 50:
-        alerts.append({"type": "high_denial_volume", "count": len(denied), "severity": "high"})
-    overdue_links = svc.repo("patient_payment_links").list(tenant_id=current.tenant_id, limit=1000)
-    overdue = [lnk for lnk in overdue_links if lnk.get("data", {}).get("status") == "overdue"]
+        alerts.append(
+            {"type": "high_denial_volume", "count": len(denied), "severity": "high"}
+        )
+    overdue_links = svc.repo("patient_payment_links").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
+    overdue = [
+        lnk for lnk in overdue_links if lnk.get("data", {}).get("status") == "overdue"
+    ]
     if overdue:
-        alerts.append({"type": "overdue_payments", "count": len(overdue), "severity": "medium"})
-    return {"alerts": alerts, "total": len(alerts), "as_of": datetime.now(UTC).isoformat()}
+        alerts.append(
+            {"type": "overdue_payments", "count": len(overdue), "severity": "medium"}
+        )
+    return {
+        "alerts": alerts,
+        "total": len(alerts),
+        "as_of": datetime.now(UTC).isoformat(),
+    }
 
 
 @router.post("/alert-thresholds")
@@ -568,7 +613,11 @@ async def payer_mix(
     total = sum(mix.values())
     return {
         "payer_mix": [
-            {"category": k, "count": v, "pct": round(v / total * 100, 2) if total else 0}
+            {
+                "category": k,
+                "count": v,
+                "pct": round(v / total * 100, 2) if total else 0,
+            }
             for k, v in mix.items()
         ],
         "total_claims": total,
@@ -584,7 +633,9 @@ async def ar_concentration_risk(
     svc = DominationService(db, get_event_publisher())
     claims = svc.repo("claims").list(tenant_id=current.tenant_id, limit=10000)
     open_claims = [
-        c for c in claims if c.get("data", {}).get("status") in ("submitted", "pending", "denied")
+        c
+        for c in claims
+        if c.get("data", {}).get("status") in ("submitted", "pending", "denied")
     ]
     payer_ar: dict[str, int] = {}
     total_ar = 0
@@ -598,7 +649,9 @@ async def ar_concentration_risk(
     for payer, amount in payer_ar.items():
         pct = round(amount / total_ar * 100, 2) if total_ar else 0
         risk = "high" if pct > 40 else ("medium" if pct > 20 else "low")
-        concentration.append({"payer": payer, "ar_cents": amount, "pct": pct, "risk": risk})
+        concentration.append(
+            {"payer": payer, "ar_cents": amount, "pct": pct, "risk": risk}
+        )
     concentration.sort(key=lambda x: x["ar_cents"], reverse=True)
     return {"concentration": concentration, "total_ar_cents": total_ar}
 
@@ -711,7 +764,9 @@ async def executive_summary(
         for c in claims
         if c.get("data", {}).get("status") == "paid"
     )
-    subscriptions = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=1000)
+    subscriptions = svc.repo("tenant_subscriptions").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     mrr = sum(
         int(s.get("data", {}).get("monthly_amount_cents", 0))
         for s in subscriptions

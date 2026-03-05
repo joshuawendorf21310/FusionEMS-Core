@@ -52,7 +52,8 @@ async def create_case(
     mode = payload.get("transport_mode", "ground")
     if mode not in VALID_MODES:
         raise HTTPException(
-            status_code=422, detail=f"transport_mode must be one of {sorted(VALID_MODES)}"
+            status_code=422,
+            detail=f"transport_mode must be one of {sorted(VALID_MODES)}",
         )
     correlation_id = getattr(request.state, "correlation_id", None)
     svc = _svc(db)
@@ -100,7 +101,11 @@ async def list_cases(
     if status:
         cases = [c for c in cases if (c.get("data") or {}).get("status") == status]
     if transport_mode:
-        cases = [c for c in cases if (c.get("data") or {}).get("transport_mode") == transport_mode]
+        cases = [
+            c
+            for c in cases
+            if (c.get("data") or {}).get("transport_mode") == transport_mode
+        ]
     return cases
 
 
@@ -130,7 +135,8 @@ async def transition_status(
     new_status = payload.get("status", "")
     if new_status not in VALID_STATUSES:
         raise HTTPException(
-            status_code=422, detail=f"Invalid status. Must be one of {sorted(VALID_STATUSES)}"
+            status_code=422,
+            detail=f"Invalid status. Must be one of {sorted(VALID_STATUSES)}",
         )
     svc = _svc(db)
     case = svc.repo("cases").get(tenant_id=current.tenant_id, record_id=case_id)
@@ -216,4 +222,7 @@ async def get_timeline(
     case = svc.repo("cases").get(tenant_id=current.tenant_id, record_id=case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    return {"case_id": str(case_id), "timeline": (case.get("data") or {}).get("timeline", [])}
+    return {
+        "case_id": str(case_id),
+        "timeline": (case.get("data") or {}).get("timeline", []),
+    }

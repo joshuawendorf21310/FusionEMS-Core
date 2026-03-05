@@ -152,7 +152,11 @@ async def list_validation_results(
     current: CurrentUser = Depends(_WRITE),
     db: Session = Depends(db_session_dependency),
 ):
-    return _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id, limit=50)
+    return (
+        _svc(db)
+        .repo("nemsis_validation_results")
+        .list(tenant_id=current.tenant_id, limit=50)
+    )
 
 
 @router.get("/validation-results/{result_id}")
@@ -183,7 +187,9 @@ async def ai_explain(
 
     cache_key = _cache_key(validation_result_id, issue_index)
     existing_rows = (
-        _svc(db).repo("nemsis_ai_explanations").list_raw_by_field("cache_key", cache_key, limit=1)
+        _svc(db)
+        .repo("nemsis_ai_explanations")
+        .list_raw_by_field("cache_key", cache_key, limit=1)
     )
     if existing_rows:
         return existing_rows[0]
@@ -216,7 +222,7 @@ async def ai_explain(
         ai = AiService()
         raw_response, meta = ai.chat(system=_AI_SYSTEM, user=user_prompt)
         explanation = json.loads(raw_response)
-    except Exception:
+    except Exception as e:
         explanation = dict(_SAFE_AI_DEFAULT)
 
     explanation["element_id"] = issue.get("element_id", "")
@@ -284,7 +290,7 @@ async def ai_explain_batch(
             ai = AiService()
             raw_response, _meta = ai.chat(system=_AI_SYSTEM, user=user_prompt)
             explanation = json.loads(raw_response)
-        except Exception:
+        except Exception as e:
             explanation = dict(_SAFE_AI_DEFAULT)
 
         explanation["element_id"] = issue.get("element_id", "")
@@ -393,13 +399,18 @@ async def run_scenario(
         raise HTTPException(status_code=404, detail="Scenario not found")
 
     raw_data = rec.get("data", {}).get("raw_data", {})
-    xml_content = raw_data.get("xml") or raw_data.get("xmlContent") or raw_data.get("xml_content")
+    xml_content = (
+        raw_data.get("xml") or raw_data.get("xmlContent") or raw_data.get("xml_content")
+    )
     if not xml_content:
         raise HTTPException(
-            status_code=422, detail="Scenario does not contain embedded XML for validation"
+            status_code=422,
+            detail="Scenario does not contain embedded XML for validation",
         )
 
-    xml_bytes = xml_content.encode("utf-8") if isinstance(xml_content, str) else xml_content
+    xml_bytes = (
+        xml_content.encode("utf-8") if isinstance(xml_content, str) else xml_content
+    )
     state_code = rec.get("data", {}).get("state_code", "WI")
 
     validator = NEMSISValidator()
@@ -436,7 +447,9 @@ async def export_and_validate(
         raise HTTPException(status_code=400, detail="incident_id required")
 
     incident_rec = (
-        _svc(db).repo("nemsis_export_jobs").list_raw_by_field("incident_id", incident_id, limit=1)
+        _svc(db)
+        .repo("nemsis_export_jobs")
+        .list_raw_by_field("incident_id", incident_id, limit=1)
     )
     incident = incident_rec[0].get("data", {}) if incident_rec else {"id": incident_id}
 
@@ -448,7 +461,9 @@ async def export_and_validate(
             agency_info=incident.get("agency", {}),
         )
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"XML generation failed: {exc}") from exc
+        raise HTTPException(
+            status_code=422, detail=f"XML generation failed: {exc}"
+        ) from exc
 
     scenario_rec = (
         _svc(db)
@@ -456,7 +471,9 @@ async def export_and_validate(
         .get(tenant_id=current.tenant_id, record_id=uuid.UUID(scenario_id))
     )
     state_code = (
-        (scenario_rec or {}).get("data", {}).get("state_code", "WI") if scenario_rec else "WI"
+        (scenario_rec or {}).get("data", {}).get("state_code", "WI")
+        if scenario_rec
+        else "WI"
     )
 
     validator = NEMSISValidator()
@@ -539,14 +556,22 @@ async def certification_checklist(
         pack_complete = completeness.get("complete", False)
 
     validations = (
-        _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id, limit=100)
+        _svc(db)
+        .repo("nemsis_validation_results")
+        .list(tenant_id=current.tenant_id, limit=100)
     )
     total = len(validations)
     passed = sum(1 for v in validations if v.get("data", {}).get("valid") is True)
     validation_rate = round(passed / total * 100, 1) if total > 0 else 0.0
 
-    scenarios = _svc(db).repo("nemsis_cs_scenarios").list(tenant_id=current.tenant_id, limit=100)
-    has_pass_scenario = any(s.get("data", {}).get("expected_result") == "PASS" for s in scenarios)
+    scenarios = (
+        _svc(db)
+        .repo("nemsis_cs_scenarios")
+        .list(tenant_id=current.tenant_id, limit=100)
+    )
+    has_pass_scenario = any(
+        s.get("data", {}).get("expected_result") == "PASS" for s in scenarios
+    )
 
     last_validation_at = None
     if validations:
@@ -556,11 +581,17 @@ async def certification_checklist(
 
     recommendations = []
     if not pack_complete:
-        recommendations.append("Upload all required resource pack files and activate the pack.")
+        recommendations.append(
+            "Upload all required resource pack files and activate the pack."
+        )
     if validation_rate < 95.0:
-        recommendations.append("Improve data quality to reach ≥95% validation pass rate.")
+        recommendations.append(
+            "Improve data quality to reach ≥95% validation pass rate."
+        )
     if not has_pass_scenario:
-        recommendations.append("Upload at least one C&S scenario with expected result PASS.")
+        recommendations.append(
+            "Upload at least one C&S scenario with expected result PASS."
+        )
     if last_validation_at is None:
         recommendations.append("Run at least one NEMSIS XML validation.")
 
@@ -663,7 +694,9 @@ async def generate_patch_tasks_from_result(
     vr = (
         _svc(db)
         .repo("nemsis_validation_results")
-        .get(tenant_id=current.tenant_id, record_id=uuid.UUID(str(validation_result_id)))
+        .get(
+            tenant_id=current.tenant_id, record_id=uuid.UUID(str(validation_result_id))
+        )
     )
     if vr is None:
         raise HTTPException(status_code=404, detail="Validation result not found")
@@ -681,15 +714,24 @@ async def generate_patch_tasks_from_result(
             data={
                 "task_id": str(uuid.uuid4()),
                 "title": f"Fix {element_id}: {issue.get('plain_message', issue.get('technical_message', '')[:80])}",
-                "description": issue.get("technical_message", issue.get("plain_message", "")),
+                "description": issue.get(
+                    "technical_message", issue.get("plain_message", "")
+                ),
                 "affected_file_hint": issue.get("ui_section", ""),
                 "element_id": element_id,
-                "fix_type": "structural" if issue.get("severity") == "error" else "data",
-                "steps": [
-                    issue.get("fix_hint", "Review the failing element and correct the value.")
-                ]
-                if issue.get("fix_hint")
-                else [],
+                "fix_type": (
+                    "structural" if issue.get("severity") == "error" else "data"
+                ),
+                "steps": (
+                    [
+                        issue.get(
+                            "fix_hint",
+                            "Review the failing element and correct the value.",
+                        )
+                    ]
+                    if issue.get("fix_hint")
+                    else []
+                ),
                 "status": "pending",
                 "source_validation_result_id": str(validation_result_id),
             },

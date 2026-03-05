@@ -16,10 +16,14 @@ from core_app.schemas.vital import (
 from core_app.services.event_publisher import get_event_publisher
 from core_app.services.vital_service import VitalService
 
-router = APIRouter(prefix="/incidents/{incident_id}/patients/{patient_id}/vitals", tags=["vitals"])
+router = APIRouter(
+    prefix="/incidents/{incident_id}/patients/{patient_id}/vitals", tags=["vitals"]
+)
 
 
-def vital_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -> VitalService:
+def vital_service_dependency(
+    db: AsyncSession = Depends(get_async_db_session),
+) -> VitalService:
     return VitalService(db=db, publisher=get_event_publisher())
 
 
@@ -46,7 +50,9 @@ async def create_vital(
 async def list_vitals(
     incident_id: uuid.UUID,
     patient_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
+    current_user: CurrentUser = Depends(
+        require_role("ems", "billing", "admin", "founder")
+    ),
     service: VitalService = Depends(vital_service_dependency),
 ) -> VitalListResponse:
     return await service.list_vitals_for_patient(
@@ -61,7 +67,9 @@ async def get_vital(
     incident_id: uuid.UUID,
     patient_id: uuid.UUID,
     vital_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
+    current_user: CurrentUser = Depends(
+        require_role("ems", "billing", "admin", "founder")
+    ),
     service: VitalService = Depends(vital_service_dependency),
 ) -> VitalResponse:
     return await service.get_vital(

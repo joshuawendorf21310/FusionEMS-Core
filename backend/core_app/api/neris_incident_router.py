@@ -27,7 +27,9 @@ def _check_role(current: CurrentUser) -> None:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
-def _get_active_pack(svc: DominationService, tenant_id: uuid.UUID) -> dict[str, Any] | None:
+def _get_active_pack(
+    svc: DominationService, tenant_id: uuid.UUID
+) -> dict[str, Any] | None:
     packs = svc.repo("neris_packs").list(tenant_id=tenant_id, limit=100)
     for p in packs:
         if (p.get("data") or {}).get("status") == "active":
@@ -78,13 +80,19 @@ async def list_incidents(
 ):
     _check_role(current)
     svc = _svc(db)
-    incidents = svc.repo("fire_incidents").list(tenant_id=current.tenant_id, limit=limit)
+    incidents = svc.repo("fire_incidents").list(
+        tenant_id=current.tenant_id, limit=limit
+    )
     if department_id:
         incidents = [
-            i for i in incidents if (i.get("data") or {}).get("department_id") == department_id
+            i
+            for i in incidents
+            if (i.get("data") or {}).get("department_id") == department_id
         ]
     if status:
-        incidents = [i for i in incidents if (i.get("data") or {}).get("status") == status]
+        incidents = [
+            i for i in incidents if (i.get("data") or {}).get("status") == status
+        ]
     return incidents
 
 
@@ -99,12 +107,16 @@ async def get_pack_rules(
     if not active_pack:
         raise HTTPException(status_code=404, detail="No active NERIS pack found")
     pack_id = uuid.UUID(str(active_pack["id"]))
-    all_rules = svc.repo("neris_compiled_rules").list(tenant_id=current.tenant_id, limit=50)
+    all_rules = svc.repo("neris_compiled_rules").list(
+        tenant_id=current.tenant_id, limit=50
+    )
     for r in all_rules:
         rd = r.get("data") or {}
         if rd.get("pack_id") == str(pack_id) and rd.get("entity_type") == "INCIDENT":
             return rd.get("rules_json", {})
-    raise HTTPException(status_code=404, detail="Compiled INCIDENT rules not found for active pack")
+    raise HTTPException(
+        status_code=404, detail="Compiled INCIDENT rules not found for active pack"
+    )
 
 
 @router.get("/departments/{department_id}/apparatus")
@@ -115,9 +127,13 @@ async def list_apparatus(
 ):
     _check_role(current)
     svc = _svc(db)
-    all_apparatus = svc.repo("fire_apparatus").list(tenant_id=current.tenant_id, limit=200)
+    all_apparatus = svc.repo("fire_apparatus").list(
+        tenant_id=current.tenant_id, limit=200
+    )
     return [
-        a for a in all_apparatus if (a.get("data") or {}).get("department_id") == str(department_id)
+        a
+        for a in all_apparatus
+        if (a.get("data") or {}).get("department_id") == str(department_id)
     ]
 
 
@@ -129,19 +145,34 @@ async def get_incident(
 ):
     _check_role(current)
     svc = _svc(db)
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
     inc_id = str(incident_id)
     units = svc.repo("fire_incident_units").list(tenant_id=current.tenant_id, limit=50)
-    actions = svc.repo("fire_incident_actions").list(tenant_id=current.tenant_id, limit=50)
-    outcomes_list = svc.repo("fire_incident_outcomes").list(tenant_id=current.tenant_id, limit=5)
+    actions = svc.repo("fire_incident_actions").list(
+        tenant_id=current.tenant_id, limit=50
+    )
+    outcomes_list = svc.repo("fire_incident_outcomes").list(
+        tenant_id=current.tenant_id, limit=5
+    )
     return {
         "incident": inc,
-        "units": [u for u in units if (u.get("data") or {}).get("incident_id") == inc_id],
-        "actions": [a for a in actions if (a.get("data") or {}).get("incident_id") == inc_id],
+        "units": [
+            u for u in units if (u.get("data") or {}).get("incident_id") == inc_id
+        ],
+        "actions": [
+            a for a in actions if (a.get("data") or {}).get("incident_id") == inc_id
+        ],
         "outcomes": next(
-            (o for o in outcomes_list if (o.get("data") or {}).get("incident_id") == inc_id), None
+            (
+                o
+                for o in outcomes_list
+                if (o.get("data") or {}).get("incident_id") == inc_id
+            ),
+            None,
         ),
     }
 
@@ -156,7 +187,9 @@ async def update_incident(
 ):
     _check_role(current)
     svc = _svc(db)
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -197,7 +230,9 @@ async def delete_incident(
 ):
     _check_role(current)
     svc = _svc(db)
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -227,7 +262,9 @@ async def add_unit(
 ):
     _check_role(current)
     svc = _svc(db)
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
     apparatus_id = payload.get("apparatus_id")
@@ -277,7 +314,9 @@ async def add_action(
 ):
     _check_role(current)
     svc = _svc(db)
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
     action_code = payload.get("action_code")
@@ -307,7 +346,9 @@ async def upsert_outcomes(
 ):
     _check_role(current)
     svc = _svc(db)
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -323,9 +364,15 @@ async def upsert_outcomes(
         },
     }
 
-    existing_list = svc.repo("fire_incident_outcomes").list(tenant_id=current.tenant_id, limit=5)
+    existing_list = svc.repo("fire_incident_outcomes").list(
+        tenant_id=current.tenant_id, limit=5
+    )
     existing = next(
-        (o for o in existing_list if (o.get("data") or {}).get("incident_id") == str(incident_id)),
+        (
+            o
+            for o in existing_list
+            if (o.get("data") or {}).get("incident_id") == str(incident_id)
+        ),
         None,
     )
 
@@ -340,7 +387,9 @@ async def upsert_outcomes(
             correlation_id=correlation_id,
         )
         if updated is None:
-            raise HTTPException(status_code=409, detail="Version conflict, please retry")
+            raise HTTPException(
+                status_code=409, detail="Version conflict, please retry"
+            )
         return updated
     else:
         return await svc.create(
@@ -364,21 +413,28 @@ async def validate_incident(
     active_pack = _get_active_pack(svc, current.tenant_id)
     if not active_pack:
         raise HTTPException(
-            status_code=422, detail="No active NERIS pack found. Import and activate a pack first."
+            status_code=422,
+            detail="No active NERIS pack found. Import and activate a pack first.",
         )
 
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
 
     from core_app.neris.exporter import NERISExporter
 
-    exporter = NERISExporter(db, get_event_publisher(), current.tenant_id, current.user_id)
+    exporter = NERISExporter(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
     incident_payload = exporter.build_incident_payload(inc)
 
     pack_id = uuid.UUID(str(active_pack["id"]))
     validator = NERISValidator(db, get_event_publisher(), current.tenant_id)
-    issues = validator.validate(pack_id=pack_id, entity_type="INCIDENT", payload=incident_payload)
+    issues = validator.validate(
+        pack_id=pack_id, entity_type="INCIDENT", payload=incident_payload
+    )
     errors = [i for i in issues if i.get("severity") == "error"]
     valid = len(errors) == 0
 

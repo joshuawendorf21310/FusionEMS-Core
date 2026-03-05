@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.roi.engine import compute_roi
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
@@ -146,14 +150,19 @@ async def zip_revenue(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    all_scenarios = svc.repo("roi_funnel_scenarios").list(tenant_id=current.tenant_id, limit=10000)
+    all_scenarios = svc.repo("roi_funnel_scenarios").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     zip_scenarios = [
-        s for s in all_scenarios if s.get("data", {}).get("inputs", {}).get("zip_code") == zip_code
+        s
+        for s in all_scenarios
+        if s.get("data", {}).get("inputs", {}).get("zip_code") == zip_code
     ]
     if not zip_scenarios:
         return {"zip_code": zip_code, "scenarios": [], "avg_revenue_uplift_cents": 0}
     revenues = [
-        s.get("data", {}).get("outputs", {}).get("year1_revenue_cents", 0) for s in zip_scenarios
+        s.get("data", {}).get("outputs", {}).get("year1_revenue_cents", 0)
+        for s in zip_scenarios
     ]
     avg = round(sum(revenues) / len(revenues)) if revenues else 0
     return {
@@ -188,12 +197,21 @@ async def conversion_funnel(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    events = svc.repo("conversion_events").list(tenant_id=current.tenant_id, limit=50000)
+    events = svc.repo("conversion_events").list(
+        tenant_id=current.tenant_id, limit=50000
+    )
     stages: dict[str, int] = {}
     for e in events:
         stage = e.get("data", {}).get("funnel_stage", "unknown")
         stages[stage] = stages.get(stage, 0) + 1
-    stage_order = ["awareness", "interest", "consideration", "intent", "evaluation", "purchase"]
+    stage_order = [
+        "awareness",
+        "interest",
+        "consideration",
+        "intent",
+        "evaluation",
+        "purchase",
+    ]
     funnel = []
     for stage in stage_order:
         funnel.append({"stage": stage, "count": stages.get(stage, 0)})
@@ -265,7 +283,9 @@ async def get_proposal(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("proposals").get(tenant_id=current.tenant_id, record_id=proposal_id)
+    record = svc.repo("proposals").get(
+        tenant_id=current.tenant_id, record_id=proposal_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="proposal_not_found")
     return record
@@ -290,7 +310,9 @@ async def proposal_analytics(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    events = svc.repo("conversion_events").list(tenant_id=current.tenant_id, limit=10000)
+    events = svc.repo("conversion_events").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     views = [
         e
         for e in events
@@ -306,7 +328,12 @@ async def pricing_simulation(
     db: Session = Depends(db_session_dependency),
 ):
     base_prices = {"standard": 49900, "professional": 89900, "enterprise": 149900}
-    module_prices = {"billing": 19900, "compliance": 14900, "analytics": 9900, "pwa": 9900}
+    module_prices = {
+        "billing": 19900,
+        "compliance": 14900,
+        "analytics": 9900,
+        "pwa": 9900,
+    }
     base = base_prices.get(body.base_plan, 49900)
     module_cost = sum(module_prices.get(m, 9900) for m in body.modules)
     monthly = base + module_cost
@@ -319,9 +346,9 @@ async def pricing_simulation(
         "monthly_cents": monthly,
         "annual_cents": annual,
         "annual_savings_pct": 10 if body.contract_length_months >= 12 else 0,
-        "cost_per_transport": round(monthly / max(body.call_volume, 1), 2)
-        if body.call_volume
-        else None,
+        "cost_per_transport": (
+            round(monthly / max(body.call_volume, 1), 2) if body.call_volume else None
+        ),
     }
 
 
@@ -383,11 +410,17 @@ async def onboarding_checklist(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    checklist = svc.repo("onboarding_checklists").list(tenant_id=current.tenant_id, limit=100)
+    checklist = svc.repo("onboarding_checklists").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     tenant_items = [
-        item for item in checklist if item.get("data", {}).get("tenant_id") == str(tenant_id)
+        item
+        for item in checklist
+        if item.get("data", {}).get("tenant_id") == str(tenant_id)
     ]
-    completed = sum(1 for item in tenant_items if item.get("data", {}).get("status") == "complete")
+    completed = sum(
+        1 for item in tenant_items if item.get("data", {}).get("status") == "complete"
+    )
     return {
         "tenant_id": str(tenant_id),
         "total_items": len(tenant_items),
@@ -418,7 +451,9 @@ async def plan_recommendation(
         "recommended_plan": plan,
         "reason": reason,
         "roi_preview": outputs,
-        "suggested_modules": ["billing", "compliance"] if call_volume > 500 else ["billing"],
+        "suggested_modules": (
+            ["billing", "compliance"] if call_volume > 500 else ["billing"]
+        ),
     }
 
 
@@ -454,9 +489,13 @@ async def conversion_kpis(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    events = svc.repo("conversion_events").list(tenant_id=current.tenant_id, limit=50000)
+    events = svc.repo("conversion_events").list(
+        tenant_id=current.tenant_id, limit=50000
+    )
     proposals = svc.repo("proposals").list(tenant_id=current.tenant_id, limit=10000)
-    subs = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=10000)
+    subs = svc.repo("tenant_subscriptions").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     active_subs = [s for s in subs if s.get("data", {}).get("status") == "active"]
     conversion_rate = round(len(active_subs) / max(len(proposals), 1) * 100, 2)
     return {
@@ -475,12 +514,18 @@ async def subscription_lifecycle(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    subs = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=10000)
+    subs = svc.repo("tenant_subscriptions").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     statuses: dict[str, int] = {}
     for s in subs:
         status = s.get("data", {}).get("status", "unknown")
         statuses[status] = statuses.get(status, 0) + 1
-    return {"lifecycle": statuses, "total": len(subs), "as_of": datetime.now(UTC).isoformat()}
+    return {
+        "lifecycle": statuses,
+        "total": len(subs),
+        "as_of": datetime.now(UTC).isoformat(),
+    }
 
 
 @router.post("/trial-activate")
@@ -515,9 +560,12 @@ async def revenue_pipeline(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     proposals = svc.repo("proposals").list(tenant_id=current.tenant_id, limit=10000)
-    subs = svc.repo("tenant_subscriptions").list(tenant_id=current.tenant_id, limit=10000)
+    subs = svc.repo("tenant_subscriptions").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     pending_value = (
-        len([p for p in proposals if p.get("data", {}).get("status") == "pending"]) * 89900
+        len([p for p in proposals if p.get("data", {}).get("status") == "pending"])
+        * 89900
     )
     active_mrr = sum(
         int(s.get("data", {}).get("monthly_amount_cents", 0))

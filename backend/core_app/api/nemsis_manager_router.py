@@ -6,13 +6,22 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
-from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
+from core_app.compliance.nemsis_xml_generator import (
+    build_nemsis_document,
+    validate_nemsis_xml,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
 
-router = APIRouter(prefix="/api/v1/nemsis-manager", tags=["NEMSIS 3.5.1 Dataset Manager"])
+router = APIRouter(
+    prefix="/api/v1/nemsis-manager", tags=["NEMSIS 3.5.1 Dataset Manager"]
+)
 
 
 def _svc(db: Session) -> DominationService:
@@ -114,15 +123,30 @@ NEMSIS_351_SCHEMA: dict[str, Any] = {
             "section": "ePatient",
             "phi": True,
         },
-        "ePatient.04": {"label": "Age", "required": True, "type": "integer", "section": "ePatient"},
+        "ePatient.04": {
+            "label": "Age",
+            "required": True,
+            "type": "integer",
+            "section": "ePatient",
+        },
         "ePatient.05": {
             "label": "Age Units",
             "required": True,
             "type": "code",
             "section": "ePatient",
         },
-        "ePatient.13": {"label": "Gender", "required": True, "type": "code", "section": "ePatient"},
-        "ePatient.15": {"label": "Race", "required": False, "type": "code", "section": "ePatient"},
+        "ePatient.13": {
+            "label": "Gender",
+            "required": True,
+            "type": "code",
+            "section": "ePatient",
+        },
+        "ePatient.15": {
+            "label": "Race",
+            "required": False,
+            "type": "code",
+            "section": "ePatient",
+        },
         "eDispatch.01": {
             "label": "Complaint Reported by Dispatch",
             "required": True,
@@ -337,7 +361,9 @@ NEMSIS_351_SCHEMA: dict[str, Any] = {
     },
 }
 
-REQUIRED_ELEMENTS = [k for k, v in NEMSIS_351_SCHEMA["elements"].items() if v["required"]]
+REQUIRED_ELEMENTS = [
+    k for k, v in NEMSIS_351_SCHEMA["elements"].items() if v["required"]
+]
 ELEMENT_SECTIONS = list({v["section"] for v in NEMSIS_351_SCHEMA["elements"].values()})
 
 
@@ -388,7 +414,9 @@ async def field_requirements(
     current: CurrentUser = Depends(get_current_user),
 ):
     required = {k: v for k, v in NEMSIS_351_SCHEMA["elements"].items() if v["required"]}
-    optional = {k: v for k, v in NEMSIS_351_SCHEMA["elements"].items() if not v["required"]}
+    optional = {
+        k: v for k, v in NEMSIS_351_SCHEMA["elements"].items() if not v["required"]
+    }
     return {
         "required": required,
         "optional": optional,
@@ -408,11 +436,18 @@ async def state_mapping(
 ):
     mappings = _svc(db).repo("nemsis_state_mappings").list(tenant_id=current.tenant_id)
     state_map = next(
-        (m for m in mappings if m.get("data", {}).get("state_code") == state_code.upper()), None
+        (
+            m
+            for m in mappings
+            if m.get("data", {}).get("state_code") == state_code.upper()
+        ),
+        None,
     )
     additional_required = []
     if state_map:
-        additional_required = state_map.get("data", {}).get("additional_required_elements", [])
+        additional_required = state_map.get("data", {}).get(
+            "additional_required_elements", []
+        )
     return {
         "state": state_code.upper(),
         "base_required": REQUIRED_ELEMENTS,
@@ -425,7 +460,9 @@ async def state_mapping(
 async def create_state_mapping(
     payload: dict[str, Any],
     request: Request,
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     return await _svc(db).create(
@@ -434,7 +471,9 @@ async def create_state_mapping(
         actor_user_id=current.user_id,
         data={
             "state_code": payload.get("state_code", "").upper(),
-            "additional_required_elements": payload.get("additional_required_elements", []),
+            "additional_required_elements": payload.get(
+                "additional_required_elements", []
+            ),
             "conditional_rules": payload.get("conditional_rules", []),
             "submission_endpoint": payload.get("submission_endpoint"),
         },
@@ -458,7 +497,12 @@ async def version_compare(
         {"element": "eRecord.04", "change": "required_added", "version": "3.5.1"},
         {"element": "eSituation.13", "change": "value_set_updated", "version": "3.5.1"},
     ]
-    return {"version_a": v1, "version_b": v2, "changes": changes, "change_count": len(changes)}
+    return {
+        "version_a": v1,
+        "version_b": v2,
+        "changes": changes,
+        "change_count": len(changes),
+    }
 
 
 # ── XML validation engine ─────────────────────────────────────────────────────
@@ -473,7 +517,9 @@ async def validate_xml(
 ):
     xml_content = payload.get("xml_content", "")
     try:
-        xml_bytes = xml_content.encode() if isinstance(xml_content, str) else xml_content
+        xml_bytes = (
+            xml_content.encode() if isinstance(xml_content, str) else xml_content
+        )
         result = validate_nemsis_xml(xml_bytes)
     except Exception as exc:
         result = {"valid": False, "errors": [str(exc)], "warnings": []}
@@ -506,12 +552,12 @@ async def validate_field(
     if value is not None and schema_elem["type"] == "integer":
         try:
             int(value)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
             errors.append(f"{element_id} must be an integer")
     if value is not None and schema_elem["type"] == "decimal":
         try:
             float(value)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
             errors.append(f"{element_id} must be a decimal number")
     return {
         "valid": not errors,
@@ -542,13 +588,17 @@ async def conditional_enforcement(
             "rule": "If medication administered, eMedications.05 required",
             "condition": lambda i: bool(i.get("medications")),
             "required_element": "eMedications.05",
-            "present": lambda i: all(bool(m.get("dosage")) for m in (i.get("medications") or [])),
+            "present": lambda i: all(
+                bool(m.get("dosage")) for m in (i.get("medications") or [])
+            ),
         },
     ]
     violations = []
     for rule in conditional_rules:
         if rule["condition"](incident) and not rule["present"](incident):
-            violations.append({"rule": rule["rule"], "missing_element": rule["required_element"]})
+            violations.append(
+                {"rule": rule["rule"], "missing_element": rule["required_element"]}
+            )
     return {
         "violations": violations,
         "compliant": not violations,
@@ -574,16 +624,24 @@ async def validate_data_types(
         if t == "integer" and value is not None:
             try:
                 int(value)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
                 errors.append(
-                    {"element": elem_id, "expected": "integer", "got": type(value).__name__}
+                    {
+                        "element": elem_id,
+                        "expected": "integer",
+                        "got": type(value).__name__,
+                    }
                 )
         elif t == "decimal" and value is not None:
             try:
                 float(value)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
                 errors.append(
-                    {"element": elem_id, "expected": "decimal", "got": type(value).__name__}
+                    {
+                        "element": elem_id,
+                        "expected": "decimal",
+                        "got": type(value).__name__,
+                    }
                 )
     return {"valid": not errors, "type_errors": errors, "fields_checked": len(fields)}
 
@@ -685,7 +743,11 @@ async def invalid_code_detection(
     for elem_id, code in codes.items():
         if str(code).upper() in known_invalid_patterns:
             invalid.append(
-                {"element": elem_id, "code": code, "reason": "Non-specific or placeholder code"}
+                {
+                    "element": elem_id,
+                    "code": code,
+                    "reason": "Non-specific or placeholder code",
+                }
             )
     return {"invalid_codes": invalid, "has_invalid": bool(invalid)}
 
@@ -700,7 +762,13 @@ async def auto_correct_suggestions(
 ):
     fields = payload.get("fields", {})
     suggestions: list[dict[str, Any]] = []
-    gender_map = {"M": "Male", "F": "Female", "U": "Unknown", "m": "Male", "f": "Female"}
+    gender_map = {
+        "M": "Male",
+        "F": "Female",
+        "U": "Unknown",
+        "m": "Male",
+        "f": "Female",
+    }
     if "ePatient.13" in fields and fields["ePatient.13"] in gender_map:
         suggestions.append(
             {
@@ -790,14 +858,18 @@ async def error_clusters(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    validations = _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = (
+        _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    )
     cluster: dict[str, int] = {}
     for v in validations:
         for err in v.get("data", {}).get("errors", []):
             key = str(err)[:80]
             cluster[key] = cluster.get(key, 0) + 1
     sorted_clusters = sorted(cluster.items(), key=lambda x: x[1], reverse=True)
-    return {"clusters": [{"error": k, "occurrences": c} for k, c in sorted_clusters[:20]]}
+    return {
+        "clusters": [{"error": k, "occurrences": c} for k, c in sorted_clusters[:20]]
+    }
 
 
 # ── State submission readiness score ─────────────────────────────────────────
@@ -813,7 +885,9 @@ async def readiness_score(
     state_code = payload.get("state_code", "")
     required = set(REQUIRED_ELEMENTS)
     missing = required - provided
-    completeness = round((len(provided & required) / len(required)) * 100, 1) if required else 100
+    completeness = (
+        round((len(provided & required) / len(required)) * 100, 1) if required else 100
+    )
     return {
         "state": state_code,
         "completeness_pct": completeness,
@@ -821,11 +895,11 @@ async def readiness_score(
         "provided_required": len(provided & required),
         "missing_required": len(missing),
         "ready_for_submission": completeness == 100,
-        "score_label": "Ready"
-        if completeness == 100
-        else "Needs Work"
-        if completeness >= 80
-        else "Incomplete",
+        "score_label": (
+            "Ready"
+            if completeness == 100
+            else "Needs Work" if completeness >= 80 else "Incomplete"
+        ),
     }
 
 
@@ -861,7 +935,9 @@ async def compliance_heatmap(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    validations = _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = (
+        _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    )
     error_counts: dict[str, int] = {}
     for v in validations:
         for err in v.get("data", {}).get("errors", []):
@@ -869,7 +945,11 @@ async def compliance_heatmap(
                 if elem_id in str(err):
                     error_counts[elem_id] = error_counts.get(elem_id, 0) + 1
     heatmap = [
-        {"element": k, "error_count": c, "label": NEMSIS_351_SCHEMA["elements"][k]["label"]}
+        {
+            "element": k,
+            "error_count": c,
+            "label": NEMSIS_351_SCHEMA["elements"][k]["label"],
+        }
         for k, c in sorted(error_counts.items(), key=lambda x: x[1], reverse=True)
     ]
     return {"heatmap": heatmap[:30]}
@@ -886,7 +966,12 @@ async def auto_populate(
     incident = payload.get("incident", {})
     suggestions: dict[str, Any] = {}
     if not incident.get("eScene.09") and incident.get("state"):
-        state_codes = {"California": "CA", "Texas": "TX", "Florida": "FL", "New York": "NY"}
+        state_codes = {
+            "California": "CA",
+            "Texas": "TX",
+            "Florida": "FL",
+            "New York": "NY",
+        }
         suggestions["eScene.09"] = state_codes.get(
             incident.get("state", ""), incident.get("state", "")
         )
@@ -909,7 +994,9 @@ async def get_vocabulary(
     db: Session = Depends(db_session_dependency),
 ):
     vocab = _svc(db).repo("nemsis_vocabularies").list(tenant_id=current.tenant_id)
-    elem_vocab = next((v for v in vocab if v.get("data", {}).get("element_id") == element_id), None)
+    elem_vocab = next(
+        (v for v in vocab if v.get("data", {}).get("element_id") == element_id), None
+    )
     built_in = {
         "ePatient.05": ["Years", "Months", "Days", "Hours", "Minutes"],
         "ePatient.13": ["Male", "Female", "Unknown", "Trans Male", "Trans Female"],
@@ -917,7 +1004,9 @@ async def get_vocabulary(
         "eDispatch.02": ["Yes", "No", "Unknown"],
     }
     values = (
-        elem_vocab.get("data", {}).get("values") if elem_vocab else built_in.get(element_id, [])
+        elem_vocab.get("data", {}).get("values")
+        if elem_vocab
+        else built_in.get(element_id, [])
     )
     return {
         "element_id": element_id,
@@ -957,9 +1046,11 @@ async def version_lock_status(
     locks = _svc(db).repo("nemsis_version_locks").list(tenant_id=current.tenant_id)
     active = next((lk for lk in locks if lk.get("data", {}).get("active")), None)
     return {
-        "locked_version": active.get("data", {}).get("version")
-        if active
-        else NEMSIS_351_SCHEMA["version"],
+        "locked_version": (
+            active.get("data", {}).get("version")
+            if active
+            else NEMSIS_351_SCHEMA["version"]
+        ),
         "lock_active": bool(active),
         "current_version": NEMSIS_351_SCHEMA["version"],
     }
@@ -996,7 +1087,9 @@ async def upgrade_impact(
 ):
     from_version = payload.get("from_version", "3.4.0")
     to_version = payload.get("to_version", "3.5.1")
-    validations = _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = (
+        _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    )
     breaking_changes = [
         {"element": "eRecord.04", "change": "Now required in 3.5.1"},
         {"element": "eSituation.13", "change": "Value set updated"},
@@ -1027,7 +1120,13 @@ async def normalize_data(
     for elem_id in ["eDispatch.02"]:
         if elem_id in normalized and normalized[elem_id] in bool_to_yn:
             normalized[elem_id] = bool_to_yn[normalized[elem_id]]
-    gender_norm = {"M": "Male", "F": "Female", "m": "Male", "f": "Female", "U": "Unknown"}
+    gender_norm = {
+        "M": "Male",
+        "F": "Female",
+        "m": "Male",
+        "f": "Female",
+        "U": "Unknown",
+    }
     if "ePatient.13" in normalized and normalized["ePatient.13"] in gender_norm:
         normalized["ePatient.13"] = gender_norm[normalized["ePatient.13"]]
     changes = {
@@ -1095,11 +1194,15 @@ async def list_extensions(
 async def audit_bundle(
     payload: dict[str, Any],
     request: Request,
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    validations = svc.repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = svc.repo("nemsis_validation_results").list(
+        tenant_id=current.tenant_id
+    )
     exports = svc.repo("nemsis_export_jobs").list(tenant_id=current.tenant_id)
     rec = await svc.create(
         table="nemsis_audit_bundles",
@@ -1130,13 +1233,17 @@ async def field_usage_analytics(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    validations = _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = (
+        _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    )
     usage: dict[str, int] = {}
     for v in validations:
         for elem_id in v.get("data", {}).get("provided_elements") or []:
             usage[elem_id] = usage.get(elem_id, 0) + 1
     sorted_usage = sorted(usage.items(), key=lambda x: x[1], reverse=True)
-    return {"field_usage": [{"element": k, "usage_count": c} for k, c in sorted_usage[:30]]}
+    return {
+        "field_usage": [{"element": k, "usage_count": c} for k, c in sorted_usage[:30]]
+    }
 
 
 # ── Deprecated field alert ────────────────────────────────────────────────────
@@ -1154,9 +1261,11 @@ async def deprecated_fields_alert(
         "deprecated_found": found_deprecated,
         "count": len(found_deprecated),
         "warning": bool(found_deprecated),
-        "message": f"Found {len(found_deprecated)} deprecated element(s)"
-        if found_deprecated
-        else "No deprecated elements found",
+        "message": (
+            f"Found {len(found_deprecated)} deprecated element(s)"
+            if found_deprecated
+            else "No deprecated elements found"
+        ),
     }
 
 
@@ -1180,7 +1289,9 @@ async def timestamp_integrity(
     ]
     for a, b in ordered_keys:
         if a in times and b in times and str(times[a]) > str(times[b]):
-            errors.append({"rule": f"{a} must be before {b}", "a": times[a], "b": times[b]})
+            errors.append(
+                {"rule": f"{a} must be before {b}", "a": times[a], "b": times[b]}
+            )
     return {"valid": not errors, "timestamp_errors": errors}
 
 
@@ -1194,8 +1305,12 @@ async def duplicate_detection(
     db: Session = Depends(db_session_dependency),
 ):
     pcr_number = payload.get("pcr_number")
-    validations = _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
-    matches = [v for v in validations if v.get("data", {}).get("pcr_number") == pcr_number]
+    validations = (
+        _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    )
+    matches = [
+        v for v in validations if v.get("data", {}).get("pcr_number") == pcr_number
+    ]
     return {
         "pcr_number": pcr_number,
         "duplicate_found": len(matches) > 1,
@@ -1222,23 +1337,29 @@ async def cross_field_consistency(
                 errors.append("ePatient.04: Age cannot be negative")
             if int(age) > 150 and age_unit == "Years":
                 errors.append("ePatient.04: Age exceeds plausible range for Years")
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            import logging
+
+            logging.error(f"Error: {e}")
     hr = fields.get("eVitals.10")
     if hr is not None:
         try:
             if not (0 <= int(hr) <= 350):
                 errors.append("eVitals.10: Heart rate out of plausible range (0-350)")
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            import logging
+
+            logging.error(f"Error: {e}")
     sbp = fields.get("eVitals.14")
     dbp = fields.get("eVitals.15")
     if sbp is not None and dbp is not None:
         try:
             if int(dbp) >= int(sbp):
                 errors.append("eVitals.15: Diastolic BP must be less than Systolic BP")
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            import logging
+
+            logging.error(f"Error: {e}")
     return {"valid": not errors, "consistency_errors": errors}
 
 
@@ -1268,9 +1389,11 @@ async def medical_necessity_check(
         "narrative_length": len(narrative),
         "medical_necessity_keywords_found": found,
         "has_medical_necessity": bool(found),
-        "recommendation": "Sufficient medical necessity documentation"
-        if found
-        else "Add more clinical detail to support medical necessity",
+        "recommendation": (
+            "Sufficient medical necessity documentation"
+            if found
+            else "Add more clinical detail to support medical necessity"
+        ),
     }
 
 
@@ -1295,9 +1418,13 @@ async def medication_dosage_validator(
             try:
                 if float(dosage) <= 0:
                     errors.append({"index": i, "error": "Dosage must be positive"})
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
                 errors.append({"index": i, "error": "Dosage must be numeric"})
-    return {"valid": not errors, "medication_count": len(medications), "dosage_errors": errors}
+    return {
+        "valid": not errors,
+        "medication_count": len(medications),
+        "dosage_errors": errors,
+    }
 
 
 # ── Response time validation ──────────────────────────────────────────────────
@@ -1313,7 +1440,12 @@ async def response_time_validation(
     warnings = []
     if dispatch and on_scene and str(on_scene) < str(dispatch):
         return {"valid": False, "errors": ["Scene arrival before dispatch call"]}
-    return {"valid": True, "warnings": warnings, "dispatch": dispatch, "on_scene": on_scene}
+    return {
+        "valid": True,
+        "warnings": warnings,
+        "dispatch": dispatch,
+        "on_scene": on_scene,
+    }
 
 
 # ── Transport destination validation ─────────────────────────────────────────
@@ -1331,7 +1463,9 @@ async def transport_destination_validation(
     if transported and not destination:
         errors.append("eDisposition.21: Destination required when patient transported")
     if transported and not transport_disp:
-        errors.append("eDisposition.16: Transport disposition required when patient transported")
+        errors.append(
+            "eDisposition.16: Transport disposition required when patient transported"
+        )
     return {"valid": not errors, "transport_errors": errors}
 
 
@@ -1372,7 +1506,11 @@ async def get_lineage(
     incident_lineage = [
         rec for rec in lineage if rec.get("data", {}).get("incident_id") == incident_id
     ]
-    return {"incident_id": incident_id, "lineage": incident_lineage, "count": len(incident_lineage)}
+    return {
+        "incident_id": incident_id,
+        "lineage": incident_lineage,
+        "count": len(incident_lineage),
+    }
 
 
 # ── Element-level audit log ───────────────────────────────────────────────────
@@ -1380,7 +1518,9 @@ async def get_lineage(
 
 @router.get("/audit-log")
 async def nemsis_audit_log(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     return _svc(db).repo("nemsis_data_lineage").list(tenant_id=current.tenant_id)
@@ -1391,20 +1531,28 @@ async def nemsis_audit_log(
 
 @router.get("/compliance-report")
 async def compliance_report(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    validations = svc.repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = svc.repo("nemsis_validation_results").list(
+        tenant_id=current.tenant_id
+    )
     exports = svc.repo("nemsis_export_jobs").list(tenant_id=current.tenant_id)
     valid_count = len([v for v in validations if v.get("data", {}).get("valid")])
-    failed_exports = len([e for e in exports if e.get("data", {}).get("status") == "failed"])
+    failed_exports = len(
+        [e for e in exports if e.get("data", {}).get("status") == "failed"]
+    )
     return {
         "report_type": "NEMSIS 3.5.1 Compliance",
         "version": NEMSIS_351_SCHEMA["version"],
         "total_validations": len(validations),
         "valid_submissions": valid_count,
-        "validation_rate_pct": round(valid_count / len(validations) * 100, 1) if validations else 0,
+        "validation_rate_pct": (
+            round(valid_count / len(validations) * 100, 1) if validations else 0
+        ),
         "total_exports": len(exports),
         "failed_exports": failed_exports,
         "tenant_id": str(current.tenant_id),
@@ -1676,7 +1824,9 @@ async def export_dashboard(
         "total_batches": len(batches),
         "total_rejections": len(rejections),
         "jobs_by_status": by_status,
-        "pending_batches": len([b for b in batches if b.get("data", {}).get("status") == "queued"]),
+        "pending_batches": len(
+            [b for b in batches if b.get("data", {}).get("status") == "queued"]
+        ),
     }
 
 
@@ -1693,12 +1843,21 @@ async def multi_state_test(
     provided = set(payload.get("provided_elements", []))
     results = []
     for state in states:
-        mappings = _svc(db).repo("nemsis_state_mappings").list(tenant_id=current.tenant_id)
+        mappings = (
+            _svc(db).repo("nemsis_state_mappings").list(tenant_id=current.tenant_id)
+        )
         state_map = next(
-            (m for m in mappings if m.get("data", {}).get("state_code") == state.upper()), None
+            (
+                m
+                for m in mappings
+                if m.get("data", {}).get("state_code") == state.upper()
+            ),
+            None,
         )
         extra = (
-            state_map.get("data", {}).get("additional_required_elements", []) if state_map else []
+            state_map.get("data", {}).get("additional_required_elements", [])
+            if state_map
+            else []
         )
         state_required = set(REQUIRED_ELEMENTS + extra)
         missing = list(state_required - provided)
@@ -1732,9 +1891,11 @@ async def live_validation(
         "errors": errors,
         "warnings": [],
         "missing_required": missing,
-        "completeness_pct": round(len(provided & required) / len(required) * 100, 1)
-        if required
-        else 100,
+        "completeness_pct": (
+            round(len(provided & required) / len(required) * 100, 1)
+            if required
+            else 100
+        ),
     }
     await _svc(db).create(
         table="nemsis_validation_results",
@@ -1783,22 +1944,35 @@ async def list_export_schedules(
 
 @router.get("/certification-readiness")
 async def certification_readiness(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    validations = svc.repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = svc.repo("nemsis_validation_results").list(
+        tenant_id=current.tenant_id
+    )
     rejections = svc.repo("nemsis_state_rejections").list(tenant_id=current.tenant_id)
     extensions = svc.repo("nemsis_extensions").list(tenant_id=current.tenant_id)
     valid_count = len([v for v in validations if v.get("data", {}).get("valid")])
-    unresolved_rejections = len([r for r in rejections if not r.get("data", {}).get("resolved")])
-    unapproved_extensions = len([e for e in extensions if not e.get("data", {}).get("approved")])
+    unresolved_rejections = len(
+        [r for r in rejections if not r.get("data", {}).get("resolved")]
+    )
+    unapproved_extensions = len(
+        [e for e in extensions if not e.get("data", {}).get("approved")]
+    )
     checks = [
         {
             "check": "Validation rate >= 95%",
-            "passed": (valid_count / len(validations) * 100 >= 95) if validations else False,
+            "passed": (
+                (valid_count / len(validations) * 100 >= 95) if validations else False
+            ),
         },
-        {"check": "No unresolved state rejections", "passed": unresolved_rejections == 0},
+        {
+            "check": "No unresolved state rejections",
+            "passed": unresolved_rejections == 0,
+        },
         {"check": "All extensions approved", "passed": unapproved_extensions == 0},
         {"check": "Version lock active", "passed": True},
     ]
@@ -1820,7 +1994,9 @@ async def integrity_score(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    validations = svc.repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = svc.repo("nemsis_validation_results").list(
+        tenant_id=current.tenant_id
+    )
     if not validations:
         return {"integrity_score": 100, "grade": "A", "basis": "no_data"}
     valid = len([v for v in validations if v.get("data", {}).get("valid")])
@@ -1828,13 +2004,7 @@ async def integrity_score(
     grade = (
         "A"
         if rate >= 95
-        else "B"
-        if rate >= 85
-        else "C"
-        if rate >= 75
-        else "D"
-        if rate >= 60
-        else "F"
+        else "B" if rate >= 85 else "C" if rate >= 75 else "D" if rate >= 60 else "F"
     )
     return {
         "integrity_score": round(rate, 1),
@@ -1849,7 +2019,9 @@ async def integrity_score(
 
 @router.get("/provider-ranking")
 async def provider_ranking(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     lineage = _svc(db).repo("nemsis_data_lineage").list(tenant_id=current.tenant_id)
@@ -1870,7 +2042,13 @@ async def validate_demographics(
     current: CurrentUser = Depends(get_current_user),
 ):
     patient = payload.get("patient", {})
-    required_demo = ["ePatient.01", "ePatient.02", "ePatient.04", "ePatient.05", "ePatient.13"]
+    required_demo = [
+        "ePatient.01",
+        "ePatient.02",
+        "ePatient.04",
+        "ePatient.05",
+        "ePatient.13",
+    ]
     missing = [f for f in required_demo if not patient.get(f)]
     return {
         "valid": not missing,
@@ -1908,7 +2086,9 @@ async def create_submission_audit(
 
 @router.get("/submission-audit")
 async def list_submission_audit(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     return _svc(db).repo("nemsis_submission_audit").list(tenant_id=current.tenant_id)
@@ -1926,13 +2106,22 @@ async def reportable_flag(
     flags = []
     acuity = incident.get("eSituation.13", "")
     if acuity == "Critical":
-        flags.append({"flag": "CRITICAL_PATIENT", "reason": "Patient acuity is Critical"})
+        flags.append(
+            {"flag": "CRITICAL_PATIENT", "reason": "Patient acuity is Critical"}
+        )
     disposition = incident.get("eDisposition.12", "")
     if "Death" in str(disposition):
-        flags.append({"flag": "PATIENT_DEATH", "reason": "Disposition indicates patient death"})
+        flags.append(
+            {"flag": "PATIENT_DEATH", "reason": "Disposition indicates patient death"}
+        )
     narrative = incident.get("eNarrative.01", "")
     if "cardiac arrest" in narrative.lower():
-        flags.append({"flag": "CARDIAC_ARREST", "reason": "Cardiac arrest documented in narrative"})
+        flags.append(
+            {
+                "flag": "CARDIAC_ARREST",
+                "reason": "Cardiac arrest documented in narrative",
+            }
+        )
     return {
         "reportable": bool(flags),
         "flags": flags,
@@ -2025,7 +2214,12 @@ async def coding_suggest(
     keyword_map = [
         ("chest pain", "eSituation.09", "2141003", "Chest Pain"),
         ("shortness of breath", "eSituation.09", "230145002", "Respiratory Distress"),
-        ("altered mental status", "eSituation.09", "419284004", "Altered Mental Status"),
+        (
+            "altered mental status",
+            "eSituation.09",
+            "419284004",
+            "Altered Mental Status",
+        ),
         ("trauma", "eSituation.09", "417746004", "Traumatic Injury"),
         ("seizure", "eSituation.09", "91175000", "Seizure"),
     ]
@@ -2042,11 +2236,15 @@ async def coding_suggest(
 
 @router.get("/certification-maintenance")
 async def certification_maintenance(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    validations = svc.repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = svc.repo("nemsis_validation_results").list(
+        tenant_id=current.tenant_id
+    )
     last_30 = validations[-30:] if len(validations) >= 30 else validations
     recent_valid = len([v for v in last_30 if v.get("data", {}).get("valid")])
     rate = round(recent_valid / len(last_30) * 100, 1) if last_30 else 0
@@ -2133,10 +2331,14 @@ async def field_redundancy(
 
 @router.get("/trends/missing-fields")
 async def missing_field_trends(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
-    validations = _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    validations = (
+        _svc(db).repo("nemsis_validation_results").list(tenant_id=current.tenant_id)
+    )
     missing_counts: dict[str, int] = {}
     for v in validations:
         for err in v.get("data", {}).get("errors", []):
@@ -2145,7 +2347,9 @@ async def missing_field_trends(
                     missing_counts[elem_id] = missing_counts.get(elem_id, 0) + 1
     sorted_missing = sorted(missing_counts.items(), key=lambda x: x[1], reverse=True)
     return {
-        "trending_missing": [{"element": k, "missing_count": c} for k, c in sorted_missing[:10]]
+        "trending_missing": [
+            {"element": k, "missing_count": c} for k, c in sorted_missing[:10]
+        ]
     }
 
 

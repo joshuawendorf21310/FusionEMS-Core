@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from core_app.api.dependencies import db_session_dependency, get_current_user
 from core_app.core.config import get_settings
 from core_app.documents.s3_storage import default_docs_bucket, put_bytes
-from core_app.fax.telnyx_service import TelnyxConfig, TelnyxNotConfigured, download_media
+from core_app.fax.telnyx_service import (
+    TelnyxConfig,
+    TelnyxNotConfigured,
+    download_media,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -48,7 +52,9 @@ async def send_fax(
 
 @router.post("/webhooks/telnyx/fax/inbound", include_in_schema=True)
 async def inbound_fax(
-    payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)
+    payload: dict[str, Any],
+    request: Request,
+    db: Session = Depends(db_session_dependency),
 ):
     """
     Telnyx inbound fax webhook (billing/docs). Stores an idempotent receipt, creates a fax_event,
@@ -60,7 +66,7 @@ async def inbound_fax(
 
     try:
         tenant_id = uuid.UUID(str(tenant_id_raw))
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=400, detail="invalid_tenant_id")
 
     if not tenant_id:
@@ -70,7 +76,9 @@ async def inbound_fax(
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    event_id = payload.get("data", {}).get("id") or payload.get("id") or str(uuid.uuid4())
+    event_id = (
+        payload.get("data", {}).get("id") or payload.get("id") or str(uuid.uuid4())
+    )
     raw = (str(payload)).encode("utf-8")
     payload_hash = hashlib.sha256(raw).hexdigest()
 
@@ -96,9 +104,9 @@ async def inbound_fax(
     )
 
     # Try to fetch fax media if available
-    media_url = payload.get("data", {}).get("payload", {}).get("media_url") or payload.get(
+    media_url = payload.get("data", {}).get("payload", {}).get(
         "media_url"
-    )
+    ) or payload.get("media_url")
     bucket = default_docs_bucket()
     doc_key = None
     if bucket and media_url and settings.telnyx_api_key:
@@ -109,7 +117,12 @@ async def inbound_fax(
             )
             content = download_media(cfg=tel_cfg, media_url=media_url)
             doc_key = f"tenants/{tenant_id}/fax/inbound/{event_id}.pdf"
-            put_bytes(bucket=bucket, key=doc_key, content=content, content_type="application/pdf")
+            put_bytes(
+                bucket=bucket,
+                key=doc_key,
+                content=content,
+                content_type="application/pdf",
+            )
         except TelnyxNotConfigured:
             doc_key = None
 
@@ -139,7 +152,11 @@ async def inbound_fax(
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
-    return {"status": "ok", "fax_event_id": fax_event["id"], "document_id": doc_row["id"]}
+    return {
+        "status": "ok",
+        "fax_event_id": fax_event["id"],
+        "document_id": doc_row["id"],
+    }
 
 
 @router.get("/fax/inbox")

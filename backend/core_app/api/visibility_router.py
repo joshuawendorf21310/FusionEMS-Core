@@ -6,7 +6,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -52,7 +56,11 @@ async def get_rule(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("visibility_rules").get(tenant_id=current.tenant_id, record_id=rule_id)
+    rec = (
+        _svc(db)
+        .repo("visibility_rules")
+        .get(tenant_id=current.tenant_id, record_id=rule_id)
+    )
     return rec or {"error": "not_found"}
 
 
@@ -117,7 +125,11 @@ async def evaluate_rules(
     for rule in active:
         d = rule.get("data", {})
         rule_role = d.get("role")
-        if rule_role and rule_role != context.get("role") and context.get("role") != "founder":
+        if (
+            rule_role
+            and rule_role != context.get("role")
+            and context.get("role") != "founder"
+        ):
             continue
         action = d.get("action", "show")
         fields = d.get("fields", [])
@@ -242,11 +254,20 @@ async def conditional_check(
     for r in rules:
         d = r.get("data", {})
         conditions = d.get("conditions", {})
-        cs_match = not conditions.get("claim_status") or conditions["claim_status"] == claim_status
-        pt_match = not conditions.get("payer_type") or conditions["payer_type"] == payer_type
+        cs_match = (
+            not conditions.get("claim_status")
+            or conditions["claim_status"] == claim_status
+        )
+        pt_match = (
+            not conditions.get("payer_type") or conditions["payer_type"] == payer_type
+        )
         if cs_match and pt_match:
             matched.append(d.get("rule_name", str(r.get("id", ""))))
-    return {"matched_rules": matched, "claim_status": claim_status, "payer_type": payer_type}
+    return {
+        "matched_rules": matched,
+        "claim_status": claim_status,
+        "payer_type": payer_type,
+    }
 
 
 # ── Founder override ──────────────────────────────────────────────────────────
@@ -275,7 +296,8 @@ async def view_modes(
     modes = {
         "billing_only": current.role in ("billing", "agency_admin", "founder"),
         "compliance_only": current.role in ("compliance", "agency_admin", "founder"),
-        "accreditation_reviewer": current.role in ("accreditation", "agency_admin", "founder"),
+        "accreditation_reviewer": current.role
+        in ("accreditation", "agency_admin", "founder"),
         "audit_mode": current.role in ("founder", "agency_admin"),
         "read_only_safe": True,
         "deny_bulk_edit": current.role not in ("founder", "agency_admin"),
@@ -330,7 +352,11 @@ async def module_gates(
         "viewer": ["billing"],
     }
     accessible = role_access.get(current.role, [])
-    return {"role": current.role, "accessible_modules": accessible, "all_modules": all_modules}
+    return {
+        "role": current.role,
+        "accessible_modules": accessible,
+        "all_modules": all_modules,
+    }
 
 
 # ── Access control: device, IP, MFA, geo ────────────────────────────────────
@@ -352,7 +378,9 @@ async def access_control_check(
     ip_blocked = not ip_allowed
     geo_blocked = not geo_allowed
 
-    access_granted = not mfa_required and not ip_blocked and not geo_blocked and session_valid
+    access_granted = (
+        not mfa_required and not ip_blocked and not geo_blocked and session_valid
+    )
     return {
         "access_granted": access_granted,
         "mfa_required": mfa_required,
@@ -462,7 +490,9 @@ async def validate_secure_link(
     db: Session = Depends(db_session_dependency),
 ):
     links = _svc(db).repo("visibility_secure_links").list(tenant_id=current.tenant_id)
-    match = next((lnk for lnk in links if lnk.get("data", {}).get("token") == token), None)
+    match = next(
+        (lnk for lnk in links if lnk.get("data", {}).get("token") == token), None
+    )
     if not match:
         return {"valid": False, "reason": "not_found"}
     d = match.get("data", {})
@@ -492,7 +522,10 @@ async def redaction_preview(
             "deny": ["diagnosis_code"],
         },
         "billing_safe": {"mask": ["ssn"], "deny": []},
-        "export_safe": {"mask": ["ssn", "dob", "phone", "address"], "deny": ["narrative"]},
+        "export_safe": {
+            "mask": ["ssn", "dob", "phone", "address"],
+            "deny": ["narrative"],
+        },
     }
     rules = templates.get(template, templates["standard"])
     redacted = {}
@@ -503,7 +536,11 @@ async def redaction_preview(
             redacted[k] = "***"
         else:
             redacted[k] = v
-    return {"template": template, "original_keys": list(record.keys()), "redacted": redacted}
+    return {
+        "template": template,
+        "original_keys": list(record.keys()),
+        "redacted": redacted,
+    }
 
 
 # ── Bulk rule application ──────────────────────────────────────────────────────
@@ -567,10 +604,12 @@ async def sandbox_test(
     test_context = payload.get("test_context", {})
     role_match = not rule.get("role") or rule.get("role") == test_context.get("role")
     cond = rule.get("conditions", {})
-    claim_match = not cond.get("claim_status") or cond["claim_status"] == test_context.get(
+    claim_match = not cond.get("claim_status") or cond[
         "claim_status"
+    ] == test_context.get("claim_status")
+    payer_match = not cond.get("payer_type") or cond["payer_type"] == test_context.get(
+        "payer_type"
     )
-    payer_match = not cond.get("payer_type") or cond["payer_type"] == test_context.get("payer_type")
     would_apply = role_match and claim_match and payer_match
     return {
         "would_apply": would_apply,
@@ -609,7 +648,9 @@ async def create_visibility_audit(
 
 @router.get("/audit-log")
 async def list_visibility_audit(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     return _svc(db).repo("visibility_audit_log").list(tenant_id=current.tenant_id)
@@ -674,7 +715,9 @@ async def list_approval_requests(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
     db: Session = Depends(db_session_dependency),
 ):
-    return _svc(db).repo("visibility_approval_requests").list(tenant_id=current.tenant_id)
+    return (
+        _svc(db).repo("visibility_approval_requests").list(tenant_id=current.tenant_id)
+    )
 
 
 @router.put("/approval-requests/{req_id}/decide")
@@ -704,7 +747,9 @@ async def decide_approval(
 async def compliance_lock(
     payload: dict[str, Any],
     request: Request,
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     return await _svc(db).create(
@@ -727,9 +772,15 @@ async def compliance_lock_status(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    locks = _svc(db).repo("visibility_compliance_locks").list(tenant_id=current.tenant_id)
+    locks = (
+        _svc(db).repo("visibility_compliance_locks").list(tenant_id=current.tenant_id)
+    )
     active_locks = [lk for lk in locks if lk.get("data", {}).get("active")]
-    return {"locked": bool(active_locks), "active_locks": len(active_locks), "locks": active_locks}
+    return {
+        "locked": bool(active_locks),
+        "active_locks": len(active_locks),
+        "locks": active_locks,
+    }
 
 
 # ── Emergency access mode ─────────────────────────────────────────────────────
@@ -798,7 +849,9 @@ async def rollback_policy(
     db: Session = Depends(db_session_dependency),
 ):
     policy = (
-        _svc(db).repo("visibility_policies").get(tenant_id=current.tenant_id, record_id=policy_id)
+        _svc(db)
+        .repo("visibility_policies")
+        .get(tenant_id=current.tenant_id, record_id=policy_id)
     )
     if not policy:
         return {"error": "not_found"}
@@ -807,7 +860,11 @@ async def rollback_policy(
         table="visibility_rules",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"rollback_from_policy": str(policy_id), "rules": snapshot, "status": "active"},
+        data={
+            "rollback_from_policy": str(policy_id),
+            "rules": snapshot,
+            "status": "active",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
@@ -817,7 +874,9 @@ async def rollback_policy(
 
 @router.get("/snapshots")
 async def list_snapshots(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
     db: Session = Depends(db_session_dependency),
 ):
     return _svc(db).repo("visibility_policies").list(tenant_id=current.tenant_id)
@@ -860,7 +919,9 @@ async def endpoint_restrictions(
         "/api/v1/incidents": ["ems", "agency_admin", "founder"],
         "/api/v1/visibility": ["agency_admin", "founder"],
     }
-    accessible = {ep: roles for ep, roles in restrictions.items() if current.role in roles}
+    accessible = {
+        ep: roles for ep, roles in restrictions.items() if current.role in roles
+    }
     return {
         "role": current.role,
         "accessible_endpoints": accessible,
@@ -882,7 +943,10 @@ async def rate_limit_config(
         "ems": {"requests_per_minute": 200, "burst": 40},
         "viewer": {"requests_per_minute": 60, "burst": 15},
     }
-    return {"role": current.role, "rate_limit": limits.get(current.role, limits["viewer"])}
+    return {
+        "role": current.role,
+        "rate_limit": limits.get(current.role, limits["viewer"]),
+    }
 
 
 # ── Export redaction rules ────────────────────────────────────────────────────
@@ -920,7 +984,10 @@ async def auto_detect_sensitive(
             detected["financial"].append(key)
         elif "ssn" in key.lower() or "password" in key.lower():
             detected["other"].append(key)
-    return {"detected_sensitive_fields": detected, "total": sum(len(v) for v in detected.values())}
+    return {
+        "detected_sensitive_fields": detected,
+        "total": sum(len(v) for v in detected.values()),
+    }
 
 
 # ── Visibility heatmap ────────────────────────────────────────────────────────
@@ -952,9 +1019,13 @@ async def visibility_dashboard(
     rules = svc.repo("visibility_rules").list(tenant_id=current.tenant_id)
     audit = svc.repo("visibility_audit_log").list(tenant_id=current.tenant_id)
     locks = svc.repo("visibility_compliance_locks").list(tenant_id=current.tenant_id)
-    approvals = svc.repo("visibility_approval_requests").list(tenant_id=current.tenant_id)
+    approvals = svc.repo("visibility_approval_requests").list(
+        tenant_id=current.tenant_id
+    )
     active_rules = [r for r in rules if r.get("data", {}).get("status") == "active"]
-    pending_approvals = [a for a in approvals if a.get("data", {}).get("status") == "pending"]
+    pending_approvals = [
+        a for a in approvals if a.get("data", {}).get("status") == "pending"
+    ]
     active_locks = [lk for lk in locks if lk.get("data", {}).get("active")]
     return {
         "total_rules": len(rules),
@@ -1013,10 +1084,16 @@ async def access_score(
         a for a in anomalies if a.get("data", {}).get("user_id") == str(current.user_id)
     ]
     high = sum(1 for a in user_anomalies if a.get("data", {}).get("severity") == "high")
-    medium = sum(1 for a in user_anomalies if a.get("data", {}).get("severity") == "medium")
+    medium = sum(
+        1 for a in user_anomalies if a.get("data", {}).get("severity") == "medium"
+    )
     score = max(0, 100 - high * 30 - medium * 10)
     risk = "low" if score >= 80 else "medium" if score >= 50 else "high"
-    return {"access_score": score, "risk_level": risk, "anomaly_count": len(user_anomalies)}
+    return {
+        "access_score": score,
+        "risk_level": risk,
+        "anomaly_count": len(user_anomalies),
+    }
 
 
 # ── Zero-trust enforcement ────────────────────────────────────────────────────
@@ -1035,7 +1112,12 @@ async def zero_trust_check(
     device_trusted = context.get("device_trusted", False)
     ip_allowed = context.get("ip_allowed", True)
 
-    high_value_resources = ["phi_data", "financial_reports", "founder_view", "audit_logs"]
+    high_value_resources = [
+        "phi_data",
+        "financial_reports",
+        "founder_view",
+        "audit_logs",
+    ]
     requires_mfa = resource in high_value_resources
     trust_score = sum([mfa, device_trusted, ip_allowed]) / 3.0
     allowed = trust_score >= 0.67 and (not requires_mfa or mfa)
@@ -1160,8 +1242,18 @@ async def deidentify(
     current: CurrentUser = Depends(get_current_user),
 ):
     record = payload.get("record", {})
-    phi_fields = {"patient_name", "dob", "ssn", "address", "phone", "email", "insurance_id"}
-    deidentified = {k: ("DEIDENTIFIED" if k in phi_fields else v) for k, v in record.items()}
+    phi_fields = {
+        "patient_name",
+        "dob",
+        "ssn",
+        "address",
+        "phone",
+        "email",
+        "insurance_id",
+    }
+    deidentified = {
+        k: ("DEIDENTIFIED" if k in phi_fields else v) for k, v in record.items()
+    }
     return {
         "deidentified": deidentified,
         "fields_removed": len([k for k in record if k in phi_fields]),
@@ -1181,7 +1273,12 @@ async def data_minimization_check(
     purpose_minimums = {
         "billing": {"claim_id", "patient_id", "amount", "payer_type", "service_date"},
         "clinical": {"incident_id", "patient_id", "vitals", "narrative", "procedures"},
-        "compliance": {"incident_id", "agency_id", "nemsis_status", "validation_errors"},
+        "compliance": {
+            "incident_id",
+            "agency_id",
+            "nemsis_status",
+            "validation_errors",
+        },
         "general": {"incident_id", "status"},
     }
     minimum = purpose_minimums.get(purpose, purpose_minimums["general"])
@@ -1255,7 +1352,11 @@ async def auto_lock(
             },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
-    return {"locked": should_lock, "failed_attempts": failed_attempts, "threshold": threshold}
+    return {
+        "locked": should_lock,
+        "failed_attempts": failed_attempts,
+        "threshold": threshold,
+    }
 
 
 # ── Restricted search results / sensitive search query alert ─────────────────
@@ -1291,7 +1392,8 @@ async def clipboard_policy(
         "role": current.role,
         "clipboard_copy_restricted": restrict,
         "phi_copy_blocked": True,
-        "financial_copy_restricted": current.role not in ("billing", "agency_admin", "founder"),
+        "financial_copy_restricted": current.role
+        not in ("billing", "agency_admin", "founder"),
     }
 
 
@@ -1314,7 +1416,11 @@ async def integration_field_filter(
     allowed_fields = integration_allowed.get(integration, set())
     filtered = {k: v for k, v in record.items() if k in allowed_fields}
     blocked = [k for k in record if k not in allowed_fields]
-    return {"integration": integration, "filtered_record": filtered, "blocked_fields": blocked}
+    return {
+        "integration": integration,
+        "filtered_record": filtered,
+        "blocked_fields": blocked,
+    }
 
 
 # ── Live policy validation ────────────────────────────────────────────────────
@@ -1345,7 +1451,9 @@ async def live_validate_policy(
 
 @router.get("/field-encryption-status")
 async def field_encryption_status(
-    current: CurrentUser = Depends(require_role("founder", "agency_admin", "compliance")),
+    current: CurrentUser = Depends(
+        require_role("founder", "agency_admin", "compliance")
+    ),
 ):
     encrypted_fields = [
         "ssn",
@@ -1387,7 +1495,8 @@ async def policy_explanation(
                     "action": d.get("action"),
                     "role": d.get("role"),
                     "explanation": d.get(
-                        "explanation", f"Rule applies {d.get('action')} to field '{field}'"
+                        "explanation",
+                        f"Rule applies {d.get('action')} to field '{field}'",
                     ),
                 }
             )
@@ -1407,9 +1516,18 @@ async def classification_labels(
                 "color": "red",
                 "description": "Protected Health Information - HIPAA regulated",
             },
-            "PII": {"color": "orange", "description": "Personally Identifiable Information"},
-            "FINANCIAL": {"color": "yellow", "description": "Financial data - PCI/internal policy"},
-            "OPERATIONAL": {"color": "blue", "description": "Operational data - internal use"},
+            "PII": {
+                "color": "orange",
+                "description": "Personally Identifiable Information",
+            },
+            "FINANCIAL": {
+                "color": "yellow",
+                "description": "Financial data - PCI/internal policy",
+            },
+            "OPERATIONAL": {
+                "color": "blue",
+                "description": "Operational data - internal use",
+            },
             "PUBLIC": {"color": "green", "description": "Non-sensitive public data"},
         }
     }
@@ -1443,7 +1561,9 @@ async def insider_threat_report(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
     db: Session = Depends(db_session_dependency),
 ):
-    anomalies = _svc(db).repo("visibility_anomaly_events").list(tenant_id=current.tenant_id)
+    anomalies = (
+        _svc(db).repo("visibility_anomaly_events").list(tenant_id=current.tenant_id)
+    )
     high_risk = [a for a in anomalies if a.get("data", {}).get("severity") == "high"]
     return {
         "total_anomalies": len(anomalies),

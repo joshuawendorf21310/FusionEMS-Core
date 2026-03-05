@@ -9,7 +9,10 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from core_app.api.dependencies import db_session_dependency, get_current_user
-from core_app.compliance.nemsis_xml_generator import build_nemsis_document, validate_nemsis_xml
+from core_app.compliance.nemsis_xml_generator import (
+    build_nemsis_document,
+    validate_nemsis_xml,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -79,7 +82,9 @@ async def create_export(
             generation_error = str(exc)
 
     job: dict[str, Any] = {
-        "status": "completed" if xml_b64 else ("failed" if generation_error else "queued"),
+        "status": (
+            "completed" if xml_b64 else ("failed" if generation_error else "queued")
+        ),
         "range": payload.get("range"),
         "agency": payload.get("agency"),
         "xml_b64": xml_b64,
@@ -103,13 +108,18 @@ async def download_export(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    rec = svc.repo("nemsis_export_jobs").get(tenant_id=current.tenant_id, record_id=job_id)
+    rec = svc.repo("nemsis_export_jobs").get(
+        tenant_id=current.tenant_id, record_id=job_id
+    )
     if not rec:
         return {"error": "not_found"}
 
     xml_b64 = rec.get("data", {}).get("xml_b64")
     if not xml_b64:
-        return {"error": "xml_not_available", "status": rec.get("data", {}).get("status")}
+        return {
+            "error": "xml_not_available",
+            "status": rec.get("data", {}).get("status"),
+        }
 
     xml_bytes = base64.b64decode(xml_b64)
     return Response(
@@ -127,7 +137,9 @@ async def get_export(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    rec = svc.repo("nemsis_export_jobs").get(tenant_id=current.tenant_id, record_id=job_id)
+    rec = svc.repo("nemsis_export_jobs").get(
+        tenant_id=current.tenant_id, record_id=job_id
+    )
     if not rec:
         return {"error": "not_found"}
     data = rec.get("data", {})

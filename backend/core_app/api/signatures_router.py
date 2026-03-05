@@ -33,7 +33,9 @@ async def request_sig(
 
 @router.post("/webhook/completed", include_in_schema=False)
 async def completed(
-    payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)
+    payload: dict[str, Any],
+    request: Request,
+    db: Session = Depends(db_session_dependency),
 ):
     # public webhook: store signature record; tenant must be included in payload
     tenant_id = uuid.UUID(payload.get("tenant_id"))

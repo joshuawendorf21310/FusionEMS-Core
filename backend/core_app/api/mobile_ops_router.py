@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -97,7 +101,9 @@ async def list_pwa_deployments(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    deployments = svc.repo("pwa_deployments").list(tenant_id=current.tenant_id, limit=500)
+    deployments = svc.repo("pwa_deployments").list(
+        tenant_id=current.tenant_id, limit=500
+    )
     return {"deployments": deployments, "total": len(deployments)}
 
 
@@ -121,7 +127,10 @@ async def rollback_pwa(
         record_id=deployment["id"],
         actor_user_id=current.user_id,
         expected_version=deployment.get("version", 1),
-        patch={"status": "rolled_back", "rolled_back_at": datetime.now(UTC).isoformat()},
+        patch={
+            "status": "rolled_back",
+            "rolled_back_at": datetime.now(UTC).isoformat(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return updated
@@ -134,7 +143,9 @@ async def version_adoption(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    devices = svc.repo("device_registrations").list(tenant_id=current.tenant_id, limit=10000)
+    devices = svc.repo("device_registrations").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     version_counts: dict[str, int] = {}
     for d in devices:
         ver = d.get("data", {}).get("app_version", "unknown")
@@ -178,7 +189,9 @@ async def list_devices(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    devices = svc.repo("device_registrations").list(tenant_id=current.tenant_id, limit=10000)
+    devices = svc.repo("device_registrations").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     return {"devices": devices, "total": len(devices)}
 
 
@@ -191,8 +204,12 @@ async def remote_logout(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    devices = svc.repo("device_registrations").list(tenant_id=current.tenant_id, limit=10000)
-    target = next((d for d in devices if d.get("data", {}).get("device_id") == device_id), None)
+    devices = svc.repo("device_registrations").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
+    target = next(
+        (d for d in devices if d.get("data", {}).get("device_id") == device_id), None
+    )
     if not target:
         raise HTTPException(status_code=404, detail="device_not_found")
     updated = await svc.update(
@@ -216,8 +233,12 @@ async def secure_wipe(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    devices = svc.repo("device_registrations").list(tenant_id=current.tenant_id, limit=10000)
-    target = next((d for d in devices if d.get("data", {}).get("device_id") == device_id), None)
+    devices = svc.repo("device_registrations").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
+    target = next(
+        (d for d in devices if d.get("data", {}).get("device_id") == device_id), None
+    )
     if not target:
         raise HTTPException(status_code=404, detail="device_not_found")
     updated = await svc.update(
@@ -245,7 +266,11 @@ async def send_push_notification(
         table="push_notifications",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "sent_at": datetime.now(UTC).isoformat(), "status": "queued"},
+        data={
+            **body.model_dump(),
+            "sent_at": datetime.now(UTC).isoformat(),
+            "status": "queued",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return notif
@@ -258,7 +283,9 @@ async def push_analytics(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    notifs = svc.repo("push_notifications").list(tenant_id=current.tenant_id, limit=10000)
+    notifs = svc.repo("push_notifications").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     sent = sum(1 for n in notifs if n.get("data", {}).get("status") == "sent")
     failed = sum(1 for n in notifs if n.get("data", {}).get("status") == "failed")
     read = sum(1 for n in notifs if n.get("data", {}).get("status") == "read")
@@ -360,7 +387,11 @@ async def send_mobile_alert(
         table="mobile_alerts",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={**body.model_dump(), "sent_at": datetime.now(UTC).isoformat(), "status": "sent"},
+        data={
+            **body.model_dump(),
+            "sent_at": datetime.now(UTC).isoformat(),
+            "status": "sent",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return alert
@@ -419,7 +450,9 @@ async def credential_compliance(
     svc = DominationService(db, get_event_publisher())
     creds = svc.repo("user_credentials").list(tenant_id=current.tenant_id, limit=10000)
     expired = [c for c in creds if c.get("data", {}).get("status") == "expired"]
-    expiring_soon = [c for c in creds if c.get("data", {}).get("status") == "expiring_soon"]
+    expiring_soon = [
+        c for c in creds if c.get("data", {}).get("status") == "expiring_soon"
+    ]
     return {
         "total_credentials": len(creds),
         "expired": len(expired),
@@ -435,7 +468,9 @@ async def mobile_performance(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    sessions = svc.repo("mobile_sessions").list(tenant_id=current.tenant_id, limit=10000)
+    sessions = svc.repo("mobile_sessions").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     errors = svc.repo("mobile_errors").list(tenant_id=current.tenant_id, limit=10000)
     return {
         "total_sessions": len(sessions),
@@ -475,10 +510,14 @@ async def sync_health(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    sync_jobs = svc.repo("offline_sync_jobs").list(tenant_id=current.tenant_id, limit=1000)
+    sync_jobs = svc.repo("offline_sync_jobs").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     pending = sum(1 for j in sync_jobs if j.get("data", {}).get("status") == "pending")
     failed = sum(1 for j in sync_jobs if j.get("data", {}).get("status") == "failed")
-    completed = sum(1 for j in sync_jobs if j.get("data", {}).get("status") == "completed")
+    completed = sum(
+        1 for j in sync_jobs if j.get("data", {}).get("status") == "completed"
+    )
     return {
         "total_sync_jobs": len(sync_jobs),
         "pending": pending,
@@ -496,7 +535,9 @@ async def mobile_adoption_kpis(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    devices = svc.repo("device_registrations").list(tenant_id=current.tenant_id, limit=10000)
+    devices = svc.repo("device_registrations").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     active = [d for d in devices if d.get("data", {}).get("status") == "active"]
     installs = svc.repo("pwa_installs").list(tenant_id=current.tenant_id, limit=10000)
     return {
@@ -539,6 +580,8 @@ async def incident_response_time(
     return {
         "total_incidents": len(incidents),
         "acknowledged": len(acknowledged),
-        "acknowledgment_rate_pct": round(len(acknowledged) / max(len(incidents), 1) * 100, 2),
+        "acknowledgment_rate_pct": round(
+            len(acknowledged) / max(len(incidents), 1) * 100, 2
+        ),
         "as_of": datetime.now(UTC).isoformat(),
     }

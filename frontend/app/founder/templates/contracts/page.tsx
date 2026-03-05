@@ -1,9 +1,9 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
+const API = process.env.NEXT_PUBLIC_API_URL || '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -41,61 +41,30 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
   );
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
-  return (
-    <div
-      className="bg-bg-panel border border-border-DEFAULT p-4"
-      style={{ clipPath: 'polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)' }}
-    >
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-1">{label}</div>
-      <div className="text-xl font-bold" style={{ color: color ?? 'var(--color-text-primary)' }}>{value}</div>
-      {sub && <div className="text-[11px] text-[rgba(255,255,255,0.4)] mt-0.5">{sub}</div>}
-    </div>
-  );
-}
-
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  return (
-    <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-      <motion.div
-        className="h-full rounded-full"
-        style={{ background: color }}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.8 }}
-      />
-    </div>
-  );
-}
-
-const TEMPLATES = [
-  { id: 'msa', name: 'Master Service Agreement', desc: 'Full platform service agreement with SLA terms.', used: 4 },
-  { id: 'baa', name: 'HIPAA Business Associate Agreement', desc: 'BAA for all data handling relationships.', used: 4 },
-  { id: 'dpa', name: 'Data Processing Addendum', desc: 'GDPR/CCPA compliant DPA addendum.', used: 2 },
-  { id: 'renewal', name: 'Agency Renewal Agreement', desc: 'Simplified renewal for existing clients.', used: 1 },
-  { id: 'pilot', name: 'Pilot Program Agreement', desc: '90-day pilot with conversion terms.', used: 0 },
-  { id: 'nda', name: 'NDA (Mutual)', desc: 'Standard mutual non-disclosure.', used: 3 },
-];
-
-const ACTIVE_CONTRACTS = [
-  { id: 'MSA-001', agency: 'Agency A', type: 'Service Agreement', status: 'Executed', statusKey: 'ok' as const, signed: 'Jan 15, 2024', expiry: 'Jan 15, 2025' },
-  { id: 'BAA-001', agency: 'Agency A', type: 'BAA', status: 'Executed', statusKey: 'ok' as const, signed: 'Jan 15, 2024', expiry: 'Jan 15, 2025' },
-  { id: 'MSA-002', agency: 'Agency B', type: 'Service Agreement', status: 'Executed', statusKey: 'ok' as const, signed: 'Nov 10, 2023', expiry: 'Nov 10, 2024' },
-  { id: 'BAA-002', agency: 'Agency B', type: 'BAA', status: 'Executed', statusKey: 'ok' as const, signed: 'Nov 10, 2023', expiry: 'Nov 10, 2024' },
-  { id: 'MSA-003', agency: 'Agency C', type: 'Service Agreement', status: 'Pending', statusKey: 'warn' as const, signed: '—', expiry: '—' },
-  { id: 'NDA-001', agency: 'Agency D', type: 'NDA', status: 'Executed', statusKey: 'ok' as const, signed: 'Dec 5, 2023', expiry: 'Dec 5, 2024' },
-];
-
-const TEMPLATE_VARS = ['{{agency_name}}', '{{start_date}}', '{{monthly_fee}}', '{{state}}'];
-
 export default function ContractBuilderPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [activeContracts, setActiveContracts] = useState<any[]>([]);
+  const [templateVars, setTemplateVars] = useState<string[]>([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    fetch(`${API}/api/v1/founder/contracts`, { headers })
+      .then(r => r.json())
+      .then(data => {
+        if (data.templates) setTemplates(data.templates);
+        if (data.active_contracts) setActiveContracts(data.active_contracts);
+        if (data.template_vars) setTemplateVars(data.template_vars);
+      })
+      .catch(console.error);
+  }, []);
+
   function handleCopy(v: string) {
-    navigator.clipboard.writeText(v).catch(() => {});
+    navigator.clipboard.writeText(v).catch((e) => console.error(e));
     setCopied(v);
     setTimeout(() => setCopied(null), 1200);
   }
@@ -120,9 +89,9 @@ export default function ContractBuilderPage() {
 
       {/* MODULE 1 — Template Library */}
       <Panel>
-        <SectionHeader number="1" title="Template Library" sub="6 templates available" />
+        <SectionHeader number="1" title="Template Library" sub={`${templates.length} templates available`} />
         <div className="grid grid-cols-2 gap-3">
-          {TEMPLATES.map((t) => (
+          {templates.map((t) => (
             <div
               key={t.id}
               className="border border-border-DEFAULT p-3 bg-bg-input cursor-pointer transition-all"
@@ -156,7 +125,7 @@ export default function ContractBuilderPage() {
 
       {/* MODULE 2 — Active Contracts */}
       <Panel>
-        <SectionHeader number="2" title="Active Contracts" sub="6 contracts" />
+        <SectionHeader number="2" title="Active Contracts" sub={`${activeContracts.length} contracts`} />
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
@@ -167,12 +136,12 @@ export default function ContractBuilderPage() {
               </tr>
             </thead>
             <tbody>
-              {ACTIVE_CONTRACTS.map((c, i) => (
+              {activeContracts.map((c, i) => (
                 <tr key={c.id} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 font-mono text-status-info">{c.id}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.7)]">{c.agency}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{c.type}</td>
-                  <td className="py-2 pr-4"><Badge label={c.status} status={c.statusKey} /></td>
+                  <td className="py-2 pr-4"><Badge label={c.status} status={c.statusKey as any} /></td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{c.signed}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.5)]">{c.expiry}</td>
                 </tr>
@@ -182,46 +151,9 @@ export default function ContractBuilderPage() {
         </div>
       </Panel>
 
-      {/* MODULE 3 — Expiring Soon */}
-      <Panel>
-        <SectionHeader number="3" title="Expiring Soon" sub="Within 90 days" />
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-bg-input border border-red-ghost rounded-sm">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">MSA-002 — Agency B</span>
-                <Badge label="37 days" status="error" />
-              </div>
-              <p className="text-[11px] text-[rgba(255,255,255,0.4)]">Expires Nov 10, 2024</p>
-            </div>
-            <button
-              className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: 'color-mix(in srgb, var(--color-brand-red) 9%, transparent)', color: 'var(--q-red)', border: '1px solid color-mix(in srgb, var(--color-brand-red) 19%, transparent)' }}
-            >
-              Send Renewal
-            </button>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-bg-input border border-status-warning/15 rounded-sm">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">NDA-001 — Agency D</span>
-                <Badge label="62 days" status="warn" />
-              </div>
-              <p className="text-[11px] text-[rgba(255,255,255,0.4)]">Expires Dec 5, 2024</p>
-            </div>
-            <button
-              className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: 'color-mix(in srgb, var(--color-status-warning) 9%, transparent)', color: 'var(--q-yellow)', border: '1px solid color-mix(in srgb, var(--color-status-warning) 19%, transparent)' }}
-            >
-              Send Renewal
-            </button>
-          </div>
-        </div>
-      </Panel>
-
       {/* MODULE 4 — Contract Editor */}
       <Panel>
-        <SectionHeader number="4" title="Contract Editor" sub={selectedTemplate ? `Editing: ${TEMPLATES.find(t => t.id === selectedTemplate)?.name}` : 'No template selected'} />
+        <SectionHeader number="4" title="Contract Editor" sub={selectedTemplate ? `Editing: ${templates.find(t => t.id === selectedTemplate)?.name}` : 'No template selected'} />
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div
@@ -230,7 +162,7 @@ export default function ContractBuilderPage() {
             >
               {selectedTemplate ? (
                 <div className="w-full">
-                  <p className="text-[11px] text-[rgba(255,255,255,0.5)] mb-2">Editing: <span className="text-status-info">{TEMPLATES.find(t => t.id === selectedTemplate)?.name}</span></p>
+                  <p className="text-[11px] text-[rgba(255,255,255,0.5)] mb-2">Editing: <span className="text-status-info">{templates.find(t => t.id === selectedTemplate)?.name}</span></p>
                   <div className="h-16 bg-[rgba(255,255,255,0.03)] border border-border-subtle rounded-sm flex items-center justify-center">
                     <span className="text-[10px] text-[rgba(255,255,255,0.2)]">Contract content area</span>
                   </div>
@@ -259,7 +191,7 @@ export default function ContractBuilderPage() {
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.35)] mb-2">Template Variables</p>
             <div className="flex flex-wrap gap-2">
-              {TEMPLATE_VARS.map((v) => (
+              {templateVars.map((v) => (
                 <button
                   key={v}
                   onClick={() => handleCopy(v)}
@@ -276,34 +208,6 @@ export default function ContractBuilderPage() {
               ))}
             </div>
             <p className="text-[10px] text-[rgba(255,255,255,0.25)] mt-2">Click variable to copy to clipboard</p>
-          </div>
-        </div>
-      </Panel>
-
-      {/* MODULE 5 — Signature Status */}
-      <Panel>
-        <SectionHeader number="5" title="Signature Status" sub="Awaiting signatures" />
-        <div className="flex items-center justify-between p-3 bg-bg-input border border-status-warning/15 rounded-sm">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[12px] font-semibold text-[rgba(255,255,255,0.85)]">Agency C — MSA-003</span>
-              <Badge label="Awaiting" status="warn" />
-            </div>
-            <p className="text-[11px] text-[rgba(255,255,255,0.4)]">Sent Jan 22 · 3 days awaiting signature</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: 'color-mix(in srgb, var(--color-status-warning) 9%, transparent)', color: 'var(--q-yellow)', border: '1px solid color-mix(in srgb, var(--color-status-warning) 19%, transparent)' }}
-            >
-              Resend
-            </button>
-            <button
-              className="text-[10px] font-semibold px-3 py-1.5 rounded-sm"
-              style={{ background: 'color-mix(in srgb, var(--color-status-info) 9%, transparent)', color: 'var(--color-status-info)', border: '1px solid color-mix(in srgb, var(--color-status-info) 19%, transparent)' }}
-            >
-              View Doc
-            </button>
           </div>
         </div>
       </Panel>

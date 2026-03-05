@@ -64,6 +64,7 @@ from core_app.api.founder_copilot_router import router as founder_copilot_router
 from core_app.api.founder_documents_router import router as founder_documents_router  # noqa: E402
 from core_app.api.founder_graph_router import router as founder_graph_router  # noqa: E402
 from core_app.api.founder_router import router as founder_router  # noqa: E402
+from core_app.api.founder_agents_router import router as founder_agents_router  # noqa: E402
 from core_app.api.hems_router import router as hems_router  # noqa: E402
 from core_app.api.icd10_router import router as icd10_router  # noqa: E402
 from core_app.api.imports_router import router as imports_router  # noqa: E402
@@ -178,6 +179,7 @@ app.include_router(fire_ops_router)
 app.include_router(fire_epcr_router)
 app.include_router(fire_statements_router)
 app.include_router(founder_router)
+app.include_router(founder_agents_router)
 app.include_router(roi_router, prefix="/api/v1")
 app.include_router(onboarding_router)
 app.include_router(public_pricing_router)

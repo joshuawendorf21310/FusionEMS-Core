@@ -37,7 +37,10 @@ async def send_payment_link_for_call(
         logger.warning("ivr_payment_no_amount statement_id=%s", statement_id)
         amount_cents = 0
 
-    from core_app.payments.stripe_service import StripeConfig, create_connect_checkout_session
+    from core_app.payments.stripe_service import (
+        StripeConfig,
+        create_connect_checkout_session,
+    )
 
     cfg = StripeConfig(secret_key=settings.stripe_secret_key)
     success_url = f"{settings.api_base_url}/pay/success?statement_id={statement_id}"
@@ -58,7 +61,9 @@ async def send_payment_link_for_call(
         )
         checkout_url = result["checkout_url"]
     except Exception as exc:
-        logger.error("ivr_payment_checkout_failed statement_id=%s error=%s", statement_id, exc)
+        logger.error(
+            "ivr_payment_checkout_failed statement_id=%s error=%s", statement_id, exc
+        )
         return
 
     sms_text = (
@@ -91,7 +96,9 @@ def _get_connected_stripe_account(db: Session, tenant_id: str) -> str | None:
     return None
 
 
-def _get_statement_amount(db: Session, tenant_id: str, statement_id: str) -> tuple[int, str]:
+def _get_statement_amount(
+    db: Session, tenant_id: str, statement_id: str
+) -> tuple[int, str]:
     row = db.execute(
         text(
             "SELECT total_amount_cents, currency FROM billing_cases "

@@ -50,7 +50,9 @@ async def get_branding(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
     db: Session = Depends(db_session_dependency),
 ):
-    all_records = _svc(db).repo("epcr_agency_branding").list(tenant_id=current.tenant_id)
+    all_records = (
+        _svc(db).repo("epcr_agency_branding").list(tenant_id=current.tenant_id)
+    )
     active = [r for r in all_records if r.get("data", {}).get("active")]
     return active[0] if active else {}
 
@@ -92,7 +94,11 @@ async def get_layout(
     current: CurrentUser = Depends(require_role("founder", "agency_admin")),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_form_layouts").get(tenant_id=current.tenant_id, record_id=layout_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_form_layouts")
+        .get(tenant_id=current.tenant_id, record_id=layout_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Layout not found")
     return rec
@@ -107,7 +113,9 @@ async def update_layout(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    rec = svc.repo("epcr_form_layouts").get(tenant_id=current.tenant_id, record_id=layout_id)
+    rec = svc.repo("epcr_form_layouts").get(
+        tenant_id=current.tenant_id, record_id=layout_id
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Layout not found")
 
@@ -174,7 +182,9 @@ async def delete_rule(
     db: Session = Depends(db_session_dependency),
 ):
     repo = _svc(db).repo("epcr_customization_rules")
-    deleted = repo.soft_delete(tenant_id=current.tenant_id, record_id=uuid.UUID(rule_id))
+    deleted = repo.soft_delete(
+        tenant_id=current.tenant_id, record_id=uuid.UUID(rule_id)
+    )
     if not deleted:
         raise HTTPException(status_code=404, detail="Rule not found")
     return {"deleted": True, "rule_id": rule_id}
@@ -216,7 +226,9 @@ async def get_picklist(
     db: Session = Depends(db_session_dependency),
 ):
     all_records = _svc(db).repo("epcr_picklist_items").list(tenant_id=current.tenant_id)
-    matched = [r for r in all_records if r.get("data", {}).get("list_name") == list_name]
+    matched = [
+        r for r in all_records if r.get("data", {}).get("list_name") == list_name
+    ]
     if not matched:
         raise HTTPException(status_code=404, detail="Picklist not found")
     items: list[str] = []

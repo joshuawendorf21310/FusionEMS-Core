@@ -5,7 +5,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -34,7 +38,9 @@ async def alerts(
     limit: int = 200,
 ):
     svc = DominationService(db, get_event_publisher())
-    return svc.repo("weather_alerts").list(tenant_id=current.tenant_id, limit=limit, offset=0)
+    return svc.repo("weather_alerts").list(
+        tenant_id=current.tenant_id, limit=limit, offset=0
+    )
 
 
 @router.get("/aviation")

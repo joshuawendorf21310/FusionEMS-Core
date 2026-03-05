@@ -26,7 +26,9 @@ TRACKING_PIXEL = (
 )
 
 
-def generate_track_token(entity_id: str, tenant_id: str, entity_type: str = "letter") -> str:
+def generate_track_token(
+    entity_id: str, tenant_id: str, entity_type: str = "letter"
+) -> str:
     raw = f"{entity_id}:{tenant_id}:{entity_type}:{secrets.token_hex(8)}"
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
@@ -52,11 +54,15 @@ async def track_view(
         expires_at_raw = data.get("expires_at")
         if expires_at_raw:
             try:
-                expires_at = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
+                expires_at = datetime.fromisoformat(
+                    str(expires_at_raw).replace("Z", "+00:00")
+                )
                 if datetime.now(UTC) > expires_at:
                     return Response(content=TRACKING_PIXEL, media_type="image/gif")
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.error(f"Error: {e}")
 
         entity_type = data.get("entity_type", "letter")
         entity_id_raw = data.get("entity_id")

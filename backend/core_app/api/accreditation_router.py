@@ -25,12 +25,14 @@ def create_item(
 ):
     row = (
         db.execute(
-            text("""
+            text(
+                """
             INSERT INTO accreditation_items
             (tenant_id, standard_ref, category, required_docs, status, score_weight)
             VALUES (:tid, :ref, :cat, :docs::jsonb, 'not_started', :w)
             RETURNING id
-        """),
+        """
+            ),
             {
                 "tid": str(user.tenant_id),
                 "ref": payload.standard_ref,
@@ -81,7 +83,11 @@ def update_item(
 
     sets = ", ".join(
         [
-            f"{k} = :{k}" if k != "required_docs" else "required_docs = :required_docs::jsonb"
+            (
+                f"{k} = :{k}"
+                if k != "required_docs"
+                else "required_docs = :required_docs::jsonb"
+            )
             for k in updates
         ]
     )
@@ -89,9 +95,11 @@ def update_item(
         return {"ok": True}
 
     db.execute(
-        text(f"""UPDATE accreditation_items
+        text(
+            f"""UPDATE accreditation_items
                 SET {sets}, version = version + 1, updated_at = now()
-                WHERE id=:id AND tenant_id=:tid"""),
+                WHERE id=:id AND tenant_id=:tid"""
+        ),
         {**updates, "id": item_id, "tid": str(user.tenant_id)},
     )
     db.commit()
@@ -100,12 +108,15 @@ def update_item(
 
 @router.get("/dashboard", response_model=AccreditationDashboard)
 def dashboard(
-    db: Session = Depends(db_session_dependency), user: CurrentUser = Depends(get_current_user)
+    db: Session = Depends(db_session_dependency),
+    user: CurrentUser = Depends(get_current_user),
 ) -> AccreditationDashboard:
     rows = (
         db.execute(
-            text("""SELECT category, status, score_weight FROM accreditation_items
-                WHERE tenant_id=:tid AND deleted_at IS NULL"""),
+            text(
+                """SELECT category, status, score_weight FROM accreditation_items
+                WHERE tenant_id=:tid AND deleted_at IS NULL"""
+            ),
             {"tid": str(user.tenant_id)},
         )
         .mappings()
@@ -113,7 +124,9 @@ def dashboard(
     )
 
     total_weight = sum(int(r["score_weight"]) for r in rows) or 1
-    complete_weight = sum(int(r["score_weight"]) for r in rows if r["status"] == "complete")
+    complete_weight = sum(
+        int(r["score_weight"]) for r in rows if r["status"] == "complete"
+    )
     score = round(100.0 * complete_weight / total_weight, 2)
 
     by_cat = {}

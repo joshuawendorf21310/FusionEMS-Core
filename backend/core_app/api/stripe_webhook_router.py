@@ -55,7 +55,9 @@ async def stripe_webhook(
     webhook_secret = settings.stripe_webhook_secret
 
     if not webhook_secret or webhook_secret.startswith("REPLACE"):
-        logger.error("stripe_webhook_secret_not_configured correlation_id=%s", correlation_id)
+        logger.error(
+            "stripe_webhook_secret_not_configured correlation_id=%s", correlation_id
+        )
         raise HTTPException(status_code=500, detail="webhook_secret_not_configured")
 
     if not stripe_signature:
@@ -97,7 +99,9 @@ async def stripe_webhook(
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    existing = svc.repo("stripe_webhook_receipts").list_raw_by_field("event_id", event_id, limit=2)
+    existing = svc.repo("stripe_webhook_receipts").list_raw_by_field(
+        "event_id", event_id, limit=2
+    )
     if existing:
         logger.info("stripe_webhook_duplicate event_id=%s", event_id)
         return {"status": "duplicate", "event_id": event_id}
@@ -126,7 +130,9 @@ async def stripe_webhook(
             "stripe_events_queue_url_not_configured — cannot enqueue event_id=%s",
             event_id,
         )
-        raise HTTPException(status_code=500, detail="stripe_events_queue_not_configured")
+        raise HTTPException(
+            status_code=500, detail="stripe_events_queue_not_configured"
+        )
     enqueue(
         queue_url,
         {

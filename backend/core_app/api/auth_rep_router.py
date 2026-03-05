@@ -98,17 +98,23 @@ async def register_rep(
                 body=f"Your FusionEMS authorization code: {otp_code}. Expires in {OTP_EXPIRY_MINUTES} min.",
             )
             sent = True
-        except TelnyxNotConfigured:
-            pass
+        except TelnyxNotConfigured as e:
+            import logging
+
+            logging.error(f"Error: {e}")
 
     if (not sent) and payload.email:
         try:
             get_ses_service().send_otp(
-                email=payload.email, otp_code=otp_code, expires_minutes=OTP_EXPIRY_MINUTES
+                email=payload.email,
+                otp_code=otp_code,
+                expires_minutes=OTP_EXPIRY_MINUTES,
             )
             sent = True
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+
+            logging.error(f"Error: {e}")
 
     return {
         "session_id": str(session_id),
@@ -288,7 +294,9 @@ async def sign_authorization(
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
-    rep_rec = svc.repo("authorized_reps").get(tenant_id=current.tenant_id, record_id=payload.rep_id)
+    rep_rec = svc.repo("authorized_reps").get(
+        tenant_id=current.tenant_id, record_id=payload.rep_id
+    )
     if rep_rec is None:
         raise HTTPException(status_code=404, detail="authorized_rep_not_found")
     await svc.update(
@@ -334,11 +342,11 @@ async def upload_rep_document_multipart(
     from core_app.documents.s3_storage import default_docs_bucket, put_bytes
 
     bucket = default_docs_bucket()
-    doc_key = (
-        f"tenants/{current.tenant_id}/rep-docs/{uuid.uuid4()}/{getattr(file, 'filename', 'upload')}"
-    )
+    doc_key = f"tenants/{current.tenant_id}/rep-docs/{uuid.uuid4()}/{getattr(file, 'filename', 'upload')}"
     if bucket:
-        put_bytes(bucket=bucket, key=doc_key, content=content, content_type=content_type)
+        put_bytes(
+            bucket=bucket, key=doc_key, content=content, content_type=content_type
+        )
 
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)

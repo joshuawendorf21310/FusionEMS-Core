@@ -141,7 +141,7 @@ export default function BillingIntelligencePage() {
           setRevBars(monthly.map((v: number) => Math.round((v / maxVal) * 100)));
         }
       })
-      .catch(() => {});
+      .catch((e) => console.error(e));
   }, []);
 
   return (

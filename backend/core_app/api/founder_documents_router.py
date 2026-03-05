@@ -81,13 +81,17 @@ async def list_executed_documents(
                     bucket=settings.s3_bucket_docs, key=s3_key, expires_seconds=300
                 )
             except Exception as exc:
-                logger.warning("Could not generate presigned URL for %s: %s", s3_key, exc)
+                logger.warning(
+                    "Could not generate presigned URL for %s: %s", s3_key, exc
+                )
         results.append(
             {
                 "id": str(row["id"]),
                 "doc_data": doc_data,
                 "packet_data": dict(row["packet_data"] or {}),
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "created_at": (
+                    row["created_at"].isoformat() if row["created_at"] else None
+                ),
                 "presigned_url": presigned_url,
             }
         )
@@ -125,7 +129,9 @@ async def download_executed_document(
     try:
         from core_app.documents.s3_storage import presign_get
 
-        url = presign_get(bucket=settings.s3_bucket_docs, key=s3_key, expires_seconds=300)
+        url = presign_get(
+            bucket=settings.s3_bucket_docs, key=s3_key, expires_seconds=300
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"S3 error: {str(exc)}")
 
@@ -181,17 +187,25 @@ async def list_onboarding_applications(
                 "tenant_id": str(row["tenant_id"]) if row["tenant_id"] else None,
                 "stripe_customer_id": row["stripe_customer_id"],
                 "stripe_subscription_id": row["stripe_subscription_id"],
-                "provisioned_at": row["provisioned_at"].isoformat()
-                if row["provisioned_at"]
-                else None,
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "provisioned_at": (
+                    row["provisioned_at"].isoformat() if row["provisioned_at"] else None
+                ),
+                "created_at": (
+                    row["created_at"].isoformat() if row["created_at"] else None
+                ),
                 "packet_id": str(row["packet_id"]) if row["packet_id"] else None,
-                "packet_data": dict(row["packet_data"] or {}) if row["packet_data"] else None,
+                "packet_data": (
+                    dict(row["packet_data"] or {}) if row["packet_data"] else None
+                ),
                 "pipeline_stage": row["status"],
             }
         )
 
-    return {"applications": results, "total": len(results), "pipeline_order": pipeline_order}
+    return {
+        "applications": results,
+        "total": len(results),
+        "pipeline_order": pipeline_order,
+    }
 
 
 @router.post("/onboarding-applications/{application_id}/resend-legal")
@@ -314,7 +328,8 @@ async def manual_provision(
 ):
     if not payload.get("confirm"):
         raise HTTPException(
-            status_code=422, detail="confirm: true is required to manually trigger provisioning"
+            status_code=422,
+            detail="confirm: true is required to manually trigger provisioning",
         )
 
     app_row = (
@@ -373,7 +388,9 @@ async def revoke_application(
 ):
     app_row = (
         db.execute(
-            text("SELECT id, tenant_id FROM onboarding_applications WHERE id = :app_id"),
+            text(
+                "SELECT id, tenant_id FROM onboarding_applications WHERE id = :app_id"
+            ),
             {"app_id": application_id},
         )
         .mappings()
@@ -383,7 +400,9 @@ async def revoke_application(
         raise HTTPException(status_code=404, detail="Application not found")
 
     db.execute(
-        text("UPDATE onboarding_applications SET status = 'revoked' WHERE id = :app_id"),
+        text(
+            "UPDATE onboarding_applications SET status = 'revoked' WHERE id = :app_id"
+        ),
         {"app_id": application_id},
     )
 
@@ -446,7 +465,9 @@ async def list_sign_events(
                 "event_category": "sign_event",
                 "id": str(row["id"]),
                 "data": dict(row["data"] or {}),
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "created_at": (
+                    row["created_at"].isoformat() if row["created_at"] else None
+                ),
             }
         )
     for row in doc_events:
@@ -455,7 +476,9 @@ async def list_sign_events(
                 "event_category": "document_event",
                 "id": str(row["id"]),
                 "data": dict(row["data"] or {}),
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "created_at": (
+                    row["created_at"].isoformat() if row["created_at"] else None
+                ),
             }
         )
 

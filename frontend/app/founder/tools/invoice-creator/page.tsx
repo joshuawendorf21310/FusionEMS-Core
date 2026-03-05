@@ -1,9 +1,9 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
+const API = process.env.NEXT_PUBLIC_API_URL || '';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -41,24 +41,12 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
   );
 }
 
-const INVOICES = [
-  { num: 'INV-2024-008', client: 'Agency A', amount: '$1,440', date: 'Jan 25', due: 'Feb 24', status: 'Paid' as const },
-  { num: 'INV-2024-007', client: 'Agency B', amount: '$2,880', date: 'Jan 20', due: 'Feb 19', status: 'Outstanding' as const },
-  { num: 'INV-2024-006', client: 'Agency C', amount: '$1,440', date: 'Jan 15', due: 'Feb 14', status: 'Paid' as const },
-  { num: 'INV-2024-005', client: 'Agency D', amount: '$720', date: 'Jan 10', due: 'Feb 9', status: 'Outstanding' as const },
-  { num: 'INV-2024-004', client: 'Agency A', amount: '$1,440', date: 'Dec 25', due: 'Jan 24', status: 'Paid' as const },
-  { num: 'INV-2024-003', client: 'Agency B', amount: '$2,880', date: 'Dec 20', due: 'Jan 19', status: 'Paid' as const },
-  { num: 'INV-2024-002', client: 'Agency C', amount: '$1,440', date: 'Dec 15', due: 'Jan 14', status: 'Paid' as const },
-  { num: 'INV-2024-001', client: 'Agency D', amount: '$720', date: 'Dec 10', due: 'Jan 9', status: 'Paid' as const },
-];
-
-const OUTSTANDING = INVOICES.filter((inv) => inv.status === 'Outstanding');
-
 export default function InvoiceCreatorPage() {
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [invoiceForm, setInvoiceForm] = useState({
     client: '',
-    invoiceDate: '2026-01-27',
-    dueDate: '2026-02-26',
+    invoiceDate: new Date().toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     description: '',
   });
   const [lineItems, setLineItems] = useState([
@@ -78,9 +66,35 @@ export default function InvoiceCreatorPage() {
     setLineItems([...lineItems, { desc: '', amount: 0 }]);
   }
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+    fetch(`${API}/api/v1/ar/accounts`, { headers })
+      .then(res => {
+        if (!res.ok) throw new Error('API Error');
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          const formatted = data.map((d: any) => ({
+            num: d.id.substring(0, 8).toUpperCase(),
+            client: d.data?.patient_ref?.name || 'Unknown',
+            amount: `$${((d.data?.balance_cents || 0) / 100).toFixed(2)}`,
+            date: d.created_at?.substring(0, 10) || 'N/A',
+            due: d.data?.next_statement_at?.substring(0, 10) || 'N/A',
+            status: d.data?.status === 'current' ? 'Paid' : 'Outstanding',
+          }));
+          setInvoices(formatted);
+        }
+      })
+      .catch(e => setInvoices([]));
+  }, []);
+
+  const OUTSTANDING = invoices.filter((inv) => inv.status === 'Outstanding');
+
   return (
     <div className="min-h-screen bg-bg-void text-text-primary p-6 space-y-6">
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-[10px] font-bold text-orange-dim font-mono tracking-widest uppercase">
@@ -96,14 +110,13 @@ export default function InvoiceCreatorPage() {
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Generate professional invoices · track payment status · revenue</p>
       </motion.div>
 
-      {/* MODULE 1 — Quick Stats */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Invoices This Month', value: '8', status: 'info' as const },
-            { label: 'Total Invoiced', value: '$24,800', status: 'info' as const },
-            { label: 'Paid', value: '$19,200', status: 'ok' as const },
-            { label: 'Outstanding', value: '$5,600', status: 'warn' as const },
+            { label: 'Invoices This Month', value: String(invoices.length), status: 'info' as const },
+            { label: 'Total Invoiced', value: '-', status: 'info' as const },
+            { label: 'Paid', value: String(invoices.filter(i => i.status === 'Paid').length), status: 'ok' as const },
+            { label: 'Outstanding', value: String(OUTSTANDING.length), status: 'warn' as const },
           ].map((s) => (
             <Panel key={s.label} className="flex flex-col gap-1">
               <span className="text-[10px] text-[rgba(255,255,255,0.4)] uppercase tracking-wider">{s.label}</span>
@@ -119,7 +132,6 @@ export default function InvoiceCreatorPage() {
         </div>
       </motion.div>
 
-      {/* MODULE 2 — Create Invoice */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Panel>
           <SectionHeader number="2" title="Create Invoice" />
@@ -164,7 +176,6 @@ export default function InvoiceCreatorPage() {
             </div>
           </div>
 
-          {/* Line Items */}
           <div className="mb-3">
             <p className="text-[10px] text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Line Items</p>
             <div className="space-y-2">
@@ -203,7 +214,6 @@ export default function InvoiceCreatorPage() {
             </button>
           </div>
 
-          {/* Totals */}
           <div className="border-t border-border-subtle pt-3 flex flex-col items-end gap-1 mb-4">
             <div className="flex gap-8 text-xs">
               <span className="text-[rgba(255,255,255,0.4)]">Subtotal</span>
@@ -228,7 +238,6 @@ export default function InvoiceCreatorPage() {
         </Panel>
       </motion.div>
 
-      {/* MODULE 3 — Recent Invoices */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
         <Panel>
           <SectionHeader number="3" title="Recent Invoices" />
@@ -244,32 +253,33 @@ export default function InvoiceCreatorPage() {
                 </tr>
               </thead>
               <tbody>
-                {INVOICES.map((inv, i) => (
-                  <tr key={i} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.02)]">
-                    <td className="py-2 px-2 font-mono text-[rgba(255,107,26,0.8)] text-[11px]">{inv.num}</td>
-                    <td className="py-2 px-2 text-[rgba(255,255,255,0.75)]">{inv.client}</td>
-                    <td className="py-2 px-2 font-mono text-[rgba(255,255,255,0.85)] font-semibold">{inv.amount}</td>
-                    <td className="py-2 px-2 text-[rgba(255,255,255,0.45)]">{inv.date}</td>
-                    <td className="py-2 px-2 text-[rgba(255,255,255,0.45)]">{inv.due}</td>
-                    <td className="py-2 px-2">
-                      <Badge
-                        label={inv.status}
-                        status={inv.status === 'Paid' ? 'ok' : 'warn'}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {invoices.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-4 text-[rgba(255,255,255,0.35)]">No invoices generated yet.</td></tr>
+                ) : (
+                  invoices.map((inv, i) => (
+                    <tr key={i} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.02)]">
+                      <td className="py-2 px-2 font-mono text-[rgba(255,107,26,0.8)] text-[11px]">{inv.num}</td>
+                      <td className="py-2 px-2 text-[rgba(255,255,255,0.75)]">{inv.client}</td>
+                      <td className="py-2 px-2 font-mono text-[rgba(255,255,255,0.85)] font-semibold">{inv.amount}</td>
+                      <td className="py-2 px-2 text-[rgba(255,255,255,0.45)]">{inv.date}</td>
+                      <td className="py-2 px-2 text-[rgba(255,255,255,0.45)]">{inv.due}</td>
+                      <td className="py-2 px-2">
+                        <Badge label={inv.status} status={inv.status === 'Paid' ? 'ok' : 'warn'} />
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </Panel>
       </motion.div>
 
-      {/* MODULE 4 — Payment Tracking */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <Panel>
           <SectionHeader number="4" title="Payment Tracking" sub="outstanding invoices" />
           <div className="space-y-3">
+            {OUTSTANDING.length === 0 && <p className="text-xs text-[rgba(255,255,255,0.35)]">No outstanding invoices.</p>}
             {OUTSTANDING.map((inv, i) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-sm" style={{ background: 'rgba(255,152,0,0.06)', border: '1px solid rgba(255,152,0,0.2)' }}>
                 <div>
@@ -280,7 +290,7 @@ export default function InvoiceCreatorPage() {
                   <div className="flex items-center gap-3 mt-0.5">
                     <span className="font-mono text-sm font-bold text-status-warning">{inv.amount}</span>
                     <span className="text-[10px] text-[rgba(255,255,255,0.35)]">Due {inv.due}</span>
-                    <Badge label="8 days overdue" status="warn" />
+                    <Badge label="Needs Attention" status="warn" />
                   </div>
                 </div>
                 <button
@@ -295,7 +305,6 @@ export default function InvoiceCreatorPage() {
         </Panel>
       </motion.div>
 
-      {/* MODULE 5 — Invoice Settings */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
         <Panel>
           <SectionHeader number="5" title="Invoice Settings" />

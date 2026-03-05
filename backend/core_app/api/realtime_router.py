@@ -58,7 +58,11 @@ async def realtime_sse(
 
     async def event_stream() -> AsyncIterator[str]:
         yield _sse(
-            {"eventType": "connected", "tenantId": tenant_id, "ts": datetime.now(UTC).isoformat()}
+            {
+                "eventType": "connected",
+                "tenantId": tenant_id,
+                "ts": datetime.now(UTC).isoformat(),
+            }
         )
         last_heartbeat = 0.0
 
@@ -72,14 +76,18 @@ async def realtime_sse(
                 if now - last_heartbeat > 15:
                     last_heartbeat = now
                     await _presence_ping(r, tenant_id, "user", str(current.user_id))
-                    yield _sse({"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()})
+                    yield _sse(
+                        {"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()}
+                    )
 
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1.0
+                )
                 if message and message.get("type") in ("pmessage", "message"):
                     raw = message.get("data")
                     try:
                         payload = json.loads(raw) if isinstance(raw, str) else raw
-                    except Exception:
+                    except Exception as e:
                         payload = {"eventType": "raw", "data": raw}
                     yield _sse(payload)
 
@@ -105,7 +113,9 @@ async def realtime_ws(websocket: WebSocket) -> None:
         return
 
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
+        )
         tenant_id = payload.get("tenant_id")
         user_id = payload.get("sub")
         if not tenant_id or not user_id:
@@ -131,13 +141,17 @@ async def realtime_ws(websocket: WebSocket) -> None:
                 last_ping = now
                 await _presence_ping(r, tenant_id_str, "user", str(user_id))
                 await websocket.send_text(
-                    json.dumps({"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()})
+                    json.dumps(
+                        {"eventType": "heartbeat", "ts": datetime.now(UTC).isoformat()}
+                    )
                 )
 
             msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if msg and msg.get("type") == "pmessage":
                 raw = msg.get("data")
-                await websocket.send_text(raw if isinstance(raw, str) else json.dumps(raw))
+                await websocket.send_text(
+                    raw if isinstance(raw, str) else json.dumps(raw)
+                )
             await asyncio.sleep(0.01)
 
     async def receiver() -> None:
@@ -145,7 +159,7 @@ async def realtime_ws(websocket: WebSocket) -> None:
             data = await websocket.receive_text()
             try:
                 obj = json.loads(data)
-            except Exception:
+            except Exception as e:
                 continue
             if obj.get("type") == "subscribe":
                 req_patterns = obj.get("patterns") or []
@@ -161,8 +175,10 @@ async def realtime_ws(websocket: WebSocket) -> None:
     recv_task = asyncio.create_task(receiver())
     try:
         await asyncio.gather(send_task, recv_task)
-    except (WebSocketDisconnect, asyncio.CancelledError):
-        pass
+    except (WebSocketDisconnect, asyncio.CancelledError) as e:
+        import logging
+
+        logging.error(f"Error: {e}")
     finally:
         send_task.cancel()
         recv_task.cancel()

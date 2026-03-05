@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.billing.statement_pdf import (
     TEMPLATE_VERSION,
     StatementContext,
@@ -97,7 +101,9 @@ def _load_tenant_stripe_account(db: Session, tenant_id: uuid.UUID) -> str:
         .first()
     )
     if not row or not row["acct"]:
-        raise HTTPException(status_code=422, detail="tenant_stripe_account_not_connected")
+        raise HTTPException(
+            status_code=422, detail="tenant_stripe_account_not_connected"
+        )
     return row["acct"]
 
 
@@ -128,7 +134,8 @@ async def mail_statement(
         tenant_id=str(current.tenant_id),
         patient_name=body.patient_name,
         patient_address=body.patient_address,
-        agency_name=body.agency_address.get("agency_name") or body.agency_address.get("name", ""),
+        agency_name=body.agency_address.get("agency_name")
+        or body.agency_address.get("name", ""),
         agency_address=body.agency_address,
         agency_phone=body.agency_phone,
         incident_date=body.incident_date,
@@ -143,11 +150,14 @@ async def mail_statement(
     try:
         pdf_bytes, outbound_sha256 = generate_billing_statement_pdf(ctx)
     except Exception as exc:
-        logger.error("pdf_generation_failed statement_id=%s error=%s", statement_id, exc)
+        logger.error(
+            "pdf_generation_failed statement_id=%s error=%s", statement_id, exc
+        )
         raise HTTPException(status_code=500, detail=f"pdf_generation_failed: {exc}")
 
     from_address = {
-        "name": body.agency_address.get("agency_name") or body.agency_address.get("name", ""),
+        "name": body.agency_address.get("agency_name")
+        or body.agency_address.get("name", ""),
         "line1": body.agency_address.get("line1", ""),
         "line2": body.agency_address.get("line2", ""),
         "city": body.agency_address.get("city", ""),
@@ -257,7 +267,8 @@ async def create_payment_session(
             amount_cents=amount_due_cents,
             statement_id=str(statement_id),
             tenant_id=str(current.tenant_id),
-            patient_account_ref=body.patient_account_ref or data.get("patient_account_ref"),
+            patient_account_ref=body.patient_account_ref
+            or data.get("patient_account_ref"),
             lob_letter_id=lob_letter_id,
             success_url=f"{settings.api_base_url}/patient/pay/success?stmt={statement_id}",
             cancel_url=f"{settings.api_base_url}/patient/pay/cancel?stmt={statement_id}",
@@ -265,7 +276,9 @@ async def create_payment_session(
     except StripeNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
-        logger.error("stripe_checkout_failed statement_id=%s error=%s", statement_id, exc)
+        logger.error(
+            "stripe_checkout_failed statement_id=%s error=%s", statement_id, exc
+        )
         raise HTTPException(status_code=502, detail=f"stripe_error: {exc}")
 
     # Persist payment link record
@@ -341,7 +354,9 @@ async def send_payment_sms(
             cancel_url=f"{settings.api_base_url}/patient/pay/cancel?stmt={statement_id}",
         )
     except Exception as exc:
-        logger.error("sms_checkout_create_failed statement_id=%s error=%s", statement_id, exc)
+        logger.error(
+            "sms_checkout_create_failed statement_id=%s error=%s", statement_id, exc
+        )
         raise HTTPException(status_code=502, detail=f"stripe_error: {exc}")
 
     checkout_url: str = checkout["checkout_url"]
@@ -401,5 +416,7 @@ async def list_patient_statements(
     from core_app.services.event_publisher import get_event_publisher
 
     svc = DominationService(db, get_event_publisher())
-    rows = svc.repo("ar_statements").list(tenant_id=current.tenant_id, limit=limit, offset=offset)
+    rows = svc.repo("ar_statements").list(
+        tenant_id=current.tenant_id, limit=limit, offset=offset
+    )
     return {"statements": rows, "total": len(rows)}

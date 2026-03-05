@@ -89,7 +89,7 @@ export default function PatientStatementsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/v1/patient/statements');
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/patient/statements');
         if (!res.ok) throw new Error('Not OK');
         const data = await res.json();
         setStatements(data);

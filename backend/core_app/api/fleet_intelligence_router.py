@@ -34,7 +34,9 @@ async def fleet_readiness(
     db: Session = Depends(db_session_dependency),
 ):
     _check(current)
-    engine = ReadinessEngine(db, get_event_publisher(), current.tenant_id, current.user_id)
+    engine = ReadinessEngine(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
     return engine.fleet_summary()
 
 
@@ -46,7 +48,9 @@ async def unit_readiness(
     db: Session = Depends(db_session_dependency),
 ):
     _check(current)
-    engine = ReadinessEngine(db, get_event_publisher(), current.tenant_id, current.user_id)
+    engine = ReadinessEngine(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
     correlation_id = getattr(request.state, "correlation_id", None)
     return await engine.persist_readiness(unit_id, correlation_id=correlation_id)
 
@@ -68,8 +72,12 @@ async def analyze_obd(
         raise HTTPException(status_code=422, detail="unit_id must be a valid UUID")
     obd_data = payload.get("obd", payload)
     correlation_id = getattr(request.state, "correlation_id", None)
-    detector = FaultDetector(db, get_event_publisher(), current.tenant_id, current.user_id)
-    return await detector.process_and_store(unit_id, obd_data, correlation_id=correlation_id)
+    detector = FaultDetector(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
+    return await detector.process_and_store(
+        unit_id, obd_data, correlation_id=correlation_id
+    )
 
 
 @router.get("/alerts")
@@ -83,11 +91,15 @@ async def list_alerts(
 ):
     _check(current)
     svc = _svc(db)
-    alerts = svc.repo("fleet_alerts").list(tenant_id=current.tenant_id, limit=min(limit, 500))
+    alerts = svc.repo("fleet_alerts").list(
+        tenant_id=current.tenant_id, limit=min(limit, 500)
+    )
     if unit_id:
         alerts = [a for a in alerts if (a.get("data") or {}).get("unit_id") == unit_id]
     if severity:
-        alerts = [a for a in alerts if (a.get("data") or {}).get("severity") == severity]
+        alerts = [
+            a for a in alerts if (a.get("data") or {}).get("severity") == severity
+        ]
     if unresolved_only:
         alerts = [a for a in alerts if not (a.get("data") or {}).get("resolved")]
     return alerts
@@ -103,7 +115,9 @@ async def resolve_alert(
 ):
     _check(current)
     svc = _svc(db)
-    alert = svc.repo("fleet_alerts").get(tenant_id=current.tenant_id, record_id=alert_id)
+    alert = svc.repo("fleet_alerts").get(
+        tenant_id=current.tenant_id, record_id=alert_id
+    )
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -191,7 +205,9 @@ async def update_work_order(
 ):
     _check(current)
     svc = _svc(db)
-    order = svc.repo("maintenance_work_orders").get(tenant_id=current.tenant_id, record_id=order_id)
+    order = svc.repo("maintenance_work_orders").get(
+        tenant_id=current.tenant_id, record_id=order_id
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Work order not found")
     correlation_id = getattr(request.state, "correlation_id", None)

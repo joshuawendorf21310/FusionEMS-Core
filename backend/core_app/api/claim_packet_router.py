@@ -37,8 +37,12 @@ def _load_claim_bundle(
 
     patient_raw = cdata.get("patient") or {}
     patient_data = {
-        "first_name": patient_raw.get("first_name") or cdata.get("patient_first_name") or "",
-        "last_name": patient_raw.get("last_name") or cdata.get("patient_last_name") or "",
+        "first_name": patient_raw.get("first_name")
+        or cdata.get("patient_first_name")
+        or "",
+        "last_name": patient_raw.get("last_name")
+        or cdata.get("patient_last_name")
+        or "",
         "dob": patient_raw.get("dob") or cdata.get("patient_dob") or "",
         "gender": patient_raw.get("sex")
         or patient_raw.get("gender")
@@ -52,7 +56,9 @@ def _load_claim_bundle(
         "agency_name": cdata.get("billing_name") or "Unknown Agency",
     }
 
-    all_docs = svc.repo("documents").list_raw_by_field("owner_entity_id", str(claim_id), limit=100)
+    all_docs = svc.repo("documents").list_raw_by_field(
+        "owner_entity_id", str(claim_id), limit=100
+    )
     attachments: list[dict] = []
     for d in all_docs:
         dd = d.get("data") or {}
@@ -82,7 +88,9 @@ async def generate_claim_packet(
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    claim_data, patient_data, attachments = _load_claim_bundle(svc, current.tenant_id, claim_id)
+    claim_data, patient_data, attachments = _load_claim_bundle(
+        svc, current.tenant_id, claim_id
+    )
 
     gen = ClaimPacketGenerator()
     pdf_bytes = gen.generate_claim_packet(
@@ -98,7 +106,9 @@ async def generate_claim_packet(
 
     ts = _timestamp_slug()
     s3_key = f"claim_packets/{current.tenant_id}/{claim_id}/packet_{ts}.pdf"
-    put_bytes(bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf")
+    put_bytes(
+        bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf"
+    )
 
     pdf_record = await svc.create(
         table="documents",
@@ -123,8 +133,10 @@ async def generate_claim_packet(
     try:
         if pdf_bytes[:4] == b"%PDF":
             page_count = pdf_bytes.count(b"/Page\n") + pdf_bytes.count(b"/Page ")
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.error(f"Error: {e}")
 
     publisher.publish_sync(
         topic=f"tenant.{current.tenant_id}.claim.packet.generated",
@@ -132,7 +144,11 @@ async def generate_claim_packet(
         entity_id=claim_id,
         entity_type="claim_packet",
         event_type="CLAIM_PACKET_GENERATED",
-        payload={"pdf_id": str(pdf_record["id"]), "claim_id": str(claim_id), "s3_key": s3_key},
+        payload={
+            "pdf_id": str(pdf_record["id"]),
+            "claim_id": str(claim_id),
+            "s3_key": s3_key,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
@@ -170,7 +186,9 @@ async def get_latest_claim_packet(
     bucket = ldata.get("bucket", "")
     s3_key = ldata.get("s3_key", "")
     download_url = (
-        presign_get(bucket=bucket, key=s3_key, expires_seconds=300) if bucket and s3_key else None
+        presign_get(bucket=bucket, key=s3_key, expires_seconds=300)
+        if bucket and s3_key
+        else None
     )
 
     return {
@@ -206,4 +224,8 @@ async def download_claim_packet(
         raise HTTPException(status_code=404, detail="no_s3_key_on_record")
 
     download_url = presign_get(bucket=bucket, key=s3_key, expires_seconds=300)
-    return {"pdf_id": str(pdf_id), "download_url": download_url, "expires_in_seconds": 300}
+    return {
+        "pdf_id": str(pdf_id),
+        "download_url": download_url,
+        "expires_in_seconds": 300,
+    }

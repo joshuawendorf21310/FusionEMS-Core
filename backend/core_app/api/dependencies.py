@@ -13,7 +13,28 @@ from core_app.schemas.auth import CurrentUser
 from core_app.services.cognito_jwt import CognitoAuthError, verify_cognito_jwt
 from core_app.services.opa import OpaError, check_policy, opa_enabled
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+class CustomOAuth2PasswordBearer(OAuth2PasswordBearer):
+    async def __call__(self, request: Request) -> str | None:
+        authorization = request.headers.get("Authorization")
+        scheme, param = "", ""
+        if authorization:
+            parts = authorization.split()
+            if len(parts) == 2:
+                scheme, param = parts
+        
+        if not authorization or scheme.lower() != "bearer":
+            param = request.query_params.get("token")
+            
+        if not param and self.auto_error:
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return param
+
+oauth2_scheme = CustomOAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def db_session_dependency(db: Session = Depends(get_db_session)) -> Session:
@@ -97,7 +118,8 @@ def get_current_user(
     request.state.user_id = current.user_id
     # Enforce database tenant isolation via Postgres RLS
     db.execute(
-        text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(current.tenant_id)}
+        text("SELECT set_config('app.tenant_id', :tid, true)"),
+        {"tid": str(current.tenant_id)},
     )
 
     if hasattr(request.state, "audit_context"):
@@ -107,9 +129,13 @@ def get_current_user(
 
 
 def require_role(*allowed_roles: str):
-    def _dependency(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    def _dependency(
+        current_user: CurrentUser = Depends(get_current_user),
+    ) -> CurrentUser:
         if current_user.role not in allowed_roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+            )
         return current_user
 
     return _dependency
@@ -132,16 +158,21 @@ def require_permission(permission: str):
                 allowed = check_policy(input_doc)
             except OpaError as exc:
                 raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OPA unavailable"
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="OPA unavailable",
                 ) from exc
             if not allowed:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+                )
         return current_user
 
     return _dependency
 
 
-def get_tenant_id(request: Request, current_user: CurrentUser = Depends(get_current_user)) -> UUID:
+def get_tenant_id(
+    request: Request, current_user: CurrentUser = Depends(get_current_user)
+) -> UUID:
     request.state.tenant_id = current_user.tenant_id
     request.state.user_id = current_user.user_id
     return current_user.tenant_id

@@ -94,7 +94,9 @@ def _compute_acuity(payload: dict[str, Any]) -> dict[str, Any]:
                 if level != "CCT":
                     level = "ALS"
                 score += 25
-                triggered_rules.append(f"R05:als_complaint:{als_term.replace(' ', '_')}")
+                triggered_rules.append(
+                    f"R05:als_complaint:{als_term.replace(' ', '_')}"
+                )
                 break
 
     for mech in _HIGH_RISK_MECHANISMS:
@@ -124,8 +126,10 @@ def _compute_acuity(payload: dict[str, Any]) -> dict[str, Any]:
                 score += 5
                 triggered_rules.append("R09:geriatric_age_gt_80")
                 risk_flags.append("GERIATRIC")
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as e:
+            import logging
+
+            logging.error(f"Error: {e}")
 
     if distance is not None:
         try:
@@ -134,8 +138,10 @@ def _compute_acuity(payload: dict[str, Any]) -> dict[str, Any]:
                 level = "ALS"
                 score += 5
                 triggered_rules.append("R10:long_distance_als_upgrade")
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as e:
+            import logging
+
+            logging.error(f"Error: {e}")
 
     score = min(score, 100)
     if score >= 60:
@@ -316,7 +322,9 @@ async def ops_board(
 ):
     svc = DominationService(db, get_event_publisher())
     return {
-        "calls": svc.repo("calls").list(tenant_id=current.tenant_id, limit=limit, offset=0),
+        "calls": svc.repo("calls").list(
+            tenant_id=current.tenant_id, limit=limit, offset=0
+        ),
         "unit_status_events": svc.repo("unit_status_events").list(
             tenant_id=current.tenant_id, limit=limit, offset=0
         ),
@@ -329,5 +337,7 @@ async def ops_board(
         "fleet_alerts": svc.repo("fleet_alerts").list(
             tenant_id=current.tenant_id, limit=limit, offset=0
         ),
-        "crew_pages": svc.repo("pages").list(tenant_id=current.tenant_id, limit=limit, offset=0),
+        "crew_pages": svc.repo("pages").list(
+            tenant_id=current.tenant_id, limit=limit, offset=0
+        ),
     }

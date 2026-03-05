@@ -17,7 +17,9 @@ router = APIRouter(prefix="/api/v1/founder/neris", tags=["NERIS Packs"])
 
 
 def _manager(db: Session, current: CurrentUser) -> NERISPackManager:
-    return NERISPackManager(db, get_event_publisher(), current.tenant_id, current.user_id)
+    return NERISPackManager(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
 
 
 def _validator(db: Session, current: CurrentUser) -> NERISValidator:
@@ -50,7 +52,9 @@ def _enqueue_pack_compile(pack_id: str, tenant_id: str, actor_user_id: str) -> N
             ),
         )
     except Exception as exc:
-        _log.error("neris_pack_compile_enqueue_failed pack_id=%s error=%s", pack_id, exc)
+        _log.error(
+            "neris_pack_compile_enqueue_failed pack_id=%s error=%s", pack_id, exc
+        )
 
 
 @router.post("/packs/import")
@@ -87,7 +91,9 @@ async def activate_pack(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     if result is None:
-        raise HTTPException(status_code=409, detail="Version conflict or pack not found")
+        raise HTTPException(
+            status_code=409, detail="Version conflict or pack not found"
+        )
     return result
 
 
@@ -109,8 +115,12 @@ async def get_pack(
     pack = mgr.get_pack(pack_id)
     if pack is None:
         raise HTTPException(status_code=404, detail="Pack not found")
-    files = mgr.svc.repo("neris_pack_files").list(tenant_id=current.tenant_id, limit=500)
-    pack_files = [f for f in files if (f.get("data") or {}).get("pack_id") == str(pack_id)]
+    files = mgr.svc.repo("neris_pack_files").list(
+        tenant_id=current.tenant_id, limit=500
+    )
+    pack_files = [
+        f for f in files if (f.get("data") or {}).get("pack_id") == str(pack_id)
+    ]
     return {"pack": pack, "files": pack_files}
 
 

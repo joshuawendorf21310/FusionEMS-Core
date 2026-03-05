@@ -15,16 +15,20 @@ router = APIRouter(prefix="/public/roi", tags=["roi"])
 
 
 @router.post("/calc", response_model=RoiScenarioResponse)
-def calc(payload: RoiInput, db: Session = Depends(db_session_dependency)) -> RoiScenarioResponse:
+def calc(
+    payload: RoiInput, db: Session = Depends(db_session_dependency)
+) -> RoiScenarioResponse:
     outputs = compute_roi(payload.model_dump())
     outputs_hash = hash_outputs(outputs)
     row = (
         db.execute(
-            text("""
+            text(
+                """
             INSERT INTO roi_scenarios (zip_code, inputs, outputs, outputs_hash)
             VALUES (:zip, :inputs::jsonb, :outputs::jsonb, :h)
             RETURNING id
-        """),
+        """
+            ),
             {
                 "zip": payload.zip_code,
                 "inputs": json.dumps(payload.model_dump()),
@@ -36,11 +40,15 @@ def calc(payload: RoiInput, db: Session = Depends(db_session_dependency)) -> Roi
         .first()
     )
     db.commit()
-    return RoiScenarioResponse(id=str(row["id"]), outputs=outputs, outputs_hash=outputs_hash)
+    return RoiScenarioResponse(
+        id=str(row["id"]), outputs=outputs, outputs_hash=outputs_hash
+    )
 
 
 @router.post("/proposal-pdf")
-def proposal_pdf(payload: RoiInput, db: Session = Depends(db_session_dependency)) -> Response:
+def proposal_pdf(
+    payload: RoiInput, db: Session = Depends(db_session_dependency)
+) -> Response:
     """Generate a PDF ROI proposal for the given ROI inputs."""
     from core_app.builders.pdf_generator import generate_roi_proposal_pdf
 
@@ -53,5 +61,7 @@ def proposal_pdf(payload: RoiInput, db: Session = Depends(db_session_dependency)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=fusionems-roi-proposal.pdf"},
+        headers={
+            "Content-Disposition": "attachment; filename=fusionems-roi-proposal.pdf"
+        },
     )

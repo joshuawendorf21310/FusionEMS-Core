@@ -38,7 +38,9 @@ async def roi(payload: dict[str, Any], request: Request):
 
 @router.post("/public/signup/start", include_in_schema=True)
 async def signup(
-    payload: dict[str, Any], request: Request, db: Session = Depends(db_session_dependency)
+    payload: dict[str, Any],
+    request: Request,
+    db: Session = Depends(db_session_dependency),
 ):
     import stripe as stripe_lib
 
@@ -46,7 +48,7 @@ async def signup(
     system_tenant = settings.system_tenant_id
     try:
         tenant_uuid = uuid.UUID(system_tenant) if system_tenant else uuid.uuid4()
-    except Exception:
+    except Exception as e:
         tenant_uuid = uuid.uuid4()
     svc = DominationService(db, get_event_publisher())
     application = await svc.create(
@@ -126,11 +128,17 @@ async def signup(
         cancel_url=f"{base_url}/onboarding/cancel?application_id={application_id}",
     )
 
-    return {"status": "ok", "application_id": application_id, "checkout_url": session.url}
+    return {
+        "status": "ok",
+        "application_id": application_id,
+        "checkout_url": session.url,
+    }
 
 
 @router.post("/public/webhooks/stripe", include_in_schema=True)
-async def stripe_webhook(request: Request, db: Session = Depends(db_session_dependency)):
+async def stripe_webhook(
+    request: Request, db: Session = Depends(db_session_dependency)
+):
     settings = get_settings()
     payload_bytes = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
@@ -145,7 +153,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(db_session_depe
         )
     except StripeNotConfigured as e:
         raise HTTPException(status_code=500, detail=str(e))
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=400, detail="invalid_signature")
 
     event_id = event.get("id")
@@ -155,8 +163,12 @@ async def stripe_webhook(request: Request, db: Session = Depends(db_session_depe
 
     settings_system_tenant = settings.system_tenant_id
     try:
-        system_uuid = uuid.UUID(settings_system_tenant) if settings_system_tenant else uuid.uuid4()
-    except Exception:
+        system_uuid = (
+            uuid.UUID(settings_system_tenant)
+            if settings_system_tenant
+            else uuid.uuid4()
+        )
+    except Exception as e:
         system_uuid = uuid.uuid4()
 
     idempotency_tenant = system_uuid
@@ -222,14 +234,21 @@ async def _handle_onboarding_payment(
         return
 
     if app_row["status"] == "provisioned":
-        logger.info("Stripe webhook: application %s already provisioned, skipping.", application_id)
+        logger.info(
+            "Stripe webhook: application %s already provisioned, skipping.",
+            application_id,
+        )
         return
 
     try:
-        result = await provision_tenant_from_application(db, application_id, dict(app_row), event)
+        result = await provision_tenant_from_application(
+            db, application_id, dict(app_row), event
+        )
     except Exception as exc:
         logger.error(
-            "provision_tenant_from_application failed for application %s: %s", application_id, exc
+            "provision_tenant_from_application failed for application %s: %s",
+            application_id,
+            exc,
         )
         return
 
@@ -273,7 +292,7 @@ async def _handle_tenant_billing_event(
         pi_id = pi_obj.get("id")
         try:
             tenant_uuid = uuid.UUID(str(tenant_id))
-        except Exception:
+        except Exception as e:
             tenant_uuid = uuid.uuid4()
         publisher = get_event_publisher()
         await emit_payment_confirmed(

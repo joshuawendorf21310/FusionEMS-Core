@@ -49,14 +49,27 @@ def _compute_cms_score(data: dict[str, Any]) -> dict[str, Any]:
 
     transport_reason = (data.get("transport_reason") or "").strip()
     gate(
-        "transport_reason_provided", bool(transport_reason), 15, "Reason for transport is required."
+        "transport_reason_provided",
+        bool(transport_reason),
+        15,
+        "Reason for transport is required.",
     )
 
     origin_address = (data.get("origin_address") or "").strip()
-    gate("origin_address_provided", bool(origin_address), 10, "Origin address is required.")
+    gate(
+        "origin_address_provided",
+        bool(origin_address),
+        10,
+        "Origin address is required.",
+    )
 
     destination = (data.get("destination_name") or "").strip()
-    gate("destination_provided", bool(destination), 10, "Destination facility/address is required.")
+    gate(
+        "destination_provided",
+        bool(destination),
+        10,
+        "Destination facility/address is required.",
+    )
 
     pcs_present = bool(data.get("pcs_on_file") or data.get("pcs_obtained"))
     transport_level = (data.get("transport_level") or "").upper()
@@ -71,9 +84,16 @@ def _compute_cms_score(data: dict[str, Any]) -> dict[str, Any]:
         gate("pcs_present_for_als", True, 20, "")
 
     necessity_documented = bool(data.get("medical_necessity_documented"))
-    gate("necessity_documented", necessity_documented, 15, "Medical necessity must be documented.")
+    gate(
+        "necessity_documented",
+        necessity_documented,
+        15,
+        "Medical necessity must be documented.",
+    )
 
-    signature_present = bool(data.get("patient_signature") or data.get("signature_on_file"))
+    signature_present = bool(
+        data.get("patient_signature") or data.get("signature_on_file")
+    )
     gate(
         "signature_present",
         signature_present,
@@ -82,11 +102,22 @@ def _compute_cms_score(data: dict[str, Any]) -> dict[str, Any]:
     )
 
     insurance_present = bool(
-        data.get("primary_insurance_id") or data.get("medicare_id") or data.get("medicaid_id")
+        data.get("primary_insurance_id")
+        or data.get("medicare_id")
+        or data.get("medicaid_id")
     )
-    gate("insurance_verified", insurance_present, 5, "Insurance information should be provided.")
+    gate(
+        "insurance_verified",
+        insurance_present,
+        5,
+        "Insurance information should be provided.",
+    )
 
-    free_text = (data.get("transport_reason") or "") + " " + (data.get("patient_condition") or "")
+    free_text = (
+        (data.get("transport_reason") or "")
+        + " "
+        + (data.get("patient_condition") or "")
+    )
     bs_phrases = [
         "taxi",
         "no ride",
@@ -191,9 +222,15 @@ async def get_gate_result(
 ):
     _check(current)
     svc = _svc(db)
-    all_results = svc.repo("cms_gate_results").list(tenant_id=current.tenant_id, limit=100)
+    all_results = svc.repo("cms_gate_results").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     result = next(
-        (r for r in reversed(all_results) if (r.get("data") or {}).get("case_id") == str(case_id)),
+        (
+            r
+            for r in reversed(all_results)
+            if (r.get("data") or {}).get("case_id") == str(case_id)
+        ),
         None,
     )
     if not result:

@@ -20,7 +20,9 @@ def _svc(db: Session) -> DominationService:
     return DominationService(db, get_event_publisher())
 
 
-def _get_active_pack(svc: DominationService, tenant_id: uuid.UUID) -> dict[str, Any] | None:
+def _get_active_pack(
+    svc: DominationService, tenant_id: uuid.UUID
+) -> dict[str, Any] | None:
     packs = svc.repo("neris_packs").list(tenant_id=tenant_id, limit=100)
     for p in packs:
         if (p.get("data") or {}).get("status") == "active":
@@ -39,7 +41,8 @@ async def validate(
     active_pack = _get_active_pack(svc, current.tenant_id)
     if not active_pack:
         raise HTTPException(
-            status_code=422, detail="No active NERIS pack found. Import and activate a pack first."
+            status_code=422,
+            detail="No active NERIS pack found. Import and activate a pack first.",
         )
     pack_id = uuid.UUID(str(active_pack["id"]))
     entity_type = payload.get("entity_type", "INCIDENT")
@@ -80,7 +83,9 @@ async def create_export(
         incident_ids = [uuid.UUID(i) for i in incident_ids_raw]
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=f"Invalid UUID: {exc}")
-    exporter = NERISExporter(db, get_event_publisher(), current.tenant_id, current.user_id)
+    exporter = NERISExporter(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
     result = await exporter.generate_bundle(
         department_id=dept_id,
         incident_ids=incident_ids,
@@ -96,7 +101,9 @@ async def get_export(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    rec = svc.repo("neris_export_jobs").get(tenant_id=current.tenant_id, record_id=job_id)
+    rec = svc.repo("neris_export_jobs").get(
+        tenant_id=current.tenant_id, record_id=job_id
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Export job not found")
     return rec

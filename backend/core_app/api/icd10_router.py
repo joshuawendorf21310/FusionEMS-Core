@@ -44,14 +44,18 @@ async def get_code(code: str, db: Session = Depends(db_session_dependency)):
 
 
 @router.post("/icd10/import", dependencies=[Depends(require_role("admin", "founder"))])
-async def import_codes(payload: dict[str, Any], db: Session = Depends(db_session_dependency)):
+async def import_codes(
+    payload: dict[str, Any], db: Session = Depends(db_session_dependency)
+):
     # payload expects list under 'codes' with fields: code, short_description, long_description, version_year
     codes = payload.get("codes", [])
     for c in codes:
         db.execute(
-            text("""INSERT INTO icd10_codes (id, code, short_description, long_description, version_year, created_at, updated_at)
+            text(
+                """INSERT INTO icd10_codes (id, code, short_description, long_description, version_year, created_at, updated_at)
                              VALUES (gen_random_uuid(), :code, :sd, :ld, :vy, now(), now())
-                             ON CONFLICT (code, version_year) DO NOTHING"""),
+                             ON CONFLICT (code, version_year) DO NOTHING"""
+            ),
             {
                 "code": c["code"],
                 "sd": c.get("short_description", ""),

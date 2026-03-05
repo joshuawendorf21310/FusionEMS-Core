@@ -64,7 +64,9 @@ async def lob_webhook(
     webhook_secret = getattr(settings, "lob_webhook_secret", "")
 
     if not webhook_secret or webhook_secret.startswith("REPLACE"):
-        logger.error("lob_webhook_secret_not_configured correlation_id=%s", correlation_id)
+        logger.error(
+            "lob_webhook_secret_not_configured correlation_id=%s", correlation_id
+        )
         raise HTTPException(status_code=500, detail="webhook_secret_not_configured")
 
     if not verify_lob_webhook_signature(
@@ -84,12 +86,14 @@ async def lob_webhook(
     # ── 2. Parse body ─────────────────────────────────────────────────────────
     try:
         payload: dict[str, Any] = json.loads(raw_body)
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=400, detail="invalid_json")
 
     event_id: str = payload.get("id") or str(uuid.uuid4())
     event_type: str = (
-        payload.get("event_type", {}).get("id") or payload.get("event_type") or "unknown"
+        payload.get("event_type", {}).get("id")
+        or payload.get("event_type")
+        or "unknown"
     )
     payload_sha256 = hashlib.sha256(raw_body).hexdigest()
 
@@ -105,7 +109,9 @@ async def lob_webhook(
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    existing = svc.repo("lob_webhook_receipts").list_raw_by_field("event_id", event_id, limit=2)
+    existing = svc.repo("lob_webhook_receipts").list_raw_by_field(
+        "event_id", event_id, limit=2
+    )
     if existing:
         logger.info("lob_webhook_duplicate event_id=%s", event_id)
         return {"status": "duplicate", "event_id": event_id}

@@ -44,7 +44,9 @@ async def create_incident(
 async def list_incidents(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
+    current_user: CurrentUser = Depends(
+        require_role("ems", "billing", "admin", "founder")
+    ),
     service: IncidentService = Depends(incident_service_dependency),
 ) -> IncidentListResponse:
     return await service.list_incidents(
@@ -55,10 +57,14 @@ async def list_incidents(
 @router.get("/{incident_id}", response_model=IncidentResponse)
 async def get_incident(
     incident_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
+    current_user: CurrentUser = Depends(
+        require_role("ems", "billing", "admin", "founder")
+    ),
     service: IncidentService = Depends(incident_service_dependency),
 ) -> IncidentResponse:
-    return await service.get_incident(tenant_id=current_user.tenant_id, incident_id=incident_id)
+    return await service.get_incident(
+        tenant_id=current_user.tenant_id, incident_id=incident_id
+    )
 
 
 @router.patch("/{incident_id}", response_model=IncidentResponse)

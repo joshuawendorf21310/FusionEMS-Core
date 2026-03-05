@@ -19,7 +19,9 @@ def list_logs(
     return [AuditLogResponse.model_validate(row, from_attributes=True) for row in rows]
 
 
-@router.post("/logs", response_model=AuditLogResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/logs", response_model=AuditLogResponse, status_code=status.HTTP_201_CREATED
+)
 def create_audit_log(
     payload: AuditMutationRequest,
     request: Request,

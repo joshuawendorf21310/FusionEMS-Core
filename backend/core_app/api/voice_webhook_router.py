@@ -63,7 +63,10 @@ def _resolve_tenant_by_did(db: Session, to_number: str) -> dict[str, Any] | None
         {"phone": to_number},
     ).fetchone()
     if row:
-        return {"tenant_id": str(row.tenant_id), "forward_to": row.forward_to_phone_e164}
+        return {
+            "tenant_id": str(row.tenant_id),
+            "forward_to": row.forward_to_phone_e164,
+        }
     return None
 
 
@@ -140,7 +143,11 @@ def _get_call(db: Session, call_control_id: str) -> dict[str, Any] | None:
 
 
 def _insert_event(
-    db: Session, event_id: str, event_type: str, tenant_id: str | None, raw: dict[str, Any]
+    db: Session,
+    event_id: str,
+    event_type: str,
+    tenant_id: str | None,
+    raw: dict[str, Any],
 ) -> bool:
     result = db.execute(
         text(
@@ -170,7 +177,9 @@ def _mark_event_processed(db: Session, event_id: str) -> None:
 
 def _validate_statement(db: Session, tenant_id: str, statement_id_digits: str) -> bool:
     row = db.execute(
-        text("SELECT id FROM billing_cases WHERE id::text = :sid AND tenant_id = :tid LIMIT 1"),
+        text(
+            "SELECT id FROM billing_cases WHERE id::text = :sid AND tenant_id = :tid LIMIT 1"
+        ),
         {"sid": statement_id_digits, "tid": tenant_id},
     ).fetchone()
     if row:
@@ -253,7 +262,9 @@ def _do_transfer(
     from_phone: str,
 ) -> None:
     if forward_to:
-        logger.info("ivr_transfer call_control_id=%s to=%s", call_control_id, forward_to)
+        logger.info(
+            "ivr_transfer call_control_id=%s to=%s", call_control_id, forward_to
+        )
         call_transfer(
             api_key=api_key,
             call_control_id=call_control_id,
@@ -302,7 +313,7 @@ async def telnyx_voice_webhook(
 
     try:
         payload = json.loads(raw_body)
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=400, detail="invalid_json")
 
     data = payload.get("data", {})
@@ -428,7 +439,7 @@ async def _handle_gather(
     try:
         call_state_bytes = base64.b64decode(raw_client_state + "==")
         call_state = call_state_bytes.decode("utf-8")
-    except Exception:
+    except Exception as e:
         call_state = raw_client_state
 
     call_record = _get_call(db, call_control_id)
@@ -436,7 +447,9 @@ async def _handle_gather(
         logger.warning("ivr_no_call_record call_control_id=%s", call_control_id)
         return
 
-    forward_to = (tenant_info or {}).get("forward_to") or _get_tenant_forward(db, tenant_id or "")
+    forward_to = (tenant_info or {}).get("forward_to") or _get_tenant_forward(
+        db, tenant_id or ""
+    )
 
     if status == "no_input" or not digits:
         _update_call(db, call_control_id, state=STATE_TRANSFER)
@@ -477,7 +490,11 @@ async def _handle_gather(
                 _do_transfer(api_key, call_control_id, forward_to, from_number)
         else:
             _update_call(
-                db, call_control_id, state=STATE_COLLECT_PHONE, statement_id=digits, attempts=0
+                db,
+                call_control_id,
+                state=STATE_COLLECT_PHONE,
+                statement_id=digits,
+                attempts=0,
             )
             _play_collect_phone(api_key, call_control_id)
         return

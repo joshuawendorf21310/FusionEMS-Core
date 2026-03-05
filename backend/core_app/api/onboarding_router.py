@@ -32,7 +32,9 @@ def _legal_svc(db: Session) -> LegalService:
     return LegalService(db, get_event_publisher())
 
 
-def _get_stripe_price_ids(stage: str, aws_region: str, lookup_keys: list[str]) -> dict[str, str]:
+def _get_stripe_price_ids(
+    stage: str, aws_region: str, lookup_keys: list[str]
+) -> dict[str, str]:
     try:
         import boto3
 
@@ -40,14 +42,20 @@ def _get_stripe_price_ids(stage: str, aws_region: str, lookup_keys: list[str]) -
         prefix = f"/fusionems/{stage}/stripe/prices"
         names = [f"{prefix}/{lk}" for lk in lookup_keys]
         resp = ssm.get_parameters(Names=names, WithDecryption=False)
-        return {p["Name"].split("/")[-1]: p["Value"] for p in resp.get("Parameters", [])}
+        return {
+            p["Name"].split("/")[-1]: p["Value"] for p in resp.get("Parameters", [])
+        }
     except Exception as exc:
-        logger.warning("SSM price ID lookup failed: %s — will use price_data fallback", exc)
+        logger.warning(
+            "SSM price ID lookup failed: %s — will use price_data fallback", exc
+        )
         return {}
 
 
 @router.post("/start")
-async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_session_dependency)):
+async def onboarding_start(
+    payload: dict[str, Any], db: Session = Depends(db_session_dependency)
+):
     email = str(payload.get("email", "")).lower().strip()
     agency_name = str(payload.get("agency_name", "")).strip()
     agency_type = str(payload.get("agency_type", "EMS"))
@@ -59,9 +67,13 @@ async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_ses
     selected_modules = payload.get("selected_modules", [])
 
     if not email or not agency_name:
-        raise HTTPException(status_code=422, detail="email and agency_name are required")
+        raise HTTPException(
+            status_code=422, detail="email and agency_name are required"
+        )
     if agency_type not in ("EMS", "Fire", "HEMS"):
-        raise HTTPException(status_code=422, detail="agency_type must be EMS, Fire, or HEMS")
+        raise HTTPException(
+            status_code=422, detail="agency_type must be EMS, Fire, or HEMS"
+        )
 
     roi = compute_roi(
         {
@@ -140,7 +152,9 @@ async def onboarding_start(payload: dict[str, Any], db: Session = Depends(db_ses
 
 
 @router.post("/apply")
-async def onboarding_apply(payload: dict[str, Any], db: Session = Depends(db_session_dependency)):
+async def onboarding_apply(
+    payload: dict[str, Any], db: Session = Depends(db_session_dependency)
+):
     email = str(payload.get("email", "")).lower().strip()
     agency_name = str(payload.get("agency_name", "")).strip()
     agency_type = str(payload.get("agency_type", "EMS")).strip()
@@ -159,7 +173,9 @@ async def onboarding_apply(payload: dict[str, Any], db: Session = Depends(db_ses
     placement_method = str(payload.get("placement_method", "portal_upload"))
 
     if not email or not agency_name:
-        raise HTTPException(status_code=422, detail="email and agency_name are required")
+        raise HTTPException(
+            status_code=422, detail="email and agency_name are required"
+        )
 
     try:
         quote = calculate_quote(
@@ -268,7 +284,9 @@ async def legal_packet_create(
         "agency_name": app_row["agency_name"],
         "agency_type": app_row["agency_type"],
         "annual_call_volume": app_row["annual_call_volume"],
-        "selected_modules": app_row["selected_modules"] if app_row["selected_modules"] else [],
+        "selected_modules": (
+            app_row["selected_modules"] if app_row["selected_modules"] else []
+        ),
         "current_billing_percent": app_row["current_billing_percent"],
     }
 
@@ -281,7 +299,9 @@ async def legal_packet_create(
     )
 
     db.execute(
-        text("UPDATE onboarding_applications SET status = 'legal_pending' WHERE id = :app_id"),
+        text(
+            "UPDATE onboarding_applications SET status = 'legal_pending' WHERE id = :app_id"
+        ),
         {"app_id": application_id},
     )
     db.commit()
@@ -315,7 +335,9 @@ async def legal_packet_sign(
     svc = _legal_svc(db)
     packet = svc.get_packet(packet_id, application_id)
     if packet is None:
-        raise HTTPException(status_code=404, detail="Packet not found or application_id mismatch")
+        raise HTTPException(
+            status_code=404, detail="Packet not found or application_id mismatch"
+        )
 
     signing_data = {
         "signer_name": payload.get("signer_name", ""),
@@ -333,7 +355,9 @@ async def legal_packet_sign(
         raise HTTPException(status_code=422, detail=str(exc))
 
     db.execute(
-        text("UPDATE onboarding_applications SET legal_status = 'signed' WHERE id = :app_id"),
+        text(
+            "UPDATE onboarding_applications SET legal_status = 'signed' WHERE id = :app_id"
+        ),
         {"app_id": application_id},
     )
     db.commit()
@@ -351,7 +375,9 @@ async def legal_packet_sign(
 
 
 @router.post("/checkout/start")
-async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_session_dependency)):
+async def checkout_start(
+    payload: dict[str, Any], db: Session = Depends(db_session_dependency)
+):
     application_id = str(payload.get("application_id", "")).strip()
     if not application_id:
         raise HTTPException(status_code=422, detail="application_id is required")
@@ -373,7 +399,9 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
     if app_row is None:
         raise HTTPException(status_code=404, detail="Application not found")
     if app_row["legal_status"] != "signed":
-        raise HTTPException(status_code=422, detail="Legal documents must be signed before payment")
+        raise HTTPException(
+            status_code=422, detail="Legal documents must be signed before payment"
+        )
 
     settings = get_settings()
 
@@ -439,7 +467,11 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
                     entry["quantity"] = item.get("quantity", 1)
                 line_items.append(entry)
             else:
-                from core_app.pricing.catalog import ADDONS, BILLING_TIERS, SCHEDULING_TIERS
+                from core_app.pricing.catalog import (
+                    ADDONS,
+                    BILLING_TIERS,
+                    SCHEDULING_TIERS,
+                )
 
                 unit_amount = _lookup_key_to_cents(
                     lk, SCHEDULING_TIERS, BILLING_TIERS, ADDONS, quote
@@ -451,7 +483,9 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
                         "unit_amount": unit_amount,
                         "recurring": {
                             "interval": "month",
-                            **({"usage_type": "metered"} if item.get("metered") else {}),
+                            **(
+                                {"usage_type": "metered"} if item.get("metered") else {}
+                            ),
                         },
                     },
                 }
@@ -461,7 +495,8 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
 
         if not line_items:
             raise HTTPException(
-                status_code=422, detail="No billable line items for this plan configuration"
+                status_code=422,
+                detail="No billable line items for this plan configuration",
             )
 
         base_url = settings.api_base_url.rstrip("/")
@@ -486,7 +521,11 @@ async def checkout_start(payload: dict[str, Any], db: Session = Depends(db_sessi
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Stripe checkout creation failed for application %s: %s", application_id, exc)
+        logger.error(
+            "Stripe checkout creation failed for application %s: %s",
+            application_id,
+            exc,
+        )
         raise HTTPException(status_code=500, detail=f"Stripe error: {str(exc)}")
 
 
@@ -512,7 +551,9 @@ def _lookup_key_to_cents(
 
 
 @router.get("/status/{application_id}")
-async def onboarding_status(application_id: str, db: Session = Depends(db_session_dependency)):
+async def onboarding_status(
+    application_id: str, db: Session = Depends(db_session_dependency)
+):
     app_row = (
         db.execute(
             text(

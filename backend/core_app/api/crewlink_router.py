@@ -56,7 +56,9 @@ async def active(
     offset: int = 0,
 ):
     svc = DominationService(db, get_event_publisher())
-    return svc.repo("pages").list(tenant_id=current.tenant_id, limit=limit, offset=offset)
+    return svc.repo("pages").list(
+        tenant_id=current.tenant_id, limit=limit, offset=offset
+    )
 
 
 @router.post("/availability/me")

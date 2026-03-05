@@ -40,7 +40,9 @@ def _check_role(current: CurrentUser) -> None:
 
 
 def _manager(db: Session, current: CurrentUser) -> NERISPackManager:
-    return NERISPackManager(db, get_event_publisher(), current.tenant_id, current.user_id)
+    return NERISPackManager(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
 
 
 def _validator(db: Session, current: CurrentUser) -> NERISValidator:
@@ -51,12 +53,16 @@ def _exporter(db: Session, current: CurrentUser) -> NERISExporter:
     return NERISExporter(db, get_event_publisher(), current.tenant_id, current.user_id)
 
 
-def _get_onboarding(svc: DominationService, tenant_id: uuid.UUID) -> dict[str, Any] | None:
+def _get_onboarding(
+    svc: DominationService, tenant_id: uuid.UUID
+) -> dict[str, Any] | None:
     records = svc.repo("neris_onboarding").list(tenant_id=tenant_id, limit=1)
     return records[0] if records else None
 
 
-def _get_active_pack(svc: DominationService, tenant_id: uuid.UUID) -> dict[str, Any] | None:
+def _get_active_pack(
+    svc: DominationService, tenant_id: uuid.UUID
+) -> dict[str, Any] | None:
     packs = svc.repo("neris_packs").list(tenant_id=tenant_id, limit=100)
     for p in packs:
         if (p.get("data") or {}).get("status") == "active":
@@ -155,7 +161,8 @@ async def onboarding_step_complete(
         active_pack = _get_active_pack(svc, current.tenant_id)
         if not active_pack:
             raise HTTPException(
-                status_code=422, detail="An active NERIS pack is required before completing step 7."
+                status_code=422,
+                detail="An active NERIS pack is required before completing step 7.",
             )
         dept_id_str = rdata.get("department_id")
         if dept_id_str:
@@ -179,7 +186,8 @@ async def onboarding_step_complete(
                     )
             except ValueError:
                 raise HTTPException(
-                    status_code=422, detail="Invalid department_id in onboarding record."
+                    status_code=422,
+                    detail="Invalid department_id in onboarding record.",
                 )
 
     step_status[step_id] = "complete"
@@ -226,7 +234,8 @@ async def validate_entity(
     active_pack = _get_active_pack(svc, current.tenant_id)
     if not active_pack:
         raise HTTPException(
-            status_code=422, detail="No active NERIS pack found. Import and activate a pack first."
+            status_code=422,
+            detail="No active NERIS pack found. Import and activate a pack first.",
         )
 
     exporter = _exporter(db, current)
@@ -258,7 +267,9 @@ async def validate_incident(
     if not active_pack:
         raise HTTPException(status_code=422, detail="No active NERIS pack found.")
 
-    inc = svc.repo("fire_incidents").get(tenant_id=current.tenant_id, record_id=incident_id)
+    inc = svc.repo("fire_incidents").get(
+        tenant_id=current.tenant_id, record_id=incident_id
+    )
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
 
@@ -305,15 +316,21 @@ async def export_incidents(
     exporter = _exporter(db, current)
     incidents = svc.repo("fire_incidents").list(tenant_id=current.tenant_id, limit=500)
     incidents = [
-        i for i in incidents if (i.get("data") or {}).get("department_id") == str(department_id)
+        i
+        for i in incidents
+        if (i.get("data") or {}).get("department_id") == str(department_id)
     ]
     if date_from:
         incidents = [
-            i for i in incidents if (i.get("data") or {}).get("start_datetime", "") >= date_from
+            i
+            for i in incidents
+            if (i.get("data") or {}).get("start_datetime", "") >= date_from
         ]
     if date_to:
         incidents = [
-            i for i in incidents if (i.get("data") or {}).get("start_datetime", "") <= date_to
+            i
+            for i in incidents
+            if (i.get("data") or {}).get("start_datetime", "") <= date_to
         ]
     return [exporter.build_incident_payload(i) for i in incidents]
 
@@ -348,17 +365,25 @@ async def export_bundle(
         except ValueError:
             raise HTTPException(status_code=422, detail="Invalid UUID in incident_ids")
     else:
-        incidents = svc.repo("fire_incidents").list(tenant_id=current.tenant_id, limit=500)
+        incidents = svc.repo("fire_incidents").list(
+            tenant_id=current.tenant_id, limit=500
+        )
         incidents = [
-            i for i in incidents if (i.get("data") or {}).get("department_id") == str(dept_id)
+            i
+            for i in incidents
+            if (i.get("data") or {}).get("department_id") == str(dept_id)
         ]
         if date_from:
             incidents = [
-                i for i in incidents if (i.get("data") or {}).get("start_datetime", "") >= date_from
+                i
+                for i in incidents
+                if (i.get("data") or {}).get("start_datetime", "") >= date_from
             ]
         if date_to:
             incidents = [
-                i for i in incidents if (i.get("data") or {}).get("start_datetime", "") <= date_to
+                i
+                for i in incidents
+                if (i.get("data") or {}).get("start_datetime", "") <= date_to
             ]
         incident_ids = [uuid.UUID(str(i["id"])) for i in incidents]
 
@@ -373,11 +398,13 @@ def _require_onboarding_complete(db: Session, current: CurrentUser) -> None:
     record = _get_onboarding(svc, current.tenant_id)
     if not record:
         raise HTTPException(
-            status_code=422, detail="Onboarding not started. Complete onboarding before exporting."
+            status_code=422,
+            detail="Onboarding not started. Complete onboarding before exporting.",
         )
     rdata = record.get("data") or {}
     step_status = rdata.get("step_status_json") or {}
     if step_status.get("7") != "complete":
         raise HTTPException(
-            status_code=422, detail="Onboarding step 7 must be completed before exporting."
+            status_code=422,
+            detail="Onboarding step 7 must be completed before exporting.",
         )

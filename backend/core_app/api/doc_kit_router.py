@@ -31,8 +31,10 @@ def _resolve_tenant_info(svc: DominationService, tenant_id: uuid.UUID) -> dict:
         rows = svc.repo("tenants").list(tenant_id=tenant_id, limit=1)
         if rows:
             return rows[0].get("data") or {}
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.error(f"Error: {e}")
     return {}
 
 
@@ -49,8 +51,12 @@ async def generate_agency_doc_kit(
     settings = get_settings()
 
     tenant_data = _resolve_tenant_info(svc, current.tenant_id)
-    agency_name = tenant_data.get("agency_name") or tenant_data.get("name") or "Unknown Agency"
-    fax_number = tenant_data.get("billing_fax") or tenant_data.get("fax_number") or "N/A"
+    agency_name = (
+        tenant_data.get("agency_name") or tenant_data.get("name") or "Unknown Agency"
+    )
+    fax_number = (
+        tenant_data.get("billing_fax") or tenant_data.get("fax_number") or "N/A"
+    )
     inbound_email = (
         tenant_data.get("billing_email")
         or tenant_data.get("email")
@@ -77,7 +83,9 @@ async def generate_agency_doc_kit(
 
     ts = _timestamp_slug()
     s3_key = f"doc_kits/{current.tenant_id}/agency_doc_kit_{ts}.pdf"
-    put_bytes(bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf")
+    put_bytes(
+        bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf"
+    )
 
     pdf_record = await svc.create(
         table="documents",
@@ -116,14 +124,20 @@ async def generate_claim_cover_sheet(
     svc = DominationService(db, publisher)
     get_settings()
 
-    case = svc.repo("billing_cases").get(tenant_id=current.tenant_id, record_id=claim_id)
+    case = svc.repo("billing_cases").get(
+        tenant_id=current.tenant_id, record_id=claim_id
+    )
     if not case:
         raise HTTPException(status_code=404, detail="billing_case_not_found")
     cdata = case.get("data") or {}
 
     tenant_data = _resolve_tenant_info(svc, current.tenant_id)
-    agency_name = tenant_data.get("agency_name") or tenant_data.get("name") or "Unknown Agency"
-    fax_number = tenant_data.get("billing_fax") or tenant_data.get("fax_number") or "N/A"
+    agency_name = (
+        tenant_data.get("agency_name") or tenant_data.get("name") or "Unknown Agency"
+    )
+    fax_number = (
+        tenant_data.get("billing_fax") or tenant_data.get("fax_number") or "N/A"
+    )
 
     patient = cdata.get("patient") or {}
     first = patient.get("first_name") or cdata.get("patient_first_name") or ""
@@ -149,7 +163,9 @@ async def generate_claim_cover_sheet(
 
     ts = _timestamp_slug()
     s3_key = f"doc_kits/{current.tenant_id}/claims/{claim_id}/cover_sheet_{ts}.pdf"
-    put_bytes(bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf")
+    put_bytes(
+        bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf"
+    )
 
     pdf_record = await svc.create(
         table="documents",
@@ -205,7 +221,9 @@ async def get_latest_claim_cover_sheet(
     bucket = ldata.get("bucket", "")
     s3_key = ldata.get("s3_key", "")
     download_url = (
-        presign_get(bucket=bucket, key=s3_key, expires_seconds=300) if bucket and s3_key else None
+        presign_get(bucket=bucket, key=s3_key, expires_seconds=300)
+        if bucket and s3_key
+        else None
     )
 
     return {

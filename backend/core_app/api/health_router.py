@@ -27,7 +27,7 @@ def status(db: Session = Depends(db_session_dependency)) -> dict:
     try:
         db.execute(text("SELECT 1"))
         checks["database"] = "connected"
-    except Exception:
+    except Exception as e:
         checks["database"] = "unreachable"
 
     redis_ok = False
@@ -39,7 +39,7 @@ def status(db: Session = Depends(db_session_dependency)) -> dict:
             r.ping()
             checks["redis"] = "connected"
             redis_ok = True
-        except Exception:
+        except Exception as e:
             checks["redis"] = "unreachable"
     else:
         checks["redis"] = "not_configured"

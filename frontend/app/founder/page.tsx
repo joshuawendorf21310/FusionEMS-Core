@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { QuantumEmptyState } from '@/components/ui';
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
+const API = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '';
 
 function KpiCard({
   label,
@@ -23,6 +24,7 @@ function KpiCard({
 }) {
   const trendColor = trend === 'up' ? 'var(--color-status-active)' : trend === 'down' ? 'var(--color-brand-red)' : 'rgba(255,255,255,0.38)';
   const trendIcon = trend === 'up' ? '▲' : trend === 'down' ? '▼' : '—';
+  
   const inner = (
     <div
       className="bg-bg-panel border border-border-DEFAULT p-4 h-full flex flex-col justify-between hover:border-[rgba(255,107,26,0.3)] transition-colors cursor-pointer group"
@@ -62,14 +64,18 @@ function RiskCard({ label, items }: { label: string; items: { text: string; leve
   return (
     <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
       <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">{label}</div>
-      <div className="space-y-1.5">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: levelColor[item.level] }} />
-            <span className="text-xs text-text-secondary">{item.text}</span>
-          </div>
-        ))}
-      </div>
+      {items.length === 0 ? (
+          <div className="text-xs text-[rgba(255,255,255,0.4)]">No data available</div>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: levelColor[item.level] }} />
+              <span className="text-xs text-text-secondary">{item.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -122,7 +128,7 @@ function GrowthVelocityBar({ label, value, max }: { label: string; value: number
 }
 
 export default function FounderExecutivePage() {
-  const [metrics, setMetrics] = useState<Record<string, unknown>>({});
+  const [metrics, setMetrics] = useState<any>({});
   const [aging, setAging] = useState<{ buckets: Array<{ label: string; total_cents: number; count: number }> } | null>(null);
   const [incidentMode, setIncidentMode] = useState(false);
   const [complianceGauges, setComplianceGauges] = useState<Array<{ label: string; value: number; color: string }> | null>(null);
@@ -135,22 +141,25 @@ export default function FounderExecutivePage() {
     }).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
-  const mrr = (metrics as { mrr_cents?: number })?.mrr_cents;
+  const mrr = metrics?.mrr_cents;
   const arr = mrr != null ? mrr * 12 : null;
   const mrrDisplay = mrr != null ? `$${(mrr / 100).toLocaleString()}` : '—';
   const arrDisplay = arr != null ? `$${(arr / 100).toLocaleString()}` : '—';
-  const tenantCount = (metrics as { tenant_count?: number })?.tenant_count ?? '—';
-  const errorCount = (metrics as { error_count_1h?: number })?.error_count_1h ?? 0;
+  const tenantCount = metrics?.tenant_count ?? '—';
+  const errorCount = metrics?.error_count_1h ?? 0;
   const totalAR = aging ? aging.buckets.reduce((a, b) => a + b.total_cents, 0) / 100 : null;
 
-  const DENIAL_HEATMAP = [
-    { payer: 'Medicare', jan: 14, feb: 12, mar: 18, apr: 10, may: 22, jun: 15 },
-    { payer: 'Medicaid', jan: 28, feb: 31, mar: 25, apr: 29, may: 27, jun: 30 },
-    { payer: 'BlueCross', jan: 8,  feb: 9,  mar: 7,  apr: 11, may: 6,  jun: 9 },
-    { payer: 'Aetna',    jan: 19, feb: 21, mar: 20, apr: 17, may: 23, jun: 24 },
-    { payer: 'Uninsured',jan: 45, feb: 43, mar: 48, apr: 42, may: 46, jun: 50 },
-  ];
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  // Real-time integration fallback mapping 
+  const denialHeatmap = metrics?.denial_heatmap ?? [];
+  const actionBriefs = metrics?.action_briefs ?? [];
+  const complianceScore = metrics?.compliance_score ?? '--';
+  const cleanClaimRate = metrics?.clean_claim_rate ?? '--';
+  const exportSuccessRate = metrics?.export_success_rate ?? '--';
+  const aiUtilization = metrics?.ai_utilization ?? '--';
+  const systemIncidents = metrics?.incidents ?? [];
+  const growthMetrics = metrics?.growth ?? { tenants: [], revenue: [] };
+  const riskInfrastructure = metrics?.risk_infra ?? [];
+  const riskBusiness = metrics?.risk_business ?? [];
 
   return (
     <div className="p-5 space-y-8 min-h-screen">
@@ -170,7 +179,7 @@ export default function FounderExecutivePage() {
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">FUSIONEMS QUANTUM</div>
           <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Founder Command OS</h1>
-          <p className="text-xs text-text-muted mt-0.5">Executive Command Overview · 175-Module Control System</p>
+          <p className="text-xs text-text-muted mt-0.5">Executive Command Overview · Real-Time Backend Hooked System</p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/founder/comms/inbox" className="h-8 px-3 bg-[rgba(34,211,238,0.1)] border border-[rgba(34,211,238,0.25)] text-system-billing text-xs font-semibold rounded-sm hover:bg-[rgba(34,211,238,0.15)] transition-colors flex items-center gap-1.5">
@@ -215,79 +224,62 @@ export default function FounderExecutivePage() {
 
       {/* MODULE 3 · Clean Claim Rate + MODULE 6 · Export Success Rate */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Clean Claim Rate" value="94.2%" sub="+1.1% vs last month" trend="up" color="var(--color-status-active)" />
-        <KpiCard label="Export Success Rate" value="98.7%" sub="Last 30 days" trend="up" color="var(--color-status-active)" />
-        <KpiCard label="Compliance Score" value="97 / 100" sub="NEMSIS + CMS + DEA" trend="flat" color="var(--color-status-info)" />
-        <KpiCard label="AI Utilization" value="83%" sub="of interactions AI-handled" trend="up" color="var(--color-system-compliance)" />
+        <KpiCard label="Clean Claim Rate" value={cleanClaimRate} sub="From API" trend="flat" color="var(--color-status-active)" />
+        <KpiCard label="Export Success Rate" value={exportSuccessRate} sub="From API" trend="flat" color="var(--color-status-active)" />
+        <KpiCard label="Compliance Score" value={complianceScore} sub="From API" trend="flat" color="var(--color-status-info)" />
+        <KpiCard label="AI Utilization" value={aiUtilization} sub="From API" trend="flat" color="var(--color-system-compliance)" />
       </div>
 
       {/* MODULE 5 · Denial Rate Heatmap */}
       <div>
         <SectionHeader number="5" title="Denial Rate Heatmap" sub="By payer × month" />
-        <div className="bg-bg-panel border border-border-DEFAULT p-4 overflow-x-auto" style={{ clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)' }}>
-          <table className="w-full min-w-[600px] text-xs">
-            <thead>
-              <tr>
-                <th className="text-left text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)] pb-2 pr-4 font-semibold">Payer</th>
-                {MONTHS.map((m) => (
-                  <th key={m} className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)] pb-2 px-1 font-semibold">{m}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {DENIAL_HEATMAP.map((row) => (
-                <tr key={row.payer}>
-                  <td className="text-text-secondary pr-4 py-0.5 whitespace-nowrap">{row.payer}</td>
-                  {(['jan','feb','mar','apr','may','jun'] as const).map((m) => (
-                    <td key={m} className="px-0.5 py-0.5">
-                      <DenialHeatCell value={row[m]} max={50} />
-                    </td>
+        {denialHeatmap.length === 0 ? (
+          <QuantumEmptyState title="No heat map data" description="Data for Denial Heatmap will populate here from the founder API." icon="activity" />
+        ) : (
+          <div className="bg-bg-panel border border-border-DEFAULT p-4 overflow-x-auto" style={{ clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)' }}>
+            <table className="w-full min-w-[600px] text-xs">
+              <thead>
+                <tr>
+                  <th className="text-left text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)] pb-2 pr-4 font-semibold">Payer</th>
+                  {(Object.keys(denialHeatmap[0]).filter(k => k !== 'payer') as string[]).map((m) => (
+                    <th key={m} className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)] pb-2 px-1 font-semibold">{m}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex items-center gap-3 mt-3 text-[10px] text-[rgba(255,255,255,0.35)]">
-            <span>Low</span>
-            {['var(--color-bg-panel)','var(--color-status-warning)','var(--color-brand-orange)','var(--color-brand-red)'].map((c) => (
-              <span key={c} className="w-6 h-3 inline-block rounded-sm" style={{ background: c }} />
-            ))}
-            <span>High</span>
+              </thead>
+              <tbody>
+                {denialHeatmap.map((row: any) => (
+                  <tr key={row.payer}>
+                    <td className="text-text-secondary pr-4 py-0.5 whitespace-nowrap">{row.payer}</td>
+                    {(Object.keys(row).filter(k => k !== 'payer') as string[]).map((m) => (
+                      <td key={m} className="px-0.5 py-0.5">
+                        <DenialHeatCell value={row[m]} max={50} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
       </div>
 
       {/* MODULE 8–9 · AI + Infrastructure */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <RiskCard
-          label="Infrastructure Health · Module 9"
-          items={[
-            { text: 'ECS: All services operational', level: 'ok' },
-            { text: 'RDS: Latency 12ms avg', level: 'ok' },
-            { text: 'Redis: 0 evictions', level: 'ok' },
-            { text: 'AI GPU: 61% utilization', level: 'ok' },
-            { text: 'SSL: 87 days until expiry', level: 'ok' },
-          ]}
-        />
-        <RiskCard
-          label="Churn · Revenue · Compliance Risks · Modules 11–13"
-          items={[
-            { text: 'Churn risk: 0 tenants flagged', level: 'ok' },
-            { text: 'Revenue: AR aging normal', level: 'ok' },
-            { text: 'Compliance: No critical gaps', level: 'ok' },
-            { text: '3 credential expirations (30d)', level: 'warn' },
-            { text: 'Export failures: 0 (24h)', level: 'ok' },
-          ]}
-        />
+        {riskInfrastructure.length === 0 ? (
+            <RiskCard label="Infrastructure Health" items={[]} />
+        ) : (
+            <RiskCard label="Infrastructure Health · Module 9" items={riskInfrastructure} />
+        )}
+        {riskBusiness.length === 0 ? (
+            <RiskCard label="Churn Risk" items={[]} />
+        ) : (
+            <RiskCard label="Churn · Revenue · Compliance Risks · Modules 11–13" items={riskBusiness} />
+        )}
         <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)' }}>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Module 7 · Compliance Readiness</div>
-          {(complianceGauges ?? [
-            { label: 'NEMSIS v3.5.0', value: 0, color: 'rgba(255,255,255,0.18)' },
-            { label: 'CMS Billing Rules', value: 0, color: 'rgba(255,255,255,0.18)' },
-            { label: 'DEA / Controlled', value: 0, color: 'rgba(255,255,255,0.18)' },
-            { label: 'HIPAA / BAA Coverage', value: 0, color: 'rgba(255,255,255,0.18)' },
-            { label: 'State Export Compat.', value: 0, color: 'rgba(255,255,255,0.18)' },
-          ]).map((item) => (
+          {!complianceGauges || complianceGauges.length === 0 ? (
+             <div className="text-xs text-[rgba(255,255,255,0.4)]">Data synchronizing from API</div>
+          ) : complianceGauges.map((item) => (
             <div key={item.label} className="mb-2">
               <div className="flex justify-between text-[11px] mb-0.5">
                 <span className="text-[rgba(255,255,255,0.55)]">{item.label}</span>
@@ -303,18 +295,20 @@ export default function FounderExecutivePage() {
 
       {/* MODULE 10 · Daily AI Brief */}
       <div>
-        <SectionHeader number="10" title="Daily AI Brief" sub="Top 5 Action Items · AI-generated · updated hourly" />
-        <div className="bg-bg-panel border border-[rgba(255,107,26,0.15)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,107,26,0.8)]">Quantum Intelligence Brief — Today</span>
-          </div>
-          <ActionItemRow rank={1} text="3 denial appeals require founder approval before 5PM — revenue impact ~$4,200" category="Revenue" urgency="high" />
-          <ActionItemRow rank={2} text="Credential expiration for 2 providers in 28 days — schedule renewal now" category="Compliance" urgency="high" />
-          <ActionItemRow rank={3} text="Export queue has 1 item pending retry — automated retry scheduled in 4h" category="Export" urgency="medium" />
-          <ActionItemRow rank={4} text="Tenant onboarding: Agency B awaiting BAA signature (day 3)" category="Onboarding" urgency="medium" />
-          <ActionItemRow rank={5} text="AR aging: 2 claims crossing 90-day threshold this week" category="Billing" urgency="medium" />
-        </div>
+        <SectionHeader number="10" title="Daily AI Brief" sub="Top Action Items · AI-generated · updated hourly" />
+        {actionBriefs.length === 0 ? (
+          <QuantumEmptyState title="No active AI briefs" description="Your AI co-pilot has no pending critical items." icon="activity" />
+        ) : (
+            <div className="bg-bg-panel border border-[rgba(255,107,26,0.15)] p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,107,26,0.8)]">Quantum Intelligence Brief — Today</span>
+              </div>
+              {actionBriefs.map((b: any, rank: number) => (
+                 <ActionItemRow key={rank} rank={rank+1} text={b.text} category={b.category} urgency={b.urgency} />
+              ))}
+            </div>
+        )}
       </div>
 
       {/* MODULE 14 · System Incident Banner */}
@@ -330,7 +324,11 @@ export default function FounderExecutivePage() {
           </div>
           <div className="bg-bg-panel border border-border-DEFAULT p-3" style={{ clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)' }}>
             <div className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)] mb-2">Recent Incidents</div>
-            <div className="text-xs text-[rgba(255,255,255,0.4)]">No incidents in the last 30 days</div>
+            {systemIncidents.length === 0 ? (
+                <div className="text-xs text-[rgba(255,255,255,0.4)]">No incidents in the last 30 days</div>
+            ) : (
+                systemIncidents.map((inc: any, idx: number) => <div key={idx} className="text-xs text-[rgba(255,255,255,0.7)]">{inc.text}</div>)
+            )}
           </div>
         </div>
       </div>
@@ -341,19 +339,27 @@ export default function FounderExecutivePage() {
         <div className="bg-bg-panel border border-border-DEFAULT p-5 grid grid-cols-1 md:grid-cols-2 gap-6" style={{ clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)' }}>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)] mb-3">Tenant Growth</div>
-            <div className="space-y-2">
-              <GrowthVelocityBar label="30d" value={2} max={10} />
-              <GrowthVelocityBar label="90d" value={5} max={10} />
-              <GrowthVelocityBar label="365d" value={10} max={10} />
-            </div>
+            {growthMetrics.tenants.length === 0 ? (
+                <div className="text-xs text-[rgba(255,255,255,0.4)]">Awaiting telemetry...</div>
+            ) : (
+                <div className="space-y-2">
+                {growthMetrics.tenants.map((t: any) => (
+                    <GrowthVelocityBar key={t.label} label={t.label} value={t.value} max={t.max} />
+                ))}
+                </div>
+            )}
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.35)] mb-3">Revenue Growth ($)</div>
-            <div className="space-y-2">
-              <GrowthVelocityBar label="30d" value={1200} max={5000} />
-              <GrowthVelocityBar label="90d" value={3800} max={5000} />
-              <GrowthVelocityBar label="365d" value={5000} max={5000} />
-            </div>
+            {growthMetrics.revenue.length === 0 ? (
+                <div className="text-xs text-[rgba(255,255,255,0.4)]">Awaiting telemetry...</div>
+            ) : (
+                <div className="space-y-2">
+                {growthMetrics.revenue.map((r: any) => (
+                    <GrowthVelocityBar key={r.label} label={r.label} value={r.value} max={r.max} />
+                ))}
+                </div>
+            )}
           </div>
         </div>
       </div>

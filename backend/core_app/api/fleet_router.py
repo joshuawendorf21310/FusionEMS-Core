@@ -22,7 +22,9 @@ async def dashboard(
 ):
     svc = DominationService(db, get_event_publisher())
     return {
-        "alerts": svc.repo("fleet_alerts").list(tenant_id=current.tenant_id, limit=200, offset=0),
+        "alerts": svc.repo("fleet_alerts").list(
+            tenant_id=current.tenant_id, limit=200, offset=0
+        ),
         "maintenance": svc.repo("maintenance_items").list(
             tenant_id=current.tenant_id, limit=200, offset=0
         ),

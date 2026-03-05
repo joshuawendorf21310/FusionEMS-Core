@@ -78,7 +78,9 @@ def _exports_bucket() -> str:
 
 def _upload_to_s3(content: bytes, key: str, content_type: str) -> tuple[str, str]:
     bucket = _exports_bucket()
-    _s3_client().put_object(Bucket=bucket, Key=key, Body=content, ContentType=content_type)
+    _s3_client().put_object(
+        Bucket=bucket, Key=key, Body=content, ContentType=content_type
+    )
     return bucket, key
 
 
@@ -96,7 +98,9 @@ async def create_submission(
     svc = _svc(db)
     corr = getattr(request.state, "correlation_id", None)
 
-    chart_rec = svc.repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    chart_rec = svc.repo("epcr_charts").get(
+        tenant_id=current.tenant_id, record_id=chart_id
+    )
     if chart_rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
 
@@ -126,9 +130,13 @@ async def create_submission(
     now = datetime.now(UTC).isoformat()
 
     # Store XML to S3
-    xml_s3_key = f"nemsis-submissions/{current.tenant_id}/{chart_id}/{submission_id}/payload.xml"
+    xml_s3_key = (
+        f"nemsis-submissions/{current.tenant_id}/{chart_id}/{submission_id}/payload.xml"
+    )
     try:
-        xml_s3_bucket, xml_s3_key = _upload_to_s3(xml_bytes, xml_s3_key, "application/xml")
+        xml_s3_bucket, xml_s3_key = _upload_to_s3(
+            xml_bytes, xml_s3_key, "application/xml"
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"S3 upload failed: {exc}") from exc
 
@@ -151,7 +159,11 @@ async def create_submission(
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
         data=sub_data,
-        typed_columns={"chart_id": chart_id, "state_code": state_code, "status": "pending"},
+        typed_columns={
+            "chart_id": chart_id,
+            "state_code": state_code,
+            "status": "pending",
+        },
         correlation_id=corr,
     )
 
@@ -285,7 +297,9 @@ async def accept_submission(
     if sub_rec:
         chart_id = sub_rec.get("data", {}).get("chart_id")
         if chart_id:
-            chart_rec = svc.repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+            chart_rec = svc.repo("epcr_charts").get(
+                tenant_id=current.tenant_id, record_id=chart_id
+            )
             if chart_rec:
                 locked_data = {
                     **chart_rec.get("data", {}),
@@ -367,7 +381,9 @@ async def retry_submission(
         )
 
     chart_id = orig_data.get("chart_id")
-    chart_rec = svc.repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    chart_rec = svc.repo("epcr_charts").get(
+        tenant_id=current.tenant_id, record_id=chart_id
+    )
     if chart_rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
 
@@ -380,11 +396,11 @@ async def retry_submission(
     new_submission_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
 
-    xml_s3_key = (
-        f"nemsis-submissions/{current.tenant_id}/{chart_id}/{new_submission_id}/payload.xml"
-    )
+    xml_s3_key = f"nemsis-submissions/{current.tenant_id}/{chart_id}/{new_submission_id}/payload.xml"
     try:
-        xml_s3_bucket, xml_s3_key = _upload_to_s3(xml_bytes, xml_s3_key, "application/xml")
+        xml_s3_bucket, xml_s3_key = _upload_to_s3(
+            xml_bytes, xml_s3_key, "application/xml"
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"S3 upload failed: {exc}") from exc
 
@@ -491,13 +507,15 @@ async def _advance_status(
     if isinstance(response_content, str):
         response_content = _b64.b64decode(response_content)
     if response_content:
-        s3_key_str = (
-            f"nemsis-submissions/{current.tenant_id}/{chart_id}/{submission_id}/{s3_subfolder}.xml"
-        )
+        s3_key_str = f"nemsis-submissions/{current.tenant_id}/{chart_id}/{submission_id}/{s3_subfolder}.xml"
         try:
-            s3_bucket, s3_key_str = _upload_to_s3(response_content, s3_key_str, s3_content_type)
+            s3_bucket, s3_key_str = _upload_to_s3(
+                response_content, s3_key_str, s3_content_type
+            )
         except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"S3 upload failed: {exc}") from exc
+            raise HTTPException(
+                status_code=502, detail=f"S3 upload failed: {exc}"
+            ) from exc
 
     patch_data = {
         **rec_data,

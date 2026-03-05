@@ -65,7 +65,10 @@ def _get_tenant_info(db: Session, tenant_id: str) -> dict[str, Any]:
         {"tid": tenant_id},
     ).fetchone()
     if row:
-        return {"name": row.name or "EMS Agency", "billing_phone": row.billing_contact_phone or ""}
+        return {
+            "name": row.name or "EMS Agency",
+            "billing_phone": row.billing_contact_phone or "",
+        }
     return {"name": "EMS Agency", "billing_phone": ""}
 
 
@@ -171,7 +174,7 @@ async def telnyx_sms_webhook(
 
     try:
         payload = json.loads(raw_body)
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=400, detail="invalid_json")
 
     data = payload.get("data", {})
@@ -209,7 +212,16 @@ async def telnyx_sms_webhook(
     )
 
     if event_type == "message.received":
-        _log_sms(db, message_id, tenant_id, "IN", from_number, to_number, body_text, "received")
+        _log_sms(
+            db,
+            message_id,
+            tenant_id,
+            "IN",
+            from_number,
+            to_number,
+            body_text,
+            "received",
+        )
 
         api_key = settings.telnyx_api_key
         if not api_key:
@@ -221,7 +233,9 @@ async def telnyx_sms_webhook(
         if keyword in STOP_KEYWORDS:
             if tenant_id:
                 _upsert_opt_out(db, tenant_id, from_number, source="sms_stop")
-            logger.info("telnyx_sms_opt_out phone=%s tenant_id=%s", from_number, tenant_id)
+            logger.info(
+                "telnyx_sms_opt_out phone=%s tenant_id=%s", from_number, tenant_id
+            )
             _send_reply(
                 api_key=api_key,
                 from_number=to_number,
@@ -251,7 +265,11 @@ async def telnyx_sms_webhook(
             )
 
         else:
-            logger.info("telnyx_sms_unhandled_inbound from=%s body=%.50s", from_number, body_text)
+            logger.info(
+                "telnyx_sms_unhandled_inbound from=%s body=%.50s",
+                from_number,
+                body_text,
+            )
 
     db.execute(
         text("UPDATE telnyx_events SET processed_at = :now WHERE event_id = :eid"),

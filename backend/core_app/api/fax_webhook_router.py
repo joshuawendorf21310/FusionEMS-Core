@@ -64,7 +64,9 @@ def _insert_event(
     return (result.rowcount or 0) > 0
 
 
-def _route_fax_to_case(db: Session, tenant_id: str, fax_id: str, from_phone: str) -> str | None:
+def _route_fax_to_case(
+    db: Session, tenant_id: str, fax_id: str, from_phone: str
+) -> str | None:
     """
     Attempt to route the fax to an open billing case.
     Strategy: look for most recent open billing case for the tenant with no fax_id yet.
@@ -139,7 +141,7 @@ async def telnyx_fax_webhook(
 
     try:
         payload = json.loads(raw_body)
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=400, detail="invalid_json")
 
     data = payload.get("data", {})
@@ -189,10 +191,18 @@ async def telnyx_fax_webhook(
             pdf_bytes = download_media(api_key=api_key, media_url=media_url)
             sha256_hex = hashlib.sha256(pdf_bytes).hexdigest()
             s3_key = _s3_fax_key(tenant_id or "unrouted", fax_id)
-            put_bytes(bucket=bucket, key=s3_key, content=pdf_bytes, content_type="application/pdf")
+            put_bytes(
+                bucket=bucket,
+                key=s3_key,
+                content=pdf_bytes,
+                content_type="application/pdf",
+            )
             store_status = "stored"
             logger.info(
-                "telnyx_fax_stored fax_id=%s s3_key=%s sha256=%s", fax_id, s3_key, sha256_hex
+                "telnyx_fax_stored fax_id=%s s3_key=%s sha256=%s",
+                fax_id,
+                s3_key,
+                sha256_hex,
             )
         except TelnyxApiError as exc:
             logger.error("telnyx_fax_download_failed fax_id=%s error=%s", fax_id, exc)
@@ -208,7 +218,9 @@ async def telnyx_fax_webhook(
             missing.append("S3_BUCKET_DOCS")
         if not media_url:
             missing.append("media_url_in_payload")
-        logger.warning("telnyx_fax_skipping_download fax_id=%s missing=%s", fax_id, missing)
+        logger.warning(
+            "telnyx_fax_skipping_download fax_id=%s missing=%s", fax_id, missing
+        )
 
     if tenant_id and store_status == "stored":
         case_id = _route_fax_to_case(db, tenant_id, fax_id, from_number)

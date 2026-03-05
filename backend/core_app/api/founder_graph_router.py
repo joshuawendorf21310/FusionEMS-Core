@@ -79,7 +79,8 @@ async def list_messages(
 ) -> dict[str, Any]:
     if folder not in _ALLOWED_FOLDERS:
         raise HTTPException(
-            status_code=400, detail=f"invalid_folder: must be one of {sorted(_ALLOWED_FOLDERS)}"
+            status_code=400,
+            detail=f"invalid_folder: must be one of {sorted(_ALLOWED_FOLDERS)}",
         )
     logger.info("graph_mail_list user=%s folder=%s", current.user_id, folder)
     try:
@@ -111,7 +112,9 @@ async def list_attachments(
     message_id: str,
     current: CurrentUser = _FOUNDER,
 ) -> dict[str, Any]:
-    logger.info("graph_mail_attachments user=%s message_id=%s", current.user_id, message_id)
+    logger.info(
+        "graph_mail_attachments user=%s message_id=%s", current.user_id, message_id
+    )
     try:
         client = get_graph_client()
         return client.list_attachments(message_id)
@@ -151,7 +154,9 @@ async def send_mail(
     logger.info("graph_send_mail user=%s to=%s", current.user_id, body.to)
     try:
         client = get_graph_client()
-        client.send_mail(to=body.to, subject=body.subject, body_html=body.body_html, cc=body.cc)
+        client.send_mail(
+            to=body.to, subject=body.subject, body_html=body.body_html, cc=body.cc
+        )
     except GraphNotConfigured as exc:
         _raise_not_configured(exc)
     except GraphApiError as exc:

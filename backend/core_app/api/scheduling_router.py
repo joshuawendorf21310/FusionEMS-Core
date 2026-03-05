@@ -7,7 +7,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.scheduling.ai_advisor import AISchedulingAdvisor
 from core_app.scheduling.engine import SchedulingEngine
 from core_app.schemas.auth import CurrentUser
@@ -212,7 +216,9 @@ async def run_escalations(
     from core_app.scheduling.escalation import run_coverage_escalations
 
     res = run_coverage_escalations(
-        db=db, tenant_id=current.tenant_id, within_hours=int(payload.get("within_hours", 4))
+        db=db,
+        tenant_id=current.tenant_id,
+        within_hours=int(payload.get("within_hours", 4)),
     )
     get_event_publisher().publish(
         topic=f"tenant.{current.tenant_id}.scheduling.escalations.run",
@@ -233,7 +239,9 @@ async def ai_scheduling_draft(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    advisor = AISchedulingAdvisor(db, get_event_publisher(), current.tenant_id, current.user_id)
+    advisor = AISchedulingAdvisor(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
     correlation_id = getattr(request.state, "correlation_id", None)
     return await advisor.generate_draft(
         horizon_hours=payload.get("horizon_hours", 48),
@@ -248,7 +256,9 @@ async def approve_ai_draft(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    advisor = AISchedulingAdvisor(db, get_event_publisher(), current.tenant_id, current.user_id)
+    advisor = AISchedulingAdvisor(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
     correlation_id = getattr(request.state, "correlation_id", None)
     try:
         return await advisor.approve_draft(draft_id, correlation_id=correlation_id)
@@ -275,7 +285,9 @@ async def what_if_simulation(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    advisor = AISchedulingAdvisor(db, get_event_publisher(), current.tenant_id, current.user_id)
+    advisor = AISchedulingAdvisor(
+        db, get_event_publisher(), current.tenant_id, current.user_id
+    )
     return advisor.what_if_simulate(payload)
 
 
@@ -287,7 +299,9 @@ async def fatigue_report(
     from core_app.services.domination_service import DominationService
 
     svc = DominationService(db, get_event_publisher())
-    assignments = svc.repo("crew_assignments").list(tenant_id=current.tenant_id, limit=1000)
+    assignments = svc.repo("crew_assignments").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     now = _dt.datetime.now(tz=_dt.UTC)
     crew_hours_7d: dict[str, float] = {}
     crew_hours_24h: dict[str, float] = {}
@@ -299,14 +313,18 @@ async def fatigue_report(
         hours = float(d.get("hours", 12))
         shift_start_str = d.get("start_datetime") or a.get("created_at", "")
         try:
-            shift_start = _dt.datetime.fromisoformat(shift_start_str.replace("Z", "+00:00"))
+            shift_start = _dt.datetime.fromisoformat(
+                shift_start_str.replace("Z", "+00:00")
+            )
             delta_hours = (now - shift_start).total_seconds() / 3600
             if delta_hours <= 168:
                 crew_hours_7d[crew_id] = crew_hours_7d.get(crew_id, 0) + hours
             if delta_hours <= 24:
                 crew_hours_24h[crew_id] = crew_hours_24h.get(crew_id, 0) + hours
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+
+            logging.error(f"Error: {e}")
     all_crew_ids = set(crew_hours_7d) | set(crew_hours_24h)
     report = []
     for cid in all_crew_ids:

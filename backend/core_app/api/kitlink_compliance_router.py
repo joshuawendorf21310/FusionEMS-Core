@@ -77,7 +77,10 @@ _WI_TRANS_309_V2 = {
     "check_templates": _MANDATORY_ITEMS,
 }
 
-_BUILTIN_PACKS = {"WI_TRANS_309_V1": _WI_TRANS_309_V1, "WI_TRANS_309_V2": _WI_TRANS_309_V2}
+_BUILTIN_PACKS = {
+    "WI_TRANS_309_V1": _WI_TRANS_309_V1,
+    "WI_TRANS_309_V2": _WI_TRANS_309_V2,
+}
 
 
 def _repo(db: Session) -> DominationRepository:
@@ -118,7 +121,11 @@ def activate_pack(
             "compliance_packs",
             tid,
             existing["id"],
-            {**existing["data"], "active": True, "activated_at": datetime.now(UTC).isoformat()},
+            {
+                **existing["data"],
+                "active": True,
+                "activated_at": datetime.now(UTC).isoformat(),
+            },
         )
         return {"pack_key": pack_key, "status": "activated", "id": str(existing["id"])}
     row = repo.create(
@@ -187,7 +194,10 @@ def submit_inspection(
     warnings = []
     findings = []
 
-    if responses.get("EXPIRATION_SWEEP") is False or responses.get("EXPIRATION_SWEEP") == "fail":
+    if (
+        responses.get("EXPIRATION_SWEEP") is False
+        or responses.get("EXPIRATION_SWEEP") == "fail"
+    ):
         hard_fail = True
         f = repo.create(
             "compliance_findings",
@@ -201,7 +211,11 @@ def submit_inspection(
             },
         )
         findings.append(
-            {"id": str(f["id"]), "rule_id": "NO_EXPIRED_MEDS_FLUIDS", "severity": "hard_fail"}
+            {
+                "id": str(f["id"]),
+                "rule_id": "NO_EXPIRED_MEDS_FLUIDS",
+                "severity": "hard_fail",
+            }
         )
 
     for item_id in _MANDATORY_ITEMS:
@@ -218,7 +232,9 @@ def submit_inspection(
                     "created_at": datetime.now(UTC).isoformat(),
                 },
             )
-            findings.append({"id": str(f["id"]), "rule_id": item_id, "severity": "fail"})
+            findings.append(
+                {"id": str(f["id"]), "rule_id": item_id, "severity": "fail"}
+            )
 
     narc_seal = responses.get("NARC_SEAL_INTACT")
     if narc_seal is False:
@@ -276,7 +292,9 @@ def list_inspections(db: Session = Depends(get_db), tenant_id: str = Query(...))
 
 
 @router.get("/inspections/{inspection_id}")
-def get_inspection(inspection_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)):
+def get_inspection(
+    inspection_id: str, db: Session = Depends(get_db), tenant_id: str = Query(...)
+):
     repo = _repo(db)
     tid = uuid.UUID(tenant_id)
     rows = repo.list("compliance_inspections", tid)
@@ -312,7 +330,11 @@ def fleet_score(db: Session = Depends(get_db), tenant_id: str = Query(...)):
         return {"fleet_score": None, "inspections_scored": 0}
     passes = sum(1 for r in completed if r["data"].get("result_status") == "pass")
     score = round(passes / len(completed) * 100, 1)
-    return {"fleet_score": score, "inspections_scored": len(completed), "pass_count": passes}
+    return {
+        "fleet_score": score,
+        "inspections_scored": len(completed),
+        "pass_count": passes,
+    }
 
 
 @router.get("/reports/inspection-ready")
@@ -368,7 +390,8 @@ def wizard_step(
     step = payload.get("step")
     if step not in _WIZARD_STEPS:
         raise HTTPException(
-            status_code=400, detail=f"Invalid step '{step}'. Valid steps: {_WIZARD_STEPS}"
+            status_code=400,
+            detail=f"Invalid step '{step}'. Valid steps: {_WIZARD_STEPS}",
         )
 
     rows = repo.list("kitlink_wizard_state", tid)

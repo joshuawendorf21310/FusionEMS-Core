@@ -40,7 +40,7 @@ export default function PatchTasksPage() {
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/nemsis/studio/patch-tasks', { credentials: 'include' });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/patch-tasks', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setTasks(Array.isArray(data) ? data : (data.tasks ?? []));

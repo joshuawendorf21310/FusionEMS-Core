@@ -11,17 +11,23 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(db_session_dependency)) -> TokenResponse:
+def login(
+    payload: LoginRequest, db: Session = Depends(db_session_dependency)
+) -> TokenResponse:
     service = AuthService(UserRepository(db))
     try:
         return service.login(payload)
     except InvalidCredentialsError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)
+        ) from exc
 
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(current: CurrentUser = Depends(get_current_user)) -> TokenResponse:
-    token = create_access_token(str(current.user_id), str(current.tenant_id), current.role or "")
+    token = create_access_token(
+        str(current.user_id), str(current.tenant_id), current.role or ""
+    )
     return TokenResponse(access_token=token)
 
 

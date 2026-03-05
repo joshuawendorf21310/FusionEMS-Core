@@ -78,17 +78,21 @@ def _get_session_or_404(
     return dict(row)
 
 
-def _get_run_or_404(db: Session, run_id: uuid.UUID, founder_user_id: uuid.UUID) -> dict[str, Any]:
+def _get_run_or_404(
+    db: Session, run_id: uuid.UUID, founder_user_id: uuid.UUID
+) -> dict[str, Any]:
     row = (
         db.execute(
-            text("""
+            text(
+                """
             SELECT r.id, r.session_id, r.status, r.plan_json, r.release_gate_results_json,
                    r.diff_text, r.diff_s3_key, r.gh_run_id, r.gh_run_url, r.created_at, r.updated_at,
                    s.founder_user_id
             FROM founder_chat_runs r
             JOIN founder_chat_sessions s ON s.id = r.session_id
             WHERE r.id = :rid
-        """),
+        """
+            ),
             {"rid": str(run_id)},
         )
         .mappings()
@@ -124,11 +128,13 @@ def _insert_message(
 ) -> dict[str, Any]:
     row = (
         db.execute(
-            text("""
+            text(
+                """
             INSERT INTO founder_chat_messages (session_id, role, content_text, content_json)
             VALUES (:sid, :role, :ct, :cj)
             RETURNING id, session_id, role, content_text, content_json, created_at
-        """),
+        """
+            ),
             {
                 "sid": str(session_id),
                 "role": role,
@@ -148,20 +154,24 @@ def _log_audit(
 ) -> None:
     with contextlib.suppress(Exception):
         db.execute(
-            text("""
+            text(
+                """
                 INSERT INTO founder_chat_sessions (id, founder_user_id, title)
                 SELECT gen_random_uuid(), :uid, :action
                 WHERE false
-            """),
+            """
+            ),
             {"uid": str(founder_user_id), "action": action},
         )
     try:
         db.execute(
-            text("""
+            text(
+                """
                 INSERT INTO audit_events (tenant_id, actor_user_id, action, entity_name, entity_id, field_changes)
                 VALUES (:tid, :uid, :action, 'founder_copilot', gen_random_uuid(), :payload::jsonb)
                 ON CONFLICT DO NOTHING
-            """),
+            """
+            ),
             {
                 "tid": str(uuid.UUID(int=0)),
                 "uid": str(founder_user_id),
@@ -184,11 +194,13 @@ async def create_session(
     title = str(payload.get("title") or "New session")[:255]
     row = (
         db.execute(
-            text("""
+            text(
+                """
             INSERT INTO founder_chat_sessions (founder_user_id, title)
             VALUES (:uid, :title)
             RETURNING id, founder_user_id, title, created_at, updated_at
-        """),
+        """
+            ),
             {"uid": str(current.user_id), "title": title},
         )
         .mappings()
@@ -206,13 +218,15 @@ async def list_sessions(
 ):
     rows = (
         db.execute(
-            text("""
+            text(
+                """
             SELECT id, founder_user_id, title, created_at, updated_at
             FROM founder_chat_sessions
             WHERE founder_user_id = :uid
             ORDER BY updated_at DESC
             LIMIT 100
-        """),
+        """
+            ),
             {"uid": str(current.user_id)},
         )
         .mappings()
@@ -238,10 +252,12 @@ async def send_message(
 
     history_rows = (
         db.execute(
-            text("""
+            text(
+                """
             SELECT role, content_text FROM founder_chat_messages
             WHERE session_id = :sid ORDER BY created_at ASC LIMIT 40
-        """),
+        """
+            ),
             {"sid": str(session_id)},
         )
         .mappings()
@@ -268,7 +284,9 @@ async def send_message(
         start = assistant_text.find("```action_plan")
         display_text = assistant_text[:start].strip()
 
-    msg = _insert_message(db, session_id, "assistant", display_text, content_json=action_plan)
+    msg = _insert_message(
+        db, session_id, "assistant", display_text, content_json=action_plan
+    )
 
     db.execute(
         text("UPDATE founder_chat_sessions SET updated_at = now() WHERE id = :sid"),
@@ -292,12 +310,14 @@ async def get_messages(
     _get_session_or_404(db, session_id, current.user_id)
     rows = (
         db.execute(
-            text("""
+            text(
+                """
             SELECT id, session_id, role, content_text, content_json, created_at
             FROM founder_chat_messages
             WHERE session_id = :sid
             ORDER BY created_at ASC
-        """),
+        """
+            ),
             {"sid": str(session_id)},
         )
         .mappings()
@@ -321,11 +341,13 @@ async def propose_run(
 
     row = (
         db.execute(
-            text("""
+            text(
+                """
             INSERT INTO founder_chat_runs (session_id, status, plan_json)
             VALUES (:sid, 'proposed', :plan::jsonb)
             RETURNING id, session_id, status, plan_json, created_at, updated_at
-        """),
+        """
+            ),
             {"sid": str(session_id), "plan": json.dumps(plan_json)},
         )
         .mappings()
@@ -337,10 +359,12 @@ async def propose_run(
     actions = plan_json.get("actions") or []
     for action in actions:
         db.execute(
-            text("""
+            text(
+                """
                 INSERT INTO founder_chat_actions (run_id, action_type, payload_json, status)
                 VALUES (:rid, :atype, :payload::jsonb, 'proposed')
-            """),
+            """
+            ),
             {
                 "rid": str(run["id"]),
                 "atype": action.get("type", "UNKNOWN"),
@@ -391,26 +415,37 @@ async def execute_run(
                         "Accept": "application/vnd.github+json",
                         "X-GitHub-Api-Version": "2022-11-28",
                     },
-                    json={"ref": ref, "inputs": {"run_id": str(run_id), "stage": "stage"}},
+                    json={
+                        "ref": ref,
+                        "inputs": {"run_id": str(run_id), "stage": "stage"},
+                    },
                 )
                 if resp.status_code == 204:
-                    await _poll_gh_run_id(client, gh_owner, gh_repo, gh_token, run_id, db)
+                    await _poll_gh_run_id(
+                        client, gh_owner, gh_repo, gh_token, run_id, db
+                    )
                 else:
                     logger.warning(
-                        "gh_dispatch_failed status=%s body=%s", resp.status_code, resp.text[:300]
+                        "gh_dispatch_failed status=%s body=%s",
+                        resp.status_code,
+                        resp.text[:300],
                     )
         except Exception as exc:
             logger.warning("gh_dispatch_error run_id=%s err=%s", run_id, exc)
     else:
-        logger.info("github_not_configured — marking run as running (manual execution required)")
+        logger.info(
+            "github_not_configured — marking run as running (manual execution required)"
+        )
 
     db.execute(
-        text("""
+        text(
+            """
             UPDATE founder_chat_runs
             SET status = 'running', updated_at = now(),
                 gh_run_id = :ghid, gh_run_url = :ghurl
             WHERE id = :rid
-        """),
+        """
+        ),
         {"rid": str(run_id), "ghid": gh_run_id, "ghurl": gh_run_url},
     )
     db.commit()
@@ -438,7 +473,10 @@ async def _poll_gh_run_id(
     try:
         resp = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}/actions/runs",
-            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+            },
             params={"per_page": 5, "event": "workflow_dispatch"},
         )
         if resp.status_code == 200:
@@ -468,10 +506,12 @@ async def get_run(
     run = _get_run_or_404(db, run_id, current.user_id)
     actions = (
         db.execute(
-            text("""
+            text(
+                """
             SELECT id, run_id, action_type, payload_json, status, result_json, created_at
             FROM founder_chat_actions WHERE run_id = :rid ORDER BY created_at ASC
-        """),
+        """
+            ),
             {"rid": str(run_id)},
         )
         .mappings()
@@ -490,7 +530,9 @@ async def approve_run(
 ):
     run = _get_run_or_404(db, run_id, current.user_id)
     gate = run.get("release_gate_results_json") or {}
-    blockers = [k for k, v in gate.items() if v is False] if isinstance(gate, dict) else []
+    blockers = (
+        [k for k, v in gate.items() if v is False] if isinstance(gate, dict) else []
+    )
 
     if not payload.get("force") and run["status"] not in ("passed",):
         raise HTTPException(
@@ -529,10 +571,14 @@ async def merge_run(
 ):
     run = _get_run_or_404(db, run_id, current.user_id)
     if run["status"] != "approved":
-        raise HTTPException(status_code=422, detail="Run must be approved before merging")
+        raise HTTPException(
+            status_code=422, detail="Run must be approved before merging"
+        )
 
     db.execute(
-        text("UPDATE founder_chat_runs SET status = 'merged', updated_at = now() WHERE id = :rid"),
+        text(
+            "UPDATE founder_chat_runs SET status = 'merged', updated_at = now() WHERE id = :rid"
+        ),
         {"rid": str(run_id)},
     )
     db.commit()
@@ -558,14 +604,16 @@ async def post_gate_result(
     new_status = "passed" if all_passed else "blocked"
 
     db.execute(
-        text("""
+        text(
+            """
             UPDATE founder_chat_runs
             SET status = :status, release_gate_results_json = :results::jsonb,
                 gh_run_id = COALESCE(:ghid, gh_run_id),
                 gh_run_url = COALESCE(:ghurl, gh_run_url),
                 updated_at = now()
             WHERE id = :rid
-        """),
+        """
+        ),
         {
             "rid": str(run_id),
             "status": new_status,

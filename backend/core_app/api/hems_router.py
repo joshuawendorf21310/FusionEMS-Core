@@ -20,7 +20,13 @@ router = APIRouter(prefix="/api/v1/hems", tags=["HEMS"])
 
 ALLOWED_ROLES = {"founder", "agency_admin", "admin", "dispatcher", "pilot", "ems"}
 
-AIRCRAFT_READINESS_STATES = {"ready", "limited", "no_go", "maintenance_hold", "out_of_service"}
+AIRCRAFT_READINESS_STATES = {
+    "ready",
+    "limited",
+    "no_go",
+    "maintenance_hold",
+    "out_of_service",
+}
 
 ACCEPTANCE_CHECKLIST_ITEMS = [
     {"id": "wx_reviewed", "label": "Weather brief reviewed"},
@@ -41,8 +47,16 @@ RISK_FACTORS = [
     {"id": "marginal_wx", "label": "Marginal weather (near minima)", "weight": 20},
     {"id": "unfamiliar_lz", "label": "Unfamiliar landing zone", "weight": 10},
     {"id": "single_pilot", "label": "Single pilot operations", "weight": 10},
-    {"id": "critical_patient", "label": "Critical patient (ALS/HEMS required)", "weight": 5},
-    {"id": "long_transport", "label": "Long transport distance (>60 min)", "weight": 10},
+    {
+        "id": "critical_patient",
+        "label": "Critical patient (ALS/HEMS required)",
+        "weight": 5,
+    },
+    {
+        "id": "long_transport",
+        "label": "Long transport distance (>60 min)",
+        "weight": 10,
+    },
     {"id": "comms_degraded", "label": "Degraded communications", "weight": 15},
 ]
 
@@ -78,7 +92,10 @@ async def submit_acceptance(
     if missing and not payload.get("force_accept"):
         raise HTTPException(
             status_code=422,
-            detail={"message": "Acceptance checklist incomplete", "missing_items": missing},
+            detail={
+                "message": "Acceptance checklist incomplete",
+                "missing_items": missing,
+            },
         )
     risk_score = sum(f["weight"] for f in RISK_FACTORS if f["id"] in risk_flags)
     risk_level = "low" if risk_score < 20 else "medium" if risk_score < 45 else "high"
@@ -155,8 +172,12 @@ async def get_acceptance(
 ):
     _check(current)
     svc = _svc(db)
-    records = svc.repo("hems_acceptance_records").list(tenant_id=current.tenant_id, limit=50)
-    matching = [r for r in records if (r.get("data") or {}).get("mission_id") == str(mission_id)]
+    records = svc.repo("hems_acceptance_records").list(
+        tenant_id=current.tenant_id, limit=50
+    )
+    matching = [
+        r for r in records if (r.get("data") or {}).get("mission_id") == str(mission_id)
+    ]
     return matching
 
 
@@ -172,7 +193,8 @@ async def set_aircraft_readiness(
     state = payload.get("state", "ready")
     if state not in AIRCRAFT_READINESS_STATES:
         raise HTTPException(
-            status_code=422, detail=f"state must be one of {sorted(AIRCRAFT_READINESS_STATES)}"
+            status_code=422,
+            detail=f"state must be one of {sorted(AIRCRAFT_READINESS_STATES)}",
         )
     svc = _svc(db)
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -201,8 +223,14 @@ async def get_aircraft_readiness(
 ):
     _check(current)
     svc = _svc(db)
-    events = svc.repo("aircraft_readiness_events").list(tenant_id=current.tenant_id, limit=100)
-    matching = [e for e in events if (e.get("data") or {}).get("aircraft_id") == str(aircraft_id)]
+    events = svc.repo("aircraft_readiness_events").list(
+        tenant_id=current.tenant_id, limit=100
+    )
+    matching = [
+        e
+        for e in events
+        if (e.get("data") or {}).get("aircraft_id") == str(aircraft_id)
+    ]
     if not matching:
         return {"aircraft_id": str(aircraft_id), "state": "unknown", "history": []}
     latest = sorted(matching, key=lambda x: x.get("created_at", ""), reverse=True)[0]
@@ -279,7 +307,9 @@ async def acknowledge_mission(
     _check(current)
     decision = payload.get("decision", "accept")
     if decision not in ("accept", "decline"):
-        raise HTTPException(status_code=422, detail="decision must be 'accept' or 'decline'")
+        raise HTTPException(
+            status_code=422, detail="decision must be 'accept' or 'decline'"
+        )
     svc = _svc(db)
     row = await svc.create(
         table="hems_mission_events",
@@ -448,10 +478,18 @@ async def mission_stream(
             if await request.is_disconnected():
                 break
 
-            tables = ["hems_mission_events", "aircraft_readiness_events", "hems_weather_briefs"]
+            tables = [
+                "hems_mission_events",
+                "aircraft_readiness_events",
+                "hems_weather_briefs",
+            ]
             for table in tables:
-                rows = svc.repo(table).list(tenant_id=current.tenant_id, limit=10, offset=0)
-                for row in sorted(rows, key=lambda r: r.get("created_at", ""), reverse=True)[:5]:
+                rows = svc.repo(table).list(
+                    tenant_id=current.tenant_id, limit=10, offset=0
+                )
+                for row in sorted(
+                    rows, key=lambda r: r.get("created_at", ""), reverse=True
+                )[:5]:
                     row_id = str(row.get("id", ""))
                     if last_event_ids.get(table) != row_id:
                         last_event_ids[table] = row_id
@@ -497,7 +535,9 @@ async def fetch_live_weather(
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            metar_r = await client.get(f"{base}/metar", params={"ids": icao, "format": "json"})
+            metar_r = await client.get(
+                f"{base}/metar", params={"ids": icao, "format": "json"}
+            )
             if metar_r.status_code == 200:
                 data = metar_r.json()
                 if isinstance(data, list) and data:
@@ -506,7 +546,9 @@ async def fetch_live_weather(
             results["metar_error"] = "fetch_failed"
 
         try:
-            taf_r = await client.get(f"{base}/taf", params={"ids": icao, "format": "json"})
+            taf_r = await client.get(
+                f"{base}/taf", params={"ids": icao, "format": "json"}
+            )
             if taf_r.status_code == 200:
                 data = taf_r.json()
                 if isinstance(data, list) and data:

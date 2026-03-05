@@ -58,7 +58,9 @@ async def export_queue_monitor(
         j
         for j in jobs
         if _data(j).get("status") == "failed"
-        and (_data(j).get("failed_at") or _data(j).get("updated_at") or "").startswith(today)
+        and (_data(j).get("failed_at") or _data(j).get("updated_at") or "").startswith(
+            today
+        )
     ]
     queue_items = [
         {
@@ -93,7 +95,9 @@ async def per_tenant_export_status(
     failed = sum(1 for j in jobs if _data(j).get("status") == "failed")
     pending = sum(1 for j in jobs if _data(j).get("status") in ("queued", "processing"))
     success_rate = round((successful / total * 100) if total else 0, 2)
-    timestamps = [_data(j).get("completed_at") or _data(j).get("created_at") or "" for j in jobs]
+    timestamps = [
+        _data(j).get("completed_at") or _data(j).get("created_at") or "" for j in jobs
+    ]
     last_export = max(timestamps) if timestamps else None
     return {
         "tenant_id": tenant_id,
@@ -112,7 +116,9 @@ async def batch_export_scheduler(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    schedules = svc.repo("export_schedules").list(tenant_id=current.tenant_id, limit=1000)
+    schedules = svc.repo("export_schedules").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     batches = [
         {
             "batch_id": str(s.get("id", "")),
@@ -188,7 +194,9 @@ async def state_rejection_alerts(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    alerts = svc.repo("export_rejection_alerts").list(tenant_id=current.tenant_id, limit=1000)
+    alerts = svc.repo("export_rejection_alerts").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     active = [a for a in alerts if _data(a).get("status", "active") == "active"]
     items = [
         {
@@ -235,7 +243,11 @@ async def niers_mapping_validator(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "niers_mapping", "fields": payload.get("fields", []), "validated_at": _now()},
+        data={
+            "type": "niers_mapping",
+            "fields": payload.get("fields", []),
+            "validated_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -257,7 +269,9 @@ async def incident_to_epcr_link_verifier(
 ):
     svc = _svc(db)
     links = svc.repo("export_epcr_links").list(tenant_id=current.tenant_id, limit=10000)
-    match = next((lnk for lnk in links if _data(lnk).get("incident_id") == incident_id), None)
+    match = next(
+        (lnk for lnk in links if _data(lnk).get("incident_id") == incident_id), None
+    )
     if match:
         d = _data(match)
         return {
@@ -353,8 +367,10 @@ async def export_latency_tracker(
                 s = datetime.fromisoformat(started.replace("Z", "+00:00"))
                 c = datetime.fromisoformat(completed.replace("Z", "+00:00"))
                 latencies.append(int((c - s).total_seconds() * 1000))
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                import logging
+
+                logging.error(f"Error: {e}")
     if latencies:
         latencies.sort()
         avg = round(sum(latencies) / len(latencies))
@@ -417,13 +433,7 @@ async def export_performance_score(
     grade = (
         "A"
         if score >= 90
-        else "B"
-        if score >= 80
-        else "C"
-        if score >= 70
-        else "D"
-        if score >= 60
-        else "F"
+        else "B" if score >= 80 else "C" if score >= 70 else "D" if score >= 60 else "F"
     )
     return {
         "score": score,
@@ -462,7 +472,9 @@ async def state_rule_enforcement(
 ):
     svc = _svc(db)
     rules = svc.repo("export_state_rules").list(tenant_id=current.tenant_id, limit=1000)
-    state_rules = [r for r in rules if _data(r).get("state", "").upper() == state_code.upper()]
+    state_rules = [
+        r for r in rules if _data(r).get("state", "").upper() == state_code.upper()
+    ]
     items = [
         {
             "rule_id": _data(r).get("rule_id", str(r.get("id", ""))),
@@ -475,7 +487,9 @@ async def state_rule_enforcement(
         tenant_id=current.tenant_id, limit=1000
     )
     violations = [
-        v for v in violations_list if _data(v).get("state", "").upper() == state_code.upper()
+        v
+        for v in violations_list
+        if _data(v).get("state", "").upper() == state_code.upper()
     ]
     return {
         "state": state_code.upper(),
@@ -491,7 +505,9 @@ async def auto_repair_suggestions(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    repairs = svc.repo("export_auto_repairs").list(tenant_id=current.tenant_id, limit=1000)
+    repairs = svc.repo("export_auto_repairs").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     job_repairs = [r for r in repairs if _data(r).get("job_id") == job_id]
     suggestions = [
         {
@@ -502,7 +518,11 @@ async def auto_repair_suggestions(
         for r in job_repairs
     ]
     auto_repaired = sum(1 for r in job_repairs if _data(r).get("applied"))
-    return {"job_id": job_id, "suggestions": suggestions, "auto_repaired": auto_repaired}
+    return {
+        "job_id": job_id,
+        "suggestions": suggestions,
+        "auto_repaired": auto_repaired,
+    }
 
 
 @router.get("/audit-history")
@@ -512,8 +532,12 @@ async def export_audit_history(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    entries = svc.repo("export_audit_log").list(tenant_id=current.tenant_id, limit=limit)
-    total_all = svc.repo("export_audit_log").list(tenant_id=current.tenant_id, limit=10000)
+    entries = svc.repo("export_audit_log").list(
+        tenant_id=current.tenant_id, limit=limit
+    )
+    total_all = svc.repo("export_audit_log").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     items = [
         {
             "entry_id": str(e.get("id", "")),
@@ -630,7 +654,9 @@ async def approval_required_exports(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    approvals = svc.repo("export_approvals").list(tenant_id=current.tenant_id, limit=1000)
+    approvals = svc.repo("export_approvals").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     pending = [a for a in approvals if _data(a).get("status") == "pending"]
     items = [
         {
@@ -653,7 +679,9 @@ async def approve_export(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    approvals = svc.repo("export_approvals").list(tenant_id=current.tenant_id, limit=10000)
+    approvals = svc.repo("export_approvals").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     match = next((a for a in approvals if _data(a).get("job_id") == job_id), None)
     if match:
         await svc.update(
@@ -686,7 +714,11 @@ async def locked_export_protection(
     svc = _svc(db)
     locks = svc.repo("export_locks").list(tenant_id=current.tenant_id, limit=10000)
     match = next(
-        (lnk for lnk in locks if _data(lnk).get("job_id") == job_id and _data(lnk).get("locked")),
+        (
+            lnk
+            for lnk in locks
+            if _data(lnk).get("job_id") == job_id and _data(lnk).get("locked")
+        ),
         None,
     )
     if match:
@@ -768,7 +800,8 @@ async def export_sla_monitor(
     deadlines = [
         _data(j).get("sla_deadline")
         for j in jobs
-        if _data(j).get("sla_deadline") and _data(j).get("status") in ("queued", "processing")
+        if _data(j).get("sla_deadline")
+        and _data(j).get("status") in ("queued", "processing")
     ]
     next_deadline = min(deadlines) if deadlines else None
     return {
@@ -864,9 +897,13 @@ async def version_compatibility_tracker(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    versions = svc.repo("export_schema_versions").list(tenant_id=current.tenant_id, limit=100)
+    versions = svc.repo("export_schema_versions").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     current_schema = (
-        _data(versions[0]).get("current_schema", "NEMSIS-3.5.0") if versions else "NEMSIS-3.5.0"
+        _data(versions[0]).get("current_schema", "NEMSIS-3.5.0")
+        if versions
+        else "NEMSIS-3.5.0"
     )
     state_schemas = [
         {
@@ -891,7 +928,9 @@ async def scheduled_export_calendar(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    schedules = svc.repo("export_schedules").list(tenant_id=current.tenant_id, limit=1000)
+    schedules = svc.repo("export_schedules").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     upcoming = [
         {
             "date": _data(s).get("run_at", "")[:10] if _data(s).get("run_at") else "",
@@ -1013,7 +1052,12 @@ async def submission_proof_storage(
         table="export_proofs",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"job_id": job_id, "stored_at": _now(), "s3_key": f"proofs/{job_id}.json", **payload},
+        data={
+            "job_id": job_id,
+            "stored_at": _now(),
+            "s3_key": f"proofs/{job_id}.json",
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1037,7 +1081,9 @@ async def state_confirmation_archive(
     )
     if state:
         confirmations = [
-            c for c in confirmations if _data(c).get("state", "").upper() == state.upper()
+            c
+            for c in confirmations
+            if _data(c).get("state", "").upper() == state.upper()
         ]
     items = [
         {
@@ -1058,7 +1104,9 @@ async def fire_data_mapping_editor(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    mappings = svc.repo("export_fire_mappings").list(tenant_id=current.tenant_id, limit=500)
+    mappings = svc.repo("export_fire_mappings").list(
+        tenant_id=current.tenant_id, limit=500
+    )
     items = [
         {
             "source_field": _data(m).get("source_field"),
@@ -1085,7 +1133,11 @@ async def update_fire_data_mapping(
         data={"mappings": payload.get("mappings", []), "updated_at": _now()},
         correlation_id=getattr(request.state, "correlation_id", None),
     )
-    return {"updated": True, "mappings": payload.get("mappings", []), "updated_at": _now()}
+    return {
+        "updated": True,
+        "mappings": payload.get("mappings", []),
+        "updated_at": _now(),
+    }
 
 
 @router.get("/crosswalk")
@@ -1094,7 +1146,9 @@ async def data_crosswalk_builder(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    crosswalks = svc.repo("export_crosswalks").list(tenant_id=current.tenant_id, limit=500)
+    crosswalks = svc.repo("export_crosswalks").list(
+        tenant_id=current.tenant_id, limit=500
+    )
     items = [
         {
             "from_schema": _data(c).get("from_schema"),
@@ -1288,7 +1342,11 @@ async def deactivate_freeze(
             record_id=active["id"],
             actor_user_id=current.user_id,
             expected_version=active.get("version", 1),
-            patch={"frozen": False, "unfrozen_by": str(current.user_id), "unfrozen_at": _now()},
+            patch={
+                "frozen": False,
+                "unfrozen_by": str(current.user_id),
+                "unfrozen_at": _now(),
+            },
             correlation_id=getattr(request.state, "correlation_id", None),
         )
     return {"frozen": False, "unfrozen_by": str(current.user_id), "unfrozen_at": _now()}
@@ -1306,7 +1364,11 @@ async def export_encryption_validation(
         table="export_validation_results",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"type": "encryption_check", "job_id": payload.get("job_id"), "validated_at": _now()},
+        data={
+            "type": "encryption_check",
+            "job_id": payload.get("job_id"),
+            "validated_at": _now(),
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1325,7 +1387,9 @@ async def secure_transfer_monitor(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    transfers = svc.repo("export_transfers").list(tenant_id=current.tenant_id, limit=1000)
+    transfers = svc.repo("export_transfers").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     today = datetime.now(UTC).date().isoformat()
     active = [t for t in transfers if _data(t).get("status") == "in_progress"]
     completed_today = [
@@ -1364,7 +1428,9 @@ async def timeout_detection(
     timeouts_24h = [
         j
         for j in timeouts
-        if (_data(j).get("failed_at") or _data(j).get("created_at") or "").startswith(today)
+        if (_data(j).get("failed_at") or _data(j).get("created_at") or "").startswith(
+            today
+        )
     ]
     incidents = [
         {
@@ -1389,20 +1455,23 @@ async def error_rate_analytics(
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
     today = datetime.now(UTC).date().isoformat()
-    today_jobs = [j for j in jobs if (_data(j).get("created_at") or "").startswith(today)]
+    today_jobs = [
+        j for j in jobs if (_data(j).get("created_at") or "").startswith(today)
+    ]
     total_today = len(today_jobs) or 1
     errors_today = [j for j in today_jobs if _data(j).get("status") == "failed"]
     error_rate = round(len(errors_today) / total_today * 100, 2)
     reasons = Counter(_data(j).get("reason_code", "UNKNOWN") for j in errors_today)
     prev_rate = round(
-        sum(1 for j in jobs if _data(j).get("status") == "failed") / (len(jobs) or 1) * 100, 2
+        sum(1 for j in jobs if _data(j).get("status") == "failed")
+        / (len(jobs) or 1)
+        * 100,
+        2,
     )
     trend = (
         "improving"
         if error_rate < prev_rate
-        else "worsening"
-        if error_rate > prev_rate
-        else "stable"
+        else "worsening" if error_rate > prev_rate else "stable"
     )
     return {
         "error_rate_pct": error_rate,
@@ -1427,7 +1496,11 @@ async def export_health_summary(
     queue_status = "healthy" if len(queued) < 100 else "degraded"
     retry_jobs = [j for j in jobs if _data(j).get("status") == "retry_queued"]
     retry_status = "healthy" if len(retry_jobs) < 50 else "degraded"
-    overall = "healthy" if success_rate >= 95 else "degraded" if success_rate >= 80 else "critical"
+    overall = (
+        "healthy"
+        if success_rate >= 95
+        else "degraded" if success_rate >= 80 else "critical"
+    )
     score = round(success_rate)
     return {
         "overall_status": overall,
@@ -1458,7 +1531,9 @@ async def export_throughput_monitor(
             hour = ts[11:13]
             hours_by_count[hour] = hours_by_count.get(hour, 0) + 1
     peak_hour = (
-        max(hours_by_count, key=hours_by_count.get, default="00") if hours_by_count else "00"
+        max(hours_by_count, key=hours_by_count.get, default="00")
+        if hours_by_count
+        else "00"
     )
     peak_rate = hours_by_count.get(peak_hour, 0)
     exports_per_hour = round(total / 24, 1) if total else 0
@@ -1477,7 +1552,9 @@ async def queue_prioritization(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    rules = svc.repo("export_priority_rules").list(tenant_id=current.tenant_id, limit=100)
+    rules = svc.repo("export_priority_rules").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     items = [
         {
             "priority": _data(r).get("priority"),
@@ -1490,7 +1567,8 @@ async def queue_prioritization(
     high_priority = sum(
         1
         for j in jobs
-        if _data(j).get("priority", 0) > 50 and _data(j).get("status") in ("queued", "processing")
+        if _data(j).get("priority", 0) > 50
+        and _data(j).get("status") in ("queued", "processing")
     )
     return {"rules": items, "current_high_priority": high_priority}
 
@@ -1530,7 +1608,9 @@ async def state_outage_detection(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    outages = svc.repo("export_state_outages").list(tenant_id=current.tenant_id, limit=100)
+    outages = svc.repo("export_state_outages").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     active_outages = [o for o in outages if _data(o).get("status") == "outage"]
     degraded = [o for o in outages if _data(o).get("status") == "degraded"]
     return {
@@ -1593,14 +1673,22 @@ async def export_archive_lifecycle(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    archives = svc.repo("export_archives").list(tenant_id=current.tenant_id, limit=10000)
+    archives = svc.repo("export_archives").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     pending_deletion = sum(1 for a in archives if _data(a).get("pending_deletion"))
     created_dates = [
-        _data(a).get("created_at", "")[:10] for a in archives if _data(a).get("created_at")
+        _data(a).get("created_at", "")[:10]
+        for a in archives
+        if _data(a).get("created_at")
     ]
     oldest = min(created_dates) if created_dates else None
-    policies = svc.repo("export_retention_policies").list(tenant_id=current.tenant_id, limit=10)
-    retention_days = _data(policies[0]).get("retention_days", 2555) if policies else 2555
+    policies = svc.repo("export_retention_policies").list(
+        tenant_id=current.tenant_id, limit=10
+    )
+    retention_days = (
+        _data(policies[0]).get("retention_days", 2555) if policies else 2555
+    )
     policy = (
         _data(policies[0]).get("policy", "7-year HIPAA compliant retention")
         if policies
@@ -1623,7 +1711,9 @@ async def role_based_submission_rights(
     svc = _svc(db)
     perms = svc.repo("export_permissions").list(tenant_id=current.tenant_id, limit=1000)
     user_perms = [p for p in perms if _data(p).get("user_id") == str(current.user_id)]
-    granted = {_data(p).get("permission") for p in user_perms if _data(p).get("granted")}
+    granted = {
+        _data(p).get("permission") for p in user_perms if _data(p).get("granted")
+    }
     return {
         "user_id": str(current.user_id),
         "can_submit": "submit" in granted or not user_perms,
@@ -1646,7 +1736,12 @@ async def multi_agency_export_consolidation(
         table="export_bundles",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"agencies": agencies, "status": "consolidating", "created_at": _now(), **payload},
+        data={
+            "agencies": agencies,
+            "status": "consolidating",
+            "created_at": _now(),
+            **payload,
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     d = _data(record)
@@ -1667,7 +1762,9 @@ async def dataset_version_enforcement(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    versions = svc.repo("export_schema_versions").list(tenant_id=current.tenant_id, limit=10)
+    versions = svc.repo("export_schema_versions").list(
+        tenant_id=current.tenant_id, limit=10
+    )
     if versions:
         d = _data(versions[0])
         enforced = d.get("enforced_version", "NEMSIS-3.5.0")
@@ -1727,8 +1824,12 @@ async def compliance_scoring_integration(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    results = svc.repo("export_validation_results").list(tenant_id=current.tenant_id, limit=10000)
-    incident_results = [r for r in results if _data(r).get("incident_id") == incident_id]
+    results = svc.repo("export_validation_results").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
+    incident_results = [
+        r for r in results if _data(r).get("incident_id") == incident_id
+    ]
     total_checks = len(incident_results) or 1
     passed = sum(1 for r in incident_results if _data(r).get("passed", True))
     score = round(passed / total_checks * 100)
@@ -1748,7 +1849,9 @@ async def export_anomaly_detection(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    anomalies = svc.repo("export_anomalies").list(tenant_id=current.tenant_id, limit=1000)
+    anomalies = svc.repo("export_anomalies").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     items = [_data(a) for a in anomalies]
     return {
         "anomalies_detected": len(items),
@@ -1795,7 +1898,9 @@ async def state_api_status_tracker(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    statuses = svc.repo("export_state_api_status").list(tenant_id=current.tenant_id, limit=100)
+    statuses = svc.repo("export_state_api_status").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     items = [
         {
             "state": _data(s).get("state"),
@@ -1851,7 +1956,8 @@ async def duplicate_incident_block(
         (
             j
             for j in jobs
-            if _data(j).get("incident_id") == incident_id and _data(j).get("status") == "completed"
+            if _data(j).get("incident_id") == incident_id
+            and _data(j).get("status") == "completed"
         ),
         None,
     )
@@ -1869,7 +1975,13 @@ async def incomplete_record_block(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    required = ["patient_dob", "incident_address", "dispatch_time", "unit_id", "narrative"]
+    required = [
+        "patient_dob",
+        "incident_address",
+        "dispatch_time",
+        "unit_id",
+        "narrative",
+    ]
     provided = list(payload.get("record", {}).keys())
     missing = [f for f in required if f not in provided]
     return {
@@ -1886,7 +1998,9 @@ async def export_cost_monitor(
 ):
     svc = _svc(db)
     jobs = _jobs(svc, current.tenant_id)
-    costs = svc.repo("export_cost_records").list(tenant_id=current.tenant_id, limit=10000)
+    costs = svc.repo("export_cost_records").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     total_cost = sum(_data(c).get("cost_cents", 0) for c in costs)
     total_exports = len(jobs) or 1
     cost_per = round(total_cost / total_exports) if total_exports else 0
@@ -1905,7 +2019,9 @@ async def large_batch_throttle(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    configs = svc.repo("export_throttle_config").list(tenant_id=current.tenant_id, limit=10)
+    configs = svc.repo("export_throttle_config").list(
+        tenant_id=current.tenant_id, limit=10
+    )
     if configs:
         d = _data(configs[0])
         jobs = _jobs(svc, current.tenant_id)
@@ -1936,7 +2052,9 @@ async def update_throttle_config(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    configs = svc.repo("export_throttle_config").list(tenant_id=current.tenant_id, limit=10)
+    configs = svc.repo("export_throttle_config").list(
+        tenant_id=current.tenant_id, limit=10
+    )
     if configs:
         await svc.update(
             table="export_throttle_config",
@@ -2055,8 +2173,12 @@ async def schema_version_alert(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    versions = svc.repo("export_schema_versions").list(tenant_id=current.tenant_id, limit=10)
-    alerts = svc.repo("export_schema_alerts").list(tenant_id=current.tenant_id, limit=100)
+    versions = svc.repo("export_schema_versions").list(
+        tenant_id=current.tenant_id, limit=10
+    )
+    alerts = svc.repo("export_schema_alerts").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     if versions:
         d = _data(versions[0])
         current_ver = d.get("current_version", "NEMSIS-3.5.0")
@@ -2081,10 +2203,14 @@ async def export_timeout_escalation(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    escalations = svc.repo("export_escalations").list(tenant_id=current.tenant_id, limit=1000)
+    escalations = svc.repo("export_escalations").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     timeout_esc = [e for e in escalations if _data(e).get("type") == "timeout"]
     today = datetime.now(UTC).date().isoformat()
-    last_24h = [e for e in timeout_esc if (_data(e).get("escalated_at") or "").startswith(today)]
+    last_24h = [
+        e for e in timeout_esc if (_data(e).get("escalated_at") or "").startswith(today)
+    ]
     return {
         "escalations": [_data(e) for e in timeout_esc],
         "total": len(timeout_esc),
@@ -2179,10 +2305,13 @@ async def export_dependency_map(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    deps = svc.repo("export_dependencies").list(tenant_id=current.tenant_id, limit=10000)
+    deps = svc.repo("export_dependencies").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     job_deps = [d for d in deps if _data(d).get("job_id") == job_id]
     items = [
-        {"dep": _data(d).get("dep"), "status": _data(d).get("status", "resolved")} for d in job_deps
+        {"dep": _data(d).get("dep"), "status": _data(d).get("status", "resolved")}
+        for d in job_deps
     ]
     all_resolved = all(i["status"] == "resolved" for i in items) if items else True
     return {"job_id": job_id, "dependencies": items, "all_resolved": all_resolved}
@@ -2280,7 +2409,9 @@ async def automated_export_logs(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    all_logs = svc.repo("export_audit_log").list(tenant_id=current.tenant_id, limit=10000)
+    all_logs = svc.repo("export_audit_log").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     logs = all_logs[:limit]
     items = [
         {
@@ -2355,7 +2486,9 @@ async def role_based_export_review(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    reviews = svc.repo("export_review_queue").list(tenant_id=current.tenant_id, limit=1000)
+    reviews = svc.repo("export_review_queue").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     items = [
         {
             "job_id": _data(r).get("job_id") or str(r.get("id", "")),
@@ -2376,7 +2509,9 @@ async def state_rejection_clustering(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    alerts = svc.repo("export_rejection_alerts").list(tenant_id=current.tenant_id, limit=10000)
+    alerts = svc.repo("export_rejection_alerts").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     groups: dict[str, dict] = {}
     for a in alerts:
         d = _data(a)
@@ -2439,7 +2574,9 @@ async def export_freeze_during_audit(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    freezes = svc.repo("export_audit_freezes").list(tenant_id=current.tenant_id, limit=10)
+    freezes = svc.repo("export_audit_freezes").list(
+        tenant_id=current.tenant_id, limit=10
+    )
     active = next((f for f in freezes if _data(f).get("audit_in_progress")), None)
     if active:
         d = _data(active)
@@ -2491,7 +2628,9 @@ async def archive_retention_policy(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    policies = svc.repo("export_retention_policies").list(tenant_id=current.tenant_id, limit=10)
+    policies = svc.repo("export_retention_policies").list(
+        tenant_id=current.tenant_id, limit=10
+    )
     if policies:
         d = _data(policies[0])
         return {
@@ -2533,7 +2672,9 @@ async def state_submission_sla_tracker(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    sla_records = svc.repo("export_state_sla").list(tenant_id=current.tenant_id, limit=100)
+    sla_records = svc.repo("export_state_sla").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     items = [
         {
             "state": _data(s).get("state"),
@@ -2552,7 +2693,9 @@ async def submission_approval_workflow(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    steps = svc.repo("export_approval_workflows").list(tenant_id=current.tenant_id, limit=100)
+    steps = svc.repo("export_approval_workflows").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     items = [
         {
             "step": _data(s).get("step"),
@@ -2604,12 +2747,18 @@ async def batch_size_optimization(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    schedules = svc.repo("export_schedules").list(tenant_id=current.tenant_id, limit=1000)
+    schedules = svc.repo("export_schedules").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     batch_sizes = [
-        _data(s).get("record_count", 0) for s in schedules if _data(s).get("record_count")
+        _data(s).get("record_count", 0)
+        for s in schedules
+        if _data(s).get("record_count")
     ]
     avg_batch = round(sum(batch_sizes) / len(batch_sizes)) if batch_sizes else 0
-    configs = svc.repo("export_throttle_config").list(tenant_id=current.tenant_id, limit=10)
+    configs = svc.repo("export_throttle_config").list(
+        tenant_id=current.tenant_id, limit=10
+    )
     max_safe = _data(configs[0]).get("max_batch_size", 500) if configs else 500
     recommended = min(max(avg_batch * 2, 50), max_safe)
     return {
@@ -2626,7 +2775,9 @@ async def submission_integrity_dashboard(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    results = svc.repo("export_validation_results").list(tenant_id=current.tenant_id, limit=10000)
+    results = svc.repo("export_validation_results").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     total = len(results) or 1
     passed = sum(1 for r in results if _data(r).get("passed", True))
     failed = total - passed
@@ -2636,7 +2787,12 @@ async def submission_integrity_dashboard(
         "integrity_pass": passed,
         "integrity_fail": failed,
         "pass_rate_pct": rate,
-        "checks": ["checksum", "schema_validation", "field_completeness", "timestamp_alignment"],
+        "checks": [
+            "checksum",
+            "schema_validation",
+            "field_completeness",
+            "timestamp_alignment",
+        ],
         "last_run": _now(),
     }
 
@@ -2737,7 +2893,9 @@ async def compliance_escalation_triggers(
     total = len(jobs) or 1
     failed = sum(1 for j in jobs if _data(j).get("status") == "failed")
     failure_rate = round(failed / total * 100, 2)
-    outages = svc.repo("export_state_outages").list(tenant_id=current.tenant_id, limit=10)
+    outages = svc.repo("export_state_outages").list(
+        tenant_id=current.tenant_id, limit=10
+    )
     active_outages = [o for o in outages if _data(o).get("status") == "outage"]
     triggers = [
         {
@@ -2763,7 +2921,9 @@ async def scheduled_health_checks(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    checks = svc.repo("export_health_checks").list(tenant_id=current.tenant_id, limit=100)
+    checks = svc.repo("export_health_checks").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     items = [
         {
             "name": _data(c).get("name"),
@@ -2792,7 +2952,9 @@ async def audit_ready_export_package(
             "export_xml": d.get("export_xml", f"s3://exports/{job_id}.xml"),
             "checksum_file": d.get("checksum_file", f"s3://exports/{job_id}.sha256"),
             "submission_proof": d.get("submission_proof", f"s3://proofs/{job_id}.json"),
-            "state_confirmation": d.get("state_confirmation", f"s3://confirmations/{job_id}.conf"),
+            "state_confirmation": d.get(
+                "state_confirmation", f"s3://confirmations/{job_id}.conf"
+            ),
             "audit_log": d.get("audit_log", f"s3://audit/{job_id}.log"),
         },
         "ready": job is not None,
@@ -2807,7 +2969,9 @@ async def export_exception_reporting(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    all_exceptions = svc.repo("export_exceptions").list(tenant_id=current.tenant_id, limit=10000)
+    all_exceptions = svc.repo("export_exceptions").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     exceptions = all_exceptions[:limit]
     items = [
         {
@@ -2840,16 +3004,12 @@ async def national_reporting_readiness_engine(
     grade = (
         "A"
         if score >= 90
-        else "B"
-        if score >= 80
-        else "C"
-        if score >= 70
-        else "D"
-        if score >= 60
-        else "F"
+        else "B" if score >= 80 else "C" if score >= 70 else "D" if score >= 60 else "F"
     )
     states = {_data(j).get("state") for j in jobs if _data(j).get("state")}
-    blockers = svc.repo("export_submission_blockers").list(tenant_id=current.tenant_id, limit=100)
+    blockers = svc.repo("export_submission_blockers").list(
+        tenant_id=current.tenant_id, limit=100
+    )
     return {
         "national_readiness_score": score,
         "grade": grade,

@@ -51,7 +51,12 @@ def _is_opted_out(db: Session, tenant_id: str, phone_e164: str) -> bool:
 
 
 def _log_sms_out(
-    db: Session, tenant_id: str, from_phone: str, to_phone: str, body: str, message_id: str
+    db: Session,
+    tenant_id: str,
+    from_phone: str,
+    to_phone: str,
+    body: str,
+    message_id: str,
 ) -> None:
     db.execute(
         text(
@@ -97,16 +102,23 @@ async def create_checkout_session(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ) -> dict[str, Any]:
-    if str(body.tenant_id) != str(current.tenant_id) and current.role not in ("founder", "admin"):
+    if str(body.tenant_id) != str(current.tenant_id) and current.role not in (
+        "founder",
+        "admin",
+    ):
         raise HTTPException(status_code=403, detail="tenant_mismatch")
 
     settings = get_settings()
     connected_account_id = _get_connected_account(db, str(body.tenant_id))
     if not connected_account_id:
-        raise HTTPException(status_code=422, detail="tenant_stripe_account_not_configured")
+        raise HTTPException(
+            status_code=422, detail="tenant_stripe_account_not_configured"
+        )
 
     cfg = StripeConfig(secret_key=settings.stripe_secret_key)
-    success_url = f"{settings.api_base_url}/pay/success?statement_id={body.statement_id}"
+    success_url = (
+        f"{settings.api_base_url}/pay/success?statement_id={body.statement_id}"
+    )
     cancel_url = f"{settings.api_base_url}/pay/cancel?statement_id={body.statement_id}"
 
     try:
@@ -145,7 +157,9 @@ class SendLinkSmsRequest(BaseModel):
     @classmethod
     def _valid_e164(cls, v: str) -> str:
         if not _E164_US_RE.match(v):
-            raise ValueError(f"to_phone_e164 must be a valid US E.164 number, got: {v!r}")
+            raise ValueError(
+                f"to_phone_e164 must be a valid US E.164 number, got: {v!r}"
+            )
         return v
 
 
@@ -156,7 +170,10 @@ async def send_link_sms(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ) -> dict[str, Any]:
-    if str(body.tenant_id) != str(current.tenant_id) and current.role not in ("founder", "admin"):
+    if str(body.tenant_id) != str(current.tenant_id) and current.role not in (
+        "founder",
+        "admin",
+    ):
         raise HTTPException(status_code=403, detail="tenant_mismatch")
 
     settings = get_settings()
@@ -186,7 +203,14 @@ async def send_link_sms(
             messaging_profile_id=settings.telnyx_messaging_profile_id or None,
         )
         message_id = (resp.get("data") or {}).get("id") or str(uuid.uuid4())
-        _log_sms_out(db, str(body.tenant_id), from_number, body.to_phone_e164, sms_text, message_id)
+        _log_sms_out(
+            db,
+            str(body.tenant_id),
+            from_number,
+            body.to_phone_e164,
+            sms_text,
+            message_id,
+        )
         logger.info(
             "payment_sms_sent statement_id=%s to=%s message_id=%s",
             body.statement_id,

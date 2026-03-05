@@ -35,6 +35,7 @@ const NAV_DOMAINS = [
     icon: '◈',
     color: 'var(--color-system-compliance)',
     links: [
+      { href: '/founder/agents', label: 'Agents Swarm Info' },
       { href: '/founder/ai/policies', label: 'AI Policies' },
       { href: '/founder/ai/prompt-editor', label: 'Prompt Editor' },
       { href: '/founder/ai/thresholds', label: 'Confidence Thresholds' },

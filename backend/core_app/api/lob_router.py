@@ -41,10 +41,14 @@ async def send_html_statement_letter(
     from_addr = payload.get("from_address")
     html_content = payload.get("html", "")
     if not html_content or not html_content.strip():
-        raise HTTPException(status_code=400, detail="html field is required and must not be empty")
+        raise HTTPException(
+            status_code=400, detail="html field is required and must not be empty"
+        )
 
     if not to_addr or not from_addr:
-        raise HTTPException(status_code=400, detail="to_address and from_address required")
+        raise HTTPException(
+            status_code=400, detail="to_address and from_address required"
+        )
 
     try:
         resp = _requests.post(

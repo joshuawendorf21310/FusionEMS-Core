@@ -28,6 +28,7 @@ def _s3_client():
 def _ssm_client():
     return boto3.client("ssm")
 
+
 BUCKET = os.environ.get("KITLINK_ARTIFACTS_BUCKET", "")
 APP_NAME = os.environ.get("APP_NAME", "fusionems")
 STAGE = os.environ.get("STAGE", "prod")
@@ -62,15 +63,17 @@ def _load_pack_index() -> dict:
     if _index_cache and (now - _index_cache_ts) < _INDEX_TTL:
         return _index_cache
     try:
-        ssm_val = _ssm_client().get_parameter(Name=_ssm_key("index"))["Parameter"]["Value"]
+        ssm_val = _ssm_client().get_parameter(Name=_ssm_key("index"))["Parameter"][
+            "Value"
+        ]
         s3_key = ssm_val.replace(f"s3://{BUCKET}/", "")
-    except Exception:
+    except Exception as e:
         s3_key = _PACK_S3_KEYS["pack_index_v1"]
     try:
         obj = _s3_client().get_object(Bucket=BUCKET, Key=s3_key)
         _index_cache = json.loads(obj["Body"].read())
         _index_cache_ts = now
-    except Exception:
+    except Exception as e:
         _index_cache = {"packs": [], "recommended_sets": []}
     return _index_cache
 
@@ -78,7 +81,9 @@ def _load_pack_index() -> dict:
 def _load_pack_json(pack_id: str) -> dict:
     s3_key = _PACK_S3_KEYS.get(pack_id)
     if not s3_key:
-        raise HTTPException(status_code=404, detail=f"Pack '{pack_id}' not found in index")
+        raise HTTPException(
+            status_code=404, detail=f"Pack '{pack_id}' not found in index"
+        )
     try:
         obj = _s3_client().get_object(Bucket=BUCKET, Key=s3_key)
         return json.loads(obj["Body"].read())
@@ -93,11 +98,17 @@ def _ingest_pack(pack_id: str, tenant_id: uuid.UUID, db: Session) -> dict:
 
     stored = repo.list("compliance_packs", system_tid)
     existing = next((r for r in stored if r["data"].get("pack_id") == pack_id), None)
-    pack_hash = hashlib.sha256(json.dumps(pack_json, sort_keys=True).encode()).hexdigest()
+    pack_hash = hashlib.sha256(
+        json.dumps(pack_json, sort_keys=True).encode()
+    ).hexdigest()
 
     if existing:
         if existing["data"].get("pack_hash") == pack_hash:
-            return {"pack_id": pack_id, "status": "already_ingested", "id": str(existing["id"])}
+            return {
+                "pack_id": pack_id,
+                "status": "already_ingested",
+                "id": str(existing["id"]),
+            }
         repo.update(
             "compliance_packs",
             system_tid,
@@ -217,7 +228,9 @@ def _get_tenant_config(tenant_id: uuid.UUID, db: Session) -> dict:
     return rows[0]["data"]
 
 
-def _update_tenant_config(tenant_id: uuid.UUID, patch: dict, actor: str, db: Session) -> dict:
+def _update_tenant_config(
+    tenant_id: uuid.UUID, patch: dict, actor: str, db: Session
+) -> dict:
     repo = _repo(db)
     rows = repo.list("tenant_compliance_config", tenant_id)
     now = datetime.now(UTC).isoformat()
@@ -236,7 +249,9 @@ def _update_tenant_config(tenant_id: uuid.UUID, patch: dict, actor: str, db: Ses
     return data
 
 
-def _emit_audit(action: str, tenant_id: str, actor: str, before: list, after: list, db: Session):
+def _emit_audit(
+    action: str, tenant_id: str, actor: str, before: list, after: list, db: Session
+):
     repo = _repo(db)
     repo.create(
         "compliance_packs",
@@ -265,7 +280,9 @@ def get_pack_index():
 
 @router.post("/packs/{pack_id}/ingest")
 def ingest_pack(pack_id: str, db: Session = Depends(get_db)):
-    result = _ingest_pack(pack_id, uuid.UUID("00000000-0000-0000-0000-000000000000"), db)
+    result = _ingest_pack(
+        pack_id, uuid.UUID("00000000-0000-0000-0000-000000000000"), db
+    )
     return result
 
 
@@ -391,7 +408,9 @@ def tenant_compliance_status(tenant_id: str, db: Session = Depends(get_db)):
 
     inspections = repo.list("compliance_inspections", tid)
     completed = [r for r in inspections if r["data"].get("status") == "complete"]
-    last_inspection = max((r["data"].get("submitted_at", "") for r in completed), default=None)
+    last_inspection = max(
+        (r["data"].get("submitted_at", "") for r in completed), default=None
+    )
     pass_count = sum(1 for r in completed if r["data"].get("result_status") == "pass")
     fleet_score = round(pass_count / len(completed) * 100, 1) if completed else None
 
@@ -425,4 +444,7 @@ def list_tenant_configs(db: Session = Depends(get_db)):
     repo = _repo(db)
     system_tid = uuid.UUID("00000000-0000-0000-0000-000000000000")
     rows = repo.list("tenant_compliance_config", system_tid)
-    return [{"id": str(r["id"]), "tenant_id": str(r["tenant_id"]), "data": r["data"]} for r in rows]
+    return [
+        {"id": str(r["id"]), "tenant_id": str(r["tenant_id"]), "data": r["data"]}
+        for r in rows
+    ]

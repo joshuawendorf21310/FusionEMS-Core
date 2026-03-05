@@ -119,5 +119,7 @@ async def active_call(
 ):
     # return latest assignment for unit
     svc = DominationService(db, get_event_publisher())
-    assigns = svc.repo("crew_assignments").list(tenant_id=current.tenant_id, limit=1, offset=0)
+    assigns = svc.repo("crew_assignments").list(
+        tenant_id=current.tenant_id, limit=1, offset=0
+    )
     return assigns[0] if assigns else None

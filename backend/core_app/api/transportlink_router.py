@@ -52,13 +52,19 @@ async def upload_url(
             Params={
                 "Bucket": settings.s3_bucket_docs,
                 "Key": s3_key,
-                "ContentType": payload.get("content_type") or "application/octet-stream",
+                "ContentType": payload.get("content_type")
+                or "application/octet-stream",
             },
             ExpiresIn=900,
         )
     return {
         "request_id": str(request_id),
-        "upload": {"method": "PUT", "url": presigned_url, "key": s3_key, "expires_in": 900},
+        "upload": {
+            "method": "PUT",
+            "url": presigned_url,
+            "key": s3_key,
+            "expires_in": 900,
+        },
     }
 
 
@@ -89,7 +95,9 @@ async def status(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    rec = svc.repo("facility_requests").get(tenant_id=current.tenant_id, record_id=request_id)
+    rec = svc.repo("facility_requests").get(
+        tenant_id=current.tenant_id, record_id=request_id
+    )
     return rec or {"error": "not_found"}
 
 
@@ -101,4 +109,6 @@ async def facility_schedule(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    return svc.repo("facility_requests").list(tenant_id=current.tenant_id, limit=500, offset=0)
+    return svc.repo("facility_requests").list(
+        tenant_id=current.tenant_id, limit=500, offset=0
+    )

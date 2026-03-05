@@ -72,8 +72,7 @@ _SYSTEMS = [
 
 
 @router.get("")
-async def list_systems(
-):
+async def list_systems():
     return _SYSTEMS
 
 

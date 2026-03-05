@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -52,7 +56,9 @@ async def list_threads(
     }
     status_clause = ""
     if status:
-        status_clause = "AND data->>'status' = :status AND data->>'created_by' = :user_id "
+        status_clause = (
+            "AND data->>'status' = :status AND data->>'created_by' = :user_id "
+        )
         params["status"] = status
     rows = (
         db.execute(
@@ -247,7 +253,9 @@ async def founder_reply(
 ):
     row = (
         db.execute(
-            text("SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"),
+            text(
+                "SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"
+            ),
             {"id": thread_id},
         )
         .mappings()
@@ -285,7 +293,10 @@ async def founder_resolve(
             {
                 "id": thread_id,
                 "patch": _json.dumps(
-                    {"status": "resolved", "resolved_at": datetime.now(UTC).isoformat()},
+                    {
+                        "status": "resolved",
+                        "resolved_at": datetime.now(UTC).isoformat(),
+                    },
                     separators=(",", ":"),
                 ),
             },
@@ -307,7 +318,9 @@ async def founder_summarize(
 ):
     row = (
         db.execute(
-            text("SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"),
+            text(
+                "SELECT tenant_id FROM support_threads WHERE id = :id AND deleted_at IS NULL"
+            ),
             {"id": thread_id},
         )
         .mappings()

@@ -44,7 +44,9 @@ _STATE_TTL_SECONDS = 600
 def _sign_state(nonce: str) -> str:
     s = get_settings()
     payload = f"{nonce}|{int(__import__('time').time())}"
-    sig = hmac.new(s.jwt_secret_key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    sig = hmac.new(
+        s.jwt_secret_key.encode(), payload.encode(), hashlib.sha256
+    ).hexdigest()
     return f"{payload}|{sig}"
 
 
@@ -89,7 +91,11 @@ def microsoft_login() -> RedirectResponse:
         "response_mode": "query",
         "state": state,
     }
-    url = _AUTHORIZE_URL.format(tenant_id=s.graph_tenant_id) + "?" + urllib.parse.urlencode(params)
+    url = (
+        _AUTHORIZE_URL.format(tenant_id=s.graph_tenant_id)
+        + "?"
+        + urllib.parse.urlencode(params)
+    )
     return RedirectResponse(url=url, status_code=302)
 
 
@@ -116,7 +122,9 @@ def _exchange_code(code: str) -> dict[str, Any]:
             return json.loads(resp.read().decode())  # type: ignore[no-any-return]
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
-        logger.error("entra_token_exchange_failed status=%d body=%.300s", exc.code, error_body)
+        logger.error(
+            "entra_token_exchange_failed status=%d body=%.300s", exc.code, error_body
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to exchange authorization code with Entra",
@@ -138,7 +146,9 @@ def _fetch_userinfo(access_token: str) -> dict[str, Any]:
             return json.loads(resp.read().decode())  # type: ignore[no-any-return]
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
-        logger.error("entra_userinfo_failed status=%d body=%.300s", exc.code, error_body)
+        logger.error(
+            "entra_userinfo_failed status=%d body=%.300s", exc.code, error_body
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to fetch user profile from Microsoft Graph",
@@ -163,7 +173,9 @@ def microsoft_callback(
     s = get_settings()
 
     if error:
-        logger.warning("entra_callback_error error=%s desc=%s", error, error_description)
+        logger.warning(
+            "entra_callback_error error=%s desc=%s", error, error_description
+        )
         return RedirectResponse(
             url=f"{s.microsoft_post_logout_url}?error=entra_denied",
             status_code=302,
@@ -176,21 +188,28 @@ def microsoft_callback(
 
     if not _verify_state(state):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired state parameter"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired state parameter",
         )
 
     token_data = _exchange_code(code)
     ms_access_token: str = token_data.get("access_token", "")
     if not ms_access_token:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail="No access_token in Entra response"
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No access_token in Entra response",
         )
 
     userinfo = _fetch_userinfo(ms_access_token)
-    email: str = (userinfo.get("mail") or userinfo.get("userPrincipalName") or "").lower().strip()
+    email: str = (
+        (userinfo.get("mail") or userinfo.get("userPrincipalName") or "")
+        .lower()
+        .strip()
+    )
     if not email:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="No email in Microsoft profile"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No email in Microsoft profile",
         )
 
     user_repo = UserRepository(db)
@@ -216,5 +235,9 @@ def microsoft_logout() -> RedirectResponse:
     params = {
         "post_logout_redirect_uri": s.microsoft_post_logout_url,
     }
-    url = _LOGOUT_URL.format(tenant_id=s.graph_tenant_id) + "?" + urllib.parse.urlencode(params)
+    url = (
+        _LOGOUT_URL.format(tenant_id=s.graph_tenant_id)
+        + "?"
+        + urllib.parse.urlencode(params)
+    )
     return RedirectResponse(url=url, status_code=302)

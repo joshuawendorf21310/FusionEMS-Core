@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
@@ -129,10 +133,17 @@ async def list_templates(
             continue
         if tag and tag not in d.get("tags", []):
             continue
-        if security_classification and d.get("security_classification") != security_classification:
+        if (
+            security_classification
+            and d.get("security_classification") != security_classification
+        ):
             continue
         role_vis = d.get("role_visibility", [])
-        if role_vis and current.role not in role_vis and current.role not in ("founder", "admin"):
+        if (
+            role_vis
+            and current.role not in role_vis
+            and current.role not in ("founder", "admin")
+        ):
             continue
         results.append(t)
     return {"templates": results, "count": len(results)}
@@ -146,7 +157,9 @@ async def get_template(
 ):
     require_role(current, ["founder", "admin", "billing", "ems", "viewer"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     return record
@@ -162,10 +175,15 @@ async def update_template(
 ):
     require_role(current, ["founder", "admin", "billing", "ems"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
-    if record.get("data", {}).get("is_locked") and current.role not in ("founder", "admin"):
+    if record.get("data", {}).get("is_locked") and current.role not in (
+        "founder",
+        "admin",
+    ):
         raise HTTPException(status_code=403, detail="template_locked")
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     patch["version"] = record.get("data", {}).get("version", 1) + 1
@@ -183,7 +201,9 @@ async def update_template(
     history_entry = {
         "template_id": str(template_id),
         "version": patch["version"],
-        "content_snapshot": patch.get("content", record.get("data", {}).get("content", "")),
+        "content_snapshot": patch.get(
+            "content", record.get("data", {}).get("content", "")
+        ),
         "changed_by": str(current.user_id),
         "changed_at": patch["updated_at"],
     }
@@ -206,7 +226,9 @@ async def delete_template(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     await svc.update(
@@ -230,7 +252,9 @@ async def inject_variables(
 ):
     require_role(current, ["founder", "admin", "billing", "ems"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=body.template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=body.template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     content = record.get("data", {}).get("content", "")
@@ -272,7 +296,9 @@ async def approve_template(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     new_status = "approved" if body.action == "approve" else "rejected"
@@ -301,7 +327,9 @@ async def clone_template(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    source = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=body.template_id)
+    source = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=body.template_id
+    )
     if not source:
         raise HTTPException(status_code=404, detail="source_template_not_found")
     new_data = {**source.get("data", {})}
@@ -330,8 +358,14 @@ async def template_versions(
 ):
     require_role(current, ["founder", "admin", "billing", "ems"])
     svc = DominationService(db, get_event_publisher())
-    all_versions = svc.repo("template_versions").list(tenant_id=current.tenant_id, limit=200)
-    filtered = [v for v in all_versions if v.get("data", {}).get("template_id") == str(template_id)]
+    all_versions = svc.repo("template_versions").list(
+        tenant_id=current.tenant_id, limit=200
+    )
+    filtered = [
+        v
+        for v in all_versions
+        if v.get("data", {}).get("template_id") == str(template_id)
+    ]
     filtered.sort(key=lambda v: v.get("data", {}).get("version", 0), reverse=True)
     return {"versions": filtered}
 
@@ -346,7 +380,9 @@ async def rollback_template(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    all_versions = svc.repo("template_versions").list(tenant_id=current.tenant_id, limit=500)
+    all_versions = svc.repo("template_versions").list(
+        tenant_id=current.tenant_id, limit=500
+    )
     target = next(
         (
             v
@@ -358,7 +394,9 @@ async def rollback_template(
     )
     if not target:
         raise HTTPException(status_code=404, detail="version_not_found")
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     updated = await svc.update(
@@ -385,7 +423,9 @@ async def diff_versions(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    all_versions = svc.repo("template_versions").list(tenant_id=current.tenant_id, limit=500)
+    all_versions = svc.repo("template_versions").list(
+        tenant_id=current.tenant_id, limit=500
+    )
     ver_a = next(
         (
             v
@@ -431,7 +471,9 @@ async def bulk_generate(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=body.template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=body.template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     content = record.get("data", {}).get("content", "")
@@ -440,7 +482,9 @@ async def bulk_generate(
         rendered = content
         for k, v in rec.items():
             rendered = rendered.replace(f"{{{{{k}}}}}", str(v))
-        results.append({"index": idx, "rendered_length": len(rendered), "status": "generated"})
+        results.append(
+            {"index": idx, "rendered_length": len(rendered), "status": "generated"}
+        )
     job = await svc.create(
         table="bulk_generation_jobs",
         tenant_id=current.tenant_id,
@@ -491,7 +535,9 @@ async def global_variables(
 ):
     require_role(current, ["founder", "admin", "billing", "ems"])
     svc = DominationService(db, get_event_publisher())
-    variables = svc.repo("global_variables").list(tenant_id=current.tenant_id, limit=1000)
+    variables = svc.repo("global_variables").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     return {"variables": variables}
 
 
@@ -522,7 +568,9 @@ async def validate_template(
 ):
     require_role(current, ["founder", "admin", "billing", "ems"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     data = record.get("data", {})
@@ -557,11 +605,15 @@ async def template_analytics(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    renders = svc.repo("template_renders").list(tenant_id=current.tenant_id, limit=10000)
+    renders = svc.repo("template_renders").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     template_renders = [
         r for r in renders if r.get("data", {}).get("template_id") == str(template_id)
     ]
-    downloads = svc.repo("template_downloads").list(tenant_id=current.tenant_id, limit=10000)
+    downloads = svc.repo("template_downloads").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     template_downloads = [
         d for d in downloads if d.get("data", {}).get("template_id") == str(template_id)
     ]
@@ -580,14 +632,18 @@ async def top_performing_templates(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    renders = svc.repo("template_renders").list(tenant_id=current.tenant_id, limit=10000)
+    renders = svc.repo("template_renders").list(
+        tenant_id=current.tenant_id, limit=10000
+    )
     counts: dict[str, int] = {}
     for r in renders:
         tid = r.get("data", {}).get("template_id", "unknown")
         counts[tid] = counts.get(tid, 0) + 1
     sorted_templates = sorted(counts.items(), key=lambda x: x[1], reverse=True)[:10]
     return {
-        "top_templates": [{"template_id": t[0], "render_count": t[1]} for t in sorted_templates]
+        "top_templates": [
+            {"template_id": t[0], "render_count": t[1]} for t in sorted_templates
+        ]
     }
 
 
@@ -601,7 +657,9 @@ async def schedule_delivery(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     job = await svc.create(
@@ -631,9 +689,15 @@ async def lifecycle_management(
     now = datetime.now(UTC)
     lifecycle = {
         "total": len(all_templates),
-        "draft": sum(1 for t in all_templates if t.get("data", {}).get("status") == "draft"),
-        "approved": sum(1 for t in all_templates if t.get("data", {}).get("status") == "approved"),
-        "archived": sum(1 for t in all_templates if t.get("data", {}).get("status") == "archived"),
+        "draft": sum(
+            1 for t in all_templates if t.get("data", {}).get("status") == "draft"
+        ),
+        "approved": sum(
+            1 for t in all_templates if t.get("data", {}).get("status") == "approved"
+        ),
+        "archived": sum(
+            1 for t in all_templates if t.get("data", {}).get("status") == "archived"
+        ),
         "locked": sum(1 for t in all_templates if t.get("data", {}).get("is_locked")),
         "as_of": now.isoformat(),
     }
@@ -650,7 +714,9 @@ async def generate_secure_link(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    record = svc.repo("templates").get(tenant_id=current.tenant_id, record_id=template_id)
+    record = svc.repo("templates").get(
+        tenant_id=current.tenant_id, record_id=template_id
+    )
     if not record:
         raise HTTPException(status_code=404, detail="template_not_found")
     token = hashlib.sha256(
@@ -679,7 +745,9 @@ async def template_audit_trail(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    versions = svc.repo("template_versions").list(tenant_id=current.tenant_id, limit=1000)
+    versions = svc.repo("template_versions").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     versions.sort(key=lambda v: v.get("created_at", ""), reverse=True)
     return {"audit_trail": versions[:100]}
 

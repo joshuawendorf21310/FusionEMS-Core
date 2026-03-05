@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppShell from '@/components/AppShell';
 import { ClaimStatusChip } from '@/components/ui/StatusChip';
+import { QuantumEmptyState, QuantumCardSkeleton } from '@/components/ui';
 
 type ClaimStatus = 'clean' | 'pending' | 'denied' | 'appealed';
 type PayerFilter = 'All' | 'Medicare' | 'Medicaid' | 'Commercial';
@@ -17,28 +18,8 @@ interface Claim {
   status: ClaimStatus;
 }
 
-const CLAIMS: Claim[] = [
-  { id: 'CLM-2026-00841', patient: 'P-3821', dos: '02/14/2026', payer: 'Medicare', amount: '$1,842.00', status: 'clean' },
-  { id: 'CLM-2026-00840', patient: 'P-0194', dos: '02/14/2026', payer: 'Medicaid', amount: '$934.50', status: 'pending' },
-  { id: 'CLM-2026-00839', patient: 'P-7742', dos: '02/13/2026', payer: 'BCBS', amount: '$2,210.00', status: 'denied' },
-  { id: 'CLM-2026-00838', patient: 'P-5503', dos: '02/13/2026', payer: 'UHC', amount: '$1,650.75', status: 'appealed' },
-  { id: 'CLM-2026-00837', patient: 'P-9918', dos: '02/12/2026', payer: 'Medicare', amount: '$1,720.00', status: 'clean' },
-  { id: 'CLM-2026-00836', patient: 'P-2267', dos: '02/12/2026', payer: 'Aetna', amount: '$2,080.00', status: 'pending' },
-  { id: 'CLM-2026-00835', patient: 'P-6641', dos: '02/11/2026', payer: 'Medicaid', amount: '$780.25', status: 'denied' },
-  { id: 'CLM-2026-00834', patient: 'P-1130', dos: '02/11/2026', payer: 'Medicare', amount: '$1,960.00', status: 'clean' },
-  { id: 'CLM-2026-00833', patient: 'P-4487', dos: '02/10/2026', payer: 'BCBS', amount: '$2,340.50', status: 'appealed' },
-  { id: 'CLM-2026-00832', patient: 'P-8826', dos: '02/10/2026', payer: 'UHC', amount: '$1,580.00', status: 'clean' },
-];
-
 const STATUS_FILTERS: StatusFilter[] = ['All', 'Clean', 'Pending', 'Denied', 'Appealed'];
 const PAYER_FILTERS: PayerFilter[] = ['All', 'Medicare', 'Medicaid', 'Commercial'];
-
-const STAT_COUNTS = [
-  { label: 'Total Claims', value: '847', color: 'var(--color-text-primary)' },
-  { label: 'Clean', value: '712', color: 'var(--color-status-active)' },
-  { label: 'Pending', value: '94', color: 'var(--color-status-warning)' },
-  { label: 'Denied', value: '41', color: 'var(--color-brand-red)' },
-];
 
 const TH: React.CSSProperties = {
   padding: '10px 12px',
@@ -61,9 +42,27 @@ const TD: React.CSSProperties = {
   verticalAlign: 'middle',
 };
 
+const API = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '';
+
 export default function ClaimsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [payerFilter, setPayerFilter] = useState<PayerFilter>('All');
+  
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetch(`${API}/api/v1/billing/claims?status=${statusFilter}&payer=${payerFilter}`)
+      .then(res => res.json())
+      .then(data => {
+        if(data.claims) setClaims(data.claims);
+        if(data.stats) setStats(data.stats);
+      })
+      .catch(e => console.warn('[fetch error]', e))
+      .finally(() => setIsLoading(false));
+  }, [statusFilter, payerFilter]);
 
   const filterBtnStyle = (active: boolean): React.CSSProperties => ({
     padding: '6px 14px',
@@ -108,35 +107,41 @@ export default function ClaimsPage() {
 
         {/* Stats Strip */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
-          {STAT_COUNTS.map((s) => (
-            <div
-              key={s.label}
-              style={{
-                background: 'var(--color-bg-panel)',
-                clipPath: 'var(--chamfer-8)',
-                padding: '16px 20px',
-                boxShadow: 'var(--elevation-1)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-              }}
-            >
-              <div className="micro-caps" style={{ color: 'var(--color-text-muted)' }}>
-                {s.label}
-              </div>
+          {isLoading && stats.length === 0 ? (
+             Array.from({length: 4}).map((_, i) => <QuantumCardSkeleton key={i} />)
+          ) : stats.length > 0 ? (
+            stats.map((s) => (
               <div
+                key={s.label}
                 style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-h2)',
-                  fontWeight: 700,
-                  color: s.color,
-                  lineHeight: 1.1,
+                  background: 'var(--color-bg-panel)',
+                  clipPath: 'var(--chamfer-8)',
+                  padding: '16px 20px',
+                  boxShadow: 'var(--elevation-1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
                 }}
               >
-                {s.value}
+                <div className="micro-caps" style={{ color: 'var(--color-text-muted)' }}>
+                  {s.label}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-h2)',
+                    fontWeight: 700,
+                    color: s.color || 'var(--color-text-primary)',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {s.value}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+             <QuantumEmptyState title="No metrics" description="API didn't return aggregations" icon="billing" />
+          )}
         </div>
 
         {/* Filter Bar */}
@@ -200,7 +205,7 @@ export default function ClaimsPage() {
                 fontFamily: 'var(--font-mono)',
               }}
             >
-              02/01/2026 – 02/28/2026
+              Real-time filter active
             </div>
           </div>
         </div>
@@ -215,93 +220,101 @@ export default function ClaimsPage() {
             marginBottom: '12px',
           }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={TH}>Claim ID</th>
-                <th style={TH}>Patient</th>
-                <th style={TH}>DOS</th>
-                <th style={TH}>Payer</th>
-                <th style={{ ...TH, textAlign: 'right' }}>Amount</th>
-                <th style={{ ...TH, textAlign: 'center' }}>Status</th>
-                <th style={{ ...TH, textAlign: 'center' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {CLAIMS.map((claim, i) => (
-                <tr
-                  key={claim.id}
-                  style={{
-                    background:
-                      i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
-                  }}
-                >
-                  <td
-                    style={{
-                      ...TD,
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 'var(--text-body)',
-                      color: 'var(--color-system-billing)',
-                    }}
-                  >
-                    {claim.id}
-                  </td>
-                  <td
-                    style={{
-                      ...TD,
-                      fontFamily: 'var(--font-mono)',
-                      color: 'var(--color-text-muted)',
-                    }}
-                  >
-                    {claim.patient}
-                  </td>
-                  <td style={TD}>{claim.dos}</td>
-                  <td style={{ ...TD, color: 'var(--color-text-primary)' }}>{claim.payer}</td>
-                  <td
-                    style={{
-                      ...TD,
-                      fontFamily: 'var(--font-mono)',
-                      textAlign: 'right',
-                      color: 'var(--color-text-primary)',
-                    }}
-                  >
-                    {claim.amount}
-                  </td>
-                  <td style={{ ...TD, textAlign: 'center' }}>
-                    <ClaimStatusChip claimStatus={claim.status} size="sm" />
-                  </td>
-                  <td style={{ ...TD, textAlign: 'center' }}>
-                    <button
-                      style={{
-                        padding: '4px 12px',
-                        background: 'transparent',
-                        border: '1px solid var(--color-border-default)',
-                        clipPath: 'var(--chamfer-4)',
-                        color: 'var(--color-text-secondary)',
-                        fontFamily: 'var(--font-label)',
-                        fontSize: 'var(--text-label)',
-                        fontWeight: 600,
-                        letterSpacing: 'var(--tracking-label)',
-                        textTransform: 'uppercase',
-                        cursor: 'pointer',
-                        transition: 'color var(--duration-fast)',
-                      }}
-                      onMouseEnter={(e) =>
-                        ((e.currentTarget as HTMLButtonElement).style.color =
-                          'var(--color-text-primary)')
-                      }
-                      onMouseLeave={(e) =>
-                        ((e.currentTarget as HTMLButtonElement).style.color =
-                          'var(--color-text-secondary)')
-                      }
-                    >
-                      View
-                    </button>
-                  </td>
+          {isLoading ? (
+            <div className="p-8">
+              <QuantumCardSkeleton title="Loading Claims..." />
+            </div>
+          ) : claims.length === 0 ? (
+            <QuantumEmptyState title="No Claims Found" description="No claims matching these filters or API disconnected." icon="billing" />
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={TH}>Claim ID</th>
+                  <th style={TH}>Patient</th>
+                  <th style={TH}>DOS</th>
+                  <th style={TH}>Payer</th>
+                  <th style={{ ...TH, textAlign: 'right' }}>Amount</th>
+                  <th style={{ ...TH, textAlign: 'center' }}>Status</th>
+                  <th style={{ ...TH, textAlign: 'center' }}>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {claims.map((claim, i) => (
+                  <tr
+                    key={claim.id}
+                    style={{
+                      background:
+                        i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                    }}
+                  >
+                    <td
+                      style={{
+                        ...TD,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-body)',
+                        color: 'var(--color-system-billing)',
+                      }}
+                    >
+                      {claim.id}
+                    </td>
+                    <td
+                      style={{
+                        ...TD,
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--color-text-muted)',
+                      }}
+                    >
+                      {claim.patient}
+                    </td>
+                    <td style={TD}>{claim.dos}</td>
+                    <td style={{ ...TD, color: 'var(--color-text-primary)' }}>{claim.payer}</td>
+                    <td
+                      style={{
+                        ...TD,
+                        fontFamily: 'var(--font-mono)',
+                        textAlign: 'right',
+                        color: 'var(--color-text-primary)',
+                      }}
+                    >
+                      {claim.amount}
+                    </td>
+                    <td style={{ ...TD, textAlign: 'center' }}>
+                      <ClaimStatusChip claimStatus={claim.status} size="sm" />
+                    </td>
+                    <td style={{ ...TD, textAlign: 'center' }}>
+                      <button
+                        style={{
+                          padding: '4px 12px',
+                          background: 'transparent',
+                          border: '1px solid var(--color-border-default)',
+                          clipPath: 'var(--chamfer-4)',
+                          color: 'var(--color-text-secondary)',
+                          fontFamily: 'var(--font-label)',
+                          fontSize: 'var(--text-label)',
+                          fontWeight: 600,
+                          letterSpacing: 'var(--tracking-label)',
+                          textTransform: 'uppercase',
+                          cursor: 'pointer',
+                          transition: 'color var(--duration-fast)',
+                        }}
+                        onMouseEnter={(e) =>
+                          ((e.currentTarget as HTMLButtonElement).style.color =
+                            'var(--color-text-primary)')
+                        }
+                        onMouseLeave={(e) =>
+                          ((e.currentTarget as HTMLButtonElement).style.color =
+                            'var(--color-text-secondary)')
+                        }
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Pagination */}
@@ -313,7 +326,7 @@ export default function ClaimsPage() {
             padding: '4px 0',
           }}
         >
-          Showing 1–10 of 847 claims
+          {claims.length ? `Showing 1–${claims.length} of ${claims.length} claims` : ''}
         </div>
       </div>
     </AppShell>

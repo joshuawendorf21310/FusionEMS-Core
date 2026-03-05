@@ -36,20 +36,27 @@ def _check(current: CurrentUser) -> None:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
-def _check_trip_eligible(svc: DominationService, tenant_id: uuid.UUID) -> dict[str, Any]:
+def _check_trip_eligible(
+    svc: DominationService, tenant_id: uuid.UUID
+) -> dict[str, Any]:
     settings_list = svc.repo("trip_settings").list(tenant_id=tenant_id, limit=5)
     if not settings_list:
         raise HTTPException(
             status_code=403, detail="TRIP not configured. Set up TRIP settings first."
         )
-    settings = sorted(settings_list, key=lambda x: x.get("created_at", ""), reverse=True)[0]
+    settings = sorted(
+        settings_list, key=lambda x: x.get("created_at", ""), reverse=True
+    )[0]
     d = settings.get("data") or {}
     if not d.get("is_government_entity"):
         raise HTTPException(
-            status_code=403, detail="TRIP is available to eligible government agencies only."
+            status_code=403,
+            detail="TRIP is available to eligible government agencies only.",
         )
     if not d.get("trip_enrolled"):
-        raise HTTPException(status_code=403, detail="TRIP enrollment not confirmed in settings.")
+        raise HTTPException(
+            status_code=403, detail="TRIP enrollment not confirmed in settings."
+        )
     return settings
 
 
@@ -65,7 +72,11 @@ async def get_settings(
     svc = _svc(db)
     records = svc.repo("trip_settings").list(tenant_id=current.tenant_id, limit=5)
     if not records:
-        return {"configured": False, "is_government_entity": False, "trip_enrolled": False}
+        return {
+            "configured": False,
+            "is_government_entity": False,
+            "trip_enrolled": False,
+        }
     return sorted(records, key=lambda x: x.get("created_at", ""), reverse=True)[0]
 
 
@@ -151,7 +162,9 @@ async def build_candidates(
     min_balance = settings_data.get("min_balance_cents", MIN_BALANCE_CENTS)
     correlation_id = getattr(request.state, "correlation_id", None)
     accounts = svc.repo("ar_accounts").list(tenant_id=current.tenant_id, limit=500)
-    existing_debts = svc.repo("trip_debts").list(tenant_id=current.tenant_id, limit=1000)
+    existing_debts = svc.repo("trip_debts").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     existing_account_ids = {
         (d.get("data") or {}).get("ar_account_id")
         for d in existing_debts
@@ -175,7 +188,9 @@ async def build_candidates(
                 "ar_account_id": str(acc["id"]),
                 "debtor_name": patient.get("name", ""),
                 "identifier_type": patient.get("identifier_type", ""),
-                "identifier_value_encrypted": patient.get("identifier_value_encrypted", ""),
+                "identifier_value_encrypted": patient.get(
+                    "identifier_value_encrypted", ""
+                ),
                 "balance_cents": d.get("balance_cents", 0),
                 "status": "candidate",
                 "last_error_code": None,
@@ -239,7 +254,9 @@ def _build_trip_xml(debts: list[dict], tenant_id: str) -> bytes:
         debt_el = ET.SubElement(debts_el, "Debt")
         ET.SubElement(debt_el, "DebtorName").text = d.get("debtor_name", "")
         ET.SubElement(debt_el, "IdentifierType").text = d.get("identifier_type", "")
-        ET.SubElement(debt_el, "IdentifierValue").text = d.get("identifier_value_encrypted", "")
+        ET.SubElement(debt_el, "IdentifierValue").text = d.get(
+            "identifier_value_encrypted", ""
+        )
         ET.SubElement(debt_el, "Balance").text = "{:.2f}".format(
             (d.get("balance_cents") or 0) / 100
         )
@@ -284,9 +301,16 @@ async def generate_export(
 
         bucket = default_exports_bucket()
         if bucket:
-            put_bytes(bucket=bucket, key=s3_key, content=xml_bytes, content_type="application/xml")
-    except Exception:
-        pass
+            put_bytes(
+                bucket=bucket,
+                key=s3_key,
+                content=xml_bytes,
+                content_type="application/xml",
+            )
+    except Exception as e:
+        import logging
+
+        logging.error(f"Error: {e}")
     export = await svc.create(
         table="trip_exports",
         tenant_id=current.tenant_id,
@@ -313,7 +337,12 @@ async def generate_export(
             expected_version=d.get("version", 1),
             correlation_id=correlation_id,
         )
-    return {"export": export, "record_count": len(exportable), "sha256": sha256, "s3_key": s3_key}
+    return {
+        "export": export,
+        "record_count": len(exportable),
+        "sha256": sha256,
+        "s3_key": s3_key,
+    }
 
 
 @router.get("/exports")
@@ -346,8 +375,10 @@ async def import_rejects(
     try:
         reader = _csv.DictReader(io.StringIO(body.decode("utf-8", errors="replace")))
         rows = list(reader)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.error(f"Error: {e}")
     reject_import = await svc.create(
         table="trip_reject_imports",
         tenant_id=current.tenant_id,
@@ -361,12 +392,16 @@ async def import_rejects(
     )
     fix_tasks = []
     for row in rows:
-        debt_id_str = row.get("AgencyDebtID") or row.get("agency_debt_id") or row.get("debt_id")
+        debt_id_str = (
+            row.get("AgencyDebtID") or row.get("agency_debt_id") or row.get("debt_id")
+        )
         error_code = row.get("RejectCode") or row.get("reject_code") or "UNKNOWN"
         if debt_id_str:
             try:
                 debt_id = uuid.UUID(debt_id_str)
-                debt = svc.repo("trip_debts").get(tenant_id=current.tenant_id, record_id=debt_id)
+                debt = svc.repo("trip_debts").get(
+                    tenant_id=current.tenant_id, record_id=debt_id
+                )
                 if debt:
                     ddata = dict(debt.get("data") or {})
                     ddata["status"] = "rejected"
@@ -381,9 +416,15 @@ async def import_rejects(
                         correlation_id=correlation_id,
                     )
                     fix_tasks.append({"debt_id": debt_id_str, "error_code": error_code})
-            except Exception:
-                pass
-    return {"import_id": str(reject_import["id"]), "rows": len(rows), "fix_tasks": fix_tasks}
+            except Exception as e:
+                import logging
+
+                logging.error(f"Error: {e}")
+    return {
+        "import_id": str(reject_import["id"]),
+        "rows": len(rows),
+        "fix_tasks": fix_tasks,
+    }
 
 
 # ─── Postings ─────────────────────────────────────────────────────────────────
@@ -405,23 +446,31 @@ async def import_postings(
     try:
         reader = _csv.DictReader(io.StringIO(body.decode("utf-8", errors="replace")))
         rows = list(reader)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.error(f"Error: {e}")
     applied = 0
     unmatched = 0
     for row in rows:
-        debt_id_str = row.get("AgencyDebtID") or row.get("agency_debt_id") or row.get("debt_id")
+        debt_id_str = (
+            row.get("AgencyDebtID") or row.get("agency_debt_id") or row.get("debt_id")
+        )
         amount_str = row.get("AmountIntercepted") or row.get("amount") or "0"
         try:
-            amount_cents = int(float(amount_str.replace(",", "").replace("$", "")) * 100)
-        except Exception:
+            amount_cents = int(
+                float(amount_str.replace(",", "").replace("$", "")) * 100
+            )
+        except Exception as e:
             amount_cents = 0
         if not debt_id_str or amount_cents <= 0:
             unmatched += 1
             continue
         try:
             debt_id = uuid.UUID(debt_id_str)
-            debt = svc.repo("trip_debts").get(tenant_id=current.tenant_id, record_id=debt_id)
+            debt = svc.repo("trip_debts").get(
+                tenant_id=current.tenant_id, record_id=debt_id
+            )
             if not debt:
                 unmatched += 1
                 continue
@@ -456,7 +505,9 @@ async def import_postings(
             if ar_account_id_str:
                 try:
                     ar_id = uuid.UUID(ar_account_id_str)
-                    acc = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=ar_id)
+                    acc = svc.repo("ar_accounts").get(
+                        tenant_id=current.tenant_id, record_id=ar_id
+                    )
                     if acc:
                         adata = dict(acc.get("data") or {})
                         adata["balance_cents"] = max(
@@ -473,10 +524,12 @@ async def import_postings(
                             expected_version=acc.get("version", 1),
                             correlation_id=correlation_id,
                         )
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+
+                    logging.error(f"Error: {e}")
             applied += 1
-        except Exception:
+        except Exception as e:
             unmatched += 1
     posting = await svc.create(
         table="trip_postings",
@@ -491,7 +544,11 @@ async def import_postings(
         },
         correlation_id=correlation_id,
     )
-    return {"posting_id": str(posting["id"]), "applied": applied, "unmatched": unmatched}
+    return {
+        "posting_id": str(posting["id"]),
+        "applied": applied,
+        "unmatched": unmatched,
+    }
 
 
 @router.get("/reports/reconciliation")

@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.core.config import get_settings
 from core_app.schemas.auth import CurrentUser
 from core_app.services.aws_health import (
@@ -24,7 +28,9 @@ from core_app.services.event_publisher import get_event_publisher
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/system-health", tags=["System Health + Self-Healing"])
+router = APIRouter(
+    prefix="/api/v1/system-health", tags=["System Health + Self-Healing"]
+)
 
 
 class HealthAlertRequest(BaseModel):
@@ -82,13 +88,25 @@ async def health_dashboard(
     svc = DominationService(db, get_event_publisher())
     alerts = svc.repo("system_alerts").list(tenant_id=current.tenant_id, limit=1000)
     active_alerts = [a for a in alerts if a.get("data", {}).get("status") == "active"]
-    critical = [a for a in active_alerts if a.get("data", {}).get("severity") == "critical"]
-    services_monitored = ["ecs", "rds", "redis", "cloudfront", "api", "stripe_webhook", "cognito"]
+    critical = [
+        a for a in active_alerts if a.get("data", {}).get("severity") == "critical"
+    ]
+    services_monitored = [
+        "ecs",
+        "rds",
+        "redis",
+        "cloudfront",
+        "api",
+        "stripe_webhook",
+        "cognito",
+    ]
     return {
         "total_active_alerts": len(active_alerts),
         "critical_alerts": len(critical),
         "services_monitored": services_monitored,
-        "overall_status": "degraded" if critical else ("warning" if active_alerts else "healthy"),
+        "overall_status": (
+            "degraded" if critical else ("warning" if active_alerts else "healthy")
+        ),
         "as_of": _now_iso(),
     }
 
@@ -134,7 +152,10 @@ async def service_health(
     cf_error = get_cw_metric_avg(
         "AWS/CloudFront",
         "5xxErrorRate",
-        [{"Name": "DistributionId", "Value": "GLOBAL"}, {"Name": "Region", "Value": "Global"}],
+        [
+            {"Name": "DistributionId", "Value": "GLOBAL"},
+            {"Name": "Region", "Value": "Global"},
+        ],
         minutes=15,
     )
 
@@ -252,7 +273,9 @@ async def error_rate(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     alerts = svc.repo("system_alerts").list(tenant_id=current.tenant_id, limit=10000)
-    errors = [a for a in alerts if a.get("data", {}).get("severity") in ("error", "critical")]
+    errors = [
+        a for a in alerts if a.get("data", {}).get("severity") in ("error", "critical")
+    ]
     return {
         "metric": "error_count_1h",
         "value": len(errors),
@@ -293,7 +316,9 @@ async def list_alerts(
     all_alerts = svc.repo("system_alerts").list(tenant_id=current.tenant_id, limit=1000)
     filtered = all_alerts
     if severity:
-        filtered = [a for a in filtered if a.get("data", {}).get("severity") == severity]
+        filtered = [
+            a for a in filtered if a.get("data", {}).get("severity") == severity
+        ]
     if status:
         filtered = [a for a in filtered if a.get("data", {}).get("status") == status]
     return {"alerts": filtered, "total": len(filtered)}
@@ -308,7 +333,9 @@ async def resolve_alert(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    alert = svc.repo("system_alerts").get(tenant_id=current.tenant_id, record_id=alert_id)
+    alert = svc.repo("system_alerts").get(
+        tenant_id=current.tenant_id, record_id=alert_id
+    )
     if not alert:
         raise HTTPException(status_code=404, detail="alert_not_found")
     updated = await svc.update(
@@ -360,7 +387,9 @@ async def healing_audit(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    actions = svc.repo("self_healing_actions").list(tenant_id=current.tenant_id, limit=1000)
+    actions = svc.repo("self_healing_actions").list(
+        tenant_id=current.tenant_id, limit=1000
+    )
     return {"actions": actions, "total": len(actions)}
 
 
@@ -438,7 +467,9 @@ async def list_postmortems(
 ):
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
-    postmortems = svc.repo("incident_postmortems").list(tenant_id=current.tenant_id, limit=500)
+    postmortems = svc.repo("incident_postmortems").list(
+        tenant_id=current.tenant_id, limit=500
+    )
     return {"postmortems": postmortems, "total": len(postmortems)}
 
 
@@ -453,10 +484,12 @@ async def cost_budget(
     return {
         "monthly_budget_usd": budget,
         "estimated_spend_usd": spend,
-        "remaining_usd": round(budget - spend, 2) if isinstance(spend, (int, float)) else None,
-        "utilization_pct": round(spend / budget * 100, 1)
-        if isinstance(spend, (int, float))
-        else None,
+        "remaining_usd": (
+            round(budget - spend, 2) if isinstance(spend, (int, float)) else None
+        ),
+        "utilization_pct": (
+            round(spend / budget * 100, 1) if isinstance(spend, (int, float)) else None
+        ),
         "alert_threshold_pct": 80,
         "as_of": _now_iso(),
     }
@@ -478,7 +511,13 @@ async def security_vulnerabilities(
     current: CurrentUser = Depends(get_current_user),
 ):
     require_role(current, ["founder", "admin"])
-    findings: dict = {"critical": 0, "high": 0, "medium": 0, "low": 0, "status": "unavailable"}
+    findings: dict = {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "status": "unavailable",
+    }
     try:
         import boto3
 
@@ -492,9 +531,14 @@ async def security_vulnerabilities(
             sev = f.get("Severity", {}).get("Label", "").lower()
             if sev in findings:
                 findings[sev] += 1
-        total = findings["critical"] + findings["high"] + findings["medium"] + findings["low"]
+        total = (
+            findings["critical"]
+            + findings["high"]
+            + findings["medium"]
+            + findings["low"]
+        )
         findings["status"] = "clean" if total == 0 else "issues_found"
-    except Exception:
+    except Exception as e:
         logger.warning("security_hub_unavailable", exc_info=True)
     findings["last_scan"] = _now_iso()
     return findings
@@ -524,14 +568,16 @@ async def iam_drift(
         noncompliant = 0
         for s_item in summaries:
             counts = s_item.get("ComplianceSummary", {})
-            total_checked += counts.get("CompliantResourceCount", {}).get("CappedCount", 0)
+            total_checked += counts.get("CompliantResourceCount", {}).get(
+                "CappedCount", 0
+            )
             nc = counts.get("NonCompliantResourceCount", {}).get("CappedCount", 0)
             total_checked += nc
             noncompliant += nc
         result["policies_checked"] = total_checked
         result["drift_detected"] = noncompliant > 0
         result["status"] = "compliant" if noncompliant == 0 else "drift_detected"
-    except Exception:
+    except Exception as e:
         logger.warning("config_service_unavailable", exc_info=True)
     return result
 
@@ -560,7 +606,12 @@ async def key_rotation(
                 )
                 continue
         keys.append(
-            {"name": name, "last_rotated": None, "last_changed": None, "status": "unconfigured"}
+            {
+                "name": name,
+                "last_rotated": None,
+                "last_changed": None,
+                "status": "unconfigured",
+            }
         )
     return {"keys": keys, "as_of": _now_iso()}
 
@@ -599,7 +650,9 @@ async def log_anomaly(
     require_role(current, ["founder", "admin"])
     svc = DominationService(db, get_event_publisher())
     alerts = svc.repo("system_alerts").list(tenant_id=current.tenant_id, limit=10000)
-    anomalies = [a for a in alerts if "anomaly" in a.get("data", {}).get("message", "").lower()]
+    anomalies = [
+        a for a in alerts if "anomaly" in a.get("data", {}).get("message", "").lower()
+    ]
     return {"anomalies": anomalies, "count": len(anomalies)}
 
 
@@ -644,7 +697,11 @@ async def cache_hit_ratio(
         "metric": "redis_cache_hit_ratio",
         "value": value if value is not None else 0,
         "target": 0.8,
-        "status": _metric_status(1 - (value or 0), 0.2) if value is not None else "unavailable",
+        "status": (
+            _metric_status(1 - (value or 0), 0.2)
+            if value is not None
+            else "unavailable"
+        ),
         "as_of": _now_iso(),
     }
 
@@ -671,9 +728,11 @@ async def network_latency(
             {
                 "region": region,
                 "latency_ms": latency_ms or 0,
-                "status": _metric_status(latency_ms, 200)
-                if latency_ms is not None
-                else "unavailable",
+                "status": (
+                    _metric_status(latency_ms, 200)
+                    if latency_ms is not None
+                    else "unavailable"
+                ),
             }
         ],
         "as_of": _now_iso(),
@@ -689,7 +748,11 @@ async def db_connections(
     if s.rds_instance_id:
         rds = get_db_connections(s.rds_instance_id)
     else:
-        rds = {"active_connections": 0, "max_connections": 500, "pool_utilization_pct": 0}
+        rds = {
+            "active_connections": 0,
+            "max_connections": 500,
+            "pool_utilization_pct": 0,
+        }
     return {"rds": rds, "as_of": _now_iso()}
 
 
@@ -748,7 +811,9 @@ async def uptime_executive_report(
         a for a in alerts if a.get("data", {}).get("severity") in ("critical", "error")
     ]
     total_incidents = len(all_incidents)
-    resolved = [a for a in all_incidents if a.get("data", {}).get("status") == "resolved"]
+    resolved = [
+        a for a in all_incidents if a.get("data", {}).get("status") == "resolved"
+    ]
     critical = [a for a in alerts if a.get("data", {}).get("severity") == "critical"]
     downtime_incidents = len(critical)
     estimated_uptime = max(99.9 - (downtime_incidents * 0.1), 0)
@@ -774,7 +839,11 @@ async def emergency_lock(
         table="emergency_locks",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"locked_by": str(current.user_id), "locked_at": _now_iso(), "reason": "emergency"},
+        data={
+            "locked_by": str(current.user_id),
+            "locked_at": _now_iso(),
+            "reason": "emergency",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return {"status": "locked", "lock": lock}
@@ -857,7 +926,11 @@ async def resilience_score(
     score = max(0, 100 - (critical * 10))
     return {
         "resilience_score": score,
-        "grade": "A" if score >= 90 else ("B" if score >= 80 else ("C" if score >= 70 else "D")),
+        "grade": (
+            "A"
+            if score >= 90
+            else ("B" if score >= 80 else ("C" if score >= 70 else "D"))
+        ),
         "active_critical_alerts": critical,
         "as_of": _now_iso(),
     }

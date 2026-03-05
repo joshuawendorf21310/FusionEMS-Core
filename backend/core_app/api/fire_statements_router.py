@@ -41,4 +41,6 @@ async def list_statements(
     db: Session = Depends(db_session_dependency),
 ):
     svc = DominationService(db, get_event_publisher())
-    return svc.repo("fire_statements").list(tenant_id=current.tenant_id, limit=200, offset=0)
+    return svc.repo("fire_statements").list(
+        tenant_id=current.tenant_id, limit=200, offset=0
+    )

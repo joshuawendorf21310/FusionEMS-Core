@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.billing.ar_aging import compute_ar_aging, compute_revenue_forecast
 from core_app.billing.artifacts import store_edi_artifact
 from core_app.billing.validation import BillingValidator
@@ -75,7 +79,9 @@ async def validate_case(
 
     # Create missing-doc tasks idempotently: (case_id, doc_type)
     created_tasks: list[dict[str, Any]] = []
-    existing = svc.repo("missing_document_tasks").list(tenant_id=current.tenant_id, limit=5000)
+    existing = svc.repo("missing_document_tasks").list(
+        tenant_id=current.tenant_id, limit=5000
+    )
     existing_keys = {
         (t["data"].get("owner_entity_id"), t["data"].get("doc_type")) for t in existing
     }
@@ -258,8 +264,10 @@ async def import_era(
     svc = DominationService(db, publisher)
 
     try:
-        x12 = base64.b64decode(body.x12_base64.encode("utf-8")).decode("utf-8", errors="replace")
-    except Exception:
+        x12 = base64.b64decode(body.x12_base64.encode("utf-8")).decode(
+            "utf-8", errors="replace"
+        )
+    except Exception as e:
         raise HTTPException(status_code=400, detail="invalid_base64")
 
     parsed = parse_835(x12)
@@ -269,7 +277,9 @@ async def import_era(
     if not bucket:
         raise HTTPException(status_code=500, detail="exports_bucket_not_configured")
     key = f"tenants/{current.tenant_id}/edi/835/ERA_{uuid.uuid4()}.x12"
-    put_bytes(bucket=bucket, key=key, content=x12.encode("utf-8"), content_type="text/plain")
+    put_bytes(
+        bucket=bucket, key=key, content=x12.encode("utf-8"), content_type="text/plain"
+    )
     era_row = await svc.create(
         table="eras",
         tenant_id=current.tenant_id,
@@ -348,13 +358,23 @@ async def generate_appeal(
         f"Sincerely,\nFusionEMS Quantum Billing\n"
     )
     key = f"tenants/{current.tenant_id}/appeals/appeal_{claim_id}.txt"
-    put_bytes(bucket=bucket, key=key, content=letter.encode("utf-8"), content_type="text/plain")
+    put_bytes(
+        bucket=bucket,
+        key=key,
+        content=letter.encode("utf-8"),
+        content_type="text/plain",
+    )
 
     appeal_row = await svc.create(
         table="appeals",
         tenant_id=current.tenant_id,
         actor_user_id=current.user_id,
-        data={"claim_id": str(claim_id), "bucket": bucket, "key": key, "status": "generated"},
+        data={
+            "claim_id": str(claim_id),
+            "bucket": bucket,
+            "key": key,
+            "status": "generated",
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
 
@@ -396,7 +416,10 @@ async def create_payment_link(
             amount_cents=body.amount_cents,
             success_url=body.success_url,
             cancel_url=body.cancel_url,
-            metadata={"tenant_id": current.tenant_id, "account_id": str(body.account_id)},
+            metadata={
+                "tenant_id": current.tenant_id,
+                "account_id": str(body.account_id),
+            },
         )
     except StripeNotConfigured as e:
         raise HTTPException(status_code=500, detail=str(e))

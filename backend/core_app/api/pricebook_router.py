@@ -47,7 +47,11 @@ PRICING_CATALOG = {
         },
     ],
     "ADDONS": [
-        {"code": "CCT_TRANSPORT_OPS", "label": "CCT/Transport Ops", "monthly_cents": 39900},
+        {
+            "code": "CCT_TRANSPORT_OPS",
+            "label": "CCT/Transport Ops",
+            "monthly_cents": 39900,
+        },
         {"code": "HEMS_OPS", "label": "HEMS Ops", "monthly_cents": 75000},
         {
             "code": "TRIP_PACK",
@@ -66,7 +70,9 @@ def _svc(db: Session) -> DominationService:
 
 
 @router.get("/catalog")
-async def get_catalog(current: CurrentUser = Depends(require_role("founder", "agency_admin"))):
+async def get_catalog(
+    current: CurrentUser = Depends(require_role("founder", "agency_admin"))
+):
     return PRICING_CATALOG
 
 
@@ -119,7 +125,9 @@ async def activate_pricebook(
     correlation_id = getattr(request.state, "correlation_id", None)
     all_pbs = svc.repo("pricebooks").list(tenant_id=current.tenant_id, limit=50)
     for p in all_pbs:
-        if (p.get("data") or {}).get("status") == "active" and str(p["id"]) != str(pb_id):
+        if (p.get("data") or {}).get("status") == "active" and str(p["id"]) != str(
+            pb_id
+        ):
             pd = dict(p.get("data") or {})
             pd["status"] = "archived"
             await svc.update(
@@ -155,7 +163,9 @@ async def get_active_pricebook(
 ):
     svc = _svc(db)
     pbs = svc.repo("pricebooks").list(tenant_id=current.tenant_id, limit=50)
-    active = next((p for p in pbs if (p.get("data") or {}).get("status") == "active"), None)
+    active = next(
+        (p for p in pbs if (p.get("data") or {}).get("status") == "active"), None
+    )
     if not active:
         return {"active": False, "catalog": PRICING_CATALOG}
     return {"active": True, "pricebook": active}
@@ -170,7 +180,12 @@ async def get_entitlements(
     svc = _svc(db)
     records = svc.repo("entitlements").list(tenant_id=tenant_id, limit=10)
     if not records:
-        return {"tenant_id": str(tenant_id), "plan_code": None, "modules": [], "configured": False}
+        return {
+            "tenant_id": str(tenant_id),
+            "plan_code": None,
+            "modules": [],
+            "configured": False,
+        }
     latest = sorted(records, key=lambda x: x.get("created_at", ""), reverse=True)[0]
     return latest
 

@@ -22,7 +22,9 @@ def _svc(db: Session) -> DominationService:
     return DominationService(db, get_event_publisher())
 
 
-def _get_chart(svc: DominationService, tenant_id: uuid.UUID, chart_id: str) -> dict[str, Any]:
+def _get_chart(
+    svc: DominationService, tenant_id: uuid.UUID, chart_id: str
+) -> dict[str, Any]:
     rec = svc.repo("epcr_charts").get(tenant_id=tenant_id, record_id=chart_id)
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")

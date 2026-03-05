@@ -25,11 +25,13 @@ def export_fhir(
     )
     row = (
         db.execute(
-            text("""
+            text(
+                """
             INSERT INTO fhir_artifacts (tenant_id, entity_type, entity_id, resource_type, resource_json)
             VALUES (:tid, :etype, :eid, :rtype, :r::jsonb)
             RETURNING id
-        """),
+        """
+            ),
             {
                 "tid": str(user.tenant_id),
                 "etype": payload.entity_type,

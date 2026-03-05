@@ -18,7 +18,9 @@ from core_app.services.patient_service import PatientService
 router = APIRouter(prefix="/incidents/{incident_id}/patients", tags=["patients"])
 
 
-def patient_service_dependency(db: AsyncSession = Depends(get_async_db_session)) -> PatientService:
+def patient_service_dependency(
+    db: AsyncSession = Depends(get_async_db_session),
+) -> PatientService:
     return PatientService(db=db, publisher=get_event_publisher())
 
 
@@ -42,7 +44,9 @@ async def create_patient(
 @router.get("", response_model=PatientListResponse)
 async def list_patients_for_incident(
     incident_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
+    current_user: CurrentUser = Depends(
+        require_role("ems", "billing", "admin", "founder")
+    ),
     service: PatientService = Depends(patient_service_dependency),
 ) -> PatientListResponse:
     return await service.list_patients_for_incident(
@@ -54,7 +58,9 @@ async def list_patients_for_incident(
 async def get_patient(
     incident_id: uuid.UUID,
     patient_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_role("ems", "billing", "admin", "founder")),
+    current_user: CurrentUser = Depends(
+        require_role("ems", "billing", "admin", "founder")
+    ),
     service: PatientService = Depends(patient_service_dependency),
 ) -> PatientResponse:
     return await service.get_patient(

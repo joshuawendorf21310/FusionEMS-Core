@@ -27,20 +27,25 @@ def chat(
         raise HTTPException(status_code=400, detail="prompt required")
     svc = AiService()
     content, meta = svc.chat(
-        system="You are FusionEMS Quantum assistant. Be concise and compliant.", user=prompt
+        system="You are FusionEMS Quantum assistant. Be concise and compliant.",
+        user=prompt,
     )
     from core_app.ai.guardrails import validate_ai_output
 
     try:
-        validated = validate_ai_output(content, task_type=str(payload.get("task_type", "general")))
+        validated = validate_ai_output(
+            content, task_type=str(payload.get("task_type", "general"))
+        )
         content = validated.content
     except ValueError as guard_err:
         raise HTTPException(status_code=422, detail=f"AI guardrail: {guard_err}")
     # store ai run (best effort)
     try:
         db.execute(
-            text("""INSERT INTO ai_runs (tenant_id, model, prompt_version, input_hash, tool_calls, cost, status, created_at)
-                    VALUES (:tid, :model, :pv, :ih, :tc::jsonb, 0, 'complete', now())"""),
+            text(
+                """INSERT INTO ai_runs (tenant_id, model, prompt_version, input_hash, tool_calls, cost, status, created_at)
+                    VALUES (:tid, :model, :pv, :ih, :tc::jsonb, 0, 'complete', now())"""
+            ),
             {
                 "tid": str(user.tenant_id),
                 "model": meta.get("model", ""),
@@ -50,6 +55,6 @@ def chat(
             },
         )
         db.commit()
-    except Exception:
+    except Exception as e:
         db.rollback()
     return {"response": content, "meta": meta}

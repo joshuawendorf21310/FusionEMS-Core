@@ -26,7 +26,10 @@ def _db_insert(db: Session, table: str, data: dict[str, Any]) -> str:
     data["created_at"] = _utcnow()
     cols = ", ".join(data.keys())
     vals = ", ".join(f":{k}" for k in data)
-    db.execute(text(f"INSERT INTO {table} ({cols}) VALUES ({vals}) ON CONFLICT DO NOTHING"), data)
+    db.execute(
+        text(f"INSERT INTO {table} ({cols}) VALUES ({vals}) ON CONFLICT DO NOTHING"),
+        data,
+    )
     db.commit()
     return rid
 
@@ -107,7 +110,9 @@ def create_screen_pop(
     _user: dict = Depends(get_current_user),
 ) -> dict:
     caller_role = db.execute(
-        text("SELECT role FROM tenant_users WHERE tenant_id = :tid AND phone = :phone LIMIT 1"),
+        text(
+            "SELECT role FROM tenant_users WHERE tenant_id = :tid AND phone = :phone LIMIT 1"
+        ),
         {"tid": body.tenant_id, "phone": body.caller_phone},
     ).fetchone()
     _db_insert(
@@ -251,7 +256,11 @@ def get_script_pack(
         {"tid": tenant_id},
     ).fetchone()
     if not row:
-        return {"tenant_id": tenant_id, "pack": None, "message": "No active script pack"}
+        return {
+            "tenant_id": tenant_id,
+            "pack": None,
+            "message": "No active script pack",
+        }
     return dict(row._mapping)
 
 
@@ -270,7 +279,16 @@ def activate_compliance_guard(
     db: Session = Depends(db_session_dependency),
     _user: dict = Depends(get_current_user),
 ) -> dict:
-    GUARD_TOPICS = {"cms", "dea", "hipaa", "medicare", "medicaid", "compliance", "audit", "phi"}
+    GUARD_TOPICS = {
+        "cms",
+        "dea",
+        "hipaa",
+        "medicare",
+        "medicaid",
+        "compliance",
+        "audit",
+        "phi",
+    }
     is_sensitive = any(t in body.topic.lower() for t in GUARD_TOPICS)
     _db_insert(
         db,
@@ -286,14 +304,16 @@ def activate_compliance_guard(
     return {
         "guard_activated": is_sensitive,
         "mode": "strict" if is_sensitive else "standard",
-        "phrasing_rules": [
-            "Use only approved terminology",
-            "Avoid open-ended questions",
-            "Log every disclosure",
-            "Do not confirm PHI over voice",
-        ]
-        if is_sensitive
-        else [],
+        "phrasing_rules": (
+            [
+                "Use only approved terminology",
+                "Avoid open-ended questions",
+                "Log every disclosure",
+                "Do not confirm PHI over voice",
+            ]
+            if is_sensitive
+            else []
+        ),
         "audit_log_required": is_sensitive,
     }
 
@@ -420,7 +440,9 @@ def export_support_diagnose(
     job = None
     if body.export_job_id:
         row = db.execute(
-            text("SELECT * FROM export_jobs WHERE id = :jid AND tenant_id = :tid LIMIT 1"),
+            text(
+                "SELECT * FROM export_jobs WHERE id = :jid AND tenant_id = :tid LIMIT 1"
+            ),
             {"jid": body.export_job_id, "tid": body.tenant_id},
         ).fetchone()
         job = dict(row._mapping) if row else None
@@ -520,7 +542,9 @@ def adaptive_prompt(
     adaptations = ROLE_ADAPTATIONS.get(role, ROLE_ADAPTATIONS["provider"])
     matched_key = next((k for k in adaptations if k in body.question.lower()), None)
     response_template = (
-        adaptations.get(matched_key, "I can help with that. Let me check your account details.")
+        adaptations.get(
+            matched_key, "I can help with that. Let me check your account details."
+        )
         if matched_key
         else "I can help with that. Let me check your account details."
     )
@@ -554,7 +578,9 @@ def smart_hold_narrate(
         "ticket_create": "I'm creating a support ticket for you.",
         "schedule_check": "I'm checking available callback slots.",
     }
-    action_key = next((k for k in narrations if k in body.action_being_taken.lower()), None)
+    action_key = next(
+        (k for k in narrations if k in body.action_being_taken.lower()), None
+    )
     narration = (
         narrations.get(action_key, "I'm working on that now. One moment please.")
         if action_key
@@ -588,8 +614,12 @@ def speech_to_fields(
 ) -> dict:
     transcript = body.transcript
 
-    claim_ids = re.findall(r"\b(?:claim|CLM)[- ]?(\d{4,12})\b", transcript, re.IGNORECASE)
-    incident_numbers = re.findall(r"\b(?:incident|inc)[- ]?(\d{4,12})\b", transcript, re.IGNORECASE)
+    claim_ids = re.findall(
+        r"\b(?:claim|CLM)[- ]?(\d{4,12})\b", transcript, re.IGNORECASE
+    )
+    incident_numbers = re.findall(
+        r"\b(?:incident|inc)[- ]?(\d{4,12})\b", transcript, re.IGNORECASE
+    )
     dates = re.findall(r"\b(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b", transcript)
     payer_names: list[str] = []
     for payer in [
@@ -669,9 +699,11 @@ def prompt_injection_check(
     return {
         "injection_detected": len(detected) > 0,
         "patterns_matched": detected,
-        "safe_response": "I'm sorry, I can't help with that. Is there something else I can assist you with?"
-        if detected
-        else None,
+        "safe_response": (
+            "I'm sorry, I can't help with that. Is there something else I can assist you with?"
+            if detected
+            else None
+        ),
         "action": "deflect_and_log" if detected else "allow",
     }
 
@@ -837,11 +869,11 @@ def callback_slot_optimizer(
     return {
         "callback_id": cid,
         "scheduled_slot": slot,
-        "urgency_tier": "critical"
-        if body.urgency_score >= 80
-        else "standard"
-        if body.urgency_score >= 50
-        else "low",
+        "urgency_tier": (
+            "critical"
+            if body.urgency_score >= 80
+            else "standard" if body.urgency_score >= 50 else "low"
+        ),
         "timezone": body.preferred_timezone,
         "booked_automatically": True,
     }
@@ -958,7 +990,11 @@ def set_cost_caps(
             "active": True,
         },
     )
-    return {"caps_set": True, "hourly_cap": body.hourly_cap_usd, "daily_cap": body.daily_cap_usd}
+    return {
+        "caps_set": True,
+        "hourly_cap": body.hourly_cap_usd,
+        "daily_cap": body.daily_cap_usd,
+    }
 
 
 @router.get("/cost-governor/status")
@@ -967,7 +1003,9 @@ def cost_governor_status(
     _user: dict = Depends(get_current_user),
 ) -> dict:
     rows = db.execute(
-        text("SELECT * FROM voice_cost_caps WHERE active = true ORDER BY created_at DESC LIMIT 10")
+        text(
+            "SELECT * FROM voice_cost_caps WHERE active = true ORDER BY created_at DESC LIMIT 10"
+        )
     ).fetchall()
     total_caps = len(rows)
     return {
@@ -1070,7 +1108,19 @@ def set_recording_governance(
     db: Session = Depends(db_session_dependency),
     _user: dict = Depends(get_current_user),
 ) -> dict:
-    TWO_PARTY_STATES = {"CA", "FL", "IL", "MD", "MA", "MI", "MT", "NH", "OR", "PA", "WA"}
+    TWO_PARTY_STATES = {
+        "CA",
+        "FL",
+        "IL",
+        "MD",
+        "MA",
+        "MI",
+        "MT",
+        "NH",
+        "OR",
+        "PA",
+        "WA",
+    }
     two_party_required = body.state_code.upper() in TWO_PARTY_STATES
     _db_insert(
         db,
@@ -1079,7 +1129,8 @@ def set_recording_governance(
             "tenant_id": body.tenant_id,
             "state_code": body.state_code.upper(),
             "recording_enabled": body.recording_enabled,
-            "consent_prompt_required": body.consent_prompt_required or two_party_required,
+            "consent_prompt_required": body.consent_prompt_required
+            or two_party_required,
             "two_party_state": two_party_required,
             "retention_days": body.retention_days,
             "encryption_required": body.encryption_required,
@@ -1108,7 +1159,11 @@ def get_recording_governance(
         {"tid": tenant_id},
     ).fetchone()
     if not row:
-        return {"tenant_id": tenant_id, "governance": None, "message": "No governance config found"}
+        return {
+            "tenant_id": tenant_id,
+            "governance": None,
+            "message": "No governance config found",
+        }
     return dict(row._mapping)
 
 
@@ -1180,7 +1235,11 @@ def resolve_war_room(
         {"iid": incident_id, "now": _utcnow()},
     )
     db.commit()
-    return {"incident_id": incident_id, "resolved": True, "normal_routing_restored": True}
+    return {
+        "incident_id": incident_id,
+        "resolved": True,
+        "normal_routing_restored": True,
+    }
 
 
 @router.get("/war-room/status")
@@ -1286,7 +1345,11 @@ def override_review_item(
         {"rid": review_id, "resp": override_response, "now": _utcnow()},
     )
     db.commit()
-    return {"review_id": review_id, "overridden": True, "override_response": override_response}
+    return {
+        "review_id": review_id,
+        "overridden": True,
+        "override_response": override_response,
+    }
 
 
 # ── Feature 100: Continuous Improvement Loop ──────────────────────────────────
@@ -1331,7 +1394,9 @@ def list_improvement_tickets(
     _user: dict = Depends(get_current_user),
 ) -> list:
     rows = db.execute(
-        text("SELECT * FROM voice_improvement_tickets ORDER BY created_at DESC LIMIT 50"),
+        text(
+            "SELECT * FROM voice_improvement_tickets ORDER BY created_at DESC LIMIT 50"
+        ),
     ).fetchall()
     return [dict(r._mapping) for r in rows]
 
@@ -1363,10 +1428,16 @@ def call_outcomes_analytics(
 ) -> dict:
     total = db.execute(text("SELECT COUNT(*) FROM telnyx_calls")).scalar() or 0
     resolved = (
-        db.execute(text("SELECT COUNT(*) FROM telnyx_calls WHERE state = 'DONE'")).scalar() or 0
+        db.execute(
+            text("SELECT COUNT(*) FROM telnyx_calls WHERE state = 'DONE'")
+        ).scalar()
+        or 0
     )
     escalated = (
-        db.execute(text("SELECT COUNT(*) FROM telnyx_calls WHERE state = 'TRANSFER'")).scalar() or 0
+        db.execute(
+            text("SELECT COUNT(*) FROM telnyx_calls WHERE state = 'TRANSFER'")
+        ).scalar()
+        or 0
     )
     return {
         "total_calls": total,
@@ -1468,7 +1539,9 @@ def compute_priority_score(
 
     score = min(score, 100)
     tier = (
-        "critical" if score >= 80 else "high" if score >= 60 else "medium" if score >= 40 else "low"
+        "critical"
+        if score >= 80
+        else "high" if score >= 60 else "medium" if score >= 40 else "low"
     )
     return {
         "priority_score": score,
@@ -1493,25 +1566,33 @@ def voice_advanced_dashboard(
 ) -> dict:
     pending_reviews = (
         db.execute(
-            text("SELECT COUNT(*) FROM voice_human_review_queue WHERE status = 'pending'"),
+            text(
+                "SELECT COUNT(*) FROM voice_human_review_queue WHERE status = 'pending'"
+            ),
         ).scalar()
         or 0
     )
     open_improvement_tickets = (
         db.execute(
-            text("SELECT COUNT(*) FROM voice_improvement_tickets WHERE status = 'open'"),
+            text(
+                "SELECT COUNT(*) FROM voice_improvement_tickets WHERE status = 'open'"
+            ),
         ).scalar()
         or 0
     )
     active_war_room = (
         db.execute(
-            text("SELECT COUNT(*) FROM voice_war_room_incidents WHERE status = 'active'"),
+            text(
+                "SELECT COUNT(*) FROM voice_war_room_incidents WHERE status = 'active'"
+            ),
         ).scalar()
         or 0
     )
     scheduled_callbacks = (
         db.execute(
-            text("SELECT COUNT(*) FROM voice_callback_slots WHERE status = 'scheduled'"),
+            text(
+                "SELECT COUNT(*) FROM voice_callback_slots WHERE status = 'scheduled'"
+            ),
         ).scalar()
         or 0
     )

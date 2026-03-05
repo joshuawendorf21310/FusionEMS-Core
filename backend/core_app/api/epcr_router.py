@@ -83,7 +83,11 @@ async def list_charts(
     from sqlalchemy import text
 
     clauses = ["tenant_id = :tenant_id", "deleted_at IS NULL"]
-    params: dict[str, Any] = {"tenant_id": str(current.tenant_id), "limit": limit, "offset": offset}
+    params: dict[str, Any] = {
+        "tenant_id": str(current.tenant_id),
+        "limit": limit,
+        "offset": offset,
+    }
     if status:
         clauses.append("data->>'chart_status' = :status")
         params["status"] = status
@@ -106,7 +110,11 @@ async def get_chart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     return rec
@@ -120,7 +128,11 @@ async def update_chart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     updated_data = {**rec["data"], **patch}
@@ -168,7 +180,11 @@ async def cancel_chart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     updated_data = {**rec["data"], "chart_status": ChartStatus.CANCELLED.value}
@@ -192,7 +208,11 @@ async def add_vital(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     if "vital_id" not in payload:
@@ -222,7 +242,11 @@ async def add_medication(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     if "med_id" not in payload:
@@ -252,7 +276,11 @@ async def add_procedure(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     if "proc_id" not in payload:
@@ -282,7 +310,11 @@ async def add_assessment(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     if "assessment_id" not in payload:
@@ -313,7 +345,11 @@ async def upload_attachment(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     content = await file.read()
@@ -347,14 +383,22 @@ async def get_attachment_url(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     attachments = rec.get("data", {}).get("attachments", [])
-    attachment = next((a for a in attachments if a.get("attachment_id") == attachment_id), None)
+    attachment = next(
+        (a for a in attachments if a.get("attachment_id") == attachment_id), None
+    )
     if attachment is None:
         raise HTTPException(status_code=404, detail="Attachment not found")
-    url = EvidenceService(get_settings().s3_bucket_docs).get_presigned_url(attachment["s3_key"])
+    url = EvidenceService(get_settings().s3_bucket_docs).get_presigned_url(
+        attachment["s3_key"]
+    )
     return {"attachment_id": attachment_id, "url": url}
 
 
@@ -366,7 +410,11 @@ async def sync_chart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     local_chart = payload.get("local_chart", {})
@@ -377,7 +425,9 @@ async def sync_chart(
     except ValueError:
         policy = SyncConflictPolicy.LAST_WRITE_WINS
     server_chart_data = rec.get("data", {})
-    resolved, conflict_notes = SyncEngine().resolve_conflict(local_chart, server_chart_data, policy)
+    resolved, conflict_notes = SyncEngine().resolve_conflict(
+        local_chart, server_chart_data, policy
+    )
     resolved["updated_at"] = datetime.now(UTC).isoformat()
     await _svc(db).update(
         table="epcr_charts",
@@ -402,7 +452,11 @@ async def export_nemsis(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     chart_data = rec.get("data", {})
@@ -418,7 +472,9 @@ async def export_nemsis(
             "job_id": job_id,
             "chart_id": chart_id,
             "valid": result.valid,
-            "export_errors": [i.plain_message for i in result.issues if i.severity == "error"],
+            "export_errors": [
+                i.plain_message for i in result.issues if i.severity == "error"
+            ],
             "exported_at": datetime.now(UTC).isoformat(),
         },
         correlation_id=getattr(request.state, "correlation_id", None),
@@ -437,7 +493,11 @@ async def chart_completeness(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     chart_data = rec.get("data", {})
@@ -453,7 +513,11 @@ async def ai_narrative(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     tone = payload.get("tone", "clinical")
@@ -476,7 +540,11 @@ async def ai_handoff(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     chart_data = rec.get("data", {})
@@ -497,7 +565,11 @@ async def ai_missing_docs(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     chart_data = rec.get("data", {})
@@ -511,7 +583,11 @@ async def ai_contradictions(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
     chart_data = rec.get("data", {})
@@ -525,7 +601,11 @@ async def submit_chart(
     current: CurrentUser = Depends(get_current_user),
     db: Session = Depends(db_session_dependency),
 ):
-    rec = _svc(db).repo("epcr_charts").get(tenant_id=current.tenant_id, record_id=chart_id)
+    rec = (
+        _svc(db)
+        .repo("epcr_charts")
+        .get(tenant_id=current.tenant_id, record_id=chart_id)
+    )
     if rec is None:
         raise HTTPException(status_code=404, detail="Chart not found")
 
@@ -601,7 +681,10 @@ async def submit_chart(
             chart_id=chart_id,
             action="chart_submitted",
             actor=str(current.user_id),
-            field_changes={"submitted_at": submitted_at_iso, "sha256_submitted": sha256_hex},
+            field_changes={
+                "submitted_at": submitted_at_iso,
+                "sha256_submitted": sha256_hex,
+            },
         )
         await svc.create(
             table="epcr_event_log",
@@ -619,7 +702,9 @@ async def submit_chart(
         raise
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Submit transaction failed: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Submit transaction failed: {exc}"
+        ) from exc
 
     # --- Post-commit: publish realtime event ---
     try:
@@ -637,8 +722,10 @@ async def submit_chart(
             entity_type="epcr_charts",
             correlation_id=corr_id,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.error(f"Error: {e}")
 
     return {
         "submitted": True,

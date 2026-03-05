@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.documents.ocr import TextractOcrService
 from core_app.documents.s3_storage import default_docs_bucket
 from core_app.schemas.auth import CurrentUser
@@ -23,7 +27,9 @@ class ProcessRequest(BaseModel):
 
 @router.post("/upload-url")
 async def upload_url(
-    payload: dict[str, Any], request: Request, current: CurrentUser = Depends(get_current_user)
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
 ):
     """
     Returns a presigned PUT URL for uploading a document into the docs bucket.
@@ -50,7 +56,9 @@ async def upload_url(
         "url": url,
         "bucket": bucket,
         "key": key,
-        "headers": {"Content-Type": payload.get("content_type", "application/octet-stream")},
+        "headers": {
+            "Content-Type": payload.get("content_type", "application/octet-stream")
+        },
     }
 
 
@@ -65,11 +73,15 @@ async def process(
     Starts Textract OCR for a stored S3 document.
     Requires documents table record contains bucket + s3_key.
     """
-    require_role(current, ["founder", "billing", "admin", "dispatcher", "ems", "fire", "hems"])
+    require_role(
+        current, ["founder", "billing", "admin", "dispatcher", "ems", "fire", "hems"]
+    )
     publisher = get_event_publisher()
     svc = DominationService(db, publisher)
 
-    doc = svc.repo("documents").get(tenant_id=current.tenant_id, record_id=body.document_id)
+    doc = svc.repo("documents").get(
+        tenant_id=current.tenant_id, record_id=body.document_id
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="document_not_found")
     bucket = doc["data"].get("bucket") or default_docs_bucket()
@@ -86,7 +98,10 @@ async def process(
         entity_type="document",
         entity_id=str(body.document_id),
         event_type="OCR_STARTED",
-        payload={"document_id": str(body.document_id), "extraction_id": extraction["id"]},
+        payload={
+            "document_id": str(body.document_id),
+            "extraction_id": extraction["id"],
+        },
         correlation_id=getattr(request.state, "correlation_id", None),
     )
     return extraction
@@ -118,7 +133,16 @@ async def attach(
     """
     require_role(
         current,
-        ["founder", "billing", "admin", "dispatcher", "ems", "fire", "hems", "facility_user"],
+        [
+            "founder",
+            "billing",
+            "admin",
+            "dispatcher",
+            "ems",
+            "fire",
+            "hems",
+            "facility_user",
+        ],
     )
     svc = DominationService(db, get_event_publisher())
     row = await svc.create(

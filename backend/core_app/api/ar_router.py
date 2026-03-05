@@ -46,9 +46,13 @@ async def list_accounts(
 ):
     _check(current)
     svc = _svc(db)
-    accounts = svc.repo("ar_accounts").list(tenant_id=current.tenant_id, limit=min(limit, 500))
+    accounts = svc.repo("ar_accounts").list(
+        tenant_id=current.tenant_id, limit=min(limit, 500)
+    )
     if status:
-        accounts = [a for a in accounts if (a.get("data") or {}).get("status") == status]
+        accounts = [
+            a for a in accounts if (a.get("data") or {}).get("status") == status
+        ]
     if days_past_due_gte is not None:
         accounts = [
             a
@@ -66,7 +70,9 @@ async def get_account(
 ):
     _check(current)
     svc = _svc(db)
-    account = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=account_id)
+    account = svc.repo("ar_accounts").get(
+        tenant_id=current.tenant_id, record_id=account_id
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     aid = str(account_id)
@@ -82,7 +88,9 @@ async def get_account(
     ]
     plans = [
         p
-        for p in svc.repo("ar_payment_plans").list(tenant_id=current.tenant_id, limit=50)
+        for p in svc.repo("ar_payment_plans").list(
+            tenant_id=current.tenant_id, limit=50
+        )
         if (p.get("data") or {}).get("account_id") == aid
     ]
     disputes = [
@@ -147,7 +155,9 @@ async def create_payment_plan(
 ):
     _check(current)
     svc = _svc(db)
-    account = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=account_id)
+    account = svc.repo("ar_accounts").get(
+        tenant_id=current.tenant_id, record_id=account_id
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -207,10 +217,13 @@ async def create_dispute(
     reason = payload.get("reason_code", "other")
     if reason not in DISPUTE_REASONS:
         raise HTTPException(
-            status_code=422, detail=f"reason_code must be one of {sorted(DISPUTE_REASONS)}"
+            status_code=422,
+            detail=f"reason_code must be one of {sorted(DISPUTE_REASONS)}",
         )
     svc = _svc(db)
-    account = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=account_id)
+    account = svc.repo("ar_accounts").get(
+        tenant_id=current.tenant_id, record_id=account_id
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -263,7 +276,9 @@ async def resolve_dispute(
 ):
     _check(current)
     svc = _svc(db)
-    dispute = svc.repo("ar_disputes").get(tenant_id=current.tenant_id, record_id=dispute_id)
+    dispute = svc.repo("ar_disputes").get(
+        tenant_id=current.tenant_id, record_id=dispute_id
+    )
     if not dispute:
         raise HTTPException(status_code=404, detail="Dispute not found")
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -280,7 +295,9 @@ async def resolve_dispute(
         expected_version=dispute.get("version", 1),
         correlation_id=correlation_id,
     )
-    account = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=account_id)
+    account = svc.repo("ar_accounts").get(
+        tenant_id=current.tenant_id, record_id=account_id
+    )
     if account and (account.get("data") or {}).get("status") == "dispute":
         adata = dict(account.get("data") or {})
         adata["status"] = "current"
@@ -358,7 +375,9 @@ async def payment_webhook(
     db: Session = Depends(db_session_dependency),
 ):
     svc = _svc(db)
-    account_id_str = payload.get("account_id") or payload.get("metadata", {}).get("account_id")
+    account_id_str = payload.get("account_id") or payload.get("metadata", {}).get(
+        "account_id"
+    )
     amount_cents = int(payload.get("amount_cents") or payload.get("amount", 0))
     if not account_id_str or amount_cents <= 0:
         return {"status": "ignored"}
@@ -366,7 +385,9 @@ async def payment_webhook(
         uuid.UUID(account_id_str)
     except ValueError:
         return {"status": "invalid_account_id"}
-    system_tenant = _os.environ.get("SYSTEM_TENANT_ID", "00000000-0000-0000-0000-000000000000")
+    system_tenant = _os.environ.get(
+        "SYSTEM_TENANT_ID", "00000000-0000-0000-0000-000000000000"
+    )
     from core_app.core.config import get_settings
 
     system_tenant = get_settings().system_tenant_id or system_tenant
@@ -383,7 +404,8 @@ async def payment_webhook(
             "account_id": account_id_str,
             "amount_cents": amount_cents,
             "method": payload.get("method", "card"),
-            "processor_ref": payload.get("processor_ref") or payload.get("payment_intent_id"),
+            "processor_ref": payload.get("processor_ref")
+            or payload.get("payment_intent_id"),
             "posted_at": datetime.now(UTC).isoformat(),
         },
     )
@@ -414,7 +436,9 @@ async def create_vendor(
             "sftp_username": payload.get("sftp_username"),
             "sftp_secret_ref": payload.get("sftp_secret_ref"),
             "file_format": payload.get("file_format", "csv_standard_v1"),
-            "status_import_format": payload.get("status_import_format", "csv_standard_v1"),
+            "status_import_format": payload.get(
+                "status_import_format", "csv_standard_v1"
+            ),
             "status": "active",
         },
         correlation_id=correlation_id,
@@ -427,7 +451,11 @@ async def list_vendors(
     db: Session = Depends(db_session_dependency),
 ):
     _check(current)
-    return _svc(db).repo("collections_vendor_profiles").list(tenant_id=current.tenant_id, limit=50)
+    return (
+        _svc(db)
+        .repo("collections_vendor_profiles")
+        .list(tenant_id=current.tenant_id, limit=50)
+    )
 
 
 # ─── Placement export ─────────────────────────────────────────────────────────
@@ -510,9 +538,16 @@ async def generate_placement(
 
         bucket = default_exports_bucket()
         if bucket:
-            put_bytes(bucket=bucket, key=s3_key, content=zip_bytes, content_type="application/zip")
-    except Exception:
-        pass
+            put_bytes(
+                bucket=bucket,
+                key=s3_key,
+                content=zip_bytes,
+                content_type="application/zip",
+            )
+    except Exception as e:
+        import logging
+
+        logging.error(f"Error: {e}")
 
     placement = await svc.create(
         table="collections_placements",
@@ -542,7 +577,11 @@ async def generate_placement(
             correlation_id=correlation_id,
         )
 
-    return {"placement": placement, "eligible_count": len(eligible), "batch_id": batch_id}
+    return {
+        "placement": placement,
+        "eligible_count": len(eligible),
+        "batch_id": batch_id,
+    }
 
 
 @router.post("/vendors/{vendor_id}/status/import")
@@ -559,7 +598,7 @@ async def import_vendor_status(
     try:
         reader = csv.DictReader(io.StringIO(body.decode("utf-8", errors="replace")))
         rows = list(reader)
-    except Exception:
+    except Exception as e:
         rows = []
     parsed = {"rows": rows, "row_count": len(rows)}
     record = await svc.create(
@@ -575,12 +614,18 @@ async def import_vendor_status(
         correlation_id=correlation_id,
     )
     for row in rows:
-        acct_num = row.get("agency_account_number") or row.get("account_number") or row.get("id")
+        acct_num = (
+            row.get("agency_account_number")
+            or row.get("account_number")
+            or row.get("id")
+        )
         status = (row.get("status") or "").lower()
         if acct_num and status in ("paid", "closed"):
             try:
                 aid = uuid.UUID(acct_num)
-                acc = svc.repo("ar_accounts").get(tenant_id=current.tenant_id, record_id=aid)
+                acc = svc.repo("ar_accounts").get(
+                    tenant_id=current.tenant_id, record_id=aid
+                )
                 if acc:
                     adata = dict(acc.get("data") or {})
                     adata["status"] = "closed" if status == "paid" else status
@@ -593,6 +638,8 @@ async def import_vendor_status(
                         expected_version=acc.get("version", 1),
                         correlation_id=correlation_id,
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.error(f"Error: {e}")
     return {"import_id": str(record["id"]), "rows_parsed": len(rows)}

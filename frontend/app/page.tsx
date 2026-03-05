@@ -32,18 +32,6 @@ export default async function Page() {
     systems = await api<SystemRow[]>("/api/v1/systems");
   } catch {
     systemsUnavailable = true;
-    if (!isProd) {
-      systems = [
-        { system_key:"fusionbilling", name:"FusionBilling", description:"Revenue & claims engine", status:"ACTIVE", accent: accentFor("fusionbilling")},
-        { system_key:"fusionems", name:"FusionEMS", description:"Clinical documentation engine", status:"CERTIFICATION_ACTIVATION_REQUIRED", accent: accentFor("fusionems")},
-        { system_key:"fusionfire", name:"FusionFire", description:"Fire reporting engine", status:"CERTIFICATION_ACTIVATION_REQUIRED", accent: accentFor("fusionfire")},
-        { system_key:"fusionhems", name:"FusionHEMS", description:"Air medical operations engine", status:"ARCHITECTURE_COMPLETE", accent: accentFor("fusionhems")},
-        { system_key:"fusioncompliance", name:"FusionCompliance", description:"Compliance & audit layer", status:"ACTIVE_CORE_LAYER", accent: accentFor("fusioncompliance")},
-        { system_key:"fusionai", name:"FusionAI", description:"Governed AI co-pilot layer", status:"ACTIVE_CORE_LAYER", accent: accentFor("fusionai")},
-        { system_key:"fusionfleet", name:"FusionFleet", description:"Fleet readiness engine", status:"IN_DEVELOPMENT", accent: accentFor("fusionfleet")},
-        { system_key:"fusioncad", name:"FusionCAD", description:"CAD & incident coordination engine", status:"INFRASTRUCTURE_LAYER", accent: accentFor("fusioncad")},
-      ];
-    }
   }
 
   return (

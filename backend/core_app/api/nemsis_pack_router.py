@@ -5,7 +5,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 
-from core_app.api.dependencies import db_session_dependency, get_current_user, require_role
+from core_app.api.dependencies import (
+    db_session_dependency,
+    get_current_user,
+    require_role,
+)
 from core_app.nemsis.pack_manager import PackManager
 from core_app.schemas.auth import CurrentUser
 from core_app.services.event_publisher import get_event_publisher
@@ -119,7 +123,9 @@ async def activate_pack(
         correlation_id=correlation_id,
     )
     if result is None:
-        raise HTTPException(status_code=409, detail="Version conflict or pack not found")
+        raise HTTPException(
+            status_code=409, detail="Version conflict or pack not found"
+        )
     return result
 
 
@@ -131,9 +137,13 @@ async def stage_pack(
     db: Session = Depends(db_session_dependency),
 ):
     correlation_id = getattr(request.state, "correlation_id", None)
-    result = await _manager(db, current).stage_pack(pack_id=pack_id, correlation_id=correlation_id)
+    result = await _manager(db, current).stage_pack(
+        pack_id=pack_id, correlation_id=correlation_id
+    )
     if result is None:
-        raise HTTPException(status_code=409, detail="Version conflict or pack not found")
+        raise HTTPException(
+            status_code=409, detail="Version conflict or pack not found"
+        )
     return result
 
 
@@ -149,5 +159,7 @@ async def archive_pack(
         pack_id=pack_id, correlation_id=correlation_id
     )
     if result is None:
-        raise HTTPException(status_code=409, detail="Version conflict or pack not found")
+        raise HTTPException(
+            status_code=409, detail="Version conflict or pack not found"
+        )
     return result

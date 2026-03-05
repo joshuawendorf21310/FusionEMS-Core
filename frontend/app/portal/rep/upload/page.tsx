@@ -121,7 +121,7 @@ export default function RepUploadPage() {
       formData.append('session_id', sessionId);
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/documents`,
+        `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/auth-rep/upload-document`,
         {
           method: 'POST',
           headers: {
