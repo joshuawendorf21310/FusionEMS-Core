@@ -66,16 +66,28 @@ async def revenue_dashboard(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    claims = svc.repo("claims").list(tenant_id=current.tenant_id, limit=10000)
-    total = len(claims)
-    paid = sum(1 for c in claims if c.get("data", {}).get("status") == "paid")
-    denied = sum(1 for c in claims if c.get("data", {}).get("status") == "denied")
-    pending = sum(
-        1 for c in claims if c.get("data", {}).get("status") in ("submitted", "pending")
+    repo = svc.repo("claims")
+    status_rows = repo.aggregate_json_field(
+        tenant_id=current.tenant_id,
+        group_field="status",
+        sum_field="paid_amount_cents",
     )
-    revenue_cents = sum(
-        int(c.get("data", {}).get("paid_amount_cents", 0)) for c in claims
-    )
+    total = 0
+    paid = 0
+    denied = 0
+    pending = 0
+    revenue_cents = 0
+    for row in status_rows:
+        cnt = int(row["count"])
+        total += cnt
+        status = row["group_key"]
+        if status == "paid":
+            paid = cnt
+            revenue_cents = int(row.get("sum_value") or 0)
+        elif status == "denied":
+            denied = cnt
+        elif status in ("submitted", "pending"):
+            pending += cnt
     clean_claim_rate = round((paid / total * 100) if total > 0 else 0, 2)
     denial_rate = round((denied / total * 100) if total > 0 else 0, 2)
     return {
@@ -97,16 +109,14 @@ async def denial_heatmap(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    denials = svc.repo("denials").list(tenant_id=current.tenant_id, limit=10000)
-    heatmap: dict[str, int] = {}
-    for d in denials:
-        reason = d.get("data", {}).get("reason_code", "UNKNOWN")
-        heatmap[reason] = heatmap.get(reason, 0) + 1
-    sorted_heatmap = sorted(heatmap.items(), key=lambda x: x[1], reverse=True)
+    repo = svc.repo("denials")
+    rows = repo.aggregate_json_field(tenant_id=current.tenant_id, group_field="reason_code")
+    total_denials = sum(int(r["count"]) for r in rows)
+    sorted_heatmap = sorted(rows, key=lambda r: int(r["count"]), reverse=True)
     return {
-        "heatmap": [{"reason_code": k, "count": v} for k, v in sorted_heatmap],
-        "total_denials": len(denials),
-        "top_reason": sorted_heatmap[0][0] if sorted_heatmap else None,
+        "heatmap": [{"reason_code": r["group_key"], "count": int(r["count"])} for r in sorted_heatmap],
+        "total_denials": total_denials,
+        "top_reason": sorted_heatmap[0]["group_key"] if sorted_heatmap else None,
     }
 
 
@@ -586,16 +596,21 @@ async def revenue_by_service_level(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    claims = svc.repo("claims").list(tenant_id=current.tenant_id, limit=10000)
-    service_stats: dict[str, dict] = {}
-    for c in claims:
-        d = c.get("data", {})
-        level = d.get("service_level", "UNKNOWN")
-        if level not in service_stats:
-            service_stats[level] = {"total": 0, "revenue_cents": 0}
-        service_stats[level]["total"] += 1
-        service_stats[level]["revenue_cents"] += int(d.get("paid_amount_cents", 0))
-    return {"service_levels": [{"level": k, **v} for k, v in service_stats.items()]}
+    rows = svc.repo("claims").aggregate_json_field(
+        tenant_id=current.tenant_id,
+        group_field="service_level",
+        sum_field="paid_amount_cents",
+    )
+    return {
+        "service_levels": [
+            {
+                "level": r["group_key"],
+                "total": int(r["count"]),
+                "revenue_cents": int(r.get("sum_value") or 0),
+            }
+            for r in rows
+        ]
+    }
 
 
 @router.get("/payer-mix")
@@ -605,20 +620,19 @@ async def payer_mix(
 ):
     require_role(current, ["founder", "admin", "billing"])
     svc = DominationService(db, get_event_publisher())
-    claims = svc.repo("claims").list(tenant_id=current.tenant_id, limit=10000)
-    mix: dict[str, int] = {}
-    for c in claims:
-        payer = c.get("data", {}).get("payer_category", "unknown")
-        mix[payer] = mix.get(payer, 0) + 1
-    total = sum(mix.values())
+    rows = svc.repo("claims").aggregate_json_field(
+        tenant_id=current.tenant_id,
+        group_field="payer_category",
+    )
+    total = sum(int(r["count"]) for r in rows)
     return {
         "payer_mix": [
             {
-                "category": k,
-                "count": v,
-                "pct": round(v / total * 100, 2) if total else 0,
+                "category": r["group_key"],
+                "count": int(r["count"]),
+                "pct": round(int(r["count"]) / total * 100, 2) if total else 0,
             }
-            for k, v in mix.items()
+            for r in rows
         ],
         "total_claims": total,
     }
