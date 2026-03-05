@@ -18,6 +18,7 @@ import time
 import uuid
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -588,11 +589,11 @@ class TestLobArtifactAttachment:
 
 
 class TestOutboundPdfHash:
-    def test_hash_mismatch_raises(self):
+    async def test_hash_mismatch_raises(self):
         from core_app.integrations.lob_service import send_statement_letter
 
         with pytest.raises(ValueError, match="outbound_sha256 mismatch"):
-            send_statement_letter(
+            await send_statement_letter(
                 pdf_bytes=b"some pdf bytes",
                 outbound_sha256="0" * 64,
                 statement_id=str(uuid.uuid4()),
@@ -613,26 +614,24 @@ class TestOutboundPdfHash:
                 },
             )
 
-    def test_correct_hash_accepted(self):
+    async def test_correct_hash_accepted(self):
         pdf_bytes = b"fake pdf bytes for hash test"
         correct_hash = hashlib.sha256(pdf_bytes).hexdigest()
 
-        with (
-            patch("core_app.integrations.lob_service._get_lob_config") as mock_cfg,
-            patch("requests.post") as mock_post,
-        ):
-            mock_cfg.return_value = MagicMock(api_key="test_live_xxx")
-            mock_resp = MagicMock()
-            mock_resp.raise_for_status.return_value = None
-            mock_resp.json.return_value = {
-                "id": _fake_lob_letter_id(),
-                "expected_delivery_date": "2026-03-05",
-            }
-            mock_post.return_value = mock_resp
+        fake_lob_id = _fake_lob_letter_id()
+        mock_response = httpx.Response(
+            200,
+            json={"id": fake_lob_id, "expected_delivery_date": "2026-03-05"},
+            request=httpx.Request("POST", "https://api.lob.com/v1/letters"),
+        )
 
+        with (
+            patch("core_app.integrations.lob_service._get_api_key", return_value="test_live_xxx"),
+            patch("httpx.AsyncClient.post", return_value=mock_response),
+        ):
             from core_app.integrations.lob_service import send_statement_letter
 
-            result = send_statement_letter(
+            result = await send_statement_letter(
                 pdf_bytes=pdf_bytes,
                 outbound_sha256=correct_hash,
                 statement_id=str(uuid.uuid4()),
