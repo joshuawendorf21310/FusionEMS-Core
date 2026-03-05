@@ -8,11 +8,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from core_app.core.config import get_settings
 
 settings = get_settings()
-engine = create_engine(settings.database_url, future=True)
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
 
 
-def _build_async_database_url(database_url: str) -> str:
+def _build_psycopg_url(database_url: str) -> str:
+    """Ensure the URL uses the ``psycopg`` (v3) driver."""
     if database_url.startswith("postgresql+psycopg://"):
         return database_url
     if database_url.startswith("postgresql://"):
@@ -20,7 +19,10 @@ def _build_async_database_url(database_url: str) -> str:
     return database_url
 
 
-async_engine = create_async_engine(_build_async_database_url(settings.database_url), future=True)
+engine = create_engine(_build_psycopg_url(settings.database_url), future=True)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+
+async_engine = create_async_engine(_build_psycopg_url(settings.database_url), future=True)
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine, expire_on_commit=False, autoflush=False, class_=AsyncSession
 )
