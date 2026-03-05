@@ -96,11 +96,7 @@ module "iam" {
     module.s3.audit_bucket_arn,
     module.s3.artifacts_bucket_arn,
   ]
-  sqs_queue_arns = [
-    aws_sqs_queue.neris_pack_import.arn,
-    aws_sqs_queue.neris_pack_compile.arn,
-    aws_sqs_queue.neris_export.arn,
-  ]
+  sqs_queue_arns = values(module.sqs.queue_arns)
   sns_topic_arns = [module.observability.alert_topic_arn]
   secrets_arns = concat(
     [
@@ -271,90 +267,26 @@ module "secrets" {
   tags        = local.common_tags
 }
 
-# ─── 12c. NERIS queues (SQS) ─────────────────────────────────────────────────
+# ─── 12c. SQS (NERIS queues) ─────────────────────────────────────────────────
 
-locals {
-  neris_sqs_tags = merge(local.common_tags, {
+module "sqs" {
+  source = "../../modules/sqs"
+
+  environment = var.environment
+  project     = var.project
+
+  queues = {
+    "neris-pack-import"  = {}
+    "neris-pack-compile" = {}
+    "neris-export"       = {}
+  }
+
+  tags = merge(local.common_tags, {
     Owner     = "FusionEMS"
     Service   = "backend"
     Component = "neris"
     DataClass = "internal"
   })
-}
-
-resource "aws_sqs_queue" "neris_pack_import_dlq" {
-  name                       = "${var.project}-${var.environment}-neris-pack-import-dlq"
-  receive_wait_time_seconds  = 20
-  visibility_timeout_seconds = 120
-  message_retention_seconds  = 1209600
-  sqs_managed_sse_enabled    = true
-
-  tags = local.neris_sqs_tags
-}
-
-resource "aws_sqs_queue" "neris_pack_compile_dlq" {
-  name                       = "${var.project}-${var.environment}-neris-pack-compile-dlq"
-  receive_wait_time_seconds  = 20
-  visibility_timeout_seconds = 120
-  message_retention_seconds  = 1209600
-  sqs_managed_sse_enabled    = true
-
-  tags = local.neris_sqs_tags
-}
-
-resource "aws_sqs_queue" "neris_export_dlq" {
-  name                       = "${var.project}-${var.environment}-neris-export-dlq"
-  receive_wait_time_seconds  = 20
-  visibility_timeout_seconds = 120
-  message_retention_seconds  = 1209600
-  sqs_managed_sse_enabled    = true
-
-  tags = local.neris_sqs_tags
-}
-
-resource "aws_sqs_queue" "neris_pack_import" {
-  name                       = "${var.project}-${var.environment}-neris-pack-import"
-  receive_wait_time_seconds  = 20
-  visibility_timeout_seconds = 120
-  message_retention_seconds  = 1209600
-  sqs_managed_sse_enabled    = true
-
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.neris_pack_import_dlq.arn
-    maxReceiveCount     = 5
-  })
-
-  tags = local.neris_sqs_tags
-}
-
-resource "aws_sqs_queue" "neris_pack_compile" {
-  name                       = "${var.project}-${var.environment}-neris-pack-compile"
-  receive_wait_time_seconds  = 20
-  visibility_timeout_seconds = 120
-  message_retention_seconds  = 1209600
-  sqs_managed_sse_enabled    = true
-
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.neris_pack_compile_dlq.arn
-    maxReceiveCount     = 5
-  })
-
-  tags = local.neris_sqs_tags
-}
-
-resource "aws_sqs_queue" "neris_export" {
-  name                       = "${var.project}-${var.environment}-neris-export"
-  receive_wait_time_seconds  = 20
-  visibility_timeout_seconds = 120
-  message_retention_seconds  = 1209600
-  sqs_managed_sse_enabled    = true
-
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.neris_export_dlq.arn
-    maxReceiveCount     = 5
-  })
-
-  tags = local.neris_sqs_tags
 }
 
 # ─── 13. Backend Service ────────────────────────────────────────────────────
@@ -403,10 +335,10 @@ module "backend_service" {
     { name = "S3_EXPORTS_BUCKET", value = module.s3.exports_bucket_name },
     { name = "S3_PROPOSALS_BUCKET", value = module.s3.proposals_bucket_name },
 
-    # NERIS queues (created in this stack) – inject directly so backend doesn't depend on Secrets Manager keys.
-    { name = "NERIS_PACK_IMPORT_QUEUE_URL", value = aws_sqs_queue.neris_pack_import.url },
-    { name = "NERIS_PACK_COMPILE_QUEUE_URL", value = aws_sqs_queue.neris_pack_compile.url },
-    { name = "NERIS_EXPORT_QUEUE_URL", value = aws_sqs_queue.neris_export.url },
+    # NERIS queues – inject directly so backend doesn't depend on Secrets Manager keys.
+    { name = "NERIS_PACK_IMPORT_QUEUE_URL", value = module.sqs.queue_urls["neris-pack-import"] },
+    { name = "NERIS_PACK_COMPILE_QUEUE_URL", value = module.sqs.queue_urls["neris-pack-compile"] },
+    { name = "NERIS_EXPORT_QUEUE_URL", value = module.sqs.queue_urls["neris-export"] },
 
     # Non-secret config
     { name = "GRAPH_FOUNDER_EMAIL", value = "joshua.j.wendorf@fusionemsquantum.com" },

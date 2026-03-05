@@ -91,7 +91,7 @@ module "iam" {
     module.s3.audit_bucket_arn,
     module.s3.artifacts_bucket_arn,
   ]
-  sqs_queue_arns = []
+  sqs_queue_arns = values(module.sqs.queue_arns)
   sns_topic_arns = [module.observability.alert_topic_arn]
   secrets_arns = [
     module.rds.db_secret_arn,
@@ -245,6 +245,17 @@ module "ses" {
   graph_client_secret = var.graph_client_secret
   graph_founder_email = var.graph_founder_email
   tags                = local.common_tags
+}
+
+# ─── 12b. SQS ────────────────────────────────────────────────────────────────
+
+module "sqs" {
+  source = "../../modules/sqs"
+
+  environment = var.environment
+  project     = var.project
+  queues      = {}
+  tags        = local.common_tags
 }
 
 # ─── 13. Backend Service ────────────────────────────────────────────────────
