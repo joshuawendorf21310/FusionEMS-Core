@@ -1,4 +1,8 @@
-export async function login(email: string, password: string): Promise<void> {
+type LoginOptions = {
+  redirectTo?: string;
+};
+
+export async function login(email: string, password: string, options?: LoginOptions): Promise<void> {
   const res = await fetch('/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -11,6 +15,12 @@ export async function login(email: string, password: string): Promise<void> {
   }
 
   const data = await res.json();
-  localStorage.setItem('token', data.access_token);
-  window.location.href = '/dashboard';
+  const token = data.access_token;
+
+  // Canonical key
+  localStorage.setItem('token', token);
+  // Back-compat for older pages still reading this key
+  localStorage.setItem('qs_token', token);
+
+  window.location.href = options?.redirectTo || '/dashboard';
 }

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 const FIELD_STYLE: React.CSSProperties = {
   width: '100%',
@@ -26,20 +27,110 @@ const LABEL_STYLE: React.CSSProperties = {
   marginBottom: 6,
 };
 
-const BILL = {
-  dateOfService: 'January 15, 2026',
-  serviceType: 'Emergency Transport — ALS Level 1',
-  totalBilled: 385.0,
-  insuranceApplied: -210.0,
-  balanceDue: 175.0,
+type PatientStatement = {
+  id: string;
+  data?: {
+    incident_date?: string;
+    transport_date?: string;
+    service_type?: string;
+    amount_due_cents?: number;
+    amount_paid_cents?: number;
+    amount_billed_cents?: number;
+  };
 };
 
 export default function PatientPayPage() {
-  const [amount, setAmount] = useState(BILL.balanceDue.toFixed(2));
+  const searchParams = useSearchParams();
+  const statementIdFromUrl = searchParams.get('statement_id');
+  const apiBase = useMemo(
+    () => process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '',
+    []
+  );
+
+  const [statement, setStatement] = useState<PatientStatement | null>(null);
+  const [loadingStatement, setLoadingStatement] = useState(true);
+  const [statementError, setStatementError] = useState<string | null>(null);
+
+  const [amount, setAmount] = useState('0.00');
   const [cardNumber, setCardNumber] = useState('');
   const [expiration, setExpiration] = useState('');
   const [cvv, setCvv] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const balanceDue = useMemo(() => {
+    const due = statement?.data?.amount_due_cents ?? 0;
+    return due / 100;
+  }, [statement]);
+
+  const totalBilled = useMemo(() => {
+    const billed = statement?.data?.amount_billed_cents;
+    if (typeof billed === 'number') return billed / 100;
+    const paid = statement?.data?.amount_paid_cents ?? 0;
+    const due = statement?.data?.amount_due_cents ?? 0;
+    return (paid + due) / 100;
+  }, [statement]);
+
+  const insuranceApplied = useMemo(() => {
+    return totalBilled - balanceDue;
+  }, [totalBilled, balanceDue]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStatement() {
+      setLoadingStatement(true);
+      setStatementError(null);
+
+      try {
+        const url = new URL('/api/v1/patient/statements?limit=50', apiBase || window.location.origin);
+        const res = await fetch(url.toString(), {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load statements (${res.status})`);
+        }
+
+        const payload = await res.json();
+        const statements: PatientStatement[] = Array.isArray(payload?.statements)
+          ? payload.statements
+          : [];
+
+        const picked = statementIdFromUrl
+          ? statements.find((s) => s.id === statementIdFromUrl)
+          : statements[0];
+
+        if (!picked) {
+          throw new Error('No statement found for payment.');
+        }
+
+        if (!cancelled) {
+          setStatement(picked);
+          const due = (picked.data?.amount_due_cents ?? 0) / 100;
+          setAmount(due > 0 ? due.toFixed(2) : '0.00');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setStatement(null);
+          setStatementError(err instanceof Error ? err.message : 'Unable to load billing data.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingStatement(false);
+        }
+      }
+    }
+
+    void loadStatement();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase, statementIdFromUrl]);
 
   function formatCard(val: string) {
     return val
@@ -56,12 +147,42 @@ export default function PatientPayPage() {
       .replace(/^(\d{2})(\d)/, '$1/$2');
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitError(null);
+
+    if (!statement?.id) {
+      setSubmitError('No statement is available for payment.');
+      return;
+    }
+
     setSubmitting(true);
-    setTimeout(() => {
-      window.location.href = '/portal/patient/receipt';
-    }, 1600);
+    try {
+      const url = new URL(`/api/v1/statements/${statement.id}/pay`, apiBase || window.location.origin);
+      const res = await fetch(url.toString(), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Payment initialization failed (${res.status})`);
+      }
+
+      const payload = await res.json();
+      const checkoutUrl = payload?.checkout_url;
+      if (!checkoutUrl || typeof checkoutUrl !== 'string') {
+        throw new Error('Checkout URL not returned by backend.');
+      }
+
+      window.location.assign(checkoutUrl);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Unable to start payment.');
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -101,6 +222,12 @@ export default function PatientPayPage() {
           >
             Make a Payment
           </h1>
+          {loadingStatement && (
+            <p style={{ marginTop: 8, color: 'var(--color-text-muted)' }}>Loading live statement…</p>
+          )}
+          {statementError && (
+            <p style={{ marginTop: 8, color: '#ef4444' }}>{statementError}</p>
+          )}
         </div>
 
         {/* Bill Summary */}
@@ -135,10 +262,22 @@ export default function PatientPayPage() {
           </div>
           <div style={{ padding: '0 16px 4px' }}>
             {[
-              { label: 'Date of Service', value: BILL.dateOfService, mono: false },
-              { label: 'Service Type', value: BILL.serviceType, mono: false },
-              { label: 'Total Billed', value: `$${BILL.totalBilled.toFixed(2)}`, mono: true },
-              { label: 'Insurance Applied', value: `-$${Math.abs(BILL.insuranceApplied).toFixed(2)}`, mono: true, muted: true },
+              {
+                label: 'Date of Service',
+                value:
+                  statement?.data?.transport_date ||
+                  statement?.data?.incident_date ||
+                  '—',
+                mono: false,
+              },
+              { label: 'Service Type', value: statement?.data?.service_type || '—', mono: false },
+              { label: 'Total Billed', value: `$${totalBilled.toFixed(2)}`, mono: true },
+              {
+                label: 'Insurance Applied',
+                value: `-$${Math.max(insuranceApplied, 0).toFixed(2)}`,
+                mono: true,
+                muted: true,
+              },
             ].map((row) => (
               <div
                 key={row.label}
@@ -201,7 +340,7 @@ export default function PatientPayPage() {
                   color: 'var(--color-brand-orange)',
                 }}
               >
-                ${BILL.balanceDue.toFixed(2)}
+                ${balanceDue.toFixed(2)}
               </span>
             </div>
           </div>
@@ -240,11 +379,12 @@ export default function PatientPayPage() {
                   type="number"
                   step="0.01"
                   min="1"
-                  max={BILL.balanceDue}
+                  max={Math.max(balanceDue, 1)}
                   required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   style={{ ...FIELD_STYLE, paddingLeft: 26 }}
+                  disabled={loadingStatement || !statement || balanceDue <= 0}
                 />
               </div>
             </div>
@@ -263,6 +403,7 @@ export default function PatientPayPage() {
                 onChange={(e) => setCardNumber(formatCard(e.target.value))}
                 style={FIELD_STYLE}
                 placeholder="1234 5678 9012 3456"
+                disabled={loadingStatement || !statement || balanceDue <= 0}
               />
             </div>
 
@@ -281,6 +422,7 @@ export default function PatientPayPage() {
                   onChange={(e) => setExpiration(formatExp(e.target.value))}
                   style={FIELD_STYLE}
                   placeholder="MM/YY"
+                  disabled={loadingStatement || !statement || balanceDue <= 0}
                 />
               </div>
               <div>
@@ -296,14 +438,17 @@ export default function PatientPayPage() {
                   onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
                   style={FIELD_STYLE}
                   placeholder="•••"
+                  disabled={loadingStatement || !statement || balanceDue <= 0}
                 />
               </div>
             </div>
 
+            {submitError && <p style={{ color: '#ef4444', marginTop: -4 }}>{submitError}</p>}
+
             {/* Submit */}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || loadingStatement || !statement || balanceDue <= 0}
               style={{
                 marginTop: 4,
                 background: submitting ? 'var(--color-brand-orange-dim)' : 'var(--color-brand-orange)',
@@ -340,7 +485,7 @@ export default function PatientPayPage() {
                   Processing...
                 </>
               ) : (
-                `Pay Securely — $${parseFloat(amount || '0').toFixed(2)}`
+                `Continue to Secure Checkout — $${parseFloat(amount || '0').toFixed(2)}`
               )}
             </button>
           </form>

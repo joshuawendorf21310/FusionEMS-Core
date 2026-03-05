@@ -1,15 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
+import { login } from '@/services/auth';
 
 export default function BillingLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    localStorage.setItem('billing_token', 'demo');
-    window.location.href = '/billing/dashboard';
+    setError('');
+    setLoading(true);
+    try {
+      await login(email.trim(), password, { redirectTo: '/billing/dashboard' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Authentication failed';
+      setError(msg);
+      setLoading(false);
+    }
   }
 
   return (
@@ -143,6 +153,7 @@ export default function BillingLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="billing@agency.gov"
                 required
+                disabled={loading}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -189,6 +200,7 @@ export default function BillingLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                disabled={loading}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -202,9 +214,26 @@ export default function BillingLoginPage() {
             </div>
           </div>
 
+          {error && (
+            <p
+              role="alert"
+              style={{
+                margin: '0 0 4px 0',
+                color: 'var(--color-brand-red)',
+                fontSize: 'var(--text-label)',
+                fontFamily: 'var(--font-label)',
+                letterSpacing: 'var(--tracking-label)',
+                textTransform: 'uppercase',
+              }}
+            >
+              {error}
+            </p>
+          )}
+
           {/* Submit Button */}
           <button
             type="submit"
+            disabled={loading}
             style={{
               marginTop: '8px',
               height: 'var(--density-button-height)',
@@ -219,11 +248,18 @@ export default function BillingLoginPage() {
               textTransform: 'uppercase',
               cursor: 'pointer',
               transition: 'opacity var(--duration-fast) var(--ease-out)',
+              opacity: loading ? 0.75 : 1,
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = '0.88')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = '1')}
+            onMouseEnter={(e) => {
+              if (loading) return;
+              (e.currentTarget as HTMLButtonElement).style.opacity = '0.88';
+            }}
+            onMouseLeave={(e) => {
+              if (loading) return;
+              (e.currentTarget as HTMLButtonElement).style.opacity = '1';
+            }}
           >
-            Sign In to Billing Portal
+            {loading ? 'Signing In…' : 'Sign In to Billing Portal'}
           </button>
         </form>
 

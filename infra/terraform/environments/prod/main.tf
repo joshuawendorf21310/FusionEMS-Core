@@ -361,28 +361,40 @@ resource "aws_sqs_queue" "neris_export" {
 module "backend_service" {
   source = "../../modules/ecs-service"
 
-  environment            = var.environment
-  project                = var.project
-  service_name           = "backend"
-  cluster_id             = module.ecs_cluster.cluster_id
-  cluster_name           = module.ecs_cluster.cluster_name
-  vpc_id                 = module.networking.vpc_id
-  private_subnet_ids     = module.networking.private_subnet_ids
-  security_group_ids     = [module.networking.ecs_security_group_id]
-  execution_role_arn     = module.iam.ecs_task_execution_role_arn
-  task_role_arn          = module.iam.ecs_task_role_arn
-  container_image        = "${module.ecs_cluster.backend_ecr_repository_url}:${var.backend_image_tag}"
-  container_port         = 8000
-  cpu                    = 1024
-  memory                 = 2048
-  alb_listener_arn       = module.ecs_cluster.alb_listener_arn
-  path_pattern           = ["/api/*"]
-  listener_rule_priority = 10
-  log_group_name         = module.ecs_cluster.log_group_name
-  tags                   = local.common_tags
+  environment        = var.environment
+  project            = var.project
+  service_name       = "backend"
+  cluster_id         = module.ecs_cluster.cluster_id
+  cluster_name       = module.ecs_cluster.cluster_name
+  vpc_id             = module.networking.vpc_id
+  private_subnet_ids = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.ecs_security_group_id]
+  execution_role_arn = module.iam.ecs_task_execution_role_arn
+  task_role_arn      = module.iam.ecs_task_role_arn
+  container_image    = "${module.ecs_cluster.backend_ecr_repository_url}:${var.backend_image_tag}"
+  container_port     = 8000
+  container_healthcheck_command = [
+    "CMD-SHELL",
+    "python -c \"import sys,urllib.request; r=urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=2); sys.exit(0 if 200 <= r.status < 300 else 1)\""
+  ]
+  cpu           = 1024
+  memory        = 2048
+  desired_count = 2
+  # Temporarily allow deployments to proceed even if a subset of tasks is unhealthy.
+  # This reduces rollback risk during incident response when older revisions may crash at import-time.
+  deployment_minimum_healthy_percent = 50
+  alb_listener_arn                   = module.ecs_cluster.alb_listener_arn
+  additional_alb_listener_arns       = { http = module.ecs_cluster.alb_http_listener_arn }
+  path_pattern                       = ["/api/*"]
+  listener_rule_priority             = 10
+  health_check_path                  = "/healthz"
+  log_group_name                     = module.ecs_cluster.log_group_name
+  tags                               = local.common_tags
 
   environment_variables = [
     { name = "ENVIRONMENT", value = var.environment },
+    # In staging/prod we require Cognito-based auth (the app refuses to boot with AUTH_MODE=local).
+    { name = "AUTH_MODE", value = "cognito" },
     { name = "AWS_DEFAULT_REGION", value = var.aws_region },
     { name = "COGNITO_USER_POOL_ID", value = module.cognito.user_pool_id },
     { name = "COGNITO_CLIENT_ID", value = module.cognito.user_pool_client_id },
@@ -434,28 +446,40 @@ module "backend_service" {
 module "frontend_service" {
   source = "../../modules/ecs-service"
 
-  environment            = var.environment
-  project                = var.project
-  service_name           = "frontend"
-  cluster_id             = module.ecs_cluster.cluster_id
-  cluster_name           = module.ecs_cluster.cluster_name
-  vpc_id                 = module.networking.vpc_id
-  private_subnet_ids     = module.networking.private_subnet_ids
-  security_group_ids     = [module.networking.ecs_security_group_id]
-  execution_role_arn     = module.iam.ecs_task_execution_role_arn
-  task_role_arn          = module.iam.ecs_task_role_arn
-  container_image        = "${module.ecs_cluster.frontend_ecr_repository_url}:${var.frontend_image_tag}"
-  container_port         = 3000
-  cpu                    = 512
-  memory                 = 1024
-  alb_listener_arn       = module.ecs_cluster.alb_listener_arn
-  path_pattern           = ["/*"]
-  listener_rule_priority = 100
-  log_group_name         = module.ecs_cluster.log_group_name
-  tags                   = local.common_tags
+  environment        = var.environment
+  project            = var.project
+  service_name       = "frontend"
+  cluster_id         = module.ecs_cluster.cluster_id
+  cluster_name       = module.ecs_cluster.cluster_name
+  vpc_id             = module.networking.vpc_id
+  private_subnet_ids = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.ecs_security_group_id]
+  execution_role_arn = module.iam.ecs_task_execution_role_arn
+  task_role_arn      = module.iam.ecs_task_role_arn
+  container_image    = "${module.ecs_cluster.frontend_ecr_repository_url}:${var.frontend_image_tag}"
+  container_port     = 3000
+  container_healthcheck_command = [
+    "CMD-SHELL",
+    "node -e \"require('http').get('http://127.0.0.1:3000/healthz', (res) => process.exit(res.statusCode >= 200 && res.statusCode < 300 ? 0 : 1)).on('error', () => process.exit(1))\""
+  ]
+  cpu                          = 512
+  memory                       = 1024
+  desired_count                = 2
+  alb_listener_arn             = module.ecs_cluster.alb_listener_arn
+  additional_alb_listener_arns = { http = module.ecs_cluster.alb_http_listener_arn }
+  path_pattern                 = ["/*"]
+  listener_rule_priority       = 100
+  health_check_path            = "/healthz"
+  log_group_name               = module.ecs_cluster.log_group_name
+  tags                         = local.common_tags
 
   environment_variables = [
     { name = "ENVIRONMENT", value = var.environment },
+    # Frontend API base (used by server components + client calls in some modules)
+    { name = "NEXT_PUBLIC_API_BASE", value = "https://${var.api_domain_name}" },
+    { name = "NEXT_PUBLIC_BACKEND_URL", value = "https://${var.api_domain_name}" },
+    { name = "BACKEND_URL", value = "https://${var.api_domain_name}" },
+    # Backwards-compat for older callers
     { name = "NEXT_PUBLIC_API_URL", value = "https://${var.api_domain_name}" },
     { name = "NEXT_PUBLIC_COGNITO_USER_POOL_ID", value = module.cognito.user_pool_id },
     { name = "NEXT_PUBLIC_COGNITO_CLIENT_ID", value = module.cognito.user_pool_client_id },

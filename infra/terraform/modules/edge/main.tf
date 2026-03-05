@@ -235,20 +235,22 @@ resource "aws_cloudfront_cache_policy" "static" {
 # ========================= CloudFront Distribution ============================
 
 resource "aws_cloudfront_distribution" "this" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  http_version        = "http2and3"
-  web_acl_id          = aws_wafv2_web_acl.cloudfront.arn
-  aliases             = [var.root_domain_name, "www.${var.root_domain_name}", var.api_domain_name]
-  default_root_object = "index.html"
-  price_class         = "PriceClass_100"
+  enabled         = true
+  is_ipv6_enabled = true
+  http_version    = "http2and3"
+  web_acl_id      = aws_wafv2_web_acl.cloudfront.arn
+  aliases         = [var.root_domain_name, "www.${var.root_domain_name}", var.api_domain_name]
+  price_class     = "PriceClass_100"
 
   origin {
     domain_name = var.alb_dns_name
     origin_id   = "AlbOrigin"
 
     custom_origin_config {
-      origin_protocol_policy = "https-only"
+      # CloudFront validates origin TLS certificates against the origin domain name.
+      # ALBs use an AWS hostname as their DNS name which is not covered by our ACM cert,
+      # so HTTPS origin connections fail with 502. Use HTTP for origin traffic instead.
+      origin_protocol_policy = "http-only"
       http_port              = 80
       https_port             = 443
       origin_ssl_protocols   = ["TLSv1.2"]

@@ -209,6 +209,34 @@ resource "aws_lb_listener" "https" {
 }
 
 # =============================================================================
+# ALB Listener – HTTP (80)
+#
+# CloudFront origin connections cannot validate the ALB's ACM certificate when
+# the origin domain name is the ALB's AWS hostname. We therefore expose an HTTP
+# listener for CloudFront-to-ALB origin traffic.
+# =============================================================================
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Not Found"
+      status_code  = "404"
+    }
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-http-listener"
+  })
+}
+
+# =============================================================================
 # WAF Association (conditional)
 # =============================================================================
 

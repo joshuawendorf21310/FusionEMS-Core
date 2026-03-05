@@ -1,16 +1,94 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
-const RECEIPT = {
-  confirmation: 'FQ-2026-0127-8834',
-  date: 'February 27, 2026',
-  amount: '$175.00',
-  last4: '4242',
-  status: 'PAID',
+type PatientStatement = {
+  id: string;
+  data?: {
+    incident_date?: string;
+    transport_date?: string;
+    amount_due_cents?: number;
+    amount_paid_cents?: number;
+    patient_account_ref?: string;
+  };
 };
 
 export default function PatientReceiptPage() {
+  const searchParams = useSearchParams();
+  const statementIdFromUrl = searchParams.get('statement_id');
+  const apiBase = useMemo(
+    () => process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '',
+    []
+  );
+
+  const [statement, setStatement] = useState<PatientStatement | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStatement() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const url = new URL('/api/v1/patient/statements?limit=50', apiBase || window.location.origin);
+        const res = await fetch(url.toString(), {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load statements (${res.status})`);
+        }
+
+        const payload = await res.json();
+        const statements: PatientStatement[] = Array.isArray(payload?.statements)
+          ? payload.statements
+          : [];
+
+        const picked = statementIdFromUrl
+          ? statements.find((s) => s.id === statementIdFromUrl)
+          : statements[0];
+
+        if (!picked) {
+          throw new Error('No statement data available.');
+        }
+
+        if (!cancelled) {
+          setStatement(picked);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setStatement(null);
+          setError(err instanceof Error ? err.message : 'Unable to load receipt data.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadStatement();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase, statementIdFromUrl]);
+
+  const amountPaid = useMemo(() => {
+    const paid = statement?.data?.amount_paid_cents ?? 0;
+    return `$${(paid / 100).toFixed(2)}`;
+  }, [statement]);
+
+  const transportDate = statement?.data?.transport_date || statement?.data?.incident_date || '—';
+  const confirmation = statement?.id || '—';
+  const status = loading ? 'PROCESSING' : error ? 'UNAVAILABLE' : 'VERIFIED';
+
   return (
     <div
       style={{
@@ -60,7 +138,7 @@ export default function PatientReceiptPage() {
               marginBottom: 6,
             }}
           >
-            Payment Received
+            Payment Status
           </h1>
           <p
             style={{
@@ -69,8 +147,10 @@ export default function PatientReceiptPage() {
               textAlign: 'center',
             }}
           >
-            Your payment has been processed successfully.
+            Live billing status from your account record.
           </p>
+          {loading && <p style={{ marginTop: 8, color: 'var(--color-text-muted)' }}>Loading live receipt…</p>}
+          {error && <p style={{ marginTop: 8, color: '#ef4444' }}>{error}</p>}
         </div>
 
         {/* Receipt card */}
@@ -105,10 +185,10 @@ export default function PatientReceiptPage() {
           </div>
           <div style={{ padding: '0 16px 4px' }}>
             {[
-              { label: 'Confirmation #', value: RECEIPT.confirmation, mono: true },
-              { label: 'Date', value: RECEIPT.date, mono: false },
-              { label: 'Amount', value: RECEIPT.amount, mono: true, highlight: true },
-              { label: 'Card', value: `•••• •••• •••• ${RECEIPT.last4}`, mono: true },
+              { label: 'Statement #', value: confirmation, mono: true },
+              { label: 'Date of Service', value: transportDate, mono: false },
+              { label: 'Amount Paid', value: amountPaid, mono: true, highlight: true },
+              { label: 'Reference', value: statement?.data?.patient_account_ref || '—', mono: true },
             ].map((row) => (
               <div
                 key={row.label}
@@ -193,7 +273,7 @@ export default function PatientReceiptPage() {
                     flexShrink: 0,
                   }}
                 />
-                {RECEIPT.status}
+                {status}
               </span>
             </div>
           </div>
@@ -257,9 +337,12 @@ export default function PatientReceiptPage() {
               textDecoration: 'underline',
               textDecorationColor: 'rgba(255,255,255,0.15)',
             }}
-            onClick={() => alert('Receipt emailed to your address on file.')}
+            onClick={() => {
+              // NOTE: no fake success alerts; this action is intentionally informational-only until
+              // verified email delivery status is available from backend events.
+            }}
           >
-            Email receipt
+            Email receipt status available in account notifications
           </button>
         </div>
       </div>

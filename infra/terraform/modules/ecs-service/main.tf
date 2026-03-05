@@ -41,7 +41,7 @@ resource "aws_ecs_task_definition" "this" {
       secrets     = var.secrets
 
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}${var.health_check_path} || exit 1"]
+        command     = var.container_healthcheck_command != null ? var.container_healthcheck_command : ["CMD-SHELL", "curl -f http://localhost:${var.container_port}${var.health_check_path} || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -113,6 +113,28 @@ resource "aws_lb_listener_rule" "this" {
   })
 }
 
+resource "aws_lb_listener_rule" "additional" {
+  for_each = var.additional_alb_listener_arns
+
+  listener_arn = each.value
+  priority     = var.listener_rule_priority
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.this.arn
+  }
+
+  condition {
+    path_pattern {
+      values = var.path_pattern
+    }
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-rule"
+  })
+}
+
 # --- ECS Service ---
 
 resource "aws_ecs_service" "this" {
@@ -122,7 +144,7 @@ resource "aws_ecs_service" "this" {
   launch_type                        = "FARGATE"
   desired_count                      = var.desired_count
   deployment_maximum_percent         = 200
-  deployment_minimum_healthy_percent = 100
+  deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
   enable_execute_command             = true
   force_new_deployment               = true
   health_check_grace_period_seconds  = 120

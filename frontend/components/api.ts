@@ -1,6 +1,21 @@
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const base = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || "http://localhost:8000";
-  const res = await fetch(`${base}${path}`, {
+  const isProd = process.env.NODE_ENV === "production";
+  const base =
+    process.env.NEXT_PUBLIC_API_BASE ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.BACKEND_URL ||
+    (!isProd ? "http://localhost:8000" : undefined);
+
+  if (!base) {
+    throw new Error(
+      "Backend base URL is not configured. Set NEXT_PUBLIC_BACKEND_URL (or NEXT_PUBLIC_API_URL / BACKEND_URL) in the runtime environment."
+    );
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const baseNoTrailing = base.endsWith("/") ? base.slice(0, -1) : base;
+  const res = await fetch(`${baseNoTrailing}${normalizedPath}`, {
     ...init,
     headers: {
       "content-type": "application/json",

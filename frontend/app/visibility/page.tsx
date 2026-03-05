@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const IS_PROD = process.env.NODE_ENV === "production";
+const BASE =
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  (!IS_PROD ? "http://localhost:8000" : "");
 
 type Rule = {
   id: string;
@@ -1084,10 +1089,30 @@ export default function VisibilityRuleMakerPage() {
         {/* ADVANCED */}
         <Tabs.Content value="advanced">
           <div className="space-y-4">
-            {[
-              { title: "Demo Mode", config: { phi_replaced_with_synthetic: true, financial_data_zeroed: true, tenant_id_anonymized: true, safe_to_share_screen: true } },
-              { title: "Training Mode", config: { uses_synthetic_data: true, mutations_blocked: true, exports_disabled: true, watermark: "TRAINING DATA - NOT FOR CLINICAL USE" } },
-            ].map(({ title, config }) => (
+            {(
+              [
+                !IS_PROD
+                  ? {
+                      title: "Demo Mode",
+                      config: {
+                        phi_replaced_with_synthetic: true,
+                        financial_data_zeroed: true,
+                        tenant_id_anonymized: true,
+                        safe_to_share_screen: true,
+                      },
+                    }
+                  : null,
+                {
+                  title: "Training Mode",
+                  config: {
+                    uses_synthetic_data: true,
+                    mutations_blocked: true,
+                    exports_disabled: true,
+                    watermark: "TRAINING DATA - NOT FOR CLINICAL USE",
+                  },
+                },
+              ].filter(Boolean) as Array<{ title: string; config: Record<string, unknown> }>
+            ).map(({ title, config }) => (
               <div key={title} className="rounded-xl border border-border bg-panel p-4">
                 <SectionTitle title={title} />
                 <div className="flex flex-wrap gap-2">

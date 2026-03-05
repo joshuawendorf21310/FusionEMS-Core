@@ -1,0 +1,116 @@
+{
+    "NetworkAcls": [
+        {
+            "Associations": [
+                {
+                    "NetworkAclAssociationId": "aclassoc-03ea37c4e3b96f279",
+                    "NetworkAclId": "acl-084fc025506e11fa3",
+                    "SubnetId": "subnet-0defac44fec5f63e8"
+                },
+                {
+                    "NetworkAclAssociationId": "aclassoc-081fb2b30c392e64a",
+                    "NetworkAclId": "acl-084fc025506e11fa3",
+                    "SubnetId": "subnet-0ac19a4d36c2d9f32"
+                },
+                {
+                    "NetworkAclAssociationId": "aclassoc-0d2322cfd029cf118",
+                    "NetworkAclId": "acl-084fc025506e11fa3",
+                    "SubnetId": "subnet-0e8d1a6fcd7b2b286"
+                }
+            ],
+            "Entries": [
+                {
+                    "CidrBlock": "10.2.0.0/16",
+                    "Egress": true,
+                    "PortRange": {
+                        "From": 0,
+                        "To": 65535
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "PortRange": {
+                        "From": 1024,
+                        "To": 65535
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 200
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "PortRange": {
+                        "From": 80,
+                        "To": 80
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 90
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "PortRange": {
+                        "From": 443,
+                        "To": 443
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "PortRange": {
+                        "From": 1024,
+                        "To": 65535
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 200
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                }
+            ],
+            "IsDefault": false,
+            "NetworkAclId": "acl-084fc025506e11fa3",
+            "Tags": [
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "ManagedBy",
+                    "Value": "terraform"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "fusionems-prod-public-nacl"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "fusionems"
+                }
+            ],
+            "VpcId": "vpc-088f1240c9e02e6f8",
+            "OwnerId": "793439286972"
+        }
+    ]
+}

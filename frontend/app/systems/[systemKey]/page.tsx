@@ -17,7 +17,13 @@ export default function SystemPage() {
 
   useEffect(() => {
     (async () => {
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || "http://localhost:8000";
+      const isProd = process.env.NODE_ENV === "production";
+      const base =
+        process.env.NEXT_PUBLIC_API_BASE ||
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.BACKEND_URL ||
+        (!isProd ? "http://localhost:8000" : "");
       const res = await fetch(`${base}/api/v1/systems`, { cache: "no-store" });
       const systems = (await res.json()) as SystemRow[];
       const s = systems.find(x => x.system_key === systemKey) || null;

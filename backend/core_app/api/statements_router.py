@@ -161,7 +161,7 @@ async def mail_statement(
 
     try:
         _get_lob_config()
-        lob_resp = send_statement_letter(
+        lob_resp = await send_statement_letter(
             pdf_bytes=pdf_bytes,
             outbound_sha256=outbound_sha256,
             statement_id=str(statement_id),

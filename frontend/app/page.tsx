@@ -26,20 +26,24 @@ function accentFor(key: string): string {
 
 export default async function Page() {
   let systems: SystemRow[] = [];
+  let systemsUnavailable = false;
+  const isProd = process.env.NODE_ENV === "production";
   try {
     systems = await api<SystemRow[]>("/api/v1/systems");
   } catch {
-    // backend may not yet expose systems; show deterministic fallback tiles (no mock in prod; ok for dev)
-    systems = [
-      { system_key:"fusionbilling", name:"FusionBilling", description:"Revenue & claims engine", status:"ACTIVE", accent: accentFor("fusionbilling")},
-      { system_key:"fusionems", name:"FusionEMS", description:"Clinical documentation engine", status:"CERTIFICATION_ACTIVATION_REQUIRED", accent: accentFor("fusionems")},
-      { system_key:"fusionfire", name:"FusionFire", description:"Fire reporting engine", status:"CERTIFICATION_ACTIVATION_REQUIRED", accent: accentFor("fusionfire")},
-      { system_key:"fusionhems", name:"FusionHEMS", description:"Air medical operations engine", status:"ARCHITECTURE_COMPLETE", accent: accentFor("fusionhems")},
-      { system_key:"fusioncompliance", name:"FusionCompliance", description:"Compliance & audit layer", status:"ACTIVE_CORE_LAYER", accent: accentFor("fusioncompliance")},
-      { system_key:"fusionai", name:"FusionAI", description:"Governed AI co-pilot layer", status:"ACTIVE_CORE_LAYER", accent: accentFor("fusionai")},
-      { system_key:"fusionfleet", name:"FusionFleet", description:"Fleet readiness engine", status:"IN_DEVELOPMENT", accent: accentFor("fusionfleet")},
-      { system_key:"fusioncad", name:"FusionCAD", description:"CAD & incident coordination engine", status:"INFRASTRUCTURE_LAYER", accent: accentFor("fusioncad")},
-    ];
+    systemsUnavailable = true;
+    if (!isProd) {
+      systems = [
+        { system_key:"fusionbilling", name:"FusionBilling", description:"Revenue & claims engine", status:"ACTIVE", accent: accentFor("fusionbilling")},
+        { system_key:"fusionems", name:"FusionEMS", description:"Clinical documentation engine", status:"CERTIFICATION_ACTIVATION_REQUIRED", accent: accentFor("fusionems")},
+        { system_key:"fusionfire", name:"FusionFire", description:"Fire reporting engine", status:"CERTIFICATION_ACTIVATION_REQUIRED", accent: accentFor("fusionfire")},
+        { system_key:"fusionhems", name:"FusionHEMS", description:"Air medical operations engine", status:"ARCHITECTURE_COMPLETE", accent: accentFor("fusionhems")},
+        { system_key:"fusioncompliance", name:"FusionCompliance", description:"Compliance & audit layer", status:"ACTIVE_CORE_LAYER", accent: accentFor("fusioncompliance")},
+        { system_key:"fusionai", name:"FusionAI", description:"Governed AI co-pilot layer", status:"ACTIVE_CORE_LAYER", accent: accentFor("fusionai")},
+        { system_key:"fusionfleet", name:"FusionFleet", description:"Fleet readiness engine", status:"IN_DEVELOPMENT", accent: accentFor("fusionfleet")},
+        { system_key:"fusioncad", name:"FusionCAD", description:"CAD & incident coordination engine", status:"INFRASTRUCTURE_LAYER", accent: accentFor("fusioncad")},
+      ];
+    }
   }
 
   return (
@@ -108,6 +112,16 @@ export default async function Page() {
           </div>
           <Link href="/systems" className="text-xs text-muted hover:text-text">Open full matrix →</Link>
         </div>
+
+        {systemsUnavailable && (
+          <div className="mt-4 rounded-xl border border-[rgba(229,57,53,0.35)] bg-[rgba(229,57,53,0.08)] p-4 text-sm text-text">
+            <div className="font-semibold">System registry unavailable</div>
+            <div className="mt-1 text-xs text-muted">
+              The UI is running, but the backend registry endpoint could not be reached. Check API routing and service health.
+            </div>
+          </div>
+        )}
+
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {systems.map(s => (
             <Link key={s.system_key} href={`/systems/${s.system_key}`} className="rounded-2xl border border-border bg-panel2 p-4 hover:bg-[rgba(255,255,255,0.04)]">

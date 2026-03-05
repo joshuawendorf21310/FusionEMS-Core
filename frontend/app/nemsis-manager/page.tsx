@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const IS_PROD = process.env.NODE_ENV === "production";
+const BASE =
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  (!IS_PROD ? "http://localhost:8000" : "");
 
 type SchemaElement = {
   label: string;

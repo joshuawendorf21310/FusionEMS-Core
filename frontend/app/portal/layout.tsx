@@ -81,8 +81,60 @@ function Sidebar({ currentPath }: { currentPath: string }) {
   );
 }
 
+function PatientTopBar() {
+  return (
+    <header className="flex-shrink-0 flex items-center justify-between px-5 h-12 border-b border-border-DEFAULT bg-bg-void">
+      <Link href="/portal/patient/lookup" className="flex items-center gap-2">
+        <div
+          className="w-7 h-7 bg-orange flex items-center justify-center text-[10px] font-black text-text-inverse"
+          style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}
+        >
+          FQ
+        </div>
+        <span className="text-xs font-semibold text-[rgba(255,255,255,0.9)]">Patient Portal</span>
+      </Link>
+    </header>
+  );
+}
+
+function RepTopBar() {
+  return (
+    <header className="flex-shrink-0 flex items-center justify-between px-5 h-12 border-b border-border-DEFAULT bg-bg-void">
+      <Link href="/portal/rep/login" className="flex items-center gap-2">
+        <div
+          className="w-7 h-7 bg-orange flex items-center justify-center text-[10px] font-black text-text-inverse"
+          style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}
+        >
+          FQ
+        </div>
+        <span className="text-xs font-semibold text-[rgba(255,255,255,0.9)]">Authorized Representative</span>
+      </Link>
+    </header>
+  );
+}
+
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isPatientRoute = pathname.startsWith('/portal/patient/');
+  const isRepRoute = pathname.startsWith('/portal/rep/');
+
+  if (isPatientRoute) {
+    return (
+      <div className="flex flex-col min-h-screen bg-bg-void text-text-primary">
+        <PatientTopBar />
+        <main className="flex-1 overflow-y-auto bg-bg-base">{children}</main>
+      </div>
+    );
+  }
+
+  if (isRepRoute) {
+    return (
+      <div className="flex flex-col min-h-screen bg-bg-void text-text-primary">
+        <RepTopBar />
+        <main className="flex-1 overflow-y-auto bg-bg-base">{children}</main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-bg-void text-text-primary overflow-hidden">

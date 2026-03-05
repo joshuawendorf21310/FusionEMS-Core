@@ -240,6 +240,16 @@ resource "aws_network_acl" "public" {
   vpc_id     = aws_vpc.main.id
   subnet_ids = aws_subnet.public[*].id
 
+  # Allow inbound HTTP (CloudFront origin traffic when configured for HTTP)
+  ingress {
+    rule_no    = 90
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 80
+    to_port    = 80
+  }
+
   # Allow inbound HTTPS
   ingress {
     rule_no    = 100
@@ -391,6 +401,16 @@ resource "aws_security_group_rule" "alb_ingress_https" {
   description       = "HTTPS from internet"
   from_port         = 443
   to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+}
+
+resource "aws_security_group_rule" "alb_ingress_http" {
+  security_group_id = aws_security_group.alb.id
+  type              = "ingress"
+  description       = "HTTP from internet (CloudFront to ALB origin traffic)"
+  from_port         = 80
+  to_port           = 80
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
 }
