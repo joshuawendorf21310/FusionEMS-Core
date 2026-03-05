@@ -222,7 +222,7 @@ export default function ClaimsPage() {
         >
           {isLoading ? (
             <div className="p-8">
-              <QuantumCardSkeleton title="Loading Claims..." />
+              <QuantumCardSkeleton />
             </div>
           ) : claims.length === 0 ? (
             <QuantumEmptyState title="No Claims Found" description="No claims matching these filters or API disconnected." icon="billing" />

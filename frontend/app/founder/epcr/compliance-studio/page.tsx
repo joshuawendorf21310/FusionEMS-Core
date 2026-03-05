@@ -52,7 +52,7 @@ export default function ComplianceStudioPage() {
   const fetchPackStatus = useCallback(async () => {
     setPackLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/packs?active=true', { credentials: 'include' });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/packs?active=true`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         const packs: { data: { pack_type?: string; pack_name?: string; active?: boolean } }[] = Array.isArray(data) ? data : [];
@@ -75,7 +75,7 @@ export default function ComplianceStudioPage() {
   const fetchCertChecks = useCallback(async () => {
     setCertLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/certification-checklist', { credentials: 'include' });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/certification-checklist`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setCertChecks(Array.isArray(data.checks) ? data.checks : []);
@@ -100,7 +100,7 @@ export default function ComplianceStudioPage() {
     form.append('file', file);
     form.append('pack_name', file.name);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/packs', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/packs`, {
         method: 'POST',
         credentials: 'include',
         body: JSON.stringify({ pack_name: file.name, pack_type: 'upload' }),
@@ -144,7 +144,7 @@ export default function ComplianceStudioPage() {
     const form = new FormData();
     form.append('file', validationFile);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/validate-file', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/validate-file`, {
         method: 'POST',
         credentials: 'include',
         body: form,
@@ -166,7 +166,7 @@ export default function ComplianceStudioPage() {
     if (!validationResult?.record_id) return;
     setAiLoadingIdx(idx);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/ai-explain', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/ai-explain`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -184,7 +184,7 @@ export default function ComplianceStudioPage() {
   const sendAllToAgent = async () => {
     if (!validationResult?.record_id) return;
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/patch-tasks/generate-from-result', {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/patch-tasks/generate-from-result`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
