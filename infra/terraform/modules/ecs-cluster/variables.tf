@@ -49,6 +49,12 @@ variable "waf_acl_arn" {
   default     = ""
 }
 
+variable "enable_waf" {
+  description = "Whether to associate the WAF Web ACL with the ALB (avoids plan-time unknown count)"
+  type        = bool
+  default     = false
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log group retention in days"
   type        = number

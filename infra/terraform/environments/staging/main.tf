@@ -151,6 +151,7 @@ module "ecs_cluster" {
   alb_security_group_id = module.networking.alb_security_group_id
   acm_certificate_arn   = module.acm.certificate_arn
   waf_acl_arn           = module.waf.web_acl_arn
+  enable_waf            = true
   tags                  = local.common_tags
 }
 
@@ -222,7 +223,7 @@ module "edge" {
   root_domain_name              = var.root_domain_name
   api_domain_name               = var.api_domain_name
   hosted_zone_id                = var.hosted_zone_id
-  acm_certificate_arn_us_east_1 = var.acm_certificate_arn_us_east_1
+  acm_certificate_arn_us_east_1 = module.acm.certificate_arn
   alb_dns_name                  = module.ecs_cluster.alb_dns_name
   tags                          = local.common_tags
 

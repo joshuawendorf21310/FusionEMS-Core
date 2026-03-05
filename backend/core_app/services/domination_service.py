@@ -33,12 +33,15 @@ def _make_json_safe(obj: Any) -> Any:
 
 class DominationService:
     def repo(self, table: str):
-        return DominationRepository(self.db, table=table)
+        if table not in self._repo_cache:
+            self._repo_cache[table] = DominationRepository(self.db, table=table)
+        return self._repo_cache[table]
 
     def __init__(self, db: Session, publisher: EventPublisher) -> None:
         self.db = db
         self.publisher = publisher
         self.audit = AuditService(db)
+        self._repo_cache: dict[str, DominationRepository] = {}
 
     async def create(
         self,
