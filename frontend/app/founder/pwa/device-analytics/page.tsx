@@ -2,8 +2,6 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
-
-
 const DOMAIN_COLOR = 'var(--color-system-fleet)';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
