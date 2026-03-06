@@ -49,7 +49,7 @@ export function QuantumSkeleton({
   );
 }
 
-export function QuantumCardSkeleton({ className }: { className?: string }) {
+export function QuantumCardSkeleton({ className, title }: { className?: string; title?: string }) {
   return (
     <div
       className={clsx(
@@ -57,6 +57,9 @@ export function QuantumCardSkeleton({ className }: { className?: string }) {
         className,
       )}
     >
+      {title && (
+        <div className="text-label text-text-muted mb-1">{title}</div>
+      )}
       <QuantumSkeleton variant="line" width="40%" height={12} />
       <QuantumSkeleton variant="line" width="100%" height={28} />
       <QuantumSkeleton variant="line" width="60%" height={10} />
