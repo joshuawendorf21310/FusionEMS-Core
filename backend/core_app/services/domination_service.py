@@ -33,12 +33,15 @@ def _make_json_safe(obj: Any) -> Any:
 
 class DominationService:
     def repo(self, table: str):
-        return DominationRepository(self.db, table=table)
+        if table not in self._repo_cache:
+            self._repo_cache[table] = DominationRepository(self.db, table=table)
+        return self._repo_cache[table]
 
     def __init__(self, db: Session, publisher: EventPublisher) -> None:
         self.db = db
         self.publisher = publisher
         self.audit = AuditService(db)
+        self._repo_cache: dict[str, DominationRepository] = {}
 
     async def create(
         self,
@@ -51,7 +54,7 @@ class DominationService:
         typed_columns: dict[str, Any] | None = None,
         commit: bool = True,
     ) -> dict[str, Any]:
-        repo = DominationRepository(self.db, table=table)
+        repo = self.repo(table)
         rec = repo.create(tenant_id=tenant_id, data=data, typed_columns=typed_columns)
         self.audit.log_mutation(
             tenant_id=tenant_id,
@@ -86,7 +89,7 @@ class DominationService:
         correlation_id: str | None,
         commit: bool = True,
     ) -> dict[str, Any] | None:
-        repo = DominationRepository(self.db, table=table)
+        repo = self.repo(table)
         rec = repo.update(
             tenant_id=tenant_id, record_id=record_id, expected_version=expected_version, patch=patch
         )

@@ -67,3 +67,20 @@ output "cognito_user_pool_endpoint" {
   description = "Cognito user pool endpoint"
   value       = module.cognito.user_pool_endpoint
 }
+
+# ─── NERIS (SQS) ────────────────────────────────────────────────────────────
+
+output "neris_pack_import_queue_url" {
+  description = "NERIS pack import SQS queue URL"
+  value       = module.sqs.queue_urls["neris-pack-import"]
+}
+
+output "neris_pack_compile_queue_url" {
+  description = "NERIS pack compile SQS queue URL"
+  value       = module.sqs.queue_urls["neris-pack-compile"]
+}
+
+output "neris_export_queue_url" {
+  description = "NERIS export SQS queue URL"
+  value       = module.sqs.queue_urls["neris-export"]
+}

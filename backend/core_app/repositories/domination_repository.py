@@ -484,6 +484,51 @@ class DominationRepository:
         row = self.db.execute(sql, params).mappings().first()
         return dict(row) if row else None
 
+    def count(self, *, tenant_id: uuid.UUID) -> int:
+        sql = text(
+            f"SELECT COUNT(*) FROM {self.table} "
+            f"WHERE tenant_id = :tenant_id AND deleted_at IS NULL"
+        )
+        result = self.db.execute(sql, {"tenant_id": str(tenant_id)}).scalar_one()
+        return int(result)
+
+    def aggregate_json_field(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        group_field: str,
+        sum_field: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return per-group counts (and optional integer sums) from a JSONB field.
+
+        Aggregation is pushed down to Postgres, avoiding large in-memory fetches.
+        Both *group_field* and *sum_field* are validated against ``_SAFE_FIELD_RE``
+        and are passed as SQLAlchemy named bind parameters (e.g. ``:group_field``),
+        not interpolated as SQL identifiers, so they are safe against injection.
+        """
+        if not self._SAFE_FIELD_RE.match(group_field):
+            raise ValueError(f"Invalid field name: {group_field!r}")
+        if sum_field is not None and not self._SAFE_FIELD_RE.match(sum_field):
+            raise ValueError(f"Invalid field name: {sum_field!r}")
+
+        params: dict[str, Any] = {"tenant_id": str(tenant_id), "group_field": group_field}
+        sum_clause = ""
+        if sum_field:
+            params["sum_field"] = sum_field
+            sum_clause = (
+                ", SUM(CAST(COALESCE(data->>:sum_field, '0') AS BIGINT)) AS sum_value"
+            )
+        sql = text(
+            f"SELECT COALESCE(data->>:group_field, 'UNKNOWN') AS group_key, "
+            f"COUNT(*) AS count"
+            f"{sum_clause} "
+            f"FROM {self.table} "
+            f"WHERE tenant_id = :tenant_id AND deleted_at IS NULL "
+            f"GROUP BY data->>:group_field"
+        )
+        rows = self.db.execute(sql, params).mappings().all()
+        return [dict(r) for r in rows]
+
     def soft_delete(self, *, tenant_id: uuid.UUID, record_id: uuid.UUID) -> bool:
         sql = text(
             f"UPDATE {self.table} "
