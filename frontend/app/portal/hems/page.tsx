@@ -1,6 +1,4 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
-
 import { getWSClient, RealtimeEvent } from '@/services/websocket';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -201,6 +199,24 @@ export default function HemsPage() {
   const [timeline, setTimeline] = useState<SafetyEvent[]>([]);
   const [timelineBusy, setTimelineBusy] = useState(false);
 
+  // ── Fetch Safety Timeline ───
+  const fetchTimeline = useCallback(async function fetchTimeline() {
+    if (!missionId.trim()) { push('Enter mission ID', 'error'); return; }
+    setTimelineBusy(true);
+    try {
+      const r = await fetch(`${API}/api/v1/hems/missions/${missionId.trim()}/safety-timeline`, {
+        headers: { Authorization: getToken() },
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+      setTimeline(Array.isArray(data) ? data : (data.events ?? []));
+    } catch (e: unknown) {
+      push(e instanceof Error ? e.message : 'Failed to fetch timeline', 'error');
+    } finally {
+      setTimelineBusy(false);
+    }
+  }, [missionId, push]);
+
   // ── Fetch checklist template on mount ───
   useEffect(() => {
     fetch(`${API}/api/v1/hems/checklist-template`, {
@@ -225,7 +241,7 @@ export default function HemsPage() {
       removeHandler = client.addHandler((event: RealtimeEvent) => {
         // HEMS mission events
         if (event.event_type === 'hems_mission_events.created') {
-          const payload = event.payload?.record?.data as any;
+          const payload = (event.payload as any)?.record?.data;
           if (payload?.mission_id === missionId) {
             push(`Mission update: ${payload.event_type}`, 'success');
             fetchTimeline();
@@ -238,7 +254,7 @@ export default function HemsPage() {
         
         // HEMS acceptance events
         if (event.event_type === 'hems_acceptance_records.created') {
-             const payload = event.payload?.record?.data as any;
+             const payload = (event.payload as any)?.record?.data;
              if (payload?.mission_id === missionId) {
                  push('Checklist accepted by another crew member.', 'success');
              }
@@ -255,7 +271,7 @@ export default function HemsPage() {
       if (removeHandler) removeHandler();
       clearInterval(pollInterval);
     };
-  }, [missionId, push]);
+  }, [missionId, push, fetchTimeline]);
 
   // ── Action Handlers ───
 
@@ -351,24 +367,6 @@ export default function HemsPage() {
       push(e instanceof Error ? e.message : 'Failed to submit weather brief', 'error');
     } finally {
       setWxBusy(false);
-    }
-  }
-
-  // ── Fetch Safety Timeline ───
-  async function fetchTimeline() {
-    if (!missionId.trim()) { push('Enter mission ID', 'error'); return; }
-    setTimelineBusy(true);
-    try {
-      const r = await fetch(`${API}/api/v1/hems/missions/${missionId.trim()}/safety-timeline`, {
-        headers: { Authorization: getToken() },
-      });
-      if (!r.ok) throw new Error(await r.text());
-      const data = await r.json();
-      setTimeline(Array.isArray(data) ? data : (data.events ?? []));
-    } catch (e: unknown) {
-      push(e instanceof Error ? e.message : 'Failed to fetch timeline', 'error');
-    } finally {
-      setTimelineBusy(false);
     }
   }
 

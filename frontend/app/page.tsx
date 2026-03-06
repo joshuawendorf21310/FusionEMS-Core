@@ -27,7 +27,7 @@ function accentFor(key: string): string {
 export default async function Page() {
   let systems: SystemRow[] = [];
   let systemsUnavailable = false;
-  const isProd = process.env.NODE_ENV === "production";
+  const _isProd = process.env.NODE_ENV === "production";
   try {
     systems = await api<SystemRow[]>("/api/v1/systems");
   } catch {

@@ -6,7 +6,7 @@ import { clsx } from 'clsx';
 export interface QuantumTableColumn<T> {
   key: string;
   header: string;
-  render?: (row: T) => React.ReactNode;
+  render?: (_row: T) => React.ReactNode;
   align?: 'left' | 'center' | 'right';
   width?: string;
 }
@@ -15,7 +15,7 @@ export interface QuantumTableProps<T> {
   columns: QuantumTableColumn<T>[];
   data: T[];
   keyField?: string;
-  onRowClick?: (row: T) => void;
+  onRowClick?: (_row: T) => void;
   emptyMessage?: string;
   className?: string;
   compact?: boolean;

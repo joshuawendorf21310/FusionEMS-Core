@@ -120,7 +120,7 @@ function Sidebar({
 }: {
   steps: StepState[];
   currentStepId: string;
-  onStepClick: (id: string) => void;
+  onStepClick: (_id: string) => void;
 }) {
   return (
     <div
@@ -218,7 +218,7 @@ function SecondaryBtn({ onClick, children }: { onClick: () => void; children: Re
 
 // ─── Step 1: Department Identity ──────────────────────────────────────────────
 
-function Step1({ onComplete }: { onComplete: (data: unknown) => Promise<void> }) {
+function Step1({ onComplete }: { onComplete: (_data: unknown) => Promise<void> }) {
   const [name, setName] = useState('');
   const [contactName, setContactName] = useState('');
   const [email, setEmail] = useState('');
@@ -259,7 +259,7 @@ function Step1({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
 
 // ─── Step 2: Reporting Mode ───────────────────────────────────────────────────
 
-function Step2({ onComplete }: { onComplete: (data: unknown) => Promise<void> }) {
+function Step2({ onComplete }: { onComplete: (_data: unknown) => Promise<void> }) {
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -319,7 +319,7 @@ interface Station {
   zip: string;
 }
 
-function Step3({ onComplete }: { onComplete: (data: unknown) => Promise<void> }) {
+function Step3({ onComplete }: { onComplete: (_data: unknown) => Promise<void> }) {
   const [stations, setStations] = useState<Station[]>([{ name: '', street: '', city: '', state: 'WI', zip: '' }]);
   const [loading, setLoading] = useState(false);
 
@@ -405,7 +405,7 @@ interface ApparatusRow {
   station_id: string;
 }
 
-function Step4({ onComplete }: { onComplete: (data: unknown) => Promise<void> }) {
+function Step4({ onComplete }: { onComplete: (_data: unknown) => Promise<void> }) {
   const [apparatus, setApparatus] = useState<ApparatusRow[]>([{ unit_id: '', unit_type_code: 'ENGINE', station_id: '' }]);
   const [loading, setLoading] = useState(false);
 
@@ -480,7 +480,7 @@ function Step4({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
 
 interface PersonnelRow { name: string; role: string }
 
-function Step5({ onComplete }: { onComplete: (data: unknown) => Promise<void> }) {
+function Step5({ onComplete }: { onComplete: (_data: unknown) => Promise<void> }) {
   const [personnel, setPersonnel] = useState<PersonnelRow[]>([{ name: '', role: '' }]);
   const [loading, setLoading] = useState(false);
 
@@ -547,13 +547,13 @@ function Step6({
   onComplete,
   assignedPackName,
 }: {
-  onComplete: (data: unknown) => Promise<void>;
+  onComplete: (_data: unknown) => Promise<void>;
   assignedPackName?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
-  const [packName, setPackName] = useState(assignedPackName ?? '');
+  const [packName, _setPackName] = useState(assignedPackName ?? '');
 
   async function handleAssign() {
     setLoading(true);
@@ -638,7 +638,7 @@ interface ValidationIssue {
   suggested_fix?: string;
 }
 
-function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> }) {
+function Step7({ onComplete }: { onComplete: (_data: unknown) => Promise<void> }) {
   const [form, setForm] = useState<SampleIncidentForm>({
     incident_number: '',
     start_datetime: '',
@@ -797,7 +797,7 @@ function Step7({ onComplete }: { onComplete: (data: unknown) => Promise<void> })
 
 // ─── Step 8: Go-Live Checklist ────────────────────────────────────────────────
 
-function Step8({ onComplete }: { onComplete: (data: unknown) => Promise<void> }) {
+function Step8({ onComplete }: { onComplete: (_data: unknown) => Promise<void> }) {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const item of WI_CHECKLIST_ITEMS) init[item.id] = false;

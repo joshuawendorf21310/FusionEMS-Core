@@ -1,6 +1,4 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
-
 import React, {
   useState,
   useEffect,
@@ -88,7 +86,7 @@ function StatusBadge({ status }: { status: ThreadStatus }) {
 
 interface NewThreadModalProps {
   onClose: () => void;
-  onCreate: (thread: SupportThread) => void;
+  onCreate: (_thread: SupportThread) => void;
 }
 
 function NewThreadModal({ onClose, onCreate }: NewThreadModalProps) {

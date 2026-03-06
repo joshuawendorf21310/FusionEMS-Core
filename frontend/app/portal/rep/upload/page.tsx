@@ -59,6 +59,9 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_BYTES = 10 * 1024 * 1024;
+
 export default function RepUploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,10 +71,7 @@ export default function RepUploadPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png'];
-  const MAX_BYTES = 10 * 1024 * 1024;
-
-  function validateAndSet(file: File) {
+  const validateAndSet = useCallback(function validateAndSet(file: File) {
     if (!ACCEPTED.includes(file.type)) {
       setError('Unsupported file type. Please upload a PDF, JPG, or PNG.');
       return;
@@ -82,7 +82,7 @@ export default function RepUploadPage() {
     }
     setError('');
     setSelectedFile(file);
-  }
+  }, []);
 
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -94,7 +94,7 @@ export default function RepUploadPage() {
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file) validateAndSet(file);
-  }, []);
+  }, [validateAndSet]);
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();

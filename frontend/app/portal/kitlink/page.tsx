@@ -1,5 +1,4 @@
 "use client";
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -564,7 +563,7 @@ function ReportsTab({ tenantId }: { tenantId: string }) {
   );
 }
 
-function ReportPanel({ title, count, items, renderItem }: { title: string; count: number | undefined; items: any[] | undefined; renderItem: (i: any) => React.ReactNode }) {
+function ReportPanel({ title, count, items, renderItem }: { title: string; count: number | undefined; items: any[] | undefined; renderItem: (_i: any) => React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border-subtle bg-bg-panel p-4">
       <div className="flex items-center justify-between mb-3">

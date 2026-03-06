@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getWSClient, RealtimeEvent, initWSClient } from '../services/websocket';
+import { getWSClient, RealtimeEvent } from '../services/websocket';
 
 const EVENT_ICONS: Record<string, string> = {
   'claim.status_changed': '📋',

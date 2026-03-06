@@ -88,7 +88,7 @@ export default function InvoiceCreatorPage() {
           setInvoices(formatted);
         }
       })
-      .catch(e => setInvoices([]));
+      .catch(_e => setInvoices([]));
   }, []);
 
   const OUTSTANDING = invoices.filter((inv) => inv.status === 'Outstanding');

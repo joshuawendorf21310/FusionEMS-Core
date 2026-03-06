@@ -1,5 +1,5 @@
 'use client';
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
+import { QuantumTableSkeleton } from '@/components/ui';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
