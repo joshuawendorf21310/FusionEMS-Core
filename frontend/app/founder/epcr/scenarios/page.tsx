@@ -30,7 +30,7 @@ export default function ScenariosPage() {
   const fetchScenarios = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/scenarios', { credentials: 'include' });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/scenarios`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setScenarios(Array.isArray(data) ? data : (data.scenarios ?? []));
@@ -50,7 +50,7 @@ export default function ScenariosPage() {
     const form = new FormData();
     form.append('file', files[0]);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/scenarios/upload', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/nemsis/studio/scenarios/upload`, {
         method: 'POST',
         credentials: 'include',
         body: form,

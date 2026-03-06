@@ -174,6 +174,12 @@ async def send_statement_letter(
       raise `LobApiError` with the upstream response.
     """
 
+    actual_hash = hashlib.sha256(pdf_bytes).hexdigest()
+    if actual_hash != outbound_sha256:
+        raise ValueError(
+            f"outbound_sha256 mismatch: expected {outbound_sha256}, got {actual_hash}"
+        )
+
     api_key = _get_api_key()
     idempotency_key = f"statement-{statement_id}-{outbound_sha256[:16]}"
 

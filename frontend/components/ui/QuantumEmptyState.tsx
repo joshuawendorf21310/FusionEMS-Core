@@ -8,6 +8,8 @@ export interface QuantumEmptyStateProps {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
   className?: string;
 }
 
@@ -16,6 +18,8 @@ export function QuantumEmptyState({
   title,
   description,
   action,
+  actionLabel,
+  onAction,
   className,
 }: QuantumEmptyStateProps) {
   return (
@@ -41,6 +45,14 @@ export function QuantumEmptyState({
         </p>
       )}
       {action && <div>{action}</div>}
+      {!action && actionLabel && onAction && (
+        <button
+          onClick={onAction}
+          className="px-4 py-2 bg-brand-orange text-white text-label rounded chamfer-4 hover:opacity-90 transition-opacity"
+        >
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }
