@@ -479,6 +479,8 @@ module "frontend_service" {
     { name = "NEXT_PUBLIC_API_BASE", value = "https://${var.api_domain_name}" },
     { name = "NEXT_PUBLIC_BACKEND_URL", value = "https://${var.api_domain_name}" },
     { name = "BACKEND_URL", value = "https://${var.api_domain_name}" },
+    # WebSocket URL for 100% realtime
+    { name = "NEXT_PUBLIC_WS_URL", value = "wss://${var.api_domain_name}/api/v1/realtime/ws" },
     # Backwards-compat for older callers
     { name = "NEXT_PUBLIC_API_URL", value = "https://${var.api_domain_name}" },
     { name = "NEXT_PUBLIC_COGNITO_USER_POOL_ID", value = module.cognito.user_pool_id },

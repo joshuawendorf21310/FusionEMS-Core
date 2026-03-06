@@ -15,6 +15,7 @@ from core_app.epcr.completeness_engine import CompletenessEngine
 from core_app.schemas.auth import CurrentUser
 from core_app.services.domination_service import DominationService
 from core_app.services.event_publisher import get_event_publisher
+from core_app.services.weather_ingest import fetch_metar
 
 router = APIRouter(prefix="/api/v1/hems", tags=["HEMS"])
 
@@ -138,6 +139,15 @@ async def submit_weather_brief(
 ):
     _check(current)
     svc = _svc(db)
+    
+    # Auto-fetch METAR if only ICAO is provided
+    icao = payload.get("icao")
+    if icao and not payload.get("raw_brief"):
+        metar_data = await fetch_metar(icao.strip()) or {}
+        if metar_data:
+            payload["raw_brief"] = metar_data.get("raw_text")
+            payload["source"] = f"aviationweather.gov ({metar_data.get('station_id')})"
+
     correlation_id = getattr(request.state, "correlation_id", None)
     return await svc.create(
         table="hems_weather_briefs",
@@ -159,6 +169,117 @@ async def submit_weather_brief(
             "minima_profile": payload.get("minima_profile", "day_vfr"),
             "go_no_go": payload.get("go_no_go", "go"),
             "raw_brief": payload.get("raw_brief"),
+        },
+        correlation_id=correlation_id,
+    )
+
+
+@router.post("/missions/{mission_id}/acknowledge")
+async def acknowledge_mission(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    decision = payload.get("decision")
+    if decision not in ("accept", "decline"):
+        raise HTTPException(
+            status_code=422, detail="decision must be 'accept' or 'decline'"
+        )
+
+    svc = _svc(db)
+    correlation_id = getattr(request.state, "correlation_id", None)
+    return await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "acknowledgment",
+            "pilot_user_id": str(current.user_id),
+            "decision": decision,
+            "decline_reason": payload.get("decline_reason"),
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+        correlation_id=correlation_id,
+    )
+
+
+@router.post("/missions/{mission_id}/wheels-up")
+async def record_wheels_up(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    svc = _svc(db)
+    correlation_id = getattr(request.state, "correlation_id", None)
+    return await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "wheels_up",
+            "aircraft_id": payload.get("aircraft_id"),
+            "crew": payload.get("crew"),
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+        correlation_id=correlation_id,
+    )
+
+
+@router.post("/missions/{mission_id}/wheels-down")
+async def record_wheels_down(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    svc = _svc(db)
+    correlation_id = getattr(request.state, "correlation_id", None)
+    return await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "wheels_down",
+            "destination": payload.get("destination"),
+            "patient_status": payload.get("patient_status"),
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+        correlation_id=correlation_id,
+    )
+
+
+@router.post("/missions/{mission_id}/complete")
+async def complete_mission(
+    mission_id: uuid.UUID,
+    payload: dict[str, Any],
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(db_session_dependency),
+):
+    _check(current)
+    svc = _svc(db)
+    correlation_id = getattr(request.state, "correlation_id", None)
+    return await svc.create(
+        table="hems_mission_events",
+        tenant_id=current.tenant_id,
+        actor_user_id=current.user_id,
+        data={
+            "mission_id": str(mission_id),
+            "event_type": "completed",
+            "outcome": payload.get("outcome", "completed"),
+            "notes": payload.get("notes"),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
         correlation_id=correlation_id,
     )

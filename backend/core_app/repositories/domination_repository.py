@@ -155,6 +155,7 @@ TENANT_TABLES: set[str] = {
     "cases",
     "cms_gate_results",
     "hems_acceptance_records",
+    "hems_mission_events",
     "hems_weather_briefs",
     "hems_risk_audits",
     "aircraft_readiness_events",

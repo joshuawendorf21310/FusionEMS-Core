@@ -1,0 +1,170 @@
+{
+    "name": "backend",
+    "image": "793439286972.dkr.ecr.us-east-1.amazonaws.com/fusionems-prod-backend:hc-20260305015136-eb18a434",
+    "cpu": 0,
+    "portMappings": [
+        {
+            "containerPort": 8000,
+            "hostPort": 8000,
+            "protocol": "tcp"
+        }
+    ],
+    "essential": true,
+    "environment": [
+        {
+            "name": "AUTH_MODE",
+            "value": "cognito"
+        },
+        {
+            "name": "S3_PROPOSALS_BUCKET",
+            "value": "fusionems-prod-proposals"
+        },
+        {
+            "name": "NERIS_EXPORT_QUEUE_URL",
+            "value": "https://sqs.us-east-1.amazonaws.com/793439286972/fusionems-prod-neris-export"
+        },
+        {
+            "name": "ENVIRONMENT",
+            "value": "prod"
+        },
+        {
+            "name": "AWS_DEFAULT_REGION",
+            "value": "us-east-1"
+        },
+        {
+            "name": "S3_EXPORTS_BUCKET",
+            "value": "fusionems-prod-exports"
+        },
+        {
+            "name": "NERIS_PACK_COMPILE_QUEUE_URL",
+            "value": "https://sqs.us-east-1.amazonaws.com/793439286972/fusionems-prod-neris-pack-compile"
+        },
+        {
+            "name": "COGNITO_USER_POOL_ID",
+            "value": "us-east-1_RKyHS8fYy"
+        },
+        {
+            "name": "COGNITO_CLIENT_ID",
+            "value": "k2lk6afsh03qffb7diua8uf9l"
+        },
+        {
+            "name": "NERIS_PACK_IMPORT_QUEUE_URL",
+            "value": "https://sqs.us-east-1.amazonaws.com/793439286972/fusionems-prod-neris-pack-import"
+        },
+        {
+            "name": "GRAPH_FOUNDER_EMAIL",
+            "value": "joshua.j.wendorf@fusionemsquantum.com"
+        },
+        {
+            "name": "S3_DOCS_BUCKET",
+            "value": "fusionems-prod-docs"
+        }
+    ],
+    "mountPoints": [],
+    "volumesFrom": [],
+    "secrets": [
+        {
+            "name": "DATABASE_URL",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/DATABASE_URL-HQtyrw"
+        },
+        {
+            "name": "JWT_SECRET_KEY",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:JWT_SECRET_KEY::"
+        },
+        {
+            "name": "STRIPE_SECRET_KEY",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:STRIPE_SECRET_KEY::"
+        },
+        {
+            "name": "STRIPE_WEBHOOK_SECRET",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:STRIPE_WEBHOOK_SECRET::"
+        },
+        {
+            "name": "LOB_API_KEY",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:LOB_API_KEY::"
+        },
+        {
+            "name": "LOB_WEBHOOK_SECRET",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:LOB_WEBHOOK_SECRET::"
+        },
+        {
+            "name": "TELNYX_API_KEY",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:TELNYX_API_KEY::"
+        },
+        {
+            "name": "TELNYX_FROM_NUMBER",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:TELNYX_FROM_NUMBER::"
+        },
+        {
+            "name": "TELNYX_PUBLIC_KEY",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:TELNYX_PUBLIC_KEY::"
+        },
+        {
+            "name": "IVR_AUDIO_BASE_URL",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:IVR_AUDIO_BASE_URL::"
+        },
+        {
+            "name": "FAX_CLASSIFY_QUEUE_URL",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:FAX_CLASSIFY_QUEUE_URL::"
+        },
+        {
+            "name": "SYSTEM_TENANT_ID",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:SYSTEM_TENANT_ID::"
+        },
+        {
+            "name": "LOB_EVENTS_QUEUE_URL",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:LOB_EVENTS_QUEUE_URL::"
+        },
+        {
+            "name": "STRIPE_EVENTS_QUEUE_URL",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:STRIPE_EVENTS_QUEUE_URL::"
+        },
+        {
+            "name": "STATEMENTS_TABLE",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:STATEMENTS_TABLE::"
+        },
+        {
+            "name": "LOB_EVENTS_TABLE",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:LOB_EVENTS_TABLE::"
+        },
+        {
+            "name": "STRIPE_EVENTS_TABLE",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:STRIPE_EVENTS_TABLE::"
+        },
+        {
+            "name": "TENANTS_TABLE",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:TENANTS_TABLE::"
+        },
+        {
+            "name": "GRAPH_TENANT_ID",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:GRAPH_TENANT_ID::"
+        },
+        {
+            "name": "GRAPH_CLIENT_ID",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:GRAPH_CLIENT_ID::"
+        },
+        {
+            "name": "GRAPH_CLIENT_SECRET",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:GRAPH_CLIENT_SECRET::"
+        }
+    ],
+    "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+            "awslogs-group": "/ecs/fusionems-prod",
+            "awslogs-region": "us-east-1",
+            "awslogs-stream-prefix": "backend"
+        }
+    },
+    "healthCheck": {
+        "command": [
+            "CMD-SHELL",
+            "python -c \"import sys,urllib.request; r=urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=2); sys.exit(0 if 200 <= r.status < 300 else 1)\""
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 120
+    },
+    "systemControls": []
+}

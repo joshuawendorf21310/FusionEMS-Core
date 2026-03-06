@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { api } from "../components/api";
-import { StatusBadge, SystemStatus } from "../components/AppShell";
+import AppShell, { StatusBadge, SystemStatus } from "../components/AppShell";
 
 type SystemRow = {
   system_key: string;
@@ -35,16 +35,17 @@ export default async function Page() {
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl border border-border bg-panel p-8">
-        <div className="text-3xl font-semibold leading-tight">
+    <AppShell>
+      <div className="space-y-8">
+        <section className="rounded-2xl border border-border bg-panel p-8">
+          <div className="text-3xl font-semibold leading-tight">
           FusionEMS Quantum — Unified Public Safety Operating System
         </div>
         <div className="mt-3 max-w-3xl text-sm text-muted">
           Revenue. Operations. Compliance. Intelligence. Built as Infrastructure. Activated by Certification.
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/billing/dashboard" className="rounded-xl bg-billing px-5 py-3 text-sm font-semibold text-text-inverse">
+          <Link href="/billing/dashboard" className="rounded-xl bg-orange px-5 py-3 text-sm font-semibold text-text-inverse hover:bg-orange-bright transition-colors">
             Enter Billing Command
           </Link>
           <Link href="/architecture" className="rounded-xl border border-border px-5 py-3 text-sm text-muted hover:text-text">
@@ -58,11 +59,11 @@ export default async function Page() {
           <div className="text-sm font-semibold">Patient Access</div>
           <div className="mt-2 text-xs text-muted">Secure, minimal, bank-grade patient actions.</div>
           <div className="mt-4 grid gap-2">
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/patient/pay">Pay My Bill</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/patient/lookup">Look Up My Bill</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/patient/plan">Start a Payment Plan</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/patient/receipt">Download Receipt</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/patient/insurance">Update Insurance</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/patient/pay">Pay My Bill</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/patient/lookup">Look Up My Bill</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/patient/plan">Start a Payment Plan</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/patient/receipt">Download Receipt</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/patient/insurance">Update Insurance</Link>
           </div>
         </div>
 
@@ -72,11 +73,11 @@ export default async function Page() {
             Guardians, POA, insurance reps, executors. MFA required. Strictly scoped access.
           </div>
           <div className="mt-4 grid gap-2">
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/rep/login">Rep Login</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/rep/register">Register</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/rep/verify">Verify Authorization</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/rep/upload">Upload Authorization Doc</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/portal/rep/sign">Sign Billing Documents</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/rep/login">Rep Login</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/rep/register">Register</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/rep/verify">Verify Authorization</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/rep/upload">Upload Authorization Doc</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/portal/rep/sign">Sign Billing Documents</Link>
           </div>
         </div>
 
@@ -84,10 +85,10 @@ export default async function Page() {
           <div className="text-sm font-semibold">Agency / Billing Staff Access</div>
           <div className="mt-2 text-xs text-muted">Operational authority. Billing-first deployment.</div>
           <div className="mt-4 grid gap-2">
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/billing/login">Billing Staff Login</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/billing/dashboard">Claims Dashboard</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/billing/reports">Revenue Analytics</Link>
-            <Link className="rounded-xl border border-border px-4 py-2 text-sm" href="/billing/documents">Upload PCS Forms</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/billing/login">Billing Staff Login</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/billing/dashboard">Claims Dashboard</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/billing/reports">Revenue Analytics</Link>
+            <Link className="rounded-xl border border-border px-4 py-2 text-sm hover:border-orange hover:text-orange transition-colors" href="/billing/documents">Upload PCS Forms</Link>
           </div>
         </div>
       </section>
@@ -140,6 +141,7 @@ export default async function Page() {
           <div>Phase IV — Unified Multi-Agency Deployment</div>
         </div>
       </section>
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
 
+import { getWSClient, RealtimeEvent } from '@/services/websocket';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
@@ -215,47 +216,64 @@ export default function HemsPage() {
   // ── SSE: realtime mission events ───────────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    let es: EventSource | null = null;
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    function startSSE() {
-      const token = getToken().replace('Bearer ', '');
-      es = new EventSource(`${API}/api/v1/hems/missions/stream?token=${encodeURIComponent(token)}`);
+    // Use global WebSocket client (100% realtime)
+    const client = getWSClient();
+    let removeHandler: (() => void) | undefined;
 
-      es.addEventListener('mission_complete', (e) => {
-        const data = JSON.parse(e.data);
-        const mid = (data?.data?.mission_id ?? '');
-        if (mid && !missionId) setMissionId(mid);
-        push('Mission event received', 'success');
+    if (client) {
+      removeHandler = client.addHandler((event: RealtimeEvent) => {
+        // HEMS mission events
+        if (event.event_type === 'hems_mission_events.created') {
+          const payload = event.payload?.record?.data as any;
+          if (payload?.mission_id === missionId) {
+            push(`Mission update: ${payload.event_type}`, 'success');
+            fetchTimeline();
+          } else if (!missionId && payload?.mission_id) {
+            // Auto-detect mission if none selected (e.g. valid for pilot's tenant)
+             setMissionId(payload.mission_id);
+             push(`New Mission Received: ${payload.mission_id}`, 'success');
+          }
+        }
+        
+        // HEMS acceptance events
+        if (event.event_type === 'hems_acceptance_records.created') {
+             const payload = event.payload?.record?.data as any;
+             if (payload?.mission_id === missionId) {
+                 push('Checklist accepted by another crew member.', 'success');
+             }
+        }
       });
-
-      es.addEventListener('wheels_up', (e) => {
-        const data = JSON.parse(e.data);
-        const mid = (data?.data?.mission_id ?? '');
-        if (mid && !missionId) setMissionId(mid);
-      });
-
-      es.addEventListener('pilot_acknowledge', (e) => {
-        const data = JSON.parse(e.data);
-        const mid = (data?.data?.mission_id ?? '');
-        if (mid && !missionId) setMissionId(mid);
-      });
-
-      es.onerror = () => {
-        es?.close();
-        // Fallback: poll every 15s
-        pollInterval = setInterval(() => {
-          if (missionId) fetchTimeline();
-        }, 15000);
-      };
     }
 
-    startSSE();
+    // Fallback poll if WS not connected or for safety
+    const pollInterval = setInterval(() => {
+      if (missionId) fetchTimeline();
+    }, 15000);
+
     return () => {
-      es?.close();
-      if (pollInterval) clearInterval(pollInterval);
+      if (removeHandler) removeHandler();
+      clearInterval(pollInterval);
     };
-  }, []);
+  }, [missionId, push]);
+
+  // ── Action Handlers ───
+
+  async function performAction(endpoint: string, body: any, successMsg: string) {
+      if (!missionId.trim()) { push('Enter mission ID', 'error'); return; }
+      try {
+        const r = await fetch(`${API}/api/v1/hems/missions/${missionId.trim()}/${endpoint}`, {
+          method: 'POST',
+          headers: { Authorization: getToken(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        push(successMsg);
+        fetchTimeline(); // Optimistic update
+      } catch (e: unknown) {
+        push(e instanceof Error ? e.message : 'Action failed', 'error');
+      }
+  }
 
   // ── Set Readiness ───
   async function submitReadiness() {
@@ -449,6 +467,53 @@ export default function HemsPage() {
               {readinessBusy ? 'Saving...' : 'Set Readiness'}
             </button>
           </div>
+        </div>
+
+        {/* ── 3. Mission Actions ── */}
+        <div
+            className="p-4 rounded-sm"
+            style={{ background: 'var(--color-bg-base)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+            <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Mission Controls
+            </p>
+            <div className="flex flex-wrap gap-2">
+                <button
+                    onClick={() => performAction('acknowledge', { decision: 'accept' }, 'Mission Accepted')}
+                    className="px-4 py-2 text-xs font-semibold rounded-sm bg-green-600/20 text-green-400 border border-green-600/30 hover:bg-green-600/30"
+                >
+                    Accept Mission
+                </button>
+                <button
+                    onClick={() => {
+                        const reason = prompt('Reason for decline?');
+                        if (reason) performAction('acknowledge', { decision: 'decline', decline_reason: reason }, 'Mission Declined');
+                    }}
+                    className="px-4 py-2 text-xs font-semibold rounded-sm bg-red-600/20 text-red-400 border border-red-600/30 hover:bg-red-600/30"
+                >
+                    Decline
+                </button>
+                 <div className="w-4" />
+                <button
+                    onClick={() => performAction('wheels-up', { aircraft_id: aircraftId, crew: [] }, 'Wheels Up Recorded')}
+                    className="px-4 py-2 text-xs font-semibold rounded-sm bg-blue-600/20 text-blue-400 border border-blue-600/30 hover:bg-blue-600/30"
+                >
+                    Wheels Up
+                </button>
+                <button
+                    onClick={() => performAction('wheels-down', { destination: 'Hospital' }, 'Wheels Down Recorded')}
+                    className="px-4 py-2 text-xs font-semibold rounded-sm bg-blue-600/20 text-blue-400 border border-blue-600/30 hover:bg-blue-600/30"
+                >
+                    Wheels Down
+                </button>
+                 <div className="w-4" />
+                 <button
+                    onClick={() => performAction('complete', { outcome: 'completed' }, 'Mission Completed')}
+                    className="px-4 py-2 text-xs font-semibold rounded-sm bg-gray-600/20 text-gray-300 border border-gray-600/30 hover:bg-gray-600/30"
+                >
+                    Complete Mission
+                </button>
+            </div>
         </div>
 
         {/* ── 2. Mission Acceptance Checklist ── */}

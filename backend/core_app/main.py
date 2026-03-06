@@ -282,7 +282,7 @@ async def healthz() -> JSONResponse:
 
     healthy = checks["db"] == "ok" and (redis_ok or not redis_required)
 
-    content: dict[str, object] = {"status": "ok" if healthy else "degraded", "checks": checks}
+    logger.error(f"HEALTHZ DEGRADED: checks={checks} warnings={warnings} healthy={healthy}"); content: dict[str, object] = {"status": "ok" if healthy else "degraded", "checks": checks}
     if warnings:
         content["warnings"] = warnings
     return JSONResponse(

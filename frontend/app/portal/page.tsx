@@ -52,8 +52,7 @@ export default function PortalDashboardPage() {
           title="No operational data available"
           description="Your agency currently has no active incidents or claims. Data will appear once the API populates metrics."
           icon="activity"
-          actionLabel="Refresh Data"
-          onAction={() => window.location.reload()}
+          action={<button onClick={() => window.location.reload()} className="quantum-btn mt-4">Refresh Data</button>}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

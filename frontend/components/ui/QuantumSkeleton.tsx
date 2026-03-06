@@ -49,7 +49,7 @@ export function QuantumSkeleton({
   );
 }
 
-export function QuantumCardSkeleton({ className }: { className?: string }) {
+export function QuantumCardSkeleton({ className, title }: { className?: string; title?: string }) {
   return (
     <div
       className={clsx(

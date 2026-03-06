@@ -39,7 +39,7 @@ export default function AgentsIntelligenceMatrix() {
 
   useEffect(() => {
     const token = localStorage.getItem("token") || "";
-    const es = new EventSource(`${API}/api/v1/founder/agents/stream?token=${encodeURIComponent(token)}`);
+    const es = new EventSource(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/founder/agents/stream?token=${encodeURIComponent(token)}`);
 
     es.onopen = () => setConnectionStatus("LINK ESTABLISHED");
     es.onerror = () => setConnectionStatus("SIGNAL LOST - RETRYING...");
@@ -108,7 +108,7 @@ export default function AgentsIntelligenceMatrix() {
     setIsSending(true);
     try {
       const token = localStorage.getItem("token") || "";
-      await fetch(`${API}/api/v1/founder/agents/command`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/founder/agents/command`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

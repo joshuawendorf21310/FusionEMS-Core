@@ -310,10 +310,20 @@ module "frontend_service" {
   path_pattern           = ["/*"]
   listener_rule_priority = 100
   log_group_name         = module.ecs_cluster.log_group_name
+  health_check_path      = "/healthz"
   tags                   = local.common_tags
+
+  container_healthcheck_command = [
+    "CMD-SHELL",
+    "node -e \"require('http').get('http://127.0.0.1:3000/healthz', (res) => process.exit(res.statusCode >= 200 && res.statusCode < 300 ? 0 : 1)).on('error', () => process.exit(1))\""
+  ]
 
   environment_variables = [
     { name = "ENVIRONMENT", value = var.environment },
+    { name = "NEXT_PUBLIC_API_BASE", value = "https://${var.api_domain_name}" },
+    { name = "NEXT_PUBLIC_BACKEND_URL", value = "https://${var.api_domain_name}" },
+    { name = "BACKEND_URL", value = "https://${var.api_domain_name}" },
+    { name = "NEXT_PUBLIC_WS_URL", value = "wss://${var.api_domain_name}/api/v1/realtime/ws" },
     { name = "NEXT_PUBLIC_API_URL", value = "https://${var.api_domain_name}" },
     { name = "NEXT_PUBLIC_COGNITO_USER_POOL_ID", value = module.cognito.user_pool_id },
     { name = "NEXT_PUBLIC_COGNITO_CLIENT_ID", value = module.cognito.user_pool_client_id },

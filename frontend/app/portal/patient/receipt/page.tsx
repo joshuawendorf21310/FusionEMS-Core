@@ -1,4 +1,5 @@
 'use client';
+import { Suspense } from 'react';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -15,7 +16,7 @@ type PatientStatement = {
   };
 };
 
-export default function PatientReceiptPage() {
+function PatientReceiptPageContent() {
   const searchParams = useSearchParams();
   const statementIdFromUrl = searchParams.get('statement_id');
   const apiBase = useMemo(
@@ -349,3 +350,5 @@ export default function PatientReceiptPage() {
     </div>
   );
 }
+
+export default function PatientReceiptPage() { return <Suspense fallback={<div>Loading...</div>}><PatientReceiptPageContent /></Suspense>; }
