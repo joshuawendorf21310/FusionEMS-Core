@@ -96,7 +96,7 @@ module "iam" {
     module.s3.audit_bucket_arn,
     module.s3.artifacts_bucket_arn,
   ]
-  sqs_queue_arns = module.sqs.all_queue_arns
+  sqs_queue_arns = values(module.sqs.queue_arns)
   sns_topic_arns = [module.observability.alert_topic_arn]
   secrets_arns = concat(
     [
@@ -267,20 +267,26 @@ module "secrets" {
   tags        = local.common_tags
 }
 
-# ─── 12c. SQS Queues ─────────────────────────────────────────────────────────
+# ─── 12c. SQS (NERIS queues) ─────────────────────────────────────────────────
 
 module "sqs" {
   source = "../../modules/sqs"
 
   environment = var.environment
   project     = var.project
-  tags        = local.common_tags
 
   queues = {
-    neris-pack-import  = {}
-    neris-pack-compile = {}
-    neris-export       = {}
+    "neris-pack-import"  = {}
+    "neris-pack-compile" = {}
+    "neris-export"       = {}
   }
+
+  tags = merge(local.common_tags, {
+    Owner     = "FusionEMS"
+    Service   = "backend"
+    Component = "neris"
+    DataClass = "internal"
+  })
 }
 
 # ─── 13. Backend Service ────────────────────────────────────────────────────

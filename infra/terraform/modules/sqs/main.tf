@@ -1,9 +1,17 @@
-################################################################################
-# SQS Module – Reusable queues with dead-letter queues
-################################################################################
+###############################################################################
+# FusionEMS SQS Module
+# SQS queues with dead-letter queues, encryption, and configurable settings
+###############################################################################
 
 terraform {
   required_version = ">= 1.6"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+  }
 }
 
 locals {
@@ -16,7 +24,9 @@ locals {
   })
 }
 
-# ─── Dead-Letter Queues ──────────────────────────────────────────────────────
+# =============================================================================
+# Dead-Letter Queues
+# =============================================================================
 
 resource "aws_sqs_queue" "dlq" {
   for_each = var.queues
@@ -28,13 +38,13 @@ resource "aws_sqs_queue" "dlq" {
   sqs_managed_sse_enabled    = true
 
   tags = merge(local.common_tags, {
-    Owner     = "FusionEMS"
-    Component = each.key
-    DataClass = "internal"
+    Name = "${local.name_prefix}-${each.key}-dlq"
   })
 }
 
-# ─── Main Queues ─────────────────────────────────────────────────────────────
+# =============================================================================
+# Primary Queues
+# =============================================================================
 
 resource "aws_sqs_queue" "main" {
   for_each = var.queues
@@ -51,8 +61,6 @@ resource "aws_sqs_queue" "main" {
   })
 
   tags = merge(local.common_tags, {
-    Owner     = "FusionEMS"
-    Component = each.key
-    DataClass = "internal"
+    Name = "${local.name_prefix}-${each.key}"
   })
 }
