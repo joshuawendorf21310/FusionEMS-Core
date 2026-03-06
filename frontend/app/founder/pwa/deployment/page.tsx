@@ -2,8 +2,6 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
-
 const DOMAIN_COLOR = 'var(--color-system-fleet)';
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {

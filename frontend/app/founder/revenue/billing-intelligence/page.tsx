@@ -56,7 +56,7 @@ const PRODUCTIVITY = [
 
 /* ─── Sub-components ────────────────────────────────────────────────── */
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function _SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{

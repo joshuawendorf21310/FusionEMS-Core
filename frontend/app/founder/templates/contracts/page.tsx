@@ -1,5 +1,4 @@
 'use client';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
@@ -43,7 +42,7 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
 
 export default function ContractBuilderPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [previewMode, setPreviewMode] = useState(false);
+  const [_previewMode, _setPreviewMode] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   const [templates, setTemplates] = useState<any[]>([]);
@@ -136,7 +135,7 @@ export default function ContractBuilderPage() {
               </tr>
             </thead>
             <tbody>
-              {activeContracts.map((c, i) => (
+              {activeContracts.map((c, _i) => (
                 <tr key={c.id} className="border-b border-border-subtle hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 pr-4 font-mono text-status-info">{c.id}</td>
                   <td className="py-2 pr-4 text-[rgba(255,255,255,0.7)]">{c.agency}</td>

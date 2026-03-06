@@ -48,7 +48,7 @@ export default function RepVerifyPage() {
 
   const submit = useCallback(
     async (code: string) => {
-      const phone = sessionStorage.getItem('rep_phone') ?? '';
+      const _phone = sessionStorage.getItem('rep_phone') ?? '';
       setLoading(true);
       setError('');
       setHasError(false);

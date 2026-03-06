@@ -17,7 +17,7 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
   );
 }
 
-function Slider({ label, min, max, value, onChange, unit }: { label: string; min: number; max: number; value: number; onChange: (v: number) => void; unit: string }) {
+function Slider({ label, min, max, value, onChange, unit }: { label: string; min: number; max: number; value: number; onChange: (_v: number) => void; unit: string }) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-[11px]">

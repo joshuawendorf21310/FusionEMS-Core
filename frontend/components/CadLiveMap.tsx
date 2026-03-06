@@ -67,7 +67,7 @@ export function CadLiveMap({ units = [], className = '' }: CadLiveMapProps) {
         mapInstance.current = null;
       }
     };
-  }, []);
+  }, [units]);
 
   return (
     <div className={`rounded-2xl overflow-hidden border border-border ${className}`}>

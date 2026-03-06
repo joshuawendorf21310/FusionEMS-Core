@@ -1,9 +1,9 @@
 "use client";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 const API = "/api/v1/kitlink/compliance";
-const KITLINK_API = "/api/v1/kitlink";
+const _KITLINK_API = "/api/v1/kitlink";
 
 const MANDATORY_ITEMS = [
   { id: "FIRE_EXT_1", label: "Fire Extinguisher #1" },
@@ -41,7 +41,7 @@ function InspectionPageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [phase, setPhase] = useState<"setup" | "checklist" | "result">("setup");
-  const [actionError, setActionError] = useState('');
+  const [_actionError, setActionError] = useState('');
 
   async function startInspection() {
     setActionError('');
@@ -263,14 +263,14 @@ function InspectionPageInner() {
 }
 
 function CheckRow({
-  label, sublabel, id, value, hardFail = false, onChange,
+  label, sublabel, id: _id, value, hardFail = false, onChange,
 }: {
   label: string;
   sublabel?: string;
   id: string;
   value: CheckValue;
   hardFail?: boolean;
-  onChange: (v: boolean) => void;
+  onChange: (_v: boolean) => void;
 }) {
   return (
     <div className={`rounded-lg border p-3 ${value === null ? "border-border-subtle bg-bg-panel" : value === true ? "border-emerald-800 bg-emerald-900/20" : "border-red-800 bg-red-900/20"}`}>

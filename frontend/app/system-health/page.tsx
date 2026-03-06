@@ -66,7 +66,7 @@ export default function SystemHealthPage() {
   const [ssl, setSsl] = useState<{ domains?: Array<{ domain: string; expires_in_days: number; status: string }> }>({});
   const [backups, setBackups] = useState<Record<string, unknown>>({});
   const [coverage, setCoverage] = useState<Record<string, unknown>>({});
-  const [creating, setCreating] = useState(false);
+  const [_creating, _setCreating] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/api/v1/system-health/dashboard`).then(r => r.json()).then(setDash).catch((e: unknown) => { console.warn("[fetch error]", e); });

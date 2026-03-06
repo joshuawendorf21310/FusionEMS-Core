@@ -1,5 +1,5 @@
 "use client";
-import { QuantumTableSkeleton, QuantumCardSkeleton } from '@/components/ui';
+import { QuantumTableSkeleton } from '@/components/ui';
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -297,7 +297,7 @@ export default function TemplatesPage() {
             >
               <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Top Performing</div>
               <div className="space-y-2">
-                {topPerforming.slice(0, 5).map((t, i) => (
+                {topPerforming.slice(0, 5).map((t, _i) => (
                   <div key={t.template_id} className="flex items-center justify-between">
                     <span className="text-xs text-[rgba(255,255,255,0.6)] truncate">{t.template_id.slice(0, 8)}…</span>
                     <span className="text-xs font-bold text-system-billing">{t.render_count} renders</span>
