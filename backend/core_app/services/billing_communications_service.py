@@ -11,7 +11,7 @@ from core_app.models.communications import (
     AgencyPhoneNumber,
     MailFulfillmentRecord
 )
-from core_app.core.errors import AppError
+from core_app.core.errors import AppError, ErrorCodes
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +26,19 @@ class BillingCommunicationService:
         # 1. Check if agency has billing SMS enabled
         phone_record = await self._get_agency_phone(tenant_id)
         if not phone_record or not phone_record.sms_enabled:
-            raise AppError("Billing SMS not enabled for agency")
+            raise AppError(
+                code="SMS_NOT_ENABLED",
+                message="Billing SMS not enabled for this agency",
+                status_code=403,
+            )
 
         # 2. Prevent sending operational content (Regex check for keywords like 'Code 3', 'Dispatch')
         if "dispatch" in message.lower() or "code 3" in message.lower():
-             raise AppError("VIOLATION: Operational content detected in billing channel.")
+            raise AppError(
+                code="OP_CONTENT_IN_BILLING_CHANNEL",
+                message="Operational content detected in billing channel. Use CrewLink for dispatch.",
+                status_code=422,
+            )
 
         # 3. Create Thread/Message
         thread = await self._get_or_create_thread(tenant_id, patient_id, "SMS", "PATIENT_BALANCE")

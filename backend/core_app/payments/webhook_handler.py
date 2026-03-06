@@ -89,15 +89,37 @@ class StripeWebhookHandler:
 
     def _handle_invoice_payment_failed(self, event: dict) -> dict:
         invoice = event["data"]["object"]
+        # Trigger automated dunning or notification service
+        logger.warning(f"Invoice {invoice['id']} payment failed. Customer: {invoice.get('customer')}")
         return {
             "invoice_id": invoice["id"],
             "customer": invoice.get("customer"),
             "attempt_count": invoice.get("attempt_count"),
+            "status": "payment_failed_handled"
         }
 
     def _handle_subscription_created(self, event: dict) -> dict:
         sub = event["data"]["object"]
-        return {"subscription_id": sub["id"], "status": sub.get("status")}
+        sub_id = sub["id"]
+        customer_id = sub.get("customer")
+        logger.info(f"Subscription {sub_id} created for customer {customer_id}. Triggering provisioning.")
+        
+        # PROVISIONING LOGIC (Phase 1 Stub)
+        # 1. Check if tenant already provisioned.
+        # 2. If not, trigger:
+        #    - 1-800 Number purchase (Telnyx)
+        #    - Agency Record creation (if new)
+        #    - Send Welcome Email
+        
+        try:
+             # Placeholder for:
+             # self.provisioning_service.provision_new_subscription(sub_id)
+             pass
+        except Exception as e:
+            logger.error(f"Provisioning failed for subscription {sub_id}: {e}")
+            raise
+
+        return {"subscription_id": sub_id, "status": sub.get("status"), "provisioning": "triggered"}
 
     def _handle_subscription_updated(self, event: dict) -> dict:
         sub = event["data"]["object"]

@@ -66,9 +66,30 @@ class Claim(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # Financials
     total_billed_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     insurance_paid_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
+    # Required Data Tracking per Directive
+    primary_adjustment_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    secondary_expected_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    secondary_paid_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
+    patient_responsibility_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     patient_paid_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
+    remaining_collectible_balance_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    writeoff_amount_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
+    # Legacy fields
     adjustment_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     balance_due_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
+    # Workflow Tracking
+    collections_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    aging_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_patient_contact_date: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    autopay_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    payment_link_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    reminder_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    appeal_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     
     # Payer Info
     primary_payer_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True) # Office Ally Payer ID
@@ -137,3 +158,63 @@ class CollectionsReview(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     approved: Mapped[bool] = mapped_column(default=False, nullable=False)
     reason_for_hold: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     decision_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+
+
+class ClaimAuditEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """
+    Audit trail for claim lifecycle changes.
+    """
+    __tablename__ = "claim_audit_events"
+
+    claim_id: Mapped[UUID] = mapped_column(ForeignKey("claims.id"), nullable=False, index=True)
+    user_id: Mapped[Optional[UUID]] = mapped_column(UUID(as_uuid=True), nullable=True) # or system service
+    
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False) # STATUS_CHANGE, SUBMISSION, PAYMENT, DENIAL
+    old_value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    new_value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    metadata_blob: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+
+class ReminderEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """
+    Tracks billing reminders sent to patients.
+    """
+    __tablename__ = "reminder_events"
+
+    claim_id: Mapped[UUID] = mapped_column(ForeignKey("claims.id"), nullable=False)
+    patient_id: Mapped[UUID] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    
+    reminder_type: Mapped[str] = mapped_column(String(32), default="SMS_BALANCE", nullable=False) # SMS, EMAIL, CALL
+    sent_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="SENT", nullable=False) # DELIVERED, FAILED, CLICKED
+
+
+class AppealReview(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """
+    Track internal review process for an appeal.
+    """
+    __tablename__ = "appeal_reviews"
+
+    claim_id: Mapped[UUID] = mapped_column(ForeignKey("claims.id"), nullable=False)
+    denial_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    
+    ai_recommended_strategy: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    human_biller_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    status: Mapped[str] = mapped_column(String(32), default="PENDING", nullable=False) # PENDING, APPROVED_FOR_SUBMISSION, REJECTED
+    draft_appeal_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class HumanApprovalEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """
+    Generic approval event for high-risk actions (Refunds, Adjustments, Write-offs).
+    """
+    __tablename__ = "human_approval_events"
+
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), nullable=False)
+    
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False) # WRITE_OFF, REFUND, COLLECTIONS_STOP
+    approved_by_user_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    
+    justification: Mapped[str] = mapped_column(String(255), nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)

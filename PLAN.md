@@ -10,6 +10,7 @@ However, a scan of the current codebase reveals a divergence in the "Current Bas
 ## Priority Tasks
 
 ### Phase 1: Foundation & Data Models
+- [x] **Billing Models**: Updated `Claim` and `PatientBalanceState` per `BAD DEBT + PATIENT BALANCE` directive.
 - [ ] **Audit Existing Models**: Map `backend/core_app/models` to the "Required Data Models" list in the Directive (Part 11).
 - [ ] **Create Missing Models**: Implement missing SQLAlchemy models in `backend/core_app/models/`.
     - Pricing/Subscription models (`Product`, `Price`, `SubscriptionPlan`...)

@@ -1,3 +1,8 @@
 {
-    "githubRepositories.indexing.cacheSizeLimit": 1000
+    "githubRepositories.indexing.cacheSizeLimit": 1000,
+    "python.defaultInterpreterPath": "/home/codespace/.python/current/bin/python3",
+    "python.analysis.extraPaths": [
+        "/workspaces/FusionEMS-Core/backend"
+    ],
+    "python.analysis.typeCheckingMode": "basic"
 }

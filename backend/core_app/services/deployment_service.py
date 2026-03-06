@@ -42,7 +42,7 @@ class DeploymentService:
         await self._log_step(new_run.id, "INIT_DEPLOYMENT", "SUCCESS", {"event_id": external_event_id})
         return new_run
 
-    async def _log_step(self, run_id, step_name: str, status: str, result: dict = {}, error: str = None):
+    async def _log_step(self, run_id, step_name: str, status: str, result: dict = {}, error: Optional[str] = None):
         step = DeploymentStep(
              run_id=run_id,
              step_name=step_name,
@@ -55,7 +55,7 @@ class DeploymentService:
         # Ideally, we flush so the ID is available, but the transaction is managed higher up.
         await self.db.flush()
 
-    async def transition_state(self, run: DeploymentRun, new_state: DeploymentState, reason: str = None):
+    async def transition_state(self, run: DeploymentRun, new_state: DeploymentState, reason: Optional[str] = None):
         """
         Transitions the state machine safely.
         """

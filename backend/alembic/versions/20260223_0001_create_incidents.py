@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import UUID, ENUM
 
 # revision identifiers, used by Alembic.
 revision: str = "20260223_0001"
@@ -24,16 +24,22 @@ incident_status = sa.Enum(
 
 
 def upgrade() -> None:
-    incident_status.create(op.get_bind(), checkfirst=True)
+    # Safely create the enum type if it doesn't exist
+    try:
+        incident_status.create(op.get_bind(), checkfirst=True)
+    except Exception:
+        pass
+
     op.create_table(
         "incidents",
         sa.Column("incident_number", sa.String(length=64), nullable=False),
         sa.Column("dispatch_time", sa.DateTime(timezone=True), nullable=True),
         sa.Column("arrival_time", sa.DateTime(timezone=True), nullable=True),
         sa.Column("disposition", sa.String(length=255), nullable=True),
-        sa.Column("status", incident_status, nullable=False),
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
+        # Use explicit ENUM with create_type=False
+        sa.Column("status", ENUM("draft", "in_progress", "ready_for_review", "completed", "locked", name="incident_status", create_type=False), nullable=False),
+        sa.Column("id", UUID(as_uuid=True), nullable=False),
+        sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

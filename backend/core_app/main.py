@@ -108,6 +108,7 @@ from core_app.api.vital_router import router as vital_router  # noqa: E402
 from core_app.api.voice_advanced_router import router as voice_advanced_router  # noqa: E402
 from core_app.api.voice_webhook_router import router as voice_webhook_router  # noqa: E402
 from core_app.api.weather_router import router as weather_router  # noqa: E402
+from core_app.api.sync_router import router as sync_router  # noqa: E402
 from core_app.billing.edi_router import router as edi_router  # noqa: E402
 
 app = FastAPI(title=settings.app_name)
@@ -238,6 +239,7 @@ app.include_router(visibility_router)
 app.include_router(voice_advanced_router)
 app.include_router(voice_webhook_router)
 app.include_router(weather_router)
+app.include_router(sync_router)
 
 
 @app.get("/health")

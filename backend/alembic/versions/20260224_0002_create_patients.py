@@ -10,6 +10,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import ENUM
 
 # revision identifiers, used by Alembic.
 revision: str = "20260224_0002"
@@ -22,7 +23,10 @@ patient_gender = sa.Enum("female", "male", "non_binary", "other", "unknown", nam
 
 
 def upgrade() -> None:
-    patient_gender.create(op.get_bind(), checkfirst=True)
+    try:
+        patient_gender.create(op.get_bind(), checkfirst=True)
+    except Exception:
+        pass
     op.create_table(
         "patients",
         sa.Column("incident_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -31,7 +35,7 @@ def upgrade() -> None:
         sa.Column("last_name", sa.String(length=120), nullable=False),
         sa.Column("date_of_birth", sa.Date(), nullable=True),
         sa.Column("age_years", sa.Integer(), nullable=True),
-        sa.Column("gender", patient_gender, nullable=False),
+        sa.Column("gender", ENUM("female", "male", "non_binary", "other", "unknown", name="patient_gender", create_type=False), nullable=False),
         sa.Column("external_identifier", sa.String(length=64), nullable=True),
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),

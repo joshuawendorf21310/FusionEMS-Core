@@ -14,6 +14,8 @@ from core_app.api.dependencies import db_session_dependency
 from core_app.core.config import get_settings
 from core_app.telnyx.client import TelnyxApiError, send_sms
 from core_app.telnyx.signature import verify_telnyx_webhook
+# from core_app.services.ai_narrative_service import AiNarrativeService # TODO: distinct service
+from core_app.services.ai_assistant_service import AIAssistantService # Use existing service
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,7 @@ def _resolve_tenant_by_did(db: Session, to_number: str) -> str | None:
         ),
         {"phone": to_number},
     ).fetchone()
+    # Handle SQLAlchemy row access safely
     return str(row.tenant_id) if row else None
 
 
@@ -82,6 +85,7 @@ def _upsert_opt_out(db: Session, tenant_id: str, phone_e164: str, source: str) -
         {"tid": tenant_id, "phone": phone_e164, "now": _utcnow(), "src": source},
     )
     db.commit()
+
 
 
 def _is_opted_out(db: Session, tenant_id: str, phone_e164: str) -> bool:
@@ -194,6 +198,66 @@ async def telnyx_sms_webhook(
     )
     body_text: str = (ep.get("text") or "").strip()
     message_id: str = ep.get("id") or event_id
+
+    tenant_id: str | None = None
+    if event_type == "message.received":
+        tenant_id = _resolve_tenant_by_did(db, to_number)
+        _insert_event(db, event_id, event_type, tenant_id, data)
+        _log_sms(
+            db,
+            message_id,
+            tenant_id,
+            "IN",
+            from_number,
+            to_number,
+            body_text,
+            "received",
+        )
+
+        # Opt out logic
+        if body_text.upper() in STOP_KEYWORDS:
+            _upsert_opt_out(db, tenant_id, from_number, "SMS_INBOUND")
+            # Auto-ACK opt-out
+            _send_reply(
+                api_key=settings.telnyx_api_key,
+                from_number=to_number,
+                to_number=from_number,
+                text_body="You have been unsubscribed from alerts. Reply START to resubscribe.",
+                messaging_profile_id=None,
+                tenant_id=tenant_id,
+                db=db,
+            )
+            return {"status": "opt_out_processed"}
+
+        # AI Reply Logic
+        # We wrap this in a try-except to ensure the webhook returns 200 OK even if AI fails
+        try:
+            ai_service = AIAssistantService()
+            # In a real scenario, we would fetch conversation history here
+            # For now, we pass just the current message
+            reply = await ai_service.generate_sms_reply(
+                tenant_id=tenant_id,
+                patient_phone=from_number,
+                message_body=body_text
+            )
+            
+            if reply:
+                _send_reply(
+                    api_key=settings.telnyx_api_key,
+                    from_number=to_number,
+                    to_number=from_number,
+                    text_body=reply,
+                    messaging_profile_id=None,
+                    tenant_id=tenant_id,
+                    db=db,
+                )
+        except Exception as e:
+            logger.error(f"Failed to generate/send AI reply: {e}")
+            # Fallback or silent fail - do not crash the webhook
+            pass
+
+    return {"status": "ok"}
+
 
     tenant_id = _resolve_tenant_by_did(db, to_number)
 

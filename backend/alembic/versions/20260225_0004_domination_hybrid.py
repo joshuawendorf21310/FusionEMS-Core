@@ -12,6 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
+from geoalchemy2 import Geography
 
 revision = "20260225_0004"
 down_revision = "20260224_0003"
@@ -317,7 +318,7 @@ def upgrade() -> None:
                 server_default=sa.text("now()"),
             ),
         )
-        op.create_index("ix_tenants_tenant_key", "tenants", ["tenant_key"], unique=True)
+
 
     if not _has_table(conn, "users"):
         op.create_table(
@@ -378,7 +379,6 @@ def upgrade() -> None:
                 server_default=sa.text("now()"),
             ),
         )
-        op.create_index("ix_audit_logs_tenant_id", "audit_logs", ["tenant_id"], unique=False)
 
     # Create tenant-scoped tables
     for t in TENANT_TABLES:
@@ -393,7 +393,7 @@ def upgrade() -> None:
         if "location" not in cols:
             op.add_column(
                 "unit_locations",
-                sa.Column("location", postgresql.GEOGRAPHY("POINT", 4326), nullable=True),
+                sa.Column("location", Geography("POINT", srid=4326), nullable=True),
             )
 
     # ICD10 reference (global)
