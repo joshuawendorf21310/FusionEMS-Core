@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useState } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
+
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -54,7 +54,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   );
 }
 
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
+function _ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
     <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
@@ -120,7 +120,7 @@ export default function PricingSimulatorPage() {
   const [medicare, setMedicare] = useState(650);
   const [medicaid, setMedicaid] = useState(280);
   const [commercial, setCommercial] = useState(820);
-  const [selfPayRate, setSelfPayRate] = useState(120);
+  const [selfPayRate, _setSelfPayRate] = useState(120);
   const [medicareP, setMedicareP] = useState(40);
   const [medicaidP, setMedicaidP] = useState(30);
   const [commercialP, setCommercialP] = useState(20);

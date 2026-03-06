@@ -123,7 +123,7 @@ export default function ArchitecturePage() {
 
       {/* Architecture Layers */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 40 }}>
-        {LAYERS.map((layer, idx) => (
+        {LAYERS.map((layer, _idx) => (
           <div
             key={layer.id}
             style={{

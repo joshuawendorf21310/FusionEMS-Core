@@ -344,6 +344,19 @@ export default function FounderCopilotPage() {
     }
   }, [activeSession, messages]);
 
+  const startPolling = useCallback((runId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const d = await apiFetch(`${API}/runs/${runId}`);
+        setActiveRun(d.run);
+        if (['passed', 'blocked', 'failed', 'approved', 'merged'].includes(d.run.status)) {
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+      } catch (e: unknown) { console.warn("[fetch error]", e); }
+    }, 5000);
+  }, []);
+
   const executeRun = useCallback(async () => {
     if (!activeRun) return;
     setExecuting(true);
@@ -361,20 +374,7 @@ export default function FounderCopilotPage() {
     } finally {
       setExecuting(false);
     }
-  }, [activeRun]);
-
-  const startPolling = useCallback((runId: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      try {
-        const d = await apiFetch(`${API}/runs/${runId}`);
-        setActiveRun(d.run);
-        if (['passed', 'blocked', 'failed', 'approved', 'merged'].includes(d.run.status)) {
-          if (pollRef.current) clearInterval(pollRef.current);
-        }
-      } catch (e: unknown) { console.warn("[fetch error]", e); }
-    }, 5000);
-  }, []);
+  }, [activeRun, startPolling]);
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 

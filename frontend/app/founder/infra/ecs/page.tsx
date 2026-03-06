@@ -1,9 +1,9 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? '';
+
 
 function SectionHeader({ number, title, sub }: { number: string; title: string; sub?: string }) {
   return (
@@ -47,7 +47,7 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
   );
 }
 
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
+function _ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
     <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
