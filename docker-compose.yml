@@ -149,7 +149,7 @@ services:
     environment:
       ENVIRONMENT: development
       AUTH_MODE: local
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/fusionems
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fusionems
       REDIS_URL: redis://redis:6379/0
       OPA_URL: http://opa:8181
       OTEL_ENABLED: "false"
