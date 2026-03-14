@@ -79,6 +79,19 @@ def _ecs_dimensions(cluster: str, service: str) -> list[dict]:
     ]
 
 
+def _integration_report(name: str, checks: list[tuple[str, object]]) -> dict[str, object]:
+    missing_keys = [key for key, value in checks if not value]
+    configured_count = len(checks) - len(missing_keys)
+    status = "ready" if not missing_keys else ("degraded" if configured_count > 0 else "not_configured")
+    return {
+        "name": name,
+        "status": status,
+        "configured_count": configured_count,
+        "required_count": len(checks),
+        "missing_keys": missing_keys,
+    }
+
+
 @router.get("/dashboard")
 async def health_dashboard(
     current: CurrentUser = Depends(get_current_user),
@@ -191,6 +204,55 @@ async def service_health(
         },
     ]
     return {"services": services, "as_of": _now_iso()}
+
+
+@router.get("/integrations/readiness")
+async def integration_readiness(
+    current: CurrentUser = Depends(get_current_user),
+):
+    require_role(current, ["founder", "admin"])
+    s = get_settings()
+    integrations = [
+        _integration_report(
+            "stripe",
+            [
+                ("STRIPE_SECRET_KEY", s.stripe_secret_key),
+                ("STRIPE_WEBHOOK_SECRET", s.stripe_webhook_secret),
+                ("STRIPE_EVENTS_QUEUE_URL", s.stripe_events_queue_url),
+                ("STRIPE_EVENTS_TABLE", s.stripe_events_table),
+                ("TENANTS_TABLE", s.tenants_table),
+            ],
+        ),
+        _integration_report(
+            "lob",
+            [
+                ("LOB_API_KEY", s.lob_api_key),
+                ("LOB_WEBHOOK_SECRET", s.lob_webhook_secret),
+                ("LOB_EVENTS_QUEUE_URL", s.lob_events_queue_url),
+                ("LOB_EVENTS_TABLE", s.lob_events_table),
+                ("STATEMENTS_TABLE", s.statements_table),
+            ],
+        ),
+        _integration_report(
+            "telnyx",
+            [
+                ("TELNYX_API_KEY", s.telnyx_api_key),
+                ("TELNYX_FROM_NUMBER", s.telnyx_from_number),
+                ("TELNYX_MESSAGING_PROFILE_ID", s.telnyx_messaging_profile_id),
+                ("TELNYX_PUBLIC_KEY", s.telnyx_public_key),
+                ("IVR_AUDIO_BASE_URL", s.ivr_audio_base_url),
+                ("FAX_CLASSIFY_QUEUE_URL", s.fax_classify_queue_url),
+            ],
+        ),
+    ]
+    ready_count = len([item for item in integrations if item["status"] == "ready"])
+    return {
+        "integrations": integrations,
+        "ready_count": ready_count,
+        "total_count": len(integrations),
+        "overall_status": "ready" if ready_count == len(integrations) else ("partial" if ready_count > 0 else "not_configured"),
+        "as_of": _now_iso(),
+    }
 
 
 @router.get("/metrics/cpu")
