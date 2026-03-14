@@ -5,6 +5,14 @@ import { motion } from "framer-motion";
 
 const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
+type IntegrationReadinessItem = {
+  name: string;
+  status: string;
+  configured_count: number;
+  required_count: number;
+  missing_keys: string[];
+};
+
 function KpiCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
@@ -29,32 +37,59 @@ function ServiceRow({ service, status, metric, value }: { service: string; statu
   );
 }
 
+function IntegrationRow({ item }: { item: IntegrationReadinessItem }) {
+  const statusColor = item.status === "ready" ? "var(--color-status-active)" : item.status === "degraded" ? "var(--color-status-warning)" : "var(--color-brand-red)";
+  return (
+    <div className="border-b border-[rgba(255,255,255,0.05)] py-3 last:border-0">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full" style={{ background: statusColor }} />
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[rgba(255,255,255,0.82)]">{item.name}</span>
+        </div>
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: statusColor }}>{item.status}</span>
+      </div>
+      <div className="mt-2 text-[11px] text-[rgba(255,255,255,0.45)]">{item.configured_count}/{item.required_count} deployment checks configured</div>
+      {item.missing_keys.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {item.missing_keys.map((key) => (
+            <span key={key} className="border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[rgba(255,255,255,0.58)]">
+              {key}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-2 text-[11px] text-status-active">All required runtime keys are present.</div>
+      )}
+    </div>
+  );
+}
+
 const FEATURES = [
-  "ECS health monitor","Container restart tracker","CPU usage analytics","Memory usage analytics",
-  "RDS health monitor","Redis latency tracker","CloudFront status","API latency dashboard",
-  "Error rate tracker","AI GPU utilization","Auto-scaling threshold","Self-healing restart engine",
-  "Failed deployment rollback","Log anomaly detection","Security alert engine","Intrusion detection",
-  "IAM policy drift","SSL expiration monitor","Domain status tracker","DB replication monitor",
-  "Backup verification","Restore simulation","Export failure monitor","Stripe webhook health",
-  "Cognito auth failure","JWT validation errors","API rate limit monitor","Traffic spike detector",
-  "Cost anomaly detection","Infrastructure drift","Auto-scale optimizer","AI latency monitor",
-  "Error clustering engine","Crash recovery workflow","Health summary digest","Real-time alert routing",
-  "Founder push alerts","Incident escalation","Service dependency map","Microservice health graph",
-  "Self-healing threshold","Resource exhaustion predictor","Uptime SLA tracker","Service degradation",
-  "Failover readiness test","Disaster recovery checklist","Log retention policy","Compliance monitoring",
-  "Security vulnerability scanner","Dependency version alert","Encryption integrity","Key rotation tracker",
-  "API contract validation","Alert fatigue minimizer","Service restart automation","Load balancing health",
-  "Backup frequency monitor","Data corruption detection","CloudFormation drift","Multi-AZ health",
-  "Network latency analytics","Throttling alert system","Application error dashboard","DB connection pool",
-  "Resource usage forecast","Budget usage monitor","Cost by tenant","Infrastructure audit",
-  "Incident postmortem builder","Alert priority scoring","Service dependency chaining","Container image scan",
-  "Secrets rotation reminder","AI hallucination confidence","System-of-record validation","Cache hit ratio",
-  "Redundancy status tracker","Cloud resource inventory","Security patch tracker","System update scheduler",
-  "Service capacity planning","Latency heatmap","Health KPI trendline","SLA breach alert",
-  "Audit log integrity","Anomaly detection AI","RTO tracker","Health alert simulation",
-  "Tenant outage isolation","Service error forecasting","Root cause clustering","Automated RCA report",
-  "Emergency lock mode","Production change approval","Monitoring coverage %","Uptime executive report",
-  "Self-healing audit","Recovery confidence score","Real-time ops command","Enterprise resilience engine",
+  "ECS health monitor", "Container restart tracker", "CPU usage analytics", "Memory usage analytics",
+  "RDS health monitor", "Redis latency tracker", "CloudFront status", "API latency dashboard",
+  "Error rate tracker", "AI GPU utilization", "Auto-scaling threshold", "Self-healing restart engine",
+  "Failed deployment rollback", "Log anomaly detection", "Security alert engine", "Intrusion detection",
+  "IAM policy drift", "SSL expiration monitor", "Domain status tracker", "DB replication monitor",
+  "Backup verification", "Restore simulation", "Export failure monitor", "Stripe webhook health",
+  "Cognito auth failure", "JWT validation errors", "API rate limit monitor", "Traffic spike detector",
+  "Cost anomaly detection", "Infrastructure drift", "Auto-scale optimizer", "AI latency monitor",
+  "Error clustering engine", "Crash recovery workflow", "Health summary digest", "Real-time alert routing",
+  "Founder push alerts", "Incident escalation", "Service dependency map", "Microservice health graph",
+  "Self-healing threshold", "Resource exhaustion predictor", "Uptime SLA tracker", "Service degradation",
+  "Failover readiness test", "Disaster recovery checklist", "Log retention policy", "Compliance monitoring",
+  "Security vulnerability scanner", "Dependency version alert", "Encryption integrity", "Key rotation tracker",
+  "API contract validation", "Alert fatigue minimizer", "Service restart automation", "Load balancing health",
+  "Backup frequency monitor", "Data corruption detection", "CloudFormation drift", "Multi-AZ health",
+  "Network latency analytics", "Throttling alert system", "Application error dashboard", "DB connection pool",
+  "Resource usage forecast", "Budget usage monitor", "Cost by tenant", "Infrastructure audit",
+  "Incident postmortem builder", "Alert priority scoring", "Service dependency chaining", "Container image scan",
+  "Secrets rotation reminder", "AI hallucination confidence", "System-of-record validation", "Cache hit ratio",
+  "Redundancy status tracker", "Cloud resource inventory", "Security patch tracker", "System update scheduler",
+  "Service capacity planning", "Latency heatmap", "Health KPI trendline", "SLA breach alert",
+  "Audit log integrity", "Anomaly detection AI", "RTO tracker", "Health alert simulation",
+  "Tenant outage isolation", "Service error forecasting", "Root cause clustering", "Automated RCA report",
+  "Emergency lock mode", "Production change approval", "Monitoring coverage %", "Uptime executive report",
+  "Self-healing audit", "Recovery confidence score", "Real-time ops command", "Enterprise resilience engine",
 ];
 
 export default function SystemHealthPage() {
@@ -66,17 +101,20 @@ export default function SystemHealthPage() {
   const [ssl, setSsl] = useState<{ domains?: Array<{ domain: string; expires_in_days: number; status: string }> }>({});
   const [backups, setBackups] = useState<Record<string, unknown>>({});
   const [coverage, setCoverage] = useState<Record<string, unknown>>({});
-  const [creating, setCreating] = useState(false);
+  const [integrationReadiness, setIntegrationReadiness] = useState<{ integrations?: IntegrationReadinessItem[]; ready_count?: number; total_count?: number; overall_status?: string }>({});
+  const [alertsFetched, setAlertsFetched] = useState(false);
+  const [alertsFetchError, setAlertsFetchError] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/api/v1/system-health/dashboard`).then(r => r.json()).then(setDash).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/system-health/services`).then(r => r.json()).then(d => setServices(d.services ?? [])).catch((e: unknown) => { console.warn("[fetch error]", e); });
-    fetch(`${API}/api/v1/system-health/alerts`).then(r => r.json()).then(setAlerts).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/alerts`).then(r => r.json()).then(d => { setAlerts(d); setAlertsFetched(true); }).catch((e: unknown) => { console.warn("[fetch error]", e); setAlertsFetched(true); setAlertsFetchError(true); });
     fetch(`${API}/api/v1/system-health/uptime/sla`).then(r => r.json()).then(setUptime).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/system-health/resilience-score`).then(r => r.json()).then(setResilience).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/system-health/ssl/expiration`).then(r => r.json()).then(setSsl).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/system-health/backups/status`).then(r => r.json()).then(setBackups).catch((e: unknown) => { console.warn("[fetch error]", e); });
     fetch(`${API}/api/v1/system-health/monitoring/coverage`).then(r => r.json()).then(setCoverage).catch((e: unknown) => { console.warn("[fetch error]", e); });
+    fetch(`${API}/api/v1/system-health/integrations/readiness`).then(r => r.json()).then(setIntegrationReadiness).catch((e: unknown) => { console.warn("[fetch error]", e); });
   }, []);
 
   const fmtN = (v: unknown) => typeof v === "number" ? v.toLocaleString() : (v != null ? String(v) : "—");
@@ -91,7 +129,7 @@ export default function SystemHealthPage() {
       await fetch(`${API}/api/v1/system-health/alerts/${id}/resolve`, { method: "POST" });
       setAlerts(prev => ({
         ...prev,
-        alerts: prev.alerts?.map(a => a.id === id ? { ...a, data: { ...(a.data as Record<string,unknown>), status: "resolved" } } : a),
+        alerts: prev.alerts?.map(a => a.id === id ? { ...a, data: { ...(a.data as Record<string, unknown>), status: "resolved" } } : a),
       }));
     } catch (err: unknown) {
       console.warn("[system-health]", err);
@@ -109,7 +147,7 @@ export default function SystemHealthPage() {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 px-4 py-2 rounded-sm border" style={{ borderColor: `color-mix(in srgb, ${overallColor} 27%, transparent)`, background: `color-mix(in srgb, ${overallColor} 7%, transparent)` }}>
             <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: overallColor }} />
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: overallColor }}>{overallStatus || "Checking…"}</span>
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: overallColor }}>{overallStatus || "Checking\u2026"}</span>
           </div>
         </div>
       </div>
@@ -123,6 +161,23 @@ export default function SystemHealthPage() {
         <KpiCard label="Monitoring Coverage" value={coverage.coverage_pct != null ? `${coverage.coverage_pct}%` : "—"} color="var(--color-status-info)" />
         <KpiCard label="SLA Breach" value={uptime.sla_breach ? "YES" : "NO"} color={uptime.sla_breach ? "var(--color-brand-red)" : "var(--color-status-active)"} />
         <KpiCard label="Downtime Incidents" value={fmtN(uptime.downtime_incidents)} color={Number(uptime.downtime_incidents) > 0 ? "var(--color-brand-red)" : "var(--color-status-active)"} />
+      </div>
+
+      <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Payments + Communications Readiness</div>
+            <div className="mt-1 text-xs text-[rgba(255,255,255,0.45)]">Live runtime checks for Stripe, Lob, and Telnyx configuration.</div>
+          </div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(255,255,255,0.7)]">
+            {integrationReadiness.ready_count ?? 0}/{integrationReadiness.total_count ?? 3} ready
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {(integrationReadiness.integrations ?? []).map((item) => (
+            <IntegrationRow key={item.name} item={item} />
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -164,28 +219,39 @@ export default function SystemHealthPage() {
         {/* Active Alerts */}
         <div className="bg-bg-panel border border-border-DEFAULT p-4" style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)" }}>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">Active Alerts · {alerts.total ?? 0}</div>
-          {alerts.alerts?.slice(0, 8).map((alert, i) => {
-            const d = alert.data as Record<string, unknown>;
-            const sevColor = String(d.severity) === "critical" ? "var(--color-brand-red)" : String(d.severity) === "error" ? "var(--color-brand-orange-bright)" : String(d.severity) === "warning" ? "var(--color-status-warning)" : "var(--color-text-muted)";
-            return (
-              <div key={i} className="flex items-start gap-2 py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
-                <span className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0" style={{ background: sevColor }} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[11px] text-[rgba(255,255,255,0.75)] truncate">{String(d.message ?? d.service ?? "Alert")}</div>
-                  <div className="text-[10px]" style={{ color: sevColor }}>{String(d.severity).toUpperCase()} · {String(d.service ?? "")}</div>
+          {!alertsFetched ? (
+            <div className="flex items-center gap-2 py-3">
+              <span className="w-2 h-2 rounded-full bg-[rgba(255,255,255,0.3)] animate-pulse" />
+              <span className="text-xs text-[rgba(255,255,255,0.4)]">Loading alert status\u2026</span>
+            </div>
+          ) : alertsFetchError ? (
+            <div className="flex items-center gap-2 py-3">
+              <span className="w-2 h-2 rounded-full bg-status-warning" />
+              <span className="text-xs text-status-warning font-semibold">Alert status unavailable \u2014 backend unreachable</span>
+            </div>
+          ) : alerts.alerts?.length ? (
+            alerts.alerts?.slice(0, 8).map((alert, i) => {
+              const d = alert.data as Record<string, unknown>;
+              const sevColor = String(d.severity) === "critical" ? "var(--color-brand-red)" : String(d.severity) === "error" ? "var(--color-brand-orange-bright)" : String(d.severity) === "warning" ? "var(--color-status-warning)" : "var(--color-text-muted)";
+              return (
+                <div key={i} className="flex items-start gap-2 py-2 border-b border-[rgba(255,255,255,0.05)] last:border-0">
+                  <span className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0" style={{ background: sevColor }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-[rgba(255,255,255,0.75)] truncate">{String(d.message ?? d.service ?? "Alert")}</div>
+                    <div className="text-[10px]" style={{ color: sevColor }}>{String(d.severity).toUpperCase()} · {String(d.service ?? "")}</div>
+                  </div>
+                  {String(d.status) === "active" && (
+                    <button onClick={() => handleResolveAlert(String(alert.id))} className="text-[9px] px-1.5 py-0.5 border border-[rgba(76,175,80,0.3)] text-status-active rounded-sm hover:bg-[rgba(76,175,80,0.1)] transition-colors flex-shrink-0">
+                      Resolve
+                    </button>
+                  )}
                 </div>
-                {String(d.status) === "active" && (
-                  <button onClick={() => handleResolveAlert(String(alert.id))} className="text-[9px] px-1.5 py-0.5 border border-[rgba(76,175,80,0.3)] text-status-active rounded-sm hover:bg-[rgba(76,175,80,0.1)] transition-colors flex-shrink-0">
-                    Resolve
-                  </button>
-                )}
-              </div>
-            );
-          })}
-          {!alerts.alerts?.length && (
+              );
+            })
+          ) : (
             <div className="flex items-center gap-2 py-3">
               <span className="w-2 h-2 rounded-full bg-status-active" />
-              <span className="text-xs text-status-active font-semibold">All Systems Operational</span>
+              <span className="text-xs text-status-active font-semibold">No active alerts</span>
             </div>
           )}
         </div>
