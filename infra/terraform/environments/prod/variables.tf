@@ -119,6 +119,24 @@ variable "github_allowed_subjects" {
   default     = []
 }
 
+variable "stripe_webhook_cidrs" {
+  description = "List of Stripe webhook IPv4 CIDRs to allow at WAF"
+  type        = list(string)
+  default     = []
+}
+
+variable "telnyx_webhook_cidrs" {
+  description = "List of Telnyx webhook IPv4 CIDRs to allow at WAF"
+  type        = list(string)
+  default     = []
+}
+
+variable "lob_webhook_cidrs" {
+  description = "List of Lob webhook IPv4 CIDRs to allow at WAF"
+  type        = list(string)
+  default     = []
+}
+
 # ─── Database ────────────────────────────────────────────────────────────────
 
 variable "db_instance_class" {

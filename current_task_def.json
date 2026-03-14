@@ -96,6 +96,10 @@
             "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:TELNYX_FROM_NUMBER::"
         },
         {
+            "name": "TELNYX_MESSAGING_PROFILE_ID",
+            "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:TELNYX_MESSAGING_PROFILE_ID::"
+        },
+        {
             "name": "TELNYX_PUBLIC_KEY",
             "valueFrom": "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/config-JwTXje:TELNYX_PUBLIC_KEY::"
         },
