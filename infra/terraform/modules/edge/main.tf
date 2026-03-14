@@ -239,7 +239,7 @@ resource "aws_cloudfront_distribution" "this" {
   is_ipv6_enabled = true
   http_version    = "http2and3"
   web_acl_id      = aws_wafv2_web_acl.cloudfront.arn
-  aliases         = [var.root_domain_name, "www.${var.root_domain_name}", var.api_domain_name]
+  aliases         = [var.root_domain_name, "www.${var.root_domain_name}", var.api_domain_name, var.app_domain_name]
   price_class     = "PriceClass_100"
 
   origin {
@@ -361,6 +361,18 @@ resource "aws_route53_record" "api" {
 resource "aws_route53_record" "www" {
   zone_id = var.hosted_zone_id
   name    = "www.${var.root_domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.this.domain_name
+    zone_id                = aws_cloudfront_distribution.this.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "app" {
+  zone_id = var.hosted_zone_id
+  name    = var.app_domain_name
   type    = "A"
 
   alias {

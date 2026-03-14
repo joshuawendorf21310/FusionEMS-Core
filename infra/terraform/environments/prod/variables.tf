@@ -55,6 +55,12 @@ variable "api_domain_name" {
   type        = string
 }
 
+variable "app_domain_name" {
+  description = "App (frontend) domain name"
+  type        = string
+  default     = "app.fusionemsquantum.com"
+}
+
 variable "hosted_zone_id" {
   description = "Route53 hosted zone ID for DNS records"
   type        = string
@@ -138,20 +144,6 @@ variable "graph_tenant_id" {
 
 variable "graph_client_id" {
   description = "Microsoft Graph client ID for email integration"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "graph_client_secret" {
-  description = "Microsoft Graph client secret for email integration"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "graph_founder_email" {
-  description = "Founder email address for Microsoft Graph integration"
   type        = string
   sensitive   = true
   default     = ""
