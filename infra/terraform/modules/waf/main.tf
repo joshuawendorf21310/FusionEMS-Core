@@ -6,9 +6,14 @@ terraform {
   required_version = ">= 1.6"
 }
 
+locals {
+  webhook_ip_allowlist_enforced = length(var.stripe_webhook_cidrs) > 0 && length(var.telnyx_webhook_cidrs) > 0 && length(var.lob_webhook_cidrs) > 0
+}
+
 # ── IP Sets ──────────────────────────────────────────────────────────────────
 
 resource "aws_wafv2_ip_set" "stripe_webhooks" {
+  count              = length(var.stripe_webhook_cidrs) > 0 ? 1 : 0
   name               = "${var.project}-${var.environment}-stripe-webhooks"
   scope              = "REGIONAL"
   ip_address_version = "IPV4"
@@ -20,6 +25,7 @@ resource "aws_wafv2_ip_set" "stripe_webhooks" {
 }
 
 resource "aws_wafv2_ip_set" "telnyx_webhooks" {
+  count              = length(var.telnyx_webhook_cidrs) > 0 ? 1 : 0
   name               = "${var.project}-${var.environment}-telnyx-webhooks"
   scope              = "REGIONAL"
   ip_address_version = "IPV4"
@@ -27,6 +33,18 @@ resource "aws_wafv2_ip_set" "telnyx_webhooks" {
 
   tags = merge(var.tags, {
     Name = "${var.project}-${var.environment}-telnyx-webhooks"
+  })
+}
+
+resource "aws_wafv2_ip_set" "lob_webhooks" {
+  count              = length(var.lob_webhook_cidrs) > 0 ? 1 : 0
+  name               = "${var.project}-${var.environment}-lob-webhooks"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+  addresses          = var.lob_webhook_cidrs
+
+  tags = merge(var.tags, {
+    Name = "${var.project}-${var.environment}-lob-webhooks"
   })
 }
 
@@ -48,118 +66,170 @@ resource "aws_wafv2_web_acl" "this" {
 
   # ── Priority 1: Allow Stripe webhooks ────────────────────────────────────
 
-  rule {
-    name     = "AllowStripeWebhooks"
-    priority = 1
+  dynamic "rule" {
+    for_each = length(var.stripe_webhook_cidrs) > 0 ? [1] : []
+    content {
+      name     = "AllowStripeWebhooks"
+      priority = 1
 
-    action {
-      allow {}
-    }
+      action {
+        allow {}
+      }
 
-    statement {
-      and_statement {
-        statement {
-          ip_set_reference_statement {
-            arn = aws_wafv2_ip_set.stripe_webhooks.arn
-          }
-        }
-        statement {
-          byte_match_statement {
-            search_string         = "/api/v1/webhooks/stripe"
-            positional_constraint = "STARTS_WITH"
-
-            field_to_match {
-              uri_path {}
+      statement {
+        and_statement {
+          statement {
+            ip_set_reference_statement {
+              arn = aws_wafv2_ip_set.stripe_webhooks[0].arn
             }
+          }
+          statement {
+            byte_match_statement {
+              search_string         = "/api/v1/webhooks/stripe"
+              positional_constraint = "STARTS_WITH"
 
-            text_transformation {
-              priority = 0
-              type     = "NONE"
+              field_to_match {
+                uri_path {}
+              }
+
+              text_transformation {
+                priority = 0
+                type     = "NONE"
+              }
             }
           }
         }
       }
-    }
 
-    visibility_config {
-      sampled_requests_enabled   = true
-      cloudwatch_metrics_enabled = true
-      metric_name                = "AllowStripeWebhooks"
+      visibility_config {
+        sampled_requests_enabled   = true
+        cloudwatch_metrics_enabled = true
+        metric_name                = "AllowStripeWebhooks"
+      }
     }
   }
 
   # ── Priority 2: Allow Telnyx webhooks ────────────────────────────────────
 
-  rule {
-    name     = "AllowTelnyxWebhooks"
-    priority = 2
+  dynamic "rule" {
+    for_each = length(var.telnyx_webhook_cidrs) > 0 ? [1] : []
+    content {
+      name     = "AllowTelnyxWebhooks"
+      priority = 2
 
-    action {
-      allow {}
-    }
+      action {
+        allow {}
+      }
 
-    statement {
-      and_statement {
-        statement {
-          ip_set_reference_statement {
-            arn = aws_wafv2_ip_set.telnyx_webhooks.arn
-          }
-        }
-        statement {
-          byte_match_statement {
-            search_string         = "/api/v1/webhooks/telnyx"
-            positional_constraint = "STARTS_WITH"
-
-            field_to_match {
-              uri_path {}
+      statement {
+        and_statement {
+          statement {
+            ip_set_reference_statement {
+              arn = aws_wafv2_ip_set.telnyx_webhooks[0].arn
             }
+          }
+          statement {
+            byte_match_statement {
+              search_string         = "/api/v1/webhooks/telnyx"
+              positional_constraint = "STARTS_WITH"
 
-            text_transformation {
-              priority = 0
-              type     = "NONE"
+              field_to_match {
+                uri_path {}
+              }
+
+              text_transformation {
+                priority = 0
+                type     = "NONE"
+              }
             }
           }
         }
       }
-    }
 
-    visibility_config {
-      sampled_requests_enabled   = true
-      cloudwatch_metrics_enabled = true
-      metric_name                = "AllowTelnyxWebhooks"
+      visibility_config {
+        sampled_requests_enabled   = true
+        cloudwatch_metrics_enabled = true
+        metric_name                = "AllowTelnyxWebhooks"
+      }
+    }
+  }
+
+  dynamic "rule" {
+    for_each = length(var.lob_webhook_cidrs) > 0 ? [1] : []
+    content {
+      name     = "AllowLobWebhooks"
+      priority = 3
+
+      action {
+        allow {}
+      }
+
+      statement {
+        and_statement {
+          statement {
+            ip_set_reference_statement {
+              arn = aws_wafv2_ip_set.lob_webhooks[0].arn
+            }
+          }
+          statement {
+            byte_match_statement {
+              search_string         = "/api/v1/webhooks/lob"
+              positional_constraint = "STARTS_WITH"
+
+              field_to_match {
+                uri_path {}
+              }
+
+              text_transformation {
+                priority = 0
+                type     = "NONE"
+              }
+            }
+          }
+        }
+      }
+
+      visibility_config {
+        sampled_requests_enabled   = true
+        cloudwatch_metrics_enabled = true
+        metric_name                = "AllowLobWebhooks"
+      }
     }
   }
 
   # ── Priority 3: Block non-allowlisted webhook traffic ────────────────────
 
-  rule {
-    name     = "BlockNonAllowlistedWebhookTraffic"
-    priority = 3
+  dynamic "rule" {
+    for_each = local.webhook_ip_allowlist_enforced ? [1] : []
+    content {
+      name     = "BlockNonAllowlistedWebhookTraffic"
+      priority = 4
 
-    action {
-      block {}
-    }
+      action {
+        block {}
+      }
 
-    statement {
-      byte_match_statement {
-        search_string         = "/api/v1/webhooks/"
-        positional_constraint = "STARTS_WITH"
+      statement {
+        byte_match_statement {
+          search_string         = "/api/v1/webhooks/"
+          positional_constraint = "STARTS_WITH"
 
-        field_to_match {
-          uri_path {}
-        }
+          field_to_match {
+            uri_path {}
+          }
 
-        text_transformation {
-          priority = 0
-          type     = "NONE"
+          text_transformation {
+            priority = 0
+            type     = "NONE"
+          }
         }
       }
-    }
 
-    visibility_config {
-      sampled_requests_enabled   = true
-      cloudwatch_metrics_enabled = true
-      metric_name                = "BlockNonAllowlistedWebhookTraffic"
+      visibility_config {
+        sampled_requests_enabled   = true
+        cloudwatch_metrics_enabled = true
+        metric_name                = "BlockNonAllowlistedWebhookTraffic"
+      }
     }
   }
 

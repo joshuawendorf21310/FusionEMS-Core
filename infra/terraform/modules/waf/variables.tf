@@ -20,6 +20,12 @@ variable "telnyx_webhook_cidrs" {
   default     = []
 }
 
+variable "lob_webhook_cidrs" {
+  description = "List of Lob webhook IPv4 CIDRs to allow"
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Common tags applied to all resources"
   type        = map(string)
