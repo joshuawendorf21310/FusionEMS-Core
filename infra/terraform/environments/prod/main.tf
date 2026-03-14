@@ -17,7 +17,7 @@ terraform {
   }
 }
 
-# ─── Providers ─────────────────────────────────────────────────────────────────────
+# ─── Providers ─────────────────────────────────────────────────────────────────────────
 
 provider "aws" {
   region = var.aws_region
@@ -36,11 +36,11 @@ provider "aws" {
   }
 }
 
-# ─── Data Sources ────────────────────────────────────────────────────────────────
+# ─── Data Sources ────────────────────────────────────────────────────────────────────
 
 data "aws_caller_identity" "current" {}
 
-# ─── Locals ──────────────────────────────────────────────────────────────────────
+# ─── Locals ─────────────────────────────────────────────────────────────────────────
 
 locals {
   common_tags = {
@@ -52,11 +52,11 @@ locals {
   # Dedicated DSN secret (NOT the RDS managed JSON secret)
   database_url_secret_arn = "arn:aws:secretsmanager:us-east-1:793439286972:secret:fusionems-prod/app/DATABASE_URL-HQtyrw"
 
-  alb_arn_suffix        = replace(module.ecs_cluster.alb_arn, "/^.*:loadbalancer\\/\/", "")
-  backend_tg_arn_suffix = replace(module.backend_service.target_group_arn, "/^.*:targetgroup\\/\/", "")
+  alb_arn_suffix        = replace(module.ecs_cluster.alb_arn, "/^.*:loadbalancer\\/\\/", "")
+  backend_tg_arn_suffix = replace(module.backend_service.target_group_arn, "/^.*:targetgroup\\/\\/", "")
 }
 
-# ─── 1. Networking ─────────────────────────────────────────────────────────────
+# ─── 1. Networking ─────────────────────────────────────────────────────────
 
 module "networking" {
   source = "../../modules/networking"
@@ -72,7 +72,7 @@ module "networking" {
   tags                 = local.common_tags
 }
 
-# ─── 2. IAM ──────────────────────────────────────────────────────────────────────
+# ─── 2. IAM ─────────────────────────────────────────────────────────────────────────
 
 module "iam" {
   source = "../../modules/iam"
@@ -115,7 +115,7 @@ module "iam" {
   tags = local.common_tags
 }
 
-# ─── 3. ACM ──────────────────────────────────────────────────────────────────────
+# ─── 3. ACM ────────────────────────────────────────────────────────────────────────
 
 module "acm" {
   source = "../../modules/acm"
@@ -129,7 +129,7 @@ module "acm" {
   tags             = local.common_tags
 }
 
-# ─── 4. S3 ───────────────────────────────────────────────────────────────────────
+# ─── 4. S3 ─────────────────────────────────────────────────────────────────────────
 
 module "s3" {
   source = "../../modules/s3"
@@ -139,17 +139,20 @@ module "s3" {
   tags        = local.common_tags
 }
 
-# ─── 5. WAF ──────────────────────────────────────────────────────────────────────
+# ─── 5. WAF ────────────────────────────────────────────────────────────────────
 
 module "waf" {
   source = "../../modules/waf"
 
-  environment = var.environment
-  project     = var.project
-  tags        = local.common_tags
+  environment          = var.environment
+  project              = var.project
+  stripe_webhook_cidrs = var.stripe_webhook_cidrs
+  telnyx_webhook_cidrs = var.telnyx_webhook_cidrs
+  lob_webhook_cidrs    = var.lob_webhook_cidrs
+  tags                 = local.common_tags
 }
 
-# ─── 6. ECS Cluster ─────────────────────────────────────────────────────────────
+# ─── 6. ECS Cluster ───────────────────────────────────────────────────────────
 
 module "ecs_cluster" {
   source = "../../modules/ecs-cluster"
@@ -181,7 +184,7 @@ module "rds" {
   tags                  = local.common_tags
 }
 
-# ─── 8. Redis ──────────────────────────────────────────────────────────────────────
+# ─── 8. Redis ────────────────────────────────────────────────────────────────────────
 
 module "redis" {
   source = "../../modules/redis"
@@ -195,7 +198,7 @@ module "redis" {
   tags                    = local.common_tags
 }
 
-# ─── 9. Cognito ────────────────────────────────────────────────────────────────────
+# ─── 9. Cognito ──────────────────────────────────────────────────────────────────────
 
 module "cognito" {
   source = "../../modules/cognito"
@@ -207,7 +210,7 @@ module "cognito" {
   tags          = local.common_tags
 }
 
-# ─── 10. Observability ──────────────────────────────────────────────────────
+# ─── 10. Observability ────────────────────────────────────────────
 
 module "observability" {
   source = "../../modules/observability"
@@ -224,7 +227,7 @@ module "observability" {
   tags                            = local.common_tags
 }
 
-# ─── 11. Edge (CloudFront + Route53) ────────────────────────────────────────────
+# ─── 11. Edge (CloudFront + Route53) ─────────────────────────────────────────
 
 module "edge" {
   source = "../../modules/edge"
@@ -245,7 +248,7 @@ module "edge" {
   }
 }
 
-# ─── 12. SES ───────────────────────────────────────────────────────────────────────
+# ─── 12. SES ──────────────────────────────────────────────────────────────────────
 
 module "ses" {
   source = "../../modules/ses"
@@ -259,7 +262,7 @@ module "ses" {
   tags                = local.common_tags
 }
 
-# ─── 12b. Secrets ────────────────────────────────────────────────────────────────
+# ─── 12b. Secrets ────────────────────────────────────────────────────────────
 
 module "secrets" {
   source = "../../modules/secrets"
@@ -285,7 +288,7 @@ module "sqs" {
   }
 }
 
-# ─── 13. Backend Service ──────────────────────────────────────────────────────
+# ─── 13. Backend Service ──────────────────────────────────────────────────
 
 module "backend_service" {
   source = "../../modules/ecs-service"
@@ -352,6 +355,7 @@ module "backend_service" {
     { name = "LOB_WEBHOOK_SECRET", valueFrom = "${module.secrets.app_secret_arn}:LOB_WEBHOOK_SECRET::" },
     { name = "TELNYX_API_KEY", valueFrom = "${module.secrets.app_secret_arn}:TELNYX_API_KEY::" },
     { name = "TELNYX_FROM_NUMBER", valueFrom = "${module.secrets.app_secret_arn}:TELNYX_FROM_NUMBER::" },
+    { name = "TELNYX_MESSAGING_PROFILE_ID", valueFrom = "${module.secrets.app_secret_arn}:TELNYX_MESSAGING_PROFILE_ID::" },
     { name = "TELNYX_PUBLIC_KEY", valueFrom = "${module.secrets.app_secret_arn}:TELNYX_PUBLIC_KEY::" },
     { name = "IVR_AUDIO_BASE_URL", valueFrom = "${module.secrets.app_secret_arn}:IVR_AUDIO_BASE_URL::" },
     { name = "FAX_CLASSIFY_QUEUE_URL", valueFrom = "${module.secrets.app_secret_arn}:FAX_CLASSIFY_QUEUE_URL::" },
@@ -370,7 +374,7 @@ module "backend_service" {
   ]
 }
 
-# ─── 14. Frontend Service ───────────────────────────────────────────────────────
+# ─── 14. Frontend Service ──────────────────────────────────────────────────────
 
 module "frontend_service" {
   source = "../../modules/ecs-service"
