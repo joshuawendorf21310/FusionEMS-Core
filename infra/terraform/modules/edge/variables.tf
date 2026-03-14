@@ -24,6 +24,11 @@ variable "api_domain_name" {
   type        = string
 }
 
+variable "app_domain_name" {
+  description = "App (frontend) domain name for the CloudFront distribution (e.g. app.example.com)"
+  type        = string
+}
+
 variable "hosted_zone_id" {
   description = "Route 53 hosted zone ID for DNS records"
   type        = string

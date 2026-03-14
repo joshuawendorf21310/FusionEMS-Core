@@ -18,6 +18,11 @@ variable "api_domain_name" {
   type        = string
 }
 
+variable "app_domain_name" {
+  description = "App (frontend) domain name added as a Subject Alternative Name"
+  type        = string
+}
+
 variable "hosted_zone_id" {
   description = "Route 53 hosted zone ID used for DNS validation"
   type        = string
