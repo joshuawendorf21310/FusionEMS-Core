@@ -70,7 +70,7 @@ export default function EpcrPage() {
         ))}
       </div>
       <Link href="/founder" className="text-xs text-[rgba(34,211,238,0.6)] hover:text-system-billing">
-        ← Back to Founder Command OS
+        ← Back to Platform OS
       </Link>
     </div>
   );

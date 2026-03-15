@@ -30,7 +30,7 @@ export default function ToolsPage() {
           </motion.div>
         ))}
       </div>
-      <Link href="/founder" className="text-xs text-orange-dim hover:text-orange">← Back to Founder Command OS</Link>
+      <Link href="/founder" className="text-xs text-orange-dim hover:text-orange">← Back to Platform OS</Link>
     </div>
   );
 }

@@ -258,7 +258,7 @@ export default function SchedulingPage() {
       </motion.div>
 
       <Link href="/founder" className="text-xs text-orange-dim hover:text-orange transition-colors">
-        &larr; Back to Founder Command OS
+        &larr; Back to Platform OS
       </Link>
     </div>
   );

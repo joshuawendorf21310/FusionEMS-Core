@@ -310,7 +310,7 @@ export default function PricingStudioPage() {
   return (
     <div className="p-6 max-w-[1300px]">
       <div className="mb-6">
-        <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Founder OS</div>
+        <div className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.3)] mb-1">Platform OS</div>
         <h1 className="text-xl font-bold text-text-primary">Pricing Studio</h1>
         <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Product catalog, versioned pricebooks, price estimator, and Stripe catalog management</p>
       </div>

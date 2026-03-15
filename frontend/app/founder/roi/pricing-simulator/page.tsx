@@ -161,7 +161,7 @@ export default function PricingSimulatorPage() {
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Model different pricing scenarios · compare vs competitor billing models</p>
           </div>
           <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-warning transition-colors font-mono">
-            ← Back to Founder OS
+            ← Back to Platform OS
           </Link>
         </div>
       </div>

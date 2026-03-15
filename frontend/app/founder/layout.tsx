@@ -242,7 +242,7 @@ function TopBar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSide
         <div className="w-7 h-7 bg-orange flex items-center justify-center text-[10px] font-black text-text-inverse" style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}>
           FQ
         </div>
-        <span className="text-xs font-semibold text-[rgba(255,255,255,0.9)] hidden sm:block">FOUNDER OS</span>
+        <span className="text-xs font-semibold text-[rgba(255,255,255,0.9)] hidden sm:block">PLATFORM OS</span>
       </Link>
 
       <div className="flex-1 flex items-center gap-2 max-w-xl">
