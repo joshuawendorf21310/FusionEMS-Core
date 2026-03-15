@@ -11,7 +11,7 @@ export const API = axios.create({
 export async function getExecutiveSummary() {
   const res = await API.get('/api/founder/executive-summary', {
     headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
+      Authorization: `Bearer ${localStorage.getItem('fusionems_token') || localStorage.getItem('token')}`,
       'X-Tenant-ID': 'founder'
     }
   });

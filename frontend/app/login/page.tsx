@@ -101,6 +101,9 @@ function LoginPageInner() {
           <p className="micro-caps mt-1" style={{ color: 'var(--color-text-muted)' }}>
             Platform Login
           </p>
+          <p className="mt-2 text-center" style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-micro)', lineHeight: 1.4 }}>
+            Secure access to the FusionEMS Quantum platform
+          </p>
         </div>
 
         {/* Form */}

@@ -225,7 +225,8 @@ export default function HemsPage() {
       removeHandler = client.addHandler((event: RealtimeEvent) => {
         // HEMS mission events
         if (event.event_type === 'hems_mission_events.created') {
-          const payload = event.payload?.record?.data as any;
+          const record = event.payload?.record as Record<string, unknown> | undefined;
+          const payload = record?.data as any;
           if (payload?.mission_id === missionId) {
             push(`Mission update: ${payload.event_type}`, 'success');
             fetchTimeline();
@@ -238,7 +239,8 @@ export default function HemsPage() {
         
         // HEMS acceptance events
         if (event.event_type === 'hems_acceptance_records.created') {
-             const payload = event.payload?.record?.data as any;
+             const acceptRecord = event.payload?.record as Record<string, unknown> | undefined;
+             const payload = acceptRecord?.data as any;
              if (payload?.mission_id === missionId) {
                  push('Checklist accepted by another crew member.', 'success');
              }

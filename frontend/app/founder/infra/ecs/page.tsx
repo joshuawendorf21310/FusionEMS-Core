@@ -260,7 +260,7 @@ export default function ECSClusterHealth() {
         {/* Back link */}
         <div className="pt-2 pb-8">
           <Link href="/founder" className="text-[12px] font-semibold uppercase tracking-wider transition-opacity hover:opacity-70" style={{ color: 'var(--q-orange)' }}>
-            ← Back to Founder Command OS
+            ← Back to Platform Command
           </Link>
         </div>
 

@@ -18,8 +18,9 @@ export async function login(email: string, password: string, options?: LoginOpti
   const token = data.access_token;
 
   // Canonical key
+  localStorage.setItem('fusionems_token', token);
+  // Back-compat for older pages still reading these keys
   localStorage.setItem('token', token);
-  // Back-compat for older pages still reading this key
   localStorage.setItem('qs_token', token);
 
   window.location.href = options?.redirectTo || '/dashboard';
