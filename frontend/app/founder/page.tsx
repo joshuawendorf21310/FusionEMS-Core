@@ -221,6 +221,7 @@ export default function FounderExecutivePage() {
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-dim mb-1">FUSIONEMS QUANTUM</div>
             <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Platform Command OS</h1>
+            <h1 className="text-xl font-black uppercase tracking-wider text-text-primary">Platform Command</h1>
             <p className="text-xs text-text-muted mt-0.5">Executive Command Overview \u00b7 Real-Time Backend Hooked System</p>
           </div>
           <div className="flex items-center gap-3">

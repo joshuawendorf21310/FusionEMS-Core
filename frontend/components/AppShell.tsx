@@ -21,6 +21,36 @@ export function StatusBadge({ status, accent }: { status: SystemStatus; accent: 
   );
 }
 
+export function ModalContainer({
+  open,
+  title,
+  body,
+  onClose,
+  ctaLabel,
+}: {
+  open: boolean;
+  title: string;
+  body: string;
+  onClose: () => void;
+  ctaLabel?: string;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded border border-[rgba(255,255,255,0.1)] bg-[#111] p-6 shadow-xl">
+        <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <p className="mt-3 text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">{body}</p>
+        <button
+          onClick={onClose}
+          className="mt-6 w-full rounded bg-[#FF6B00] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#FF7B10]"
+        >
+          {ctaLabel || "Close"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function NavLink({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href} className="px-3 py-2 text-sm text-[rgba(255,255,255,0.6)] hover:text-white transition-colors">
@@ -34,7 +64,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-black text-white">
       <header className="border-b border-[rgba(255,255,255,0.08)] bg-black/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-5 py-4 flex items-center justify-between">
-          <Link href="/founder" className="flex items-center gap-3">
+          <Link href="/dashboard" className="flex items-center gap-3">
             <div className="h-9 w-9 bg-[#FF6B00] flex items-center justify-center font-bold text-black text-sm">
               FQ
             </div>
@@ -45,11 +75,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1">
-            <NavLink href="/founder" label="Command" />
+            <NavLink href="/command-center" label="Command" />
             <NavLink href="/billing-command" label="Billing" />
             <NavLink href="/compliance" label="Compliance" />
             <NavLink href="/systems" label="Systems" />
-            <NavLink href="/mobile-ops" label="Ops" />
+            <NavLink href="/live-status" label="Status" />
           </nav>
 
           <Link href="/login" className="px-4 py-2 bg-[#FF6B00] text-black text-sm font-semibold hover:bg-[#FF7B10] transition-colors">
