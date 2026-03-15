@@ -95,6 +95,7 @@ function DashboardPageInner() {
   useEffect(() => {
     const token = searchParams.get('token');
     if (token) {
+      localStorage.setItem('fusionems_token', token);
       localStorage.setItem('token', token);
       router.replace('/dashboard');
     }
