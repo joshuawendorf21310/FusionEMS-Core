@@ -82,7 +82,7 @@ export default function ContractBuilderPage() {
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Service agreements · BAAs · data processing · renewal contracts</p>
           </div>
           <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-info transition-colors font-mono">
-            ← Back to Founder OS
+            ← Back to Platform OS
           </Link>
         </div>
       </div>
