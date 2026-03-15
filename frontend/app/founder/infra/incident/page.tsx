@@ -354,7 +354,7 @@ export default function IncidentControlCenterPage() {
       {/* Back */}
       <div>
         <Link href="/founder" className="text-xs text-system-cad hover:text-text-primary transition-colors">
-          ← Back to Founder OS
+          ← Back to Platform OS
         </Link>
       </div>
     </div>

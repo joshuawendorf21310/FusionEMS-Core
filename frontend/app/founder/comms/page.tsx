@@ -27,7 +27,7 @@ export default function CommsPage() {
           </motion.div>
         ))}
       </div>
-      <Link href="/founder" className="text-xs text-orange-dim hover:text-orange">← Back to Platform Command</Link>
+      <Link href="/founder" className="text-xs text-orange-dim hover:text-orange">← Back to Platform OS</Link>
     </div>
   );
 }

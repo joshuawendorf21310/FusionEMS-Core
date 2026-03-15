@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 export type SystemStatus =
   | "ACTIVE"
@@ -90,6 +91,72 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-7xl px-5 py-8">
         {children}
       </main>
+    </div>
+  );
+}
+
+/* ─── ModalContainer ─────────────────────────────────────────────────────────
+   Lightweight gate modal used by certification-gated system pages.
+   Renders a backdrop + panel with a title, body text, and a CTA button.
+─────────────────────────────────────────────────────────────────────────────── */
+export interface ModalContainerProps {
+  open: boolean;
+  title: string;
+  body: string;
+  onClose: () => void;
+  ctaLabel?: string;
+}
+
+export function ModalContainer({ open, title, body, onClose, ctaLabel = "Close" }: ModalContainerProps) {
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        className="relative z-10 w-full max-w-lg mx-4 bg-[#111827] border border-[rgba(255,255,255,0.08)] shadow-[0_16px_40px_rgba(0,0,0,0.7)]"
+        style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.08)]">
+          <h2
+            id="modal-title"
+            className="text-xs font-semibold uppercase tracking-[0.08em] text-[#E5E7EB]"
+          >
+            {title}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-[rgba(255,255,255,0.4)] hover:text-white transition-colors p-1"
+            aria-label="Close"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-5 text-sm text-[rgba(255,255,255,0.7)] leading-relaxed">{body}</div>
+        <div className="flex justify-end px-5 pb-5">
+          <Button variant="primary" size="md" onClick={onClose}>
+            {ctaLabel}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

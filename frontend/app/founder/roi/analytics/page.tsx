@@ -134,7 +134,7 @@ export default function ROIAnalyticsPage() {
             <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">Conversion funnel · proposal acceptance rate · regional revenue heatmap</p>
           </div>
           <Link href="/founder" className="text-[11px] text-[rgba(255,255,255,0.4)] hover:text-status-warning transition-colors font-mono">
-            ← Back to Founder OS
+            ← Back to Platform OS
           </Link>
         </div>
       </div>
